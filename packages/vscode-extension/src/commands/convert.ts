@@ -16,6 +16,10 @@ import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import { SKIP, visit } from "unist-util-visit";
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx'
+import { mdxJsx } from 'micromark-extension-mdx-jsx'
+import * as acorn from 'acorn';
+
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -209,13 +213,27 @@ export async function cmdExperimentConvert() {
     });
 }
 
+// Modified from the code for micromark-extension-mdx-md, which also disables other things that I don't want to disable.
+function noIndentComments() {
+  return {
+    disable: {null: ['codeIndented']}
+  }
+}
+
 async function convertPmdWithMdast(initialText: string) {
   // Remove leading and trailing whitespace
   const trimmedText = initialText.trim();
   console.log("initialText is", trimmedText);
 
+  // Convert all comments to jsx style comments:
+  const jsxComments = trimmedText.replace(/<!--([\s\S]*?)-->/g, (match, content) => `<![CDATA[${content}]]>\n`);
+  console.log("jsxComments is", jsxComments);
   // Converte to mdast:
-  const tree = fromMarkdown(trimmedText);
+  // mdxJxs() is still required so that the xml tags are not lost.
+  const tree = fromMarkdown(jsxComments, {
+    extensions: [noIndentComments(), mdxJsx({acorn, addResult: true})],
+    mdastExtensions: [mdxJsxFromMarkdown()]
+  });
 
   console.log("mdast before: ", tree);
 
@@ -239,15 +257,13 @@ async function convertPmdWithXast(initialText: string) {
 
   visit(tree, (node, index, parent) => {
     if (node.type === "text") {
-      const converted = FlexTeXtConvert(node.value);
+      console.log("text node is", node.value);
+      const convertedText = markdownToPretext(node.value);
 
-      console.log("converted text is", converted);
+      console.log("converted text is", convertedText);
 
-      const subtree = fromXml(converted);
-      // replace the node with the subtree
-      if (typeof index !== "number" || !parent) return;
-
-      parent.children.splice(index, 1, ...subtree.children);
+      // Replace the text node with the new nodes
+      node.value = convertedText;
       return SKIP;
     }
   });
