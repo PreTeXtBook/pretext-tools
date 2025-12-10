@@ -9,6 +9,11 @@
     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<pretext xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<book xml:id=\"${1:$TM_FILENAME_BASE}\">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</book>\n</pretext>",
     "description": "book template for empty/new PreTeXt document"
   },
+  "pretext slideshow template": {
+    "prefix": "<!ptx-slideshow",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<pretext xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<slideshow xml:id=\"${1:$TM_FILENAME_BASE}\">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</slideshow>\n</pretext>",
+    "description": "slideshow template for empty/new PreTeXt document"
+  },
   "pretext part": {
     "prefix": "<!ptx-part",
     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<part xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</part>",
@@ -28,6 +33,16 @@
     "prefix": "<!ptx-exercises",
     "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<exercises xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</exercises>",
     "description": "template for creating a exercises of a PreTeXt book in an empty file."
+  },
+  "pretext worksheet": {
+    "prefix": "<!ptx-worksheet",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<worksheet xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</worksheet>",
+    "description": "template for creating a worksheet division of a PreTeXt book in an empty file."
+  },
+  "pretext handout": {
+    "prefix": "<!ptx-handout",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<handout xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</handout>",
+    "description": "template for creating a handout division of a PreTeXt book in an empty file."
   },
   "xi-namespace": {
     "prefix": "@xmlns:xi",

@@ -44,6 +44,10 @@
     "prefix": "<worksheet>",
     "body": "<worksheet xml:id=\"ws-$1\">\n\t$0\n</worksheet>"
   },
+  "handout": {
+    "prefix": "<handout>",
+    "body": "<handout xml:id=\"handout-$1\">\n\t$0\n</handout>"
+  },
   "introduction": {
     "prefix": "<introduction>",
     "body": "<introduction>\n\t<p>\n\t\t$0\n\t</p>\n</introduction>"
