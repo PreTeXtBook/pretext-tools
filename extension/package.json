@@ -2,7 +2,7 @@
   "name": "pretext-tools",
   "displayName": "PreTeXt-tools",
   "description": "Language support and more for PreTeXt",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "license": "See license in LICENSE",
   "icon": "logo.png",
   "publisher": "oscarlevin",
