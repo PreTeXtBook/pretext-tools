@@ -199,6 +199,7 @@ export async function getCompletions(
             range: range,
           };
           snippetCompletion.kind = CompletionItemKind.TypeParameter;
+          snippetCompletion.sortText = snippetCompletion.sortText || elem;
           completionItems.push(snippetCompletion);
         } else {
           // Give a very basic snippet completion since we haven't implemented a more specific one in ELEMENTS.
@@ -268,6 +269,7 @@ function getExtraCompletions(
       };
       snippetCompletion.documentation = item.documentation;
       snippetCompletion.kind = CompletionItemKind.TypeParameter;
+      snippetCompletion.sortText = item.sortText;
       extraCompletions.push(snippetCompletion);
     }
   }

@@ -161,7 +161,7 @@
     "sort": "0"
   },
   "exercise (in worksheet)": {
-    "prefix": "<exercise workspace=\"\">",
+    "prefix": "<exercise_workspace=\"\">",
     "body": "<exercise workspace=\"$1\">\n\t$0\n</exercise>",
     "description": "exercise (in worksheet)"
   },
@@ -231,7 +231,7 @@
     "description": "index entry"
   },
   "image (external)": {
-    "prefix": "<image source=\"\">",
+    "prefix": "<image_source=\"\">",
     "body": "<image source=\"${1:path (no extension)}\">\n\t<shortdescription>${0:(for accessibility)}</shortdescription>\n</image>",
     "description": "image (external)"
   },
@@ -299,22 +299,27 @@
   },
   "md": {
     "prefix": "<md>",
-    "body": "<md>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
-    "description": "math-display (multi-row)"
+    "body": "<md>\n\t$1\n</md>\n$0",
+    "description": "math-display"
   },
-  "mdn": {
-    "prefix": "<mdn>",
-    "body": "<mdn>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</mdn>",
-    "description": "math-display (multi-row) numbered"
+  "md-rows": {
+    "prefix": "<md-rows>",
+    "body": "<md>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
+    "description": "math-display with rows"
+  },
+  "md-n-rows": {
+    "prefix": "<md-n-rows>",
+    "body": "<md number=\"yes\">\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
+    "description": "math-display numbered"
   },
   "me": {
     "prefix": "<me>",
-    "body": "<me>\n\t$1\n</me>\n$0",
+    "body": "<md>\n\t$1\n</md>\n$0",
     "description": "math-equation."
   },
   "men": {
     "prefix": "<men>",
-    "body": "<men xml:id=\"eqn-$1\">\n\t$2\n</men>\n$0",
+    "body": "<md number=\"yes\">\n\t$2\n</md>\n$0",
     "description": "math-equation numbered."
   },
   "mrow": {
@@ -470,6 +475,10 @@
     "body": "<sidebyside>\n\t$0\n</sidebyside>",
     "description": "sidebyside (plain)"
   },
+  "slide": {
+    "prefix": "<slide>",
+    "body": "<slide>\n\t<title>$1</title>\n\t$0\n</slide>"
+  },
   "solution": {
     "prefix": "<solution>",
     "body": "<solution>\n\t<p>\n\t\t$0\n\t</p>\n</solution>",
@@ -517,7 +526,7 @@
     "sort": "0"
   },
   "task (with workspace)": {
-    "prefix": "<task workspace=\"\">",
+    "prefix": "<task_workspace=\"\">",
     "body": "<task workspace=\"$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</task>",
     "description": "task (for parts of an exercise in worksheet)"
   },
@@ -562,7 +571,7 @@
     "description": "WeBWorK (with pg code)"
   },
   "webwork server": {
-    "prefix": "<webwork source=\"\" />",
+    "prefix": "<webwork_source=\"\" />",
     "body": "<webwork source=\"$1\" />$0",
     "description": "WeBWorK (from server)",
     "sort": "0"

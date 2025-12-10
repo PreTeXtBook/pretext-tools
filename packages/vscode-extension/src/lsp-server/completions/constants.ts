@@ -86,6 +86,11 @@ export const ATTRIBUTES: CompletionItems = {
     insertText: 'right="${1|minor, medium, major, none|}"$0',
     documentation: "right attribute, for side-by-sides",
   },
+  tag: {
+    label: "@tag",
+    insertText: 'tag="$1"$0',
+    documentation: "tag attribute for mrow in display math (* or + or etc.).",
+  },
   text: {
     label: "@text",
     insertText:
@@ -412,7 +417,6 @@ export const ELEMENTS: CompletionItems = {
     label: "<exercise>",
     insertText: "<exercise>\n\t$0\n</exercise>",
     documentation: "exercise",
-    sortText: "0",
   },
   exercisegroup: {
     label: "<exercisegroup>",
@@ -547,23 +551,23 @@ export const ELEMENTS: CompletionItems = {
   },
   md: {
     label: "<md>",
-    insertText: "<md>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
-    documentation: "math-display (multi-row)",
+    insertText: "<md>\n\t$1\n</md>\n$0",
+    documentation: "math-display",
   },
   mdn: {
     label: "<mdn>",
-    insertText: "<mdn>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</mdn>",
+    insertText: "<md number=\"yes\">\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
     documentation: "math-display (multi-row) numbered",
   },
   me: {
     label: "<me>",
-    insertText: "<me>\n\t$1\n</me>\n$0",
-    documentation: "math-equation.",
+    insertText: "<md>\n\t$1\n</md>\n$0",
+    documentation: "math-equation (<md> is the new markup).",
   },
   men: {
     label: "<men>",
-    insertText: '<men xml:id="eqn-$1">\n\t$2\n</men>\n$0',
-    documentation: "math-equation numbered.",
+    insertText: '<md number="yes">\n\t$2\n</md>\n$0',
+    documentation: "math-equation numbered (using new <md> markup).",
   },
   mrow: {
     label: "<mrow>",
@@ -727,12 +731,6 @@ export const ELEMENTS: CompletionItems = {
     label: "<sidebyside>",
     insertText: "<sidebyside>\n\t$0\n</sidebyside>",
     documentation: "sidebyside (plain)",
-  },
-  slide : {
-    label: "<slide>",
-    insertText:
-      '<slide>\n\t<title>$1</title>\n\t$0\n</slide>',
-    documentation: "slide (for revealjs presentations)",
   },
   solution: {
     label: "<solution>",
@@ -937,8 +935,8 @@ export const ELEMENTS: CompletionItems = {
     documentation: "insert text",
   },
   latex: {
-    label: "<latex />",
-    insertText: "<latex />$0",
+    label: "<latex/>",
+    insertText: "<latex/>$0",
     documentation: "latex (fancy letters)",
   },
   m: {
@@ -949,7 +947,7 @@ export const ELEMENTS: CompletionItems = {
   },
   pretext: {
     label: "<pretext/>",
-    insertText: "<pretext />$0",
+    insertText: "<pretext/>$0",
     documentation: "pretext (fancy letters)",
   },
   pubtitle: {
@@ -994,8 +992,8 @@ export const ELEMENTS: CompletionItems = {
     sortText: "0",
   },
   tex: {
-    label: "<tex />",
-    insertText: "<tex />$0",
+    label: "<tex/>",
+    insertText: "<tex/>$0",
     documentation: "tex (fancy letters)",
   },
   url: {
@@ -1016,31 +1014,31 @@ export const ELEMENTS: CompletionItems = {
     documentation: "The depth at which to split up files in an HTML build.",
   },
   "exercise-inline": {
-    label: "<exercise-inline />",
+    label: "<exercise-inline/>",
     insertText:
       '<exercise-inline statement="${1|yes,no|}" hint="${2|yes,no|}" answer="${3|yes,no|}" solution="${4|yes,no|}"/>\n$0',
     documentation: "inline exercise visibility",
   },
   "exercise-divisional": {
-    label: "<exercise-divisional />",
+    label: "<exercise-divisional/>",
     insertText:
       '<exercise-divisional statement="${1|yes,no|}" hint="${2|yes,no|}" answer="${3|yes,no|}" solution="${4|yes,no|}"/>\n$0',
     documentation: "divisional exercise visibility",
   },
   "exercise-reading": {
-    label: "<exercise-reading />",
+    label: "<exercise-reading/>",
     insertText:
       '<exercise-reading statement="${1|yes,no|}" hint="${2|yes,no|}" answer="${3|yes,no|}" solution="${4|yes,no|}"/>\n$0',
     documentation: "reading exercise visibility",
   },
   "exercise-project": {
-    label: "<exercise-project />",
+    label: "<exercise-project/>",
     insertText:
       '<exercise-project statement="${1|yes,no|}" hint="${2|yes,no|}" answer="${3|yes,no|}" solution="${4|yes,no|}"/>\n$0',
     documentation: "project visibility",
   },
   "exercise-worksheet": {
-    label: "<exercise-worksheet />",
+    label: "<exercise-worksheet/>",
     insertText:
       '<exercise-worksheet statement="${1|yes,no|}" hint="${2|yes,no|}" answer="${3|yes,no|}" solution="${4|yes,no|}"/>\n$0',
     documentation: "worksheet exercise visibility",
@@ -1096,7 +1094,6 @@ const HoldsText = [
   "subtitle",
   "term",
   "title",
-  "title",
   "url",
   "xref",
   "year",
@@ -1123,13 +1120,13 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
   "exercise-workspace": {
     alias: "exercise",
     parents: ["worksheet"],
-    label: '<exercise workspace="">',
+    label: '<exercise_workspace="">',
     insertText: '<exercise workspace="$1">\n\t$0\n</exercise>',
-    documentation: "exercise ",
+    documentation: "exercise (with workspace)",
   },
   "image-source": {
     alias: "image",
-    label: '<image source="">',
+    label: '<image_source="">',
     insertText:
       '<image source="${1:path }">\n\t<shortdescription>${0:}</shortdescription>\n</image>',
     documentation: "image (with source)",
@@ -1139,7 +1136,7 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
     parents: ["dl"],
     label: "<li>",
     insertText: "<li>\n\t<title>$1</title>\n\t<p>\n\t\t$0\n\t</p>\n</li>",
-    documentation: "list item (w title and p)",
+    documentation: "dl list item (w/ title and p)",
   },
   "li-short": {
     alias: "li",
@@ -1147,34 +1144,41 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
     insertText: "<li>$1</li>$0",
     documentation: "list item (short)",
   },
+  "slide": {
+    alias: "subsection",
+    label: "<slide>",
+    insertText:
+      '<slide>\n\t<title>$1</title>\n\t$0\n</slide>',
+    documentation: "slide (for revealjs presentations)",
+  },
   "task-workspace": {
     alias: "task",
     parents: ["exercise"],
-    label: '<task workspace="">',
+    label: '<task_workspace="">',
     insertText:
       '<task workspace="$1">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</task>',
     documentation: "task (with workspace)",
+    sortText: "9",
   },
   "webwork-inline": {
     alias: "webwork",
     parents: HoldsText,
-    label: "<webwork />",
-    insertText: "<webwork />$0",
+    label: "<webwork/>",
+    insertText: "<webwork/>$0",
     documentation: "webwork ",
   },
   "webwork-server": {
     alias: "webwork",
     parents: ["exercise"],
-    label: '<webwork source="" />',
+    label: '<webwork_source="" />',
     insertText: '<webwork source="$1" />$0',
     documentation: "WeBWorK (from server)",
-    sortText: "0",
   },
   "url-empty": {
     alias: "url",
     parents: HoldsText,
-    label: "<url />",
-    insertText: '<url href="$1" />$0',
-    documentation: "url ",
+    label: "<url_href=\"\"/>",
+    insertText: '<url href="$1"/>$0',
+    documentation: "url (empty)",
   },
 };

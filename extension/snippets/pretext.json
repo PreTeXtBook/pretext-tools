@@ -321,9 +321,6 @@
   "fillin": {
     "prefix": "<fillin>",
     "body": "<fillin characters=\"${1:5}\" />$0"
-  },
-  "slide": {
-    "prefix": "<slide>",
-    "body": "<slide>\n\t$0\n</slide>"
   }
+
 }
