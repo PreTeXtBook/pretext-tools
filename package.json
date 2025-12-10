@@ -61,7 +61,7 @@
     "esbuild-node-externals": "^1.18.0",
     "frankenmarkup": "github:davidfarmer/FrankenMarkUp",
     "fs.promises.exists": "^1.1.4",
-    "glob": "^11.0.2",
+    "glob": "^11.1.0",
     "md2ptx": "github:skiadas/md2ptx",
     "mdast-util-from-markdown": "^2.0.2",
     "prettier": "^2.8.8",
