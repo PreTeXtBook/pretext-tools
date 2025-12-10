@@ -456,8 +456,8 @@ export const ELEMENTS: CompletionItems = {
     documentation: "index header",
   },
   handout: {
-  label: "<handout>",
-  insertText: '<handout xml:id="handout-$1">\n\t$0\n</handout>',
+    label: "<handout>",
+    insertText: '<handout xml:id="handout-$1">\n\t$0\n</handout>',
   },
   heuristic: {
     label: "<heuristic>",
@@ -556,7 +556,7 @@ export const ELEMENTS: CompletionItems = {
   },
   mdn: {
     label: "<mdn>",
-    insertText: "<md number=\"yes\">\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
+    insertText: '<md number="yes">\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>',
     documentation: "math-display (multi-row) numbered",
   },
   me: {
@@ -1144,11 +1144,10 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
     insertText: "<li>$1</li>$0",
     documentation: "list item (short)",
   },
-  "slide": {
+  slide: {
     alias: "subsection",
     label: "<slide>",
-    insertText:
-      '<slide>\n\t<title>$1</title>\n\t$0\n</slide>',
+    insertText: "<slide>\n\t<title>$1</title>\n\t$0\n</slide>",
     documentation: "slide (for revealjs presentations)",
   },
   "task-workspace": {
@@ -1177,7 +1176,7 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
   "url-empty": {
     alias: "url",
     parents: HoldsText,
-    label: "<url_href=\"\"/>",
+    label: '<url_href=""/>',
     insertText: '<url href="$1"/>$0',
     documentation: "url (empty)",
   },
