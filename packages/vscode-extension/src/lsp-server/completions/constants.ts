@@ -451,6 +451,10 @@ export const ELEMENTS: CompletionItems = {
     insertText: "<h>$1</h>$0",
     documentation: "index header",
   },
+  handout: {
+  label: "<handout>",
+  insertText: '<handout xml:id="handout-$1">\n\t$0\n</handout>',
+  },
   heuristic: {
     label: "<heuristic>",
     insertText:
@@ -529,7 +533,6 @@ export const ELEMENTS: CompletionItems = {
     documentation: "list item (w/ p)",
     sortText: "0",
   },
-
   match: {
     label: "<match>",
     insertText:
@@ -605,7 +608,7 @@ export const ELEMENTS: CompletionItems = {
   page: {
     label: "<page>",
     insertText: "<page>\n\t$0\n</page>",
-    documentation: "page division, for worksheets only.",
+    documentation: "page division, for worksheets and handouts only.",
   },
   paragraphs: {
     label: "<paragraphs>",
@@ -724,6 +727,12 @@ export const ELEMENTS: CompletionItems = {
     label: "<sidebyside>",
     insertText: "<sidebyside>\n\t$0\n</sidebyside>",
     documentation: "sidebyside (plain)",
+  },
+  slide : {
+    label: "<slide>",
+    insertText:
+      '<slide>\n\t<title>$1</title>\n\t$0\n</slide>',
+    documentation: "slide (for revealjs presentations)",
   },
   solution: {
     label: "<solution>",
