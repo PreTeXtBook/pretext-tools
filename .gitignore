@@ -57,6 +57,7 @@ Temporary Items
 .apdisk
 node_modules
 out
+dist
 
 #
 *.bak
@@ -65,3 +66,9 @@ out
 .access-token
 
 .npmrc
+
+
+.nx/cache
+.nx/workspace-data
+vite.config.*.timestamp*
+vitest.config.*.timestamp*

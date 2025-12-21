@@ -46,7 +46,7 @@ export function positionOfSubstring(
   start: number,
   end: number,
   origPosition: Position,
-  origSource: string
+  origSource: string,
 ): Position {
   let startLineOffset = 0;
   let startColOffset = 0;

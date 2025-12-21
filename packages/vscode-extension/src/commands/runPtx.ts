@@ -9,7 +9,7 @@ export async function runPretext(
   ptxExec: string,
   ptxCommand: string,
   ptxOptions: string,
-  projectPath: string = ""
+  projectPath: string = "",
 ): Promise<void> {
   return window.withProgress(
     {
@@ -23,7 +23,7 @@ export async function runPretext(
         var progressUpdate = "Starting up...";
         const interval = setInterval(
           () => progress.report({ message: progressUpdate }),
-          1000
+          1000,
         );
         let fullCommand = cli.cmd() + " " + ptxCommand + " " + ptxOptions;
         let status = "ready"; //for statusbaritem
@@ -33,7 +33,7 @@ export async function runPretext(
         let capturedErrors: string[] = [];
         pretextOutputChannel.clear();
         pretextOutputChannel.appendLine(
-          "\n\nNow running `" + fullCommand + "`..."
+          "\n\nNow running `" + fullCommand + "`...",
         );
         progressUpdate = "Running " + fullCommand;
         var ptxRun = spawn(fullCommand, [], {
@@ -48,7 +48,7 @@ export async function runPretext(
             data
               .toString()
               .includes(
-                "Your built project will soon be available to the public at:"
+                "Your built project will soon be available to the public at:",
               )
           ) {
             capturedOutput.push(data);
@@ -61,7 +61,7 @@ export async function runPretext(
           ) {
             pretextOutputChannel.appendLine(`${data}`);
             pretextOutputChannel.append(
-              "(this local server will remain running until you close vs-code)\n"
+              "(this local server will remain running until you close vs-code)\n",
             );
             capturedOutput.push(data);
             console.log("Using view. Status should change back");
@@ -82,7 +82,7 @@ export async function runPretext(
           console.log(code);
           if (ptxRun.killed) {
             pretextOutputChannel.appendLine(
-              "...PreTeXt command terminated early."
+              "...PreTeXt command terminated early.",
             );
             console.log("Process killed");
           } else {
@@ -98,7 +98,7 @@ export async function runPretext(
               .showErrorMessage(
                 "PreTeXt encountered one or more errors",
                 "Show Log",
-                "Dismiss"
+                "Dismiss",
               )
               .then((option) => {
                 if (option === "Show Log") {
@@ -112,7 +112,7 @@ export async function runPretext(
                 .showInformationMessage(
                   "Build successful! You can preview your output now.",
                   "Dismiss",
-                  "View log"
+                  "View log",
                 )
                 .then((option) => {
                   if (option === "View log") {
@@ -127,7 +127,7 @@ export async function runPretext(
                     .splice(-1)[0]
                     .split("soon be available to the public at:")
                     .slice(-1)[0]
-                    .trim()
+                    .trim(),
                 );
                 console.log("Opening site at: ", siteURL);
                 window
@@ -135,7 +135,7 @@ export async function runPretext(
                     "Deploy successful! You can view your deployed site now.",
                     "Visit site",
                     "View log",
-                    "Dismiss"
+                    "Dismiss",
                   )
                   .then((option) => {
                     if (option === "Visit site") {
@@ -157,7 +157,7 @@ export async function runPretext(
           clearInterval(interval);
         });
       });
-    }
+    },
   );
 }
 
@@ -165,7 +165,7 @@ export async function runThenOpen(
   ptxExec: string,
   ptxCommand: string,
   ptxOptions: string,
-  folderUri: Uri
+  folderUri: Uri,
 ) {
   try {
     await runPretext(ptxExec, ptxCommand, ptxOptions, folderUri.fsPath);

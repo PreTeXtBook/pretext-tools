@@ -19,12 +19,12 @@ function convertMath(text: string) {
   //convert diplay math mode (assumes all in one line)
   let result = text.replace(
     /(\$\$|\\\[|\\begin{displaymath}|\\begin{equation})(.*?)(\$\$|\\\]|\\end{displaymath}|\\end{equation})/gs,
-    "<me>$2</me>"
+    "<me>$2</me>",
   );
   //convert inline math mode
   result = result.replace(
     /(?<!\\)\$(.*?)\$|\\\((.*?)\\\)|\\begin\{math\}(.*?)\\end\{math\}/gs,
-    "<m>$1$2$3</m>"
+    "<m>$1$2$3</m>",
   );
 
   return result;
@@ -34,7 +34,7 @@ function convertTextMarkup(text: string) {
   //Convert verbatim
   let result = text.replace(
     /(\\verb\||\\begin{verbatim})(.*?)(\||\\end{verbatim})/gs,
-    "<c>$2</c>"
+    "<c>$2</c>",
   );
   //convert emphasis/italics
   result = result.replace(/(\\emph{|\\textit{)(.*?)(})/gs, "<em>$2</em>");

@@ -20,7 +20,7 @@ export class PretextVisualEditorProvider
     const provider = new PretextVisualEditorProvider(context);
     const providerRegistration = vscode.window.registerCustomEditorProvider(
       PretextVisualEditorProvider.viewType,
-      provider
+      provider,
     );
     return providerRegistration;
   }
@@ -37,7 +37,7 @@ export class PretextVisualEditorProvider
   public async resolveCustomTextEditor(
     document: vscode.TextDocument,
     webviewPanel: vscode.WebviewPanel,
-    _token: vscode.CancellationToken
+    _token: vscode.CancellationToken,
   ): Promise<void> {
     // Setup initial content for the webview
     webviewPanel.webview.options = {
@@ -93,7 +93,7 @@ export class PretextVisualEditorProvider
             return;
           }
         }, 500);
-      }
+      },
     );
 
     // Make sure we get rid of the listener when our editor is closed.
@@ -116,7 +116,7 @@ export class PretextVisualEditorProvider
           edit.replace(
             document.uri,
             new vscode.Range(0, 0, document.lineCount, 0),
-            newText
+            newText,
           );
           vscode.workspace.applyEdit(edit);
           return;
@@ -145,8 +145,8 @@ export class PretextVisualEditorProvider
         this.context.extensionUri,
         "out",
         "media",
-        "visualEditor.js"
-      )
+        "visualEditor.js",
+      ),
     );
 
     const styleUri = webview.asWebviewUri(
@@ -155,8 +155,8 @@ export class PretextVisualEditorProvider
         "out",
         "media",
         "assets",
-        "visualEditor.css"
-      )
+        "visualEditor.css",
+      ),
     );
 
     // Use a nonce to whitelist which scripts can be run

@@ -23,7 +23,7 @@ export async function cmdInstallSage() {
 
         return new Promise<void>((resolve) => {
           pretextOutputChannel.append(
-            "Checking for new version of PreTeXt to install"
+            "Checking for new version of PreTeXt to install",
           );
           try {
             let runInstall = spawn("bash ./.devcontainer/installSage.sh", {
@@ -44,12 +44,12 @@ export async function cmdInstallSage() {
               console.log(`child process exited with code ${code}`);
               if (code !== 0) {
                 pretextOutputChannel.appendLine(
-                  `Error: child process exited with code ${code}`
+                  `Error: child process exited with code ${code}`,
                 );
                 return;
               }
               pretextOutputChannel.appendLine(
-                "Sage installation completed successfully."
+                "Sage installation completed successfully.",
               );
             });
           } catch (e) {
@@ -61,16 +61,16 @@ export async function cmdInstallSage() {
             fs.readFile(devcontainerPath, "utf8", (err: any, data: string) => {
               if (err) {
                 pretextOutputChannel.appendLine(
-                  `Error reading devcontainer.json: ${err.message}`
+                  `Error reading devcontainer.json: ${err.message}`,
                 );
                 return;
               }
               pretextOutputChannel.appendLine(
-                `Contents of devcontainer.json:\n${data}`
+                `Contents of devcontainer.json:\n${data}`,
               );
               const updatedData = data.replace(
                 /\/\/\s*install sagemath:/i,
-                "install sagemath:"
+                "install sagemath:",
               );
               fs.writeFile(
                 devcontainerPath,
@@ -79,30 +79,30 @@ export async function cmdInstallSage() {
                 (err: any) => {
                   if (err) {
                     pretextOutputChannel.appendLine(
-                      `Error writing to devcontainer.json: ${err.message}`
+                      `Error writing to devcontainer.json: ${err.message}`,
                     );
                     return;
                   }
                   pretextOutputChannel.appendLine(
-                    "Successfully updated devcontainer.json to uncomment 'install sage:'"
+                    "Successfully updated devcontainer.json to uncomment 'install sage:'",
                   );
-                }
+                },
               );
             });
           } catch (e) {
             console.log(
-              "Unable to save SageMath install status to devcontainer.json"
+              "Unable to save SageMath install status to devcontainer.json",
             );
             console.log(e);
           }
           progress.report({ message: "Done" });
           resolve();
         });
-      }
+      },
     );
   } else {
     window.showInformationMessage(
-      "Sage installation is only supported in GitHub Codespaces."
+      "Sage installation is only supported in GitHub Codespaces.",
     );
   }
 }

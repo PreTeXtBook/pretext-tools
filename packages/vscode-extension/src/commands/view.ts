@@ -73,7 +73,7 @@ export function cmdViewCodeChat() {
     commands.executeCommand("extension.codeChatActivate");
   } else {
     window.showErrorMessage(
-      "Unable to start CodeChat preview.  Is the 'CodeChat' extension and CodeChat_Server (through pip) installed?"
+      "Unable to start CodeChat preview.  Is the 'CodeChat' extension and CodeChat_Server (through pip) installed?",
     );
   }
 }
@@ -95,7 +95,7 @@ function runView(target: string, projectPath: string): void {
     data = utils.stripColorCodes(data.toString());
     pretextOutputChannel.appendLine(`${data}`);
     pretextOutputChannel.append(
-      "(this local server will remain running until you close vs-code)\n"
+      "(this local server will remain running until you close vs-code)\n",
     );
     capturedOutput.push(data);
     console.log("Using view. Status should change back");
@@ -125,7 +125,7 @@ function runView(target: string, projectPath: string): void {
         .showErrorMessage(
           "PreTeXt encountered one or more errors",
           "Show Log",
-          "Dismiss"
+          "Dismiss",
         )
         .then((option) => {
           if (option === "Show Log") {
@@ -147,6 +147,6 @@ export async function cmdViewVisualEditor() {
     {
       viewColumn: ViewColumn.Beside,
       preserveFocus: true,
-    }
+    },
   );
 }

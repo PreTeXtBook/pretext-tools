@@ -21,7 +21,7 @@ export async function cmdBuildFile(runInTerminal: boolean = false) {
   let docText = activeEditor.document.getText();
   if (!docText.includes("<pretext")) {
     window.showErrorMessage(
-      "This file does not appear to be a valid complete PreTeXt file. Please open a valid PreTeXt file."
+      "This file does not appear to be a valid complete PreTeXt file. Please open a valid PreTeXt file.",
     );
     return;
   }
@@ -36,17 +36,17 @@ export async function cmdBuildFile(runInTerminal: boolean = false) {
     if (runInTerminal) {
       let terminal = utils.setupTerminal(
         pretextTerminal,
-        qpSelection.description
+        qpSelection.description,
       );
       terminal.sendText(
-        "pretext build " + qpSelection.label + " -i " + fileName
+        "pretext build " + qpSelection.label + " -i " + fileName,
       );
     } else {
       runPretext(
         cli.cmd(),
         "build",
         qpSelection.label + " -i " + fileName,
-        qpSelection.description
+        qpSelection.description,
       );
     }
     updateLastTarget({
@@ -76,7 +76,7 @@ export async function cmdBuildAny(runInTerminal: boolean = false) {
     if (runInTerminal) {
       let terminal = utils.setupTerminal(
         pretextTerminal,
-        qpSelection.description
+        qpSelection.description,
       );
       terminal.sendText("pretext build " + qpSelection.label);
     } else {
@@ -84,7 +84,7 @@ export async function cmdBuildAny(runInTerminal: boolean = false) {
         cli.cmd(),
         "build",
         qpSelection.label,
-        qpSelection.description
+        qpSelection.description,
       );
     }
     updateLastTarget({
@@ -108,7 +108,7 @@ export async function cmdBuildLast(runInTerminal: boolean = false) {
         cli.cmd(),
         "build",
         lastTarget.name + " -i " + lastTarget.filename,
-        lastTarget.path
+        lastTarget.path,
       );
     } else {
       let projectPath = lastTarget.path;
@@ -138,7 +138,7 @@ export async function cmdGenerate(runInTerminal: boolean = false) {
         cli.cmd(),
         "generate -t",
         qpSelection.label,
-        qpSelection.description
+        qpSelection.description,
       );
     }
     // Move selected target to front of list for next command.

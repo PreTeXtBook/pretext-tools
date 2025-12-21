@@ -47,7 +47,7 @@ function positionCharShift(position: Position, shift?: number): Position {
 export function rangeInLine(
   position: Position,
   startShift?: number,
-  endShift?: number
+  endShift?: number,
 ): Range {
   return {
     start: positionCharShift(position, startShift),
@@ -72,7 +72,7 @@ export function lineToPosition(position: Position): Range {
  */
 export function getCurrentTag(
   document: TextDocument,
-  position: Position
+  position: Position,
 ): string | undefined {
   const textUntilPosition = document?.getText({
     start: { line: 0, character: 0 },
@@ -86,7 +86,7 @@ export function getCurrentTag(
     textUntilPosition?.match(/<(\w)+(?![^>]*\/>)/g) || []
   ).map((tag) => tag.slice(1));
   const closedTags = (textUntilPosition?.match(/<\/\w+/g) || []).map((tag) =>
-    tag.slice(2)
+    tag.slice(2),
   );
 
   // Now walk through list of all tags, creating a stack of open tags and removing closed tags from the stack.
@@ -96,7 +96,7 @@ export function getCurrentTag(
       const lastOpenTag = openTagStack.pop();
       if (lastOpenTag !== tag.slice(1)) {
         console.error(
-          `Error: Found closing tag ${tag} without matching opening tag.`
+          `Error: Found closing tag ${tag} without matching opening tag.`,
         );
       }
     } else {
@@ -122,7 +122,7 @@ export async function getSnippetCompletionItems(
   kind: CompletionItemKind | undefined,
   node: string | undefined,
   params: TextDocumentPositionParams,
-  trigger: string
+  trigger: string,
 ): Promise<CompletionItem[]> {
   const uri = params.textDocument.uri;
   const position = params.position;
@@ -278,13 +278,13 @@ export function getReferences(): LabelArray {
         let regex = /<xi:include\s+href="([^"]+)"/g;
         let matches = [...text.matchAll(regex)];
         newFiles = newFiles.concat(
-          matches.map((match) => path.join(file, "..", match[1]))
+          matches.map((match) => path.join(file, "..", match[1])),
         );
         regex = /<(\w*?)\s(.*?)xml:id="([^"]+?)"/g;
         matches = [...text.matchAll(regex)];
         const posixFile = file.replace(/\\/g, "/");
         references = references.concat(
-          matches.map((match) => [match[3], match[1], posixFile])
+          matches.map((match) => [match[3], match[1], posixFile]),
         );
       }
     }
@@ -297,7 +297,7 @@ export function getReferences(): LabelArray {
 
 export function updateReferences(
   document: TextDocument,
-  references: LabelArray = []
+  references: LabelArray = [],
 ) {
   console.log("Updating references");
   // Look through the specified file collect all labels contained as xml:id attributes.
@@ -315,7 +315,7 @@ export function updateReferences(
   references = references.filter((label) => label[2] !== posixFile);
   // Add all (new) labels from the current file:
   references = references.concat(
-    matches.map((match) => [match[3], match[1], posixFile])
+    matches.map((match) => [match[3], match[1], posixFile]),
   );
   console.log("Done updating labels");
   return references;

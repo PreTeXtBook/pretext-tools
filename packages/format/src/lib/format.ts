@@ -1,224 +1,7 @@
-// Note: this file is no longer being used, since the corresponding functions have been moved the the LSP server.
+import { blockTags, lineEndTags, newlineTags, verbatimTags } from "./docStructure";
 
-import * as vscode from "vscode";
 
-const docStructure = [
-  "abstract",
-  "acknowledgement",
-  "affiliation",
-  "appendix",
-  "article",
-  "author",
-  "backmatter",
-  "biography",
-  "book",
-  "chapter",
-  "colophon",
-  "contributor",
-  "contributors",
-  "copyright",
-  "credit",
-  "dedication",
-  "docinfo",
-  "editor",
-  "feedback",
-  "frontmatter",
-  "google",
-  "html",
-  "index",
-  "macros",
-  "mathbook",
-  "preface",
-  "pretext",
-  "references",
-  "search",
-  "shortlicense",
-  "solutions",
-  "subsection",
-  "titlepage",
-  "website",
-];
-
-const docSecs = [
-  "assemblage",
-  "chapter",
-  "conclusion",
-  "introduction",
-  "objectives",
-  "outcomes",
-  "paragraphs",
-  "part",
-  "postlude",
-  "prelude",
-  "reading-questions",
-  "sbsgroup",
-  "section",
-  "stack",
-  "subsection",
-  "subsubsection",
-  "task",
-  "technology",
-  "worksheet",
-];
-
-const docEnvs = [
-  "activity",
-  "algorithm",
-  "answer",
-  "axiom",
-  "biblio",
-  "blockquote",
-  "case",
-  "choice",
-  "choices",
-  "claim",
-  "conjecture",
-  "console",
-  "corollary",
-  "definition",
-  "demonstration",
-  "description",
-  "example",
-  "exercise",
-  "exploration",
-  "fact",
-  "hint",
-  "image",
-  "images",
-  "insight",
-  "investigation",
-  "lemma",
-  "list",
-  "listing",
-  "note",
-  "openconjecture",
-  "openproblem",
-  "openquestion",
-  "page",
-  "poem",
-  "principle",
-  "problem",
-  "program",
-  "project",
-  "proof",
-  "proposition",
-  "question",
-  "remark",
-  "shortdescription",
-  "solution",
-  "stanza",
-  "statement",
-  "subtask",
-  "table",
-  "tabular",
-  "theorem",
-  "warning",
-  "webwork",
-];
-
-const lineEndTags = [
-  "address",
-  "attribution",
-  "caption",
-  "cd",
-  "cell",
-  "cline",
-  "date",
-  "department",
-  "description",
-  "edition",
-  "entity",
-  "holder",
-  "idx",
-  "institution",
-  "journal",
-  "line",
-  "location",
-  "minilicense",
-  "mrow",
-  "personname",
-  "pg-macros",
-  "pubtitle",
-  "row",
-  "subtitle",
-  "support",
-  "title",
-  "usage",
-  "volume",
-  "year",
-  "xi:include",
-];
-
-// empty tags that should be on their own line
-const docEmpty = [
-  "cell",
-  "col",
-  "notation-list",
-  "brandlogo",
-  "cross-references",
-  "input",
-  "video",
-  "slate",
-  "webwork",
-];
-
-const listLike = ["ol", "ul", "dl"];
-
-const mathDisplay = ["me", "men", "md", "mdn"];
-
-const footnoteLike = ["fn"];
-
-const nestableTags = [
-  "ul",
-  "ol",
-  "li",
-  "p",
-  "task",
-  "figure",
-  "sidebyside",
-  "notation",
-  "row",
-];
-
-// note that c is special, because it is inline verbatim
-const verbatimTags = [
-  "latex-image-preamble",
-  "latex-image",
-  "latex-preamble",
-  "slate",
-  "sage",
-  "sageplot",
-  "asymptote",
-  "macros",
-  "program",
-  "input",
-  "output",
-  "prompt",
-  "pre",
-  "prefigure",
-  "pg-code",
-  "tikzpicture",
-  "tikz",
-  "code",
-  "c",
-];
-
-const newlineTags = [
-  ...docStructure,
-  ...docSecs,
-  ...docEnvs,
-  ...nestableTags,
-  "xi:include",
-];
-
-const blockTags = [
-  ...docStructure,
-  ...docSecs,
-  ...docEnvs,
-  ...nestableTags,
-  ...mathDisplay,
-];
-
+// Function to join lines of text, preserving verbatim blocks.
 function joinLines(fullText: string): string {
   let verbatim = false;
   let lines = fullText.split(/\r\n|\r|\n/g);
@@ -259,9 +42,23 @@ function joinLines(fullText: string): string {
   return joinedText;
 }
 
-export function formatPTX(text: string): string {
-  // First clean up document so that each line is a single tag when appropriate.
 
+export function formatPretext(
+  text: string,
+  options?: {
+    breakLines?: "few" | "some" | "many";
+    breakSentences?: boolean;
+    insertSpaces?: boolean;
+    tabSize?: number;
+  }
+): string {
+  // set default options
+  const breakSentences = options?.breakSentences ?? false;
+  const tabSize = options?.tabSize ?? 2;
+  const insertSpaces = options?.insertSpaces ?? true;
+  const blankLines = options?.breakLines ?? "some";
+
+  // First clean up document so that each line is a single tag when appropriate.
   let allText = joinLines(text);
 
   console.log("Getting ready to start formatting.");
@@ -270,7 +67,7 @@ export function formatPTX(text: string): string {
       // start tag can be <tag>, <tag attr="val">, or <tag xmlns="..."> but shouldn't be self closing (no self closing tag would have xmlns in it)
       let startTag = new RegExp(
         "<" + btag + "(>|(\\s[^\\/]*?)>|(.*xmlns.*?)>)",
-        "g",
+        "g"
       );
       let endTag = new RegExp("<\\/" + btag + ">([\\s\\S]*?[.,!?;:]?)", "g");
       allText = allText.replace(startTag, "\n$&\n");
@@ -287,20 +84,11 @@ export function formatPTX(text: string): string {
     allText = allText.replace(selfCloseTag, "$&\n");
   }
 
-  const breakSentences = vscode.workspace
-    .getConfiguration("pretext-tools")
-    .get("formatter.breakSentences");
-  console.log("extraLineBreaks is", breakSentences);
 
-  // Determine the number of spaces or tabs each indent is in current editor.
-  let editorTabSize = vscode.window.activeTextEditor?.options.tabSize;
-  console.log("editorTabSize is", editorTabSize);
-  let editorInsertSpaces = vscode.window.activeTextEditor?.options.insertSpaces;
-  console.log("editorInsertSpaces is", editorInsertSpaces);
   // Set indent character to \t or a number of ss based on editor settings.
   let indentChar = "\t";
-  if (editorInsertSpaces && typeof editorTabSize === "number") {
-    indentChar = " ".repeat(editorTabSize);
+  if (insertSpaces && typeof tabSize === "number") {
+    indentChar = " ".repeat(tabSize);
   }
 
   let level = 0;
@@ -343,16 +131,13 @@ export function formatPTX(text: string): string {
       if (breakSentences) {
         trimmedLine = trimmedLine.replace(
           /\.\s+/g,
-          ".\n" + indentChar.repeat(level),
+          ".\n" + indentChar.repeat(level)
         );
       }
       fixedLines.push(indentChar.repeat(level) + trimmedLine);
     }
   }
   // Second pass: add empty line between appropriate tags depending on blankLines setting.
-  const blankLines = vscode.workspace
-    .getConfiguration("pretext-tools")
-    .get("formatter.blankLines");
   switch (blankLines) {
     case "few":
       // do nothing
@@ -392,17 +177,4 @@ export function formatPTX(text: string): string {
   allText = fixedLines.join("\n");
 
   return allText;
-}
-
-export function formatPretextDocument(document: vscode.TextDocument) {
-  const fullText = document.getText();
-  const allText = formatPTX(fullText);
-
-  const edits = formatPTX(fullText);
-  return [
-    vscode.TextEdit.replace(
-      document.validateRange(new vscode.Range(0, 0, document.lineCount, 0)),
-      allText + "\n",
-    ),
-  ];
 }

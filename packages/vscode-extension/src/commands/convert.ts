@@ -48,7 +48,7 @@ export async function cmdConvertText() {
   let convertedText: string;
 
   pretextOutputChannel.appendLine(
-    "Converting selected text to PreTeXt format."
+    "Converting selected text to PreTeXt format.",
   );
   window
     .showQuickPick(["LaTeX", "Markdown", "Mixed text"], {
@@ -148,7 +148,7 @@ function convertWithUnified(text: string) {
 
 async function cmdConvertMixedtextToPretext(initialText: string) {
   pretextOutputChannel.appendLine(
-    "Mixed text to PreTeXt conversion is still very experiemental.  Use with care."
+    "Mixed text to PreTeXt conversion is still very experiemental.  Use with care.",
   );
   const newText = FlexTeXtConvert(initialText);
   return lspFormatText(newText);
@@ -172,7 +172,7 @@ export async function cmdExperimentConvert() {
 
   // Prompt user to select a conversion method
   pretextOutputChannel.appendLine(
-    "Experimental conversion functions are designed for testing and may not work as expected."
+    "Experimental conversion functions are designed for testing and may not work as expected.",
   );
   window
     .showQuickPick([

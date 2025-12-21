@@ -6,7 +6,7 @@ import { documents, getDocumentInfo } from "../state";
  * Return all the linkable items in a project.ptx file.
  */
 export async function getProjectPtxHoverInfo(
-  params: HoverParams
+  params: HoverParams,
 ): Promise<Hover | null> {
   const uri = params.textDocument.uri;
   const info = getDocumentInfo(uri);
@@ -32,7 +32,7 @@ export async function getProjectPtxHoverInfo(
     .getText()
     .slice(
       containingElm.position?.start.offset || 0,
-      containingElm.position?.end.offset || 0
+      containingElm.position?.end.offset || 0,
     );
   // The first thing in our sliced text should be the opening tag, so we just search for the tag name.
   const tagOffsetStart = slicedText.indexOf(containingElm.name);

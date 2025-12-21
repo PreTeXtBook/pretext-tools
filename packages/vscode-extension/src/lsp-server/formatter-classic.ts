@@ -276,7 +276,7 @@ export function formatPTX(text: string): string {
       // start tag can be <tag>, <tag attr="val">, or <tag xmlns="..."> but shouldn't be self closing (no self closing tag would have xmlns in it)
       let startTag = new RegExp(
         "<" + btag + "(>|(\\s[^\\/]*?)>|(.*xmlns.*?)>)",
-        "g"
+        "g",
       );
       let endTag = new RegExp("<\\/" + btag + ">([\\s\\S]*?[.,!?;:]?)", "g");
       allText = allText.replace(startTag, "\n$&\n");
@@ -350,7 +350,7 @@ export function formatPTX(text: string): string {
       if (breakSentences) {
         trimmedLine = trimmedLine.replace(
           /\.\s+/g,
-          ".\n" + indentChar.repeat(level)
+          ".\n" + indentChar.repeat(level),
         );
       }
       fixedLines.push(indentChar.repeat(level) + trimmedLine);
@@ -404,7 +404,7 @@ export function formatPTX(text: string): string {
 }
 
 export async function formatDocument(
-  params: DocumentFormattingParams
+  params: DocumentFormattingParams,
 ): Promise<TextEdit[] | null> {
   console.log("formatting document with PreTeXt's classic formatter.");
   const uri = params.textDocument.uri;
@@ -432,7 +432,7 @@ export async function formatDocument(
 }
 
 export async function formatRange(
-  params: DocumentRangeFormattingParams
+  params: DocumentRangeFormattingParams,
 ): Promise<TextEdit[] | null> {
   const uri = params.textDocument.uri;
   const doc = documents.get(uri);
@@ -447,10 +447,10 @@ export async function formatRange(
     console.log("range is", range);
     const rangeSlice = origText.slice(
       doc.offsetAt(range.start),
-      doc.offsetAt(range.end)
+      doc.offsetAt(range.end),
     );
     console.log(
-      origText.slice(doc.offsetAt(range.start), doc.offsetAt(range.end))
+      origText.slice(doc.offsetAt(range.start), doc.offsetAt(range.end)),
     );
     let formatted = formatPTX(rangeSlice);
     console.log("formatted", formatted);

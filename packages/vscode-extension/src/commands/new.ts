@@ -35,7 +35,7 @@ export function cmdNew() {
               .showWarningMessage(
                 "The selected folder is already part of a PreTeXt project. Please select a different folder.",
                 { modal: true },
-                "Try Again"
+                "Try Again",
               )
               .then((selection) => {
                 if (selection === "Try Again") {
@@ -50,7 +50,7 @@ export function cmdNew() {
             cli.cmd(),
             "new",
             qpSelection.label + " -d .",
-            fileUri[0]
+            fileUri[0],
           );
         }
       });

@@ -26,7 +26,7 @@ function setSchema(schemaConfig: { versionName: string; customPath: string }) {
   let schemaPath: string = schemaConfig.customPath;
   if (schemaPath !== "" && schemaConfig.versionName !== "Custom") {
     console.warn(
-      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path."
+      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path.",
     );
   }
   if (!fs.existsSync(schemaPath)) {
@@ -43,7 +43,7 @@ function setSchema(schemaConfig: { versionName: string; customPath: string }) {
         break;
       case "Custom":
         console.log(
-          "Selected custom schema, but no valid path provided.  Setting to default."
+          "Selected custom schema, but no valid path provided.  Setting to default.",
         );
         schemaPath = path.join(schemaDir, "pretext.rng");
         break;
@@ -79,7 +79,7 @@ export class Schema {
           if (nodeName) {
             aliasMap[nodeName] = deepmerge(
               aliasMap[nodeName] || {},
-              getChildren(node)
+              getChildren(node),
             );
           }
         } else if (node.name === "element") {
@@ -87,7 +87,7 @@ export class Schema {
           if (nodeName) {
             tmpElementChildren[nodeName] = deepmerge(
               tmpElementChildren[nodeName] || {},
-              getChildren(node)
+              getChildren(node),
             );
           }
         }

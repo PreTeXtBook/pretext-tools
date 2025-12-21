@@ -68,14 +68,14 @@ function getPythonExec(): string | undefined {
     } catch (err) {
       console.log("Error: ", err);
       window.showErrorMessage(
-        "The path to python provided in settings does not appear to be a valid python 3 executable.  Please provide a valid path to python."
+        "The path to python provided in settings does not appear to be a valid python 3 executable.  Please provide a valid path to python.",
       );
       pythonExec = "";
     }
   }
   if (pythonExec === "") {
     window.showErrorMessage(
-      "You do not appear to have python installed.  Please download and install python (and make sure it is added to your PATH)."
+      "You do not appear to have python installed.  Please download and install python (and make sure it is added to your PATH).",
     );
     return undefined;
   }
@@ -86,7 +86,7 @@ function getPtxExec() {
   let pythonExec = cli.pythonPath();
   if (!pythonExec) {
     window.showErrorMessage(
-      "Unable to run PreTeXt without python.  Please install python and try again."
+      "Unable to run PreTeXt without python.  Please install python and try again.",
     );
   } else {
     console.log("Using python at ", pythonExec);
@@ -119,7 +119,7 @@ function getPtxExec() {
         "It doesn't look like you have pretext installed.  Would you like to try to install it now?",
         "Yes",
         "No",
-        "No (stop asking)"
+        "No (stop asking)",
       )
       .then((option) => {
         if (option === "Yes") {

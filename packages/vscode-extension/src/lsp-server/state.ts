@@ -115,5 +115,5 @@ function getDocumentSettings(uri: string) {
  * Document manager; this handles callbacks from the LSP and keeps in sync with vscode
  */
 export const documents: TextDocuments<TextDocument> = new TextDocuments(
-  TextDocument
+  TextDocument,
 );

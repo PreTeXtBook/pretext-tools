@@ -112,7 +112,7 @@ function getTargets({
   if (manifest) {
     console.error(
       "You tried to set a manifest, but this is no longer supported.  Your manifest was: ",
-      manifest
+      manifest,
     );
   }
   const projectManifest = path.join(projectRoot, "project.ptx");
@@ -161,7 +161,7 @@ async function userSpecifiedProject() {
         detail:
           "Pick a folder containing the 'project.ptx' manifest of your project.",
       },
-      "Choose project folder"
+      "Choose project folder",
     )
     .then(async (option) => {
       if (option === "Choose project folder") {
