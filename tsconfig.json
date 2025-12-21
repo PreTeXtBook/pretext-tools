@@ -16,5 +16,6 @@
       "format": ["packages/format/src/index.ts"]
     }
   },
-  "exclude": ["node_modules", ".vscode-test"]
+  "exclude": ["node_modules", ".vscode-test"],
+  "references": []
 }

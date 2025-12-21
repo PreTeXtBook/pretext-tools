@@ -3,7 +3,23 @@
   "version": "0.0.1",
   "private": false,
   "type": "module",
-  "main": "./index.js",
+  "main": "./index.cjs",
+  "module": "./index.js",
   "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "*.d.cts"
+  ],
   "dependencies": {}
 }
