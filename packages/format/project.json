@@ -6,5 +6,12 @@
   "private": false,
   "tags": [],
   "// targets": "to see all targets run: nx show project format --web",
-  "targets": {}
+  "targets": {
+    "release": {
+      "executor": "nx-release:build-update-publish",
+      "options": {
+        "libName": "@pretextbook/format"
+      }
+    }
+  }
 }
