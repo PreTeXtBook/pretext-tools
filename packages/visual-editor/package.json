@@ -11,25 +11,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@floating-ui/dom": "^1.7.0",
-    "@tiptap/extension-code-block": "3.0.0-beta.3",
-    "@tiptap/extensions": "3.0.0-beta.3",
-    "@tiptap/pm": "3.0.0-beta.3",
-    "@tiptap/react": "3.0.0-beta.3",
-    "katex": "^0.16.22"
+    "@floating-ui/dom": "^1.7.4",
+    "@tiptap/extension-code-block": "3.14.0",
+    "@tiptap/extensions": "3.14.0",
+    "@tiptap/pm": "3.14.0",
+    "@tiptap/react": "3.14.0",
+    "katex": "^0.16.27"
   },
   "devDependencies": {
-    "@eslint/js": "^9.21.0",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "@vitejs/plugin-react": "^4.3.4",
-    "eslint": "^9.21.0",
-    "eslint-plugin-react-hooks": "^5.1.0",
-    "eslint-plugin-react-refresh": "^0.4.19",
-    "globals": "^15.15.0",
-    "sass-embedded": "^1.86.0",
-    "typescript": "~5.7.2",
-    "typescript-eslint": "^8.24.1",
-    "vite": "^6.4.1"
+    "@eslint/js": "^9.39.2",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.26",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.50.0"
   }
 }
