@@ -117,7 +117,7 @@ type PtxElement = {
 function expand(
   parents: string[],
   attributes: string[],
-  elements: string[]
+  elements: string[],
 ): PtxElement {
   let result: PtxElement = {};
   for (let parent of parents) {

@@ -35,7 +35,7 @@ export function convertToPretext(method: string = "pandoc") {
       console.log("Pandoc not found");
       vscode.window.showErrorMessage(
         "Pandoc not found. Please install Pandoc and try again.",
-        "Dismiss"
+        "Dismiss",
       );
     }
   }
@@ -49,13 +49,13 @@ function runPlastex(inputfile: string) {
     path.dirname(inputfile),
     "imports",
     path.basename(inputfile, ".tex"),
-    timestamp()
+    timestamp(),
   );
   console.log("outputDir: " + outputDir);
   // run pretext import
   const importCommand = spawn(
     `pretext import -o "${outputDir}" "${inputfile}"`,
-    { shell: true }
+    { shell: true },
   );
 }
 
@@ -64,7 +64,7 @@ function runPandoc(inputfile: string) {
   console.log("output file: " + output);
   const pandoc = spawn(
     `pandoc "${inputfile}" -t "${pretextWriter}" -o "${output}"`,
-    { shell: true }
+    { shell: true },
   );
   pandoc.stdout.on("data", (data) => {
     console.log(`stdout: ${data}`);
@@ -76,13 +76,13 @@ function runPandoc(inputfile: string) {
     console.log(`child process exited with code ${code}`);
     if (code === 0) {
       vscode.window.showInformationMessage(
-        "PreTeXt file generated successfully"
+        "PreTeXt file generated successfully",
       );
       vscode.window.showTextDocument(vscode.Uri.file(output));
     } else {
       vscode.window.showErrorMessage(
         "Conversion to PreTeXt failed. Please check the console for more information.",
-        "Dismiss"
+        "Dismiss",
       );
     }
   });
@@ -114,7 +114,7 @@ function ensurePretextLua() {
           file.close();
           console.log("Download Completed");
         });
-      }
+      },
     );
   } else {
     console.log("pretext.lua found at " + pretextLuaFile);

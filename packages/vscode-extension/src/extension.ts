@@ -107,11 +107,11 @@ export async function activate(context: ExtensionContext) {
     }),
     commands.registerCommand(
       "pretext-tools.experimentConvert",
-      cmdExperimentConvert
+      cmdExperimentConvert,
     ),
     commands.registerCommand(
       "pretext-tools.selectPretextCommand",
-      cmdSelectCommand
+      cmdSelectCommand,
     ),
     commands.registerCommand("pretext-tools.buildAny", cmdBuildAny),
     commands.registerCommand("pretext-tools.buildLast", cmdBuildLast),
@@ -122,7 +122,7 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("pretext-tools.viewCodeChat", cmdViewCodeChat),
     commands.registerCommand(
       "pretext-tools.viewVisualEditor",
-      cmdViewVisualEditor
+      cmdViewVisualEditor,
     ),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
@@ -145,9 +145,9 @@ export async function activate(context: ExtensionContext) {
       // Open the walkthrough
       commands.executeCommand(
         "workbench.action.openWalkthrough",
-        "oscarlevin.pretext-tools#gettingStarted"
+        "oscarlevin.pretext-tools#gettingStarted",
       );
-    })
+    }),
   );
 
   console.log("Current projects: ", projects);
@@ -158,12 +158,12 @@ export async function activate(context: ExtensionContext) {
   } catch {
     console.log("Error starting LSP client");
     pretextOutputChannel.appendLine(
-      "Error starting language server.  Some features may not be available."
+      "Error starting language server.  Some features may not be available.",
     );
   }
 
   pretextOutputChannel.appendLine(
-    "PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P)."
+    "PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P).",
   );
 }
 

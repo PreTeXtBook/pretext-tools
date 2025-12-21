@@ -270,7 +270,7 @@ export function formatPTX(text: string): string {
       // start tag can be <tag>, <tag attr="val">, or <tag xmlns="..."> but shouldn't be self closing (no self closing tag would have xmlns in it)
       let startTag = new RegExp(
         "<" + btag + "(>|(\\s[^\\/]*?)>|(.*xmlns.*?)>)",
-        "g"
+        "g",
       );
       let endTag = new RegExp("<\\/" + btag + ">([\\s\\S]*?[.,!?;:]?)", "g");
       allText = allText.replace(startTag, "\n$&\n");
@@ -343,7 +343,7 @@ export function formatPTX(text: string): string {
       if (breakSentences) {
         trimmedLine = trimmedLine.replace(
           /\.\s+/g,
-          ".\n" + indentChar.repeat(level)
+          ".\n" + indentChar.repeat(level),
         );
       }
       fixedLines.push(indentChar.repeat(level) + trimmedLine);
@@ -402,7 +402,7 @@ export function formatPretextDocument(document: vscode.TextDocument) {
   return [
     vscode.TextEdit.replace(
       document.validateRange(new vscode.Range(0, 0, document.lineCount, 0)),
-      allText + "\n"
+      allText + "\n",
     ),
   ];
 }

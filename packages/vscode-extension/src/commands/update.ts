@@ -14,7 +14,7 @@ export async function cmdUpdate() {
       return new Promise<void>((resolve) => {
         console.log("Checking for new version of PreTeXt to install");
         pretextOutputChannel.append(
-          "Checking for new version of PreTeXt to install"
+          "Checking for new version of PreTeXt to install",
         );
         try {
           utils.installPretext(progress);
@@ -24,6 +24,6 @@ export async function cmdUpdate() {
         progress.report({ message: "Done" });
         resolve();
       });
-    }
+    },
   );
 }

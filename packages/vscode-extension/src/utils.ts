@@ -67,7 +67,7 @@ async function experiment(context: vscode.ExtensionContext) {
       {
         enableScripts: true,
         retainContextWhenHidden: true,
-      }
+      },
     );
     //const panelSrc = currentPanel?.webview.asWebviewUri(outputUri);
     // silly demo to show how to update the webview
@@ -82,7 +82,7 @@ async function experiment(context: vscode.ExtensionContext) {
     };
 
     const scriptUri = currentPanel?.webview.asWebviewUri(
-      vscode.Uri.joinPath(context.extensionUri, "src", "views", "dist")
+      vscode.Uri.joinPath(context.extensionUri, "src", "views", "dist"),
     );
     currentPanel.webview.html = getWebviewContent(scriptUri);
 
@@ -96,7 +96,7 @@ async function experiment(context: vscode.ExtensionContext) {
         }
       },
       undefined,
-      context.subscriptions
+      context.subscriptions,
     );
 
     const interval = setInterval(updateWebview, 5000);
@@ -108,7 +108,7 @@ async function experiment(context: vscode.ExtensionContext) {
         clearInterval(interval);
       },
       null,
-      context.subscriptions || []
+      context.subscriptions || [],
     );
   }
 }
@@ -169,7 +169,7 @@ async function installPretext(progress: vscode.Progress<{}>) {
   let pythonExec = cli.pythonPath();
   if (!pythonExec) {
     vscode.window.showErrorMessage(
-      "Unable to install PreTeXt without python.  Please install python and try again."
+      "Unable to install PreTeXt without python.  Please install python and try again.",
     );
     return;
   }
@@ -178,7 +178,7 @@ async function installPretext(progress: vscode.Progress<{}>) {
   for (let command of ["pipx", "pip"]) {
     try {
       let pipVersion = execSync(
-        pythonExec + " -m " + command + " --version"
+        pythonExec + " -m " + command + " --version",
       ).toString();
       console.log("pip version result: ", pipVersion);
       pipExec = command;
@@ -196,13 +196,13 @@ async function installPretext(progress: vscode.Progress<{}>) {
       execSync(pythonExec + " -m " + "pip" + " install --upgrade pretext");
       vscode.window.showInformationMessage(
         "Successfully installed or upgraded pretext.",
-        "Dismiss"
+        "Dismiss",
       );
     }
   } catch (err) {
     vscode.window.showErrorMessage(
       "Unable to install PreTeXt using pip.  Please see the pretext documentation for further assistance.",
-      "Dismiss"
+      "Dismiss",
     );
     console.log(err);
     throw new Error("Installation failed");
@@ -224,7 +224,7 @@ function setSpellCheckConfig() {
     .get("spellCheck.checkErrorsInsideScope");
   console.log(
     "Current value of spellCheck.checkErrorsInsideScope is",
-    spellCheckScopes
+    spellCheckScopes,
   );
   let ignorePatterns: string[] = [];
   if (spellCheckScopes) {
@@ -236,7 +236,7 @@ function setSpellCheckConfig() {
     }
     if (spellCheckScopes.displayMath === "Ignore") {
       ignorePatterns.push(
-        "<(me|men|md|mdn)>(.|\n|\r|\n\r)*?</(me|men|md|mdn)>"
+        "<(me|men|md|mdn)>(.|\n|\r|\n\r)*?</(me|men|md|mdn)>",
       );
     }
     if (spellCheckScopes.inlineCode === "Ignore") {
@@ -244,7 +244,7 @@ function setSpellCheckConfig() {
     }
     if (spellCheckScopes.blockCode === "Ignore") {
       ignorePatterns.push(
-        "<(program|sage|pre)>(.|\n|\r|\n\r)*?</(program|sage|pre)>"
+        "<(program|sage|pre)>(.|\n|\r|\n\r)*?</(program|sage|pre)>",
       );
     }
     if (spellCheckScopes.latexImage === "Ignore") {
@@ -276,7 +276,7 @@ function setSchema(context: vscode.ExtensionContext) {
     .get("schema.versionName");
   if (schemaPath !== "" && schemaVersion !== "Custom") {
     console.warn(
-      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path."
+      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path.",
     );
   }
   if (!schemaPath || !fs.existsSync(schemaPath)) {
@@ -301,7 +301,7 @@ function setSchema(context: vscode.ExtensionContext) {
         break;
       case "Custom":
         console.log(
-          "Selected custom schema, but no valid path provided.  Setting to default."
+          "Selected custom schema, but no valid path provided.  Setting to default.",
         );
         schemaPath = path.join(schemaDir, "pretext.rng");
         break;
@@ -322,7 +322,7 @@ function setSchema(context: vscode.ExtensionContext) {
 
 function updateStatusBarItem(
   ptxSBItem: vscode.StatusBarItem,
-  state?: string
+  state?: string,
 ): void {
   ptxSBItem.show();
   if (state === "ready" || state === undefined) {
@@ -346,7 +346,7 @@ function updateStatusBarItem(
 
 function setupTerminal(
   terminal: vscode.Terminal | null,
-  projectPath?: string
+  projectPath?: string,
 ): vscode.Terminal {
   if (!terminal) {
     terminal = vscode.window.createTerminal("PreTeXt Terminal", projectPath);

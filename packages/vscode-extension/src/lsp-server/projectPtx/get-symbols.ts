@@ -8,7 +8,7 @@ import { Element } from "xast";
 type Position = Element["position"] & {};
 
 export async function getProjectPtxSymbols(
-  uri: string
+  uri: string,
 ): Promise<DocumentSymbol[]> {
   const info = getDocumentInfo(uri);
   if (!info) {
@@ -36,7 +36,7 @@ export async function getProjectPtxSymbols(
       }
       const name = t.attributes["name"] || "<unknown target>";
       const formatNode = t.children.find(
-        (c) => isElement(c) && c.name === "format"
+        (c) => isElement(c) && c.name === "format",
       );
       const format = formatNode ? toString(formatNode) : "<unknown format>";
       const position: Position = t.position

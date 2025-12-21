@@ -37,7 +37,7 @@ export async function lspFormatText(text: string): Promise<string> {
     return result;
   } else {
     throw new Error(
-      "Expected string result from formatText, got: " + typeof result
+      "Expected string result from formatText, got: " + typeof result,
     );
   }
 }
@@ -45,7 +45,7 @@ export async function lspFormatText(text: string): Promise<string> {
 export function activate(context: ExtensionContext) {
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(
-    path.join("out", "lsp-server.js")
+    path.join("out", "lsp-server.js"),
   );
   // The debug options for the server
   // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
@@ -78,7 +78,7 @@ export function activate(context: ExtensionContext) {
     "pretextLanguageServer",
     "PreTeXt Language Server",
     serverOptions,
-    clientOptions
+    clientOptions,
   );
 
   //context.subscriptions.push(

@@ -6,7 +6,7 @@ import { ensureProjectList, projects } from "../project";
 
 export async function cmdDeploy(
   runInTerminal: boolean = false,
-  pretextTerminal: Terminal | null = null
+  pretextTerminal: Terminal | null = null,
 ) {
   // First get a list of possible projects to deploy.
   await ensureProjectList();
@@ -17,7 +17,7 @@ export async function cmdDeploy(
   let projectPath = "."; // default to current directory
   if (projectRoots.length === 0) {
     window.showErrorMessage(
-      "No projects found. Please add a project folder to your workspace."
+      "No projects found. Please add a project folder to your workspace.",
     );
     return;
   } else if (projectRoots.length === 1) {
