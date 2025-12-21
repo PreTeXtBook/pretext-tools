@@ -22,7 +22,9 @@
     "package": "npm run esbuild -- --production"
   },
   "devDependencies": {},
-  "dependencies": {},
+  "dependencies": {
+    "@pretextbook/format": "*"
+  },
   "prettier": {
     "tabWidth": 2
   }

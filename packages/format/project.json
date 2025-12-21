@@ -1,0 +1,10 @@
+{
+  "name": "@pretextbook/format",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/format/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "// targets": "to see all targets run: nx show project format --web",
+  "targets": {}
+}

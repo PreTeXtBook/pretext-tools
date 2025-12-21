@@ -1,0 +1,9 @@
+{
+  "name": "@pretextbook/format",
+  "version": "0.0.1",
+  "private": false,
+  "type": "module",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "dependencies": {}
+}
