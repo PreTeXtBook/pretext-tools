@@ -9,7 +9,7 @@ npm install @pretextbook/format
 and then import the formatter in your code:
 
 ```javascript
-import { format } from "@pretextbook/format";
+import { formatPreTeXt } from "@pretextbook/format";
 
 const formatted = formatPretext(sourceCode);
 ```
@@ -18,7 +18,7 @@ You can pass options as an object to customize the formatting. For example:
 
 ```javascript
 const options = {
-  breakLines: "many",
+  blankLines: "many",
   breakSentences: true,
   insertSpaces: true,
   tabSize: 2,

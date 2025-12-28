@@ -1,6 +1,17 @@
 {
   "name": "@pretextbook/format",
   "version": "0.0.3",
+  "description": "Formatter for PreTeXt documents",
+  "author": "Oscar Levin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pretextbook/pretext-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pretextbook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/pretextbook/pretext-tools/packages/format#readme",
   "private": false,
   "type": "module",
   "main": "./index.cjs",
