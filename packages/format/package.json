@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/format",
-  "version": "0.0.3",
+  "version": "0.0.5",
   "description": "Formatter for PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
