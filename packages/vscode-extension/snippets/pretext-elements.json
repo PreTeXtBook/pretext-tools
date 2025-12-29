@@ -1,0 +1,589 @@
+{
+  "?xml": {
+    "prefix": "<?xml...>",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    "description": "XML declaration"
+  },
+  "activity": {
+    "prefix": "<activity>",
+    "body": "<activity>\n\t$0\n</activity>",
+    "description": "activity (project-like)."
+  },
+  "algorithm": {
+    "prefix": "<algorithm>",
+    "body": "<algorithm xml:id=\"alg-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$2\n\t\t</p>\n\t</statement>\n</algorithm>",
+    "description": "algorithm (theorem-like)."
+  },
+  "answer": {
+    "prefix": "<answer>",
+    "body": "<answer>\n\t<p>\n\t\t$0\n\t</p>\n</answer>",
+    "description": "answer"
+  },
+  "aside": {
+    "prefix": "<aside>",
+    "body": "<aside>\n\t$0\n</aside>",
+    "description": "aside element"
+  },
+  "assemblage": {
+    "prefix": "<assemblage>",
+    "body": "<assemblage xml:id=\"assemblage-$1\">\n\t<title>$2</title>\n\t<p>\n\t\t$0\n\t</p>\n</assemblage>"
+  },
+  "assumption": {
+    "prefix": "<assumption>",
+    "body": "<assumption xml:id=\"assumption-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</assumption>",
+    "description": "assumption (axiom-like)"
+  },
+  "axiom": {
+    "prefix": "<axiom>",
+    "body": "<axiom xml:id=\"axiom-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</axiom>",
+    "description": "axiom (axiom-like)"
+  },
+  "biographical": {
+    "prefix": "<biographical>",
+    "body": "<biographical>\n\t$0\n</biographical>",
+    "description": "biographical (aside-like)"
+  },
+  "block": {
+    "prefix": "<block>",
+    "body": "<block>\n\t<p>\n\t\t$1\n\t</p>\n</block>",
+    "description": "block for a Parsons problem"
+  },
+  "blockquote": {
+    "prefix": "<blockquote>",
+    "body": "<blockquote>\n\t<p>\n\t\t$0\n\t</p>\n</blockquote>",
+    "description": "blockquote"
+  },
+  "blocks": {
+    "prefix": "<blocks>",
+    "body": "<blocks>\n\t<block>\n\t\t<p>\n\t\t\t$1\n\t\t</p>\n\t</block>\n</blocks>",
+    "description": "Parsons problem blocks"
+  },
+  "caption": {
+    "prefix": "<caption>",
+    "body": "<caption>$1</caption>",
+    "description": "caption"
+  },
+  "cd": {
+    "prefix": "<cd>",
+    "body": "<cd>\n\t<cline>$1</cline>$0\n</cd>",
+    "description": "code-display"
+  },
+  "cell": {
+    "prefix": "<cell>",
+    "body": "<cell>$1</cell>$0",
+    "description": "cell (of row in tabular)"
+  },
+  "chapter": {
+    "prefix": "<chapter>",
+    "body": "<chapter xml:id=\"ch-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</chapter>",
+    "description": "chapter (division)"
+  },
+  "choice": {
+    "prefix": "<choice>",
+    "body": "<choice>\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</choice>",
+    "description": "Choice for multiple choice question."
+  },
+  "choices": {
+    "prefix": "<choices>",
+    "body": "<choices>\n\t<choice>\n\t\t<statement>\n\t\t\t<p>\n\t\t\t\t$0\n\t\t\t</p>\n\t\t</statement>\n\t</choice>\n\n</choices>",
+    "description": "Choices for interactive multiple choice questions."
+  },
+  "claim": {
+    "prefix": "<claim>",
+    "body": "<claim xml:id=\"claim-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$2\n\t\t</p>\n\t</statement>\n</claim>",
+    "description": "claim (theorem-like)."
+  },
+  "cline": {
+    "prefix": "<cline>",
+    "body": "<cline>$1</cline>$0",
+    "description": "cline"
+  },
+  "computation": {
+    "prefix": "<computation>",
+    "body": "<computation>\n\t$0\n</computation>\n",
+    "description": "computation (computation-like)"
+  },
+  "conclusion": {
+    "prefix": "<conclusion>",
+    "body": "<conclusion>\n\t<p>\n\t\t$0\n\t</p>\n</conclusion>",
+    "description": "conclusion of a division"
+  },
+  "conjecture": {
+    "prefix": "<conjecture>",
+    "body": "<conjecture xml:id=\"conj-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</conjecture>",
+    "description": "conjecture (axiom-like)"
+  },
+  "console": {
+    "prefix": "<console>",
+    "body": "<console>\n<input>$1\n</input>\n<output>\n$2\n</output></console>$0",
+    "description": "console (input/output)"
+  },
+  "convention": {
+    "prefix": "<convention>",
+    "body": "<convention>\n\t$0\n</convention>",
+    "description": "convention (remark-like)"
+  },
+  "corollary": {
+    "prefix": "<corollary>",
+    "body": "<corollary xml:id=\"cor-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$2\n\t\t</p>\n\t</statement>\n</corollary>",
+    "description": "corollary (theorem-like)."
+  },
+  "creator": {
+    "prefix": "<creator>",
+    "body": "<creator>$1</creator>$0",
+    "description": "creator, for use in axiom-like."
+  },
+  "definition": {
+    "prefix": "<definition>",
+    "body": "<definition xml:id=\"def-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</definition>",
+    "description": "definition"
+  },
+  "description": {
+    "prefix": "<description>",
+    "body": "<description>\n\t<p>$1\n\t</p>\n</description>$0",
+    "description": "long description for images"
+  },
+  "dl": {
+    "prefix": "<dl>",
+    "body": "<dl>\n\t<li>\n\t\t<title>$1</title>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</dl>",
+    "description": "definition list"
+  },
+  "example": {
+    "prefix": "<example>",
+    "body": "<example>\n\t$0\n</example>",
+    "description": "example (example-like)",
+    "sort": "0"
+  },
+  "exercise": {
+    "prefix": "<exercise>",
+    "body": "<exercise>\n\t$0\n</exercise>",
+    "description": "exercise",
+    "sort": "0"
+  },
+  "exercise (in worksheet)": {
+    "prefix": "<exercise_workspace=\"\">",
+    "body": "<exercise workspace=\"$1\">\n\t$0\n</exercise>",
+    "description": "exercise (in worksheet)"
+  },
+  "exercise group": {
+    "prefix": "<exercisegroup>",
+    "body": "<exercisegroup>\n\n\t<introduction>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</introduction>\n\n\t<exercise>\n\t\t<statement>\n\t\t\t<p>\n\t\t\t\t\n\t\t\t</p>\n\t\t</statement>\n\t</exercise>\n\n</exercisegroup>",
+    "description": "exercise group"
+  },
+  "exercises": {
+    "prefix": "<exercises>",
+    "body": "<exercises xml:id=\"exercises-$1\">\n\t$0\n</exercises>",
+    "description": "A division that holds exercises."
+  },
+  "exploration": {
+    "prefix": "<exploration>",
+    "body": "<exploration>\n\t$0\n</exploration>",
+    "description": "exploration (project-like)."
+  },
+  "fact": {
+    "prefix": "<fact>",
+    "body": "<fact xml:id=\"fact-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$2\n\t\t</p>\n\t</statement>\n</fact>",
+    "description": "fact (theorem-like)."
+  },
+  "feedback": {
+    "prefix": "<feedback>",
+    "body": "<feedback>\n\t<p>\n\t\t$0\n\t</p>\n</feedback>",
+    "description": "Feedback element for interactive exercise"
+  },
+  "figure": {
+    "prefix": "<figure>",
+    "body": "<figure xml:id=\"$1\">\n\t<caption>$2</caption>\n$0</figure>",
+    "description": "figure"
+  },
+  "h": {
+    "prefix": "<h>",
+    "body": "<h>$1</h>$0",
+    "description": "index header"
+  },
+  "heuristic": {
+    "prefix": "<heuristic>",
+    "body": "<heuristic xml:id=\"heuristic-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</heuristic>",
+    "description": "heuristic (axiom-like)"
+  },
+  "hint": {
+    "prefix": "<hint>",
+    "body": "<hint>\n\t<p>\n\t\t$0\n\t</p>\n</hint>",
+    "description": "hint"
+  },
+  "historical": {
+    "prefix": "<historical>",
+    "body": "<historical>\n\t$0\n</historical>",
+    "description": "historical (aside-like)"
+  },
+  "hypothesis": {
+    "prefix": "<hypothesis>",
+    "body": "<hypothesis xml:id=\"hyp-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</hypothesis>",
+    "description": "hypothesis (axiom-like)"
+  },
+  "identity": {
+    "prefix": "<identity>",
+    "body": "<identity xml:id=\"ident-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</identity>",
+    "description": "identity (theorem-like)."
+  },
+  "idx": {
+    "prefix": "<idx>",
+    "body": "<idx><h>$1</h></idx>$0",
+    "description": "index entry"
+  },
+  "image (external)": {
+    "prefix": "<image_source=\"\">",
+    "body": "<image source=\"${1:path (no extension)}\">\n\t<shortdescription>${0:(for accessibility)}</shortdescription>\n</image>",
+    "description": "image (external)"
+  },
+  "image (not external)": {
+    "prefix": "<image>",
+    "body": "<image>\n\t<shortdescription>$2</shortdescription>\n\t$0\n</image>",
+    "description": "image (not external)",
+    "sort": "0"
+  },
+  "insight": {
+    "prefix": "<insight>",
+    "body": "<insight>\n\t$0\n</insight>",
+    "description": "insight (remark-like)"
+  },
+  "instruction": {
+    "prefix": "<instruction>",
+    "body": "<instruction>$1</instruction>$0",
+    "description": "instruction (for WeBWorK)"
+  },
+  "introduction": {
+    "prefix": "<introduction>",
+    "body": "<introduction>\n\t<p>\n\t\t$0\n\t</p>\n</introduction>",
+    "description": "introduction of a division"
+  },
+  "investigation": {
+    "prefix": "<investigation>",
+    "body": "<investigation>\n\t$0\n</investigation>",
+    "description": "investigation (project-like)."
+  },
+  "latex-image": {
+    "prefix": "<latex-image>",
+    "body": "<latex-image>\n\t\\\\begin{tikzpicture}\n\t\t$0\n\t\\\\end{tikzpicture}\n</latex-image>",
+    "description": "latex-image"
+  },
+  "lemma": {
+    "prefix": "<lemma>",
+    "body": "<lemma xml:id=\"lem-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</lemma>",
+    "description": "lemma (theorem-like)."
+  },
+  "li": {
+    "prefix": "<li>",
+    "body": "<li>\n\t<p>\n\t\t$0\n\t</p>\n</li>",
+    "description": "list item (w/ p)",
+    "sort": "0"
+  },
+  "li-dl": {
+    "prefix": "<li>",
+    "body": "<li>\n\t<title>$1</title>\n\t<p>\n\t\t$0\n\t</p>\n</li>",
+    "description": "list item (w title and p)"
+  },
+  "li-short": {
+    "prefix": "<li>",
+    "body": "<li>$1</li>$0",
+    "description": "list item (short)"
+  },
+  "match": {
+    "prefix": "<match>",
+    "body": "<match order=\"$1\">\n\t<premise>$2</premise>\n\t<response>$3</response>\n</match>\n$0",
+    "description": "match pair for interactive Matching exercise"
+  },
+  "matches": {
+    "prefix": "<matches>",
+    "body": "<matches>\n\t<match order=\"$1\">\n\t\t<premise>$2</premise>\n\t\t<response>$3</response>\n\t</match>\n\t$0\n</matches>",
+    "description": "Matches for interactive exercise"
+  },
+  "md": {
+    "prefix": "<md>",
+    "body": "<md>\n\t$1\n</md>\n$0",
+    "description": "math-display"
+  },
+  "md-rows": {
+    "prefix": "<md-rows>",
+    "body": "<md>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
+    "description": "math-display with rows"
+  },
+  "md-n-rows": {
+    "prefix": "<md-n-rows>",
+    "body": "<md number=\"yes\">\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>",
+    "description": "math-display numbered"
+  },
+  "me": {
+    "prefix": "<me>",
+    "body": "<md>\n\t$1\n</md>\n$0",
+    "description": "math-equation."
+  },
+  "men": {
+    "prefix": "<men>",
+    "body": "<md number=\"yes\">\n\t$2\n</md>\n$0",
+    "description": "math-equation numbered."
+  },
+  "mrow": {
+    "prefix": "<mrow>",
+    "body": "<mrow>$1 \\\\amp $2</mrow>$0"
+  },
+  "notation": {
+    "prefix": "<notation>",
+    "body": "<notation>\n\t<usage>${1:(in math mode)}</usage>\n  <description>$2</description>\n</notation>$0"
+  },
+  "note": {
+    "prefix": "<note>",
+    "body": "<note>\n\t$0\n</note>",
+    "description": "note (remark-like)"
+  },
+  "objectives": {
+    "prefix": "<objectives>",
+    "body": "<objectives>\n\t$0\n</objectives>\n",
+    "description": "objectives (goal-like)"
+  },
+  "observation": {
+    "prefix": "<observation>",
+    "body": "<observation>\n\t$0\n</observation>",
+    "description": "observation (remark-like)"
+  },
+  "ol": {
+    "prefix": "<ol>",
+    "body": "<ol>\n\t<li>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</ol>",
+    "description": "ordered list (w/ p)"
+  },
+  "outcomes": {
+    "prefix": "<outcomes>",
+    "body": "<outcomes>\n\t$0\n</outcomes>\n",
+    "description": "outcomes (goal-like)"
+  },
+  "p": {
+    "prefix": "<p>",
+    "body": "<p>\n\t$0\n</p>",
+    "description": "paragraph",
+    "sort": "0"
+  },
+  "page": {
+    "prefix": "<page>",
+    "body": "<page>\n\t$0\n</page>",
+    "description": "page division, for worksheets only."
+  },
+  "paragraphs": {
+    "prefix": "<paragraphs>",
+    "body": "<paragraphs>\n\t<title>$1</title>\n\t$0\n</paragraphs>",
+    "description": "A division that holds paragraphs."
+  },
+  "part": {
+    "prefix": "<part>",
+    "body": "<part xml:id=\"part-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</part>",
+    "description": "part (division)"
+  },
+  "principle": {
+    "prefix": "<principle>",
+    "body": "<principle xml:id=\"principle-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</principle>",
+    "description": "principle (axiom-like)"
+  },
+  "problem": {
+    "prefix": "<problem>",
+    "body": "<problem>\n\t$0\n</problem>",
+    "description": "problem (example-like)"
+  },
+  "program": {
+    "prefix": "<program>",
+    "body": "<program language=\"$1$\">\n\t<input>\n$0\n\t</input>\n</program>",
+    "description": "program (program-like)"
+  },
+  "project": {
+    "prefix": "<project>",
+    "body": "<project>\n\t$0\n</project>",
+    "description": "project (project-like)."
+  },
+  "proof": {
+    "prefix": "<proof>",
+    "body": "<proof>\n\t<p>\n\t\t$0\n\t</p>\n</proof>",
+    "description": "proof (proof-like)"
+  },
+  "proposition": {
+    "prefix": "<proposition>",
+    "body": "<proposition xml:id=\"prop-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</proposition>",
+    "description": "proposition (theorem-like)."
+  },
+  "question": {
+    "prefix": "<question>",
+    "body": "<question>\n\t$0\n</question>",
+    "description": "question (example-like)"
+  },
+  "reading-questions": {
+    "prefix": "<reading-questions>",
+    "body": "<reading-questions xml:id=\"rqs-$1\">\n\t$0\n</reading-questions>",
+    "description": "reading-questions (division)"
+  },
+  "references": {
+    "prefix": "<references>",
+    "body": "<references xml:id=\"refs-$1\">\n\t$0\n</references>",
+    "description": "references (division)"
+  },
+  "remark": {
+    "prefix": "<remark>",
+    "body": "<remark>\n\t$0\n</remark>"
+  },
+  "response": {
+    "prefix": "<response />",
+    "body": "<response />\n$0",
+    "description": "Response box for Runestone exercises."
+  },
+  "row": {
+    "prefix": "<row>",
+    "body": "<row>\n\t<cell>$1</cell>$0\n</row>",
+    "description": "row (of tabular)"
+  },
+  "sage": {
+    "prefix": "<sage>",
+    "body": "<sage>\n\t<input>\n\t\t$1\n\t</input>\n\t<output>\n\t\t$2\n\t</output>\n</sage>$0",
+    "description": "sage math cell"
+  },
+  "sageplot": {
+    "prefix": "<sageplot>",
+    "body": "<sageplot>\n$1\n</sageplot>$0",
+    "description": "sageplot"
+  },
+  "sbsgroup": {
+    "prefix": "<sbsgroup>",
+    "body": "<sbsgroup widths=\"$1\">\n\t<sidebyside>\n\t\t$0\n\t</sidebyside>\n</sbsgroup>",
+    "description": "sidebyside-group: for a grid layout with multiple rows of side-by-sides."
+  },
+  "section": {
+    "prefix": "<section>",
+    "body": "<section xml:id=\"sec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</section>",
+    "description": "section (division)"
+  },
+  "see": {
+    "prefix": "<see>",
+    "body": "<see>$1</see>$0",
+    "description": "see (index)"
+  },
+  "seealso": {
+    "prefix": "<seealso>",
+    "body": "<seealso>$1</seealso>$0",
+    "description": "see also (index)"
+  },
+  "shortdescription": {
+    "prefix": "<shortdescription>",
+    "body": "<shortdescription>$1</shortdescription>$0",
+    "description": "alt-text short description for images"
+  },
+  "sidebyside": {
+    "prefix": "<sidebyside>",
+    "body": "<sidebyside>\n\t$0\n</sidebyside>",
+    "description": "sidebyside (plain)"
+  },
+  "slide": {
+    "prefix": "<slide>",
+    "body": "<slide>\n\t<title>$1</title>\n\t$0\n</slide>"
+  },
+  "solution": {
+    "prefix": "<solution>",
+    "body": "<solution>\n\t<p>\n\t\t$0\n\t</p>\n</solution>",
+    "description": "solution"
+  },
+  "solutions": {
+    "prefix": "<division-solutions>",
+    "body": "<solutions $1>\n\t$0\n<solutions>",
+    "description": "solutions (division)"
+  },
+  "statement": {
+    "prefix": "<statement>",
+    "body": "<statement>\n\t<p>\n\t\t$0\n\t</p>\n</statement>",
+    "description": "statement"
+  },
+  "subexercises": {
+    "prefix": "<subexercises>",
+    "body": "<subexercises>\n\t<title>$1</title>\n\n\t<exercise>\n\t\t<statement>\n\t\t\t<p>\n\t\t\t\t$2\n\t\t\t</p>\n\t\t</statement>\n\t</exercise>\n\t$0\n</subexercises>",
+    "description": "subexercises (to group exercises)"
+  },
+  "subsection": {
+    "prefix": "<subsection>",
+    "body": "<subsection xml:id=\"subsec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</subsection>",
+    "description": "subsection (division)"
+  },
+  "subsubsection": {
+    "prefix": "<subsubsection>",
+    "body": "<subsubsection xml:id=\"subsubsec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</subsubsection>",
+    "description": "subsubsection (division)"
+  },
+  "table": {
+    "prefix": "<table>",
+    "body": "<table>\n\t<title>$1</title>\n\t<tabular>\n\t\t<row>\n\t\t\t<cell>$2</cell>$0\n\t\t</row>\n\t</tabular>\n</table>",
+    "description": "table"
+  },
+  "tabular": {
+    "prefix": "<tabular>",
+    "body": "<tabular>\n\t<row>\n\t\t<cell>$1</cell>$0\n\t</row>\n</tabular>",
+    "description": "tabular"
+  },
+  "task": {
+    "prefix": "<task>",
+    "body": "<task>\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</task>",
+    "description": "task (for parts of an exercise/project).",
+    "sort": "0"
+  },
+  "task (with workspace)": {
+    "prefix": "<task_workspace=\"\">",
+    "body": "<task workspace=\"$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</task>",
+    "description": "task (for parts of an exercise in worksheet)"
+  },
+  "technology": {
+    "prefix": "<technology>",
+    "body": "<technology>\n\t$0\n</technology>\n",
+    "description": "technology (technology-like)"
+  },
+  "theorem": {
+    "prefix": "<theorem>",
+    "body": "<theorem xml:id=\"thm-$1\">\n\t<statement>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</statement>\n</theorem>\n",
+    "description": "theorem (theorem-like)."
+  },
+  "title": {
+    "prefix": "<title>",
+    "body": "<title>$1</title>\n\n$0",
+    "description": "title",
+    "sort": "0"
+  },
+  "ul": {
+    "prefix": "<ul>",
+    "body": "<ul>\n\t<li>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</ul>"
+  },
+  "var": {
+    "prefix": "<var>",
+    "body": "<var name=\"$1\"/>$0",
+    "description": "var for WeBWorK"
+  },
+  "video": {
+    "prefix": "<video>",
+    "body": "<video youtube=\"$1\"/>$0",
+    "description": "youtube"
+  },
+  "warning": {
+    "prefix": "<warning>",
+    "body": "<warning>\n\t$0\n</warning>",
+    "description": "warning (remark-like)"
+  },
+  "webwork": {
+    "prefix": "<webwork>",
+    "body": "<webwork>\n\t<pg-code>\n\t\t$0\n\t</pg-code>\n\n\t<statement>\n\t\t<p>\n\t\t\t\n\t\t</p>\n\t</statement>\n</webwork>",
+    "description": "WeBWorK (with pg code)"
+  },
+  "webwork server": {
+    "prefix": "<webwork_source=\"\" />",
+    "body": "<webwork source=\"$1\" />$0",
+    "description": "WeBWorK (from server)",
+    "sort": "0"
+  },
+  "worksheet": {
+    "prefix": "<worksheet>",
+    "body": "<worksheet xml:id=\"ws-$1\">\n\t$0\n</worksheet>"
+  },
+  "xi:include": {
+    "prefix": "<xi:xinclude>",
+    "body": "<xi:include href=\"$1\" />$0",
+    "description": "XInclude",
+    "retrigger": true
+  }
+}

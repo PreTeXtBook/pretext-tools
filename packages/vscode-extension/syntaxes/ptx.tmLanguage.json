@@ -1,0 +1,256 @@
+{
+  "scopeName": "text.xml.ptx",
+  "patterns": [
+    {
+      "begin": "(<)(m|me|men|mrow|usage)(\\s(?:(?!permid=\"...\").)*\\s)?\\s*(permid=\"...\")?(\\s.*?)?(>)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.tag.localname.ptx.math"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.ptx.math"
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "text.xml#tagStuff"
+            }
+          ]
+        },
+        "4": {
+          "name": "comment.inline.permid"
+        },
+        "5": {
+          "name": "support.class.math.block.environment.latex",
+          "patterns": [
+            {
+              "include": "text.tex#math"
+            }
+          ]
+        },
+        "6": {
+          "name": "entity.name.tag.localname.ptx.math"
+        }
+      },
+      "end": "</(\\2)>",
+      "endCaptures": {
+        "0": {
+          "name": "entity.name.tag.localname.ptx.math"
+        }
+      },
+      "patterns": [
+        {
+          "include": "text.tex#math"
+        },
+        {
+          "include": "text.tex#braces"
+        }
+      ],
+      "contentName": "support.class.math.latex"
+    },
+    {
+      "begin": "(<)(md|mdn)(\\s(?:(?!permid=\"...\").)*\\s)?\\s*(permid=\"...\")?(\\s.*?)?(>)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.tag.localname.ptx.math"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.ptx.math"
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "text.xml#tagStuff"
+            }
+          ]
+        },
+        "4": {
+          "name": "comment.inline.permid"
+        },
+        "5": {
+          "patterns": [
+            {
+              "include": "text.xml#tagStuff"
+            }
+          ]
+        },
+        "6": {
+          "name": "entity.name.tag.localname.ptx.math"
+        }
+      },
+      "end": "</\\2>",
+      "endCaptures": {
+        "0": {
+          "name": "entity.name.tag.localname.ptx.math"
+        }
+      },
+      "patterns": [
+        {
+          "include": "$base"
+        }
+      ],
+      "contentName": "support.class.math.latex"
+    },
+    {
+      "match": "(<)(\\S*)(.*?)?\\s(permid=\"...\")(.*?)?(>)",
+      "captures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        },
+        "3": {
+          "patterns": [
+            {
+              "include": "text.xml#tagStuff"
+            }
+          ]
+        },
+        "4": {
+          "name": "comment.inline.permid"
+        },
+        "5": {
+          "patterns": [
+            {
+              "include": "text.xml#tagStuff"
+            }
+          ]
+        },
+        "6": {
+          "name": "punctuation.definition.tag.xml"
+        }
+      },
+      "name": "meta.tag.xml",
+      "patterns": [
+        {
+          "include": "text.xml#comments"
+        }
+      ]
+    },
+    {
+      "begin": "(<(\\b(em)\\b)>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "contentName": "markup.italic.emph.pretext",
+      "end": "(</(\\b(em)\\b)>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "name": "meta.tag.xml",
+      "patterns": [
+        {
+          "include": "$base"
+        }
+      ]
+    },
+    {
+      "begin": "(<(\\b(term|alert)\\b)>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "contentName": "markup.bold.pretext",
+      "end": "(</(\\b(term|alert)\\b)>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "name": "meta.tag.xml",
+      "patterns": [
+        {
+          "include": "$base"
+        }
+      ]
+    },
+    {
+      "begin": "(<(\\b(title)\\b)>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "contentName": "markup.heading.2.pretext",
+      "end": "(</(\\b(title)\\b)>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "name": "meta.tag.xml",
+      "patterns": [
+        {
+          "include": "$base"
+        }
+      ]
+    },
+    {
+      "begin": "(<(\\b(c|cd|pre|tag|tage|attr)\\b)>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "contentName": "markup.raw.pretext",
+      "end": "(</(\\b(\\3)\\b)>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.xml"
+        },
+        "2": {
+          "name": "entity.name.tag.localname.xml"
+        }
+      },
+      "name": "meta.tag.xml",
+      "patterns": [
+        {
+          "include": "$base"
+        }
+      ]
+    },
+    {
+      "match": "<\\s",
+      "name": "invalid.illegal.bad-lt.xml"
+    },
+    {
+      "include": "#todo-keyword"
+    },
+    {
+      "include": "text.xml"
+    }
+  ],
+  "repository": {
+    "todo-keyword": {
+      "match": "TODO",
+      "name": "keyword.todo"
+    }
+  }
+}

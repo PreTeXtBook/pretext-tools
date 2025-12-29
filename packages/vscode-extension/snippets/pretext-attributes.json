@@ -1,0 +1,117 @@
+{
+  "bottom": {
+    "prefix": "@bottom",
+    "body": "bottom=\"${1|minor, medium, major, none|}\"$0",
+    "description": "bottom attribute, for side-by-sides"
+  },
+  "cols": {
+    "prefix": "@cols",
+    "body": "cols=\"$1\"$0",
+    "description": "columns attribute for lists and exercisegroup.  e.g. cols=\"3\""
+  },
+  "correct": {
+    "prefix": "@correct",
+    "body": "correct=\"${1|yes,no|}\"$0",
+    "description": "correct attribute, for exercises"
+  },
+  "halign": {
+    "prefix": "@halign",
+    "body": "halign=\"${1|left,center,right,justify|}\"",
+    "description": "horizontal align attribute for side-by-side and tabulars."
+  },
+  "header": {
+    "prefix": "@header",
+    "body": "header=\"${1|yes,no|}\"$0",
+    "description": "header attribute (row or col)"
+  },
+  "label": {
+    "prefix": "@label",
+    "body": "label=\"$1\"$0",
+    "description": "label attribute, for naming."
+  },
+  "left": {
+    "prefix": "@left",
+    "body": "left=\"${1|minor, medium, major, none|}\"$0",
+    "description": "left border"
+  },
+  "margins": {
+    "prefix": "@margins",
+    "body": "margins=\"$1\"",
+    "description": "margins attribute for side-by-sides, e.g. margins=\"5% 10%\""
+  },
+  "multiple-correct": {
+    "prefix": "@multiple-correct",
+    "body": "multiple-correct=\"${1|yes,no|}\"$0",
+    "description": "multiple-correct attribute, for choices"
+  },
+  "number": {
+    "prefix": "@number",
+    "body": "number=\"$1\"$0",
+    "description": "number, for exercise in with static number."
+  },
+  "order": {
+    "prefix": "@order",
+    "body": "order=\"$1\"$0",
+    "description": "order attribute, for exercises"
+  },
+  "pause": {
+    "prefix": "@pause",
+    "body": "pause=\"yes\"",
+    "description": "pause attribute, for slides"
+  },
+  "parse": {
+    "prefix": "@parse",
+    "body": "parse=\"${1|text|}\"$0",
+    "description": "parse=\"text\" if xi:include-ing code"
+  },
+  "randomized": {
+    "prefix": "@randomized",
+    "body": "randomized=\"${1|yes,no|}\"$0",
+    "description": "randomized attribute, for exercises"
+  },
+  "right": {
+    "prefix": "@right",
+    "body": "right=\"${1|minor, medium, major, none|}\"$0",
+    "description": "right attribute, for side-by-sides"
+  },
+  "text (for xref)": {
+    "prefix": "@text",
+    "body": "text=\"${1|type-local,type-global,type-hybrid,local,global,hybrid,phrase-global,phrase-hybrid,title|}\"$0",
+    "description": "text attribute, to specify style of cross-reference text."
+  },
+  "top": {
+    "prefix": "@top",
+    "body": "top=\"${1|minor, medium, major, none|}\"$0",
+    "description": "top attribute, for side-by-sides"
+  },
+  "valign": {
+    "prefix": "@valign",
+    "body": "valign=\"${1|bottom,middle,top|}\"",
+    "description": "vertical align attribute for side-by-side and tabulars."
+  },
+  "width": {
+    "prefix": "@width",
+    "body": "width=\"$1%\"$0",
+    "description": "width attribute for images and side-by-sides"
+  },
+  "widths": {
+    "prefix": "@widths",
+    "body": "widths=\"$1\"$0",
+    "description": "widths attribute for side-by-sides, e.g. widths=\"20% 80%\""
+  },
+  "workspace": {
+    "prefix": "@workspace",
+    "body": "workspace=\"$1\"$0",
+    "description": "workspace, for exercise in worksheet (specify in or cm)."
+  },
+  "xi-namespace": {
+    "prefix": "@xmlns:xi",
+    "body": "xmlns:xi=\"http://www.w3.org/2001/XInclude\"",
+    "description": "xinclude namespace: add to top division of xinclude-ed file."
+  },
+  "xml:id": {
+    "prefix": "@xml:id",
+    "body": "xml:id=\"$1\"$0",
+    "description": "xml:id attribute, for references."
+  }
+}

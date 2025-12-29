@@ -1,14 +1,484 @@
 {
-  "name": "vscode-extension",
+  "name": "pretext-tools",
   "displayName": "PreTeXt-tools",
   "description": "Language support and more for PreTeXt",
-  "version": "0.28.1",
+  "version": "0.34.0",
   "license": "See license in LICENSE",
   "icon": "logo.png",
   "publisher": "oscarlevin",
-  "repository": "https://github.com/oscarlevin/pretext-tools",
-  "type": "module",
-  "private": true,
+  "repository": "https://github.com/PreTeXtBook/pretext-tools",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "workspaceContains:project.ptx"
+  ],
+  "main": "./out/extension.js",
+  "extensionDependencies": [
+    "redhat.vscode-xml"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "pretext",
+        "aliases": [
+          "PreTeXt",
+          "ptx"
+        ],
+        "extensions": [
+          ".ptx",
+          ".xml"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pretext",
+        "scopeName": "text.xml.ptx",
+        "path": "./syntaxes/ptx.tmLanguage.json",
+        "embeddedLanguages": {
+          "text.tex": "tex",
+          "text.tex.latex": "latex",
+          "support.class.math.block.environment.latex": "latex",
+          "source.asymptote": "asymptote"
+        }
+      }
+    ],
+    "snippets": [
+      {
+        "language": "pretext",
+        "path": "./snippets/pretext-attributes.json"
+      },
+      {
+        "language": "pretext",
+        "path": "./snippets/pretext-elements.json"
+      },
+      {
+        "language": "pretext",
+        "path": "./snippets/pretext-inline.json"
+      },
+      {
+        "language": "pretext",
+        "path": "./snippets/pretext-templates.json"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pretext-tools.buildLast",
+        "key": "ctrl+alt+b",
+        "mac": "cmd+alt+b",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "pretext-tools.view",
+        "key": "ctrl+alt+v",
+        "mac": "cmd+alt+v",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "pretext-tools.generate",
+        "key": "ctrl+alt+g",
+        "mac": "cmd+alt+g",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "pretext-tools.selectPretextCommand",
+        "key": "ctrl+alt+p",
+        "mac": "cmd+alt+p",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
+      }
+    ],
+    "commands": [
+      {
+        "command": "pretext-tools.experiment",
+        "title": "PreTeXt Experiment",
+        "category": "PreTeXt",
+        "enablement": "config.pretext-tools.experimentalFeatures"
+      },
+      {
+        "command": "pretext-tools.experimentConvert",
+        "title": "Experimental Convert Functions",
+        "category": "PreTeXt",
+        "enablement": "config.pretext-tools.experimentalFeatures"
+      },
+      {
+        "command": "pretext-tools.refreshTargets",
+        "title": "Refresh target list",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.selectPretextCommand",
+        "title": "Run PreTeXt",
+        "icon": "$(debug-start)",
+        "category": "PreTeXt",
+        "description": "Run selected PreTeXt command"
+      },
+      {
+        "command": "pretext-tools.buildAny",
+        "title": "Build (select target)",
+        "icon": "$(debug-start)",
+        "category": "PreTeXt",
+        "description": "Build selected target from the project.ptx manifest."
+      },
+      {
+        "command": "pretext-tools.buildLast",
+        "title": "Build most recent or default target",
+        "category": "PreTeXt",
+        "description": "Build the most recent target (or the default target)."
+      },
+      {
+        "command": "pretext-tools.buildFile",
+        "title": "Build active file as standalone document",
+        "category": "PreTeXt",
+        "description": "Build active file as a standalone document."
+      },
+      {
+        "command": "pretext-tools.new",
+        "title": "New Project",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.view",
+        "title": "View",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.viewVisualEditor",
+        "title": "Open file with Visual Editor",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt",
+        "description": "Open the file in the PreTeXt Visual Editor."
+      },
+      {
+        "command": "pretext-tools.viewCodeChat",
+        "title": "Preview file with CodeChat",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.viewCLI",
+        "title": "View full document in browser",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.generate",
+        "title": "Generate assets",
+        "icon": "$(symbol-color)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.deploy",
+        "title": "Deploy to GitHub",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.updatePTX",
+        "title": "Update installed PreTeXt version",
+        "category": "PreTeXt",
+        "description": "Checks for and installs the newest version of PreTeXt"
+      },
+      {
+        "command": "pretext-tools.format",
+        "title": "Format PreTeXt",
+        "icon": "$(pencil)",
+        "category": "PreTeXt",
+        "description": "Formats the PreTeXt source file using the PreTeXt formatter.",
+        "enablement": "config.pretext-tools.experimentalFeatures"
+      },
+      {
+        "command": "pretext-tools.spellCheck",
+        "title": "Spell Check PreTeXt",
+        "icon": "$(check)",
+        "category": "PreTeXt",
+        "description": "Spell checks the PreTeXt source file using Code Spell Checker."
+      },
+      {
+        "command": "pretext-tools.convertFile",
+        "title": "Convert external file to PreTeXt",
+        "category": "PreTeXt",
+        "description": "Converts a selected external file to PreTeXt using plastex or pandoc (if installed)."
+      },
+      {
+        "command": "pretext-tools.convertText",
+        "title": "Convert to PreTeXt",
+        "category": "PreTeXt",
+        "description": "Convert and replace contents of open file or a selection of text to PreTeXT.  You will be asked to specify the format of the input."
+      },
+      {
+        "command": "pretext-tools.gettingStarted",
+        "title": "Open getting started walkthrough",
+        "category": "PreTeXt"
+      }
+    ],
+    "customEditors": [
+      {
+        "viewType": "pretext.visualEditor",
+        "displayName": "PreTeXt Visual Editor",
+        "selector": [
+          {
+            "filenamePattern": "*.ptx"
+          }
+        ],
+        "priority": "option"
+      }
+    ],
+    "xmlLanguageParticipants": [
+      {
+        "languageId": "pretext"
+      }
+    ],
+    "configurationDefaults": {
+      "editor.suggest.showProperties": false,
+      "xml.fileAssociations": [
+        {
+          "pattern": "**/source/**.ptx",
+          "systemId": "https://raw.githubusercontent.com/PreTeXtBook/pretext/master/schema/pretext.rng"
+        }
+      ],
+      "xml.validation.xInclude.enabled": true,
+      "cSpell.enabledFileTypes": {
+        "pretext": true
+      }
+    },
+    "menus": {},
+    "configuration": [
+      {
+        "title": "PreTeXt",
+        "properties": {
+          "pretext-tools.viewMethod": {
+            "type": "string",
+            "default": "Ask",
+            "enum": [
+              "Ask",
+              "CodeChat",
+              "PreTeXT-CLI View"
+            ],
+            "markdownEnumDescriptions": [
+              "Ask for view method each time (default).",
+              "Use CodeChat to view the 'web' target in a separate tab of VS Code.  Auto-refreshes when a ptx files is saved (not recommended for large projects).  Requires CodeChat extension and CodeChat_Server installed via pip.",
+              "Use the `pretext view` command from the PreTeXt CLI.  Works with all targets.  Opens the output in a separate application."
+            ],
+            "markdownDescription": "Select which method to use when viewing the output of a pretext project.  Leaving this at the default will ask for available methods each time.  Your choice will likely depend on the size of your project and whether you are building output other than the 'web' target."
+          },
+          "pretext-tools.formatter.blankLines": {
+            "order": 4,
+            "type": "string",
+            "default": "some",
+            "enum": [
+              "few",
+              "some",
+              "many"
+            ],
+            "markdownEnumDescriptions": [
+              "No blank lines between elements.",
+              "One line break between elements of the same type (default)",
+              "A blank line between every pair of tags."
+            ],
+            "markdownDescription": "Select whether few, some, or many blank lines appear when the document is formatted."
+          },
+          "pretext-tools.formatter.breakSentences": {
+            "order": 4,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Whether to add a line break after each period in a paragraph."
+          },
+          "pretext-tools.spellCheck.checkErrorsInsideScope": {
+            "order": 3,
+            "type": "object",
+            "properties": {
+              "comments": {
+                "type": "string",
+                "default": "Check",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in comments."
+              },
+              "inlineMath": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling for inline math (`<m>` tags)."
+              },
+              "displayMath": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in display math (`<me>`, `<md>`, etc)."
+              },
+              "inlineCode": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in inline code (`<c>` tags)."
+              },
+              "blockCode": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in program elements."
+              },
+              "latexImage": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in latex-image."
+              },
+              "tags": {
+                "type": "string",
+                "default": "Ignore",
+                "enum": [
+                  "Check",
+                  "Ignore"
+                ],
+                "markdownDescription": "Check or Ignore spelling in tags and attributes."
+              }
+            },
+            "markdownDescription": "Check or ignore spelling inside specific scopes.  You must have the Code Spell Checker extension installed for this to work and need to ensure that pretext files are set to be checked in the settings of that extension.",
+            "additionalProperties": false
+          },
+          "pretext-tools.installPretext": {
+            "order": 10,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Whether pretext-tools should try to use pip to install PreTeXt if it cannot find it."
+          },
+          "pretext-tools.schema.versionName": {
+            "order": 1,
+            "type": "string",
+            "default": "Stable",
+            "enum": [
+              "Stable",
+              "Experimental",
+              "Custom"
+            ],
+            "markdownEnumDescriptions": [
+              "Use the stable schema matching your installed version of PreTeXt (default).",
+              "Use the experimental/development schema matching your installed version of PreTeXt.",
+              "Use a custom schema file, which you can set using the `pretext-tools.customSchemaPath` setting."
+            ],
+            "markdownDescription": "Select the version of the PreTeXt schema to validate against.  If you are using newer features, you might try to experimental schema, which isn't as stable, but will give you fewer warnings."
+          },
+          "pretext-tools.schema.customPath": {
+            "order": 2,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Provide a path to your custom schema file.  This will override the schema version setting."
+          },
+          "pretext-tools.pythonPath": {
+            "order": 20,
+            "type": "string",
+            "default": "",
+            "markdownDescription": "To use a non-standard python installation or virtual environment, set path to python here.  If blank we will use `python -m` or `python3 -m`. **Requires restart of VS Code**"
+          },
+          "pretext-tools.experimentalFeatures": {
+            "order": 30,
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Enable experimental features.  Test out the latest features of PreTeXt Tools.  These may not be stable and may change in future releases."
+          }
+        }
+      }
+    ],
+    "walkthroughs": [
+      {
+        "id": "gettingStarted",
+        "title": "Get Started with PreTeXt",
+        "description": "Learn how to use PreTeXt Tools.",
+        "featuredFor": [
+          "pretext",
+          "project.ptx"
+        ],
+        "version": "0.0.3",
+        "steps": [
+          {
+            "id": "pretext-tools-getting-started-new-project",
+            "title": "Create a new project",
+            "description": "Follow the directions to the right, or click the button below.\n[Create New Project](command:pretext-tools.new)",
+            "media": {
+              "markdown": "assets/walkthrough/new.md"
+            },
+            "completionEvents": [
+              "onCommand:pretext-tools.new"
+            ]
+          },
+          {
+            "id": "pretext-tools-getting-started-open-file",
+            "title": "Open a PreTeXt source file",
+            "media": {
+              "markdown": "assets/walkthrough/open.md"
+            }
+          },
+          {
+            "id": "pretext-tools-getting-started-commands",
+            "title": "View PreTeXt commands",
+            "media": {
+              "markdown": "assets/walkthrough/commands.md"
+            },
+            "completionEvents": [
+              "onCommand:pretext-tools.selectPretextCommand"
+            ]
+          },
+          {
+            "id": "pretext-tools-getting-started-build",
+            "title": "Build your output",
+            "media": {
+              "markdown": "assets/walkthrough/build.md"
+            },
+            "completionEvents": [
+              "onCommand:pretext-tools.buildLast"
+            ]
+          },
+          {
+            "id": "pretext-tools-getting-started-view",
+            "title": "View your output",
+            "media": {
+              "markdown": "assets/walkthrough/view.md"
+            },
+            "completionEvents": [
+              "onCommand:pretext-tools.viewCli"
+            ]
+          },
+          {
+            "id": "pretext-tools-getting-started-install-extras",
+            "when": "isWeb",
+            "title": "Install SageMath",
+            "description": "The default codespace template does not contain SageMath.  You can install it using the command below, but it is only needed if you plan to include sageplot images.  This will only work in a codespace.\n[Install SageMath](command:pretext-tools.installSage)",
+            "completionEvents": [
+              "onCommand:pretext-tools.installSage"
+            ],
+            "media": {
+              "markdown": "assets/walkthrough/installExtras.md"
+            }
+          }
+        ]
+      }
+    ]
+  },
   "scripts": {
     "vscode:prepublish": "npm run esbuild-base -- --minify",
     "esbuild-base": "node build.mjs",

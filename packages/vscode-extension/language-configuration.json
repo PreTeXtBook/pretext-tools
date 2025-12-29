@@ -1,0 +1,87 @@
+{
+  "comments": {
+    // symbols used for start and end a block comment. Remove this entry if your language does not support block comments
+    "blockComment": ["<!--", "-->"]
+  },
+  // symbols used as brackets
+  "brackets": [
+    ["<!--", "-->"],
+    ["<", ">"],
+    ["{", "}"],
+    ["(", ")"]
+  ],
+  // symbols that are auto closed when typing
+  "autoClosingPairs": [
+    {
+      "open": "{",
+      "close": "}"
+    },
+    {
+      "open": "[",
+      "close": "]"
+    },
+    {
+      "open": "(",
+      "close": ")"
+    },
+    {
+      "open": "'",
+      "close": "'"
+    },
+    {
+      "open": "\"",
+      "close": "\""
+    },
+    {
+      "open": "<!--",
+      "close": "-->",
+      "notIn": ["comment", "string"]
+    },
+    {
+      "open": "<![CDATA[",
+      "close": "]]>",
+      "notIn": ["comment", "string"]
+    }
+  ],
+  // symbols that that can be used to surround a selection
+  "surroundingPairs": [
+    {
+      "open": "'",
+      "close": "'"
+    },
+    {
+      "open": "\"",
+      "close": "\""
+    },
+    {
+      "open": "{",
+      "close": "}"
+    },
+    {
+      "open": "[",
+      "close": "]"
+    },
+    {
+      "open": "(",
+      "close": ")"
+    },
+    {
+      "open": "<",
+      "close": ">"
+    }
+  ],
+  "onEnterRules": [
+    {
+      "beforeText": "^\\s*<(p|statement|hint|answer|solution|li|row|ol|ul|theorem|section|chapter|subsection|part|subsubsection|paragraphs).*?>\\s*$",
+      "action": {
+        "indent": "indent"
+      }
+    },
+    {
+      "beforeText": "^\\s*</(section|chapter|subsection|part|subsubsection|paragraphs).*?>\\s*$",
+      "action": {
+        "indent": "outdent",
+      }
+    }
+  ]
+}

@@ -1,0 +1,920 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar xmlns:xhtml="http://www.w3.org/1999/xhtml" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <include href="pretext.rng"/>
+  <define name="Interactive">
+    <element name="interactive">
+      <optional>
+        <ref name="UniqueID"/>
+      </optional>
+      <optional>
+        <ref name="LabelID"/>
+      </optional>
+      <optional>
+        <ref name="Component"/>
+      </optional>
+      <optional>
+        <attribute name="aspect"/>
+      </optional>
+      <optional>
+        <attribute name="width"/>
+      </optional>
+      <optional>
+        <attribute name="platform"/>
+      </optional>
+      <optional>
+        <attribute name="preview"/>
+      </optional>
+      <optional>
+        <attribute name="iframe"/>
+      </optional>
+      <optional>
+        <attribute name="source"/>
+      </optional>
+      <optional>
+        <attribute name="version"/>
+      </optional>
+      <interleave>
+        <zeroOrMore>
+          <choice>
+            <ref name="Slate"/>
+            <ref name="SideBySideNoCaption"/>
+            <ref name="SideBySideGroupNoCaption"/>
+          </choice>
+        </zeroOrMore>
+        <optional>
+          <element name="instructions">
+            <mixed>
+              <ref name="MetaDataTitleOptional"/>
+              <ref name="BlockText"/>
+            </mixed>
+          </element>
+        </optional>
+        <optional>
+          <element name="static">
+            <ref name="Image"/>
+          </element>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <define name="Stack" combine="choice">
+    <element name="stack">
+      <oneOrMore>
+        <choice>
+          <ref name="Tabular"/>
+          <ref name="Image"/>
+          <ref name="Video"/>
+          <ref name="Program"/>
+          <ref name="Console"/>
+          <ref name="Paragraph"/>
+          <ref name="Preformatted"/>
+          <ref name="List"/>
+          <ref name="Slate"/>
+        </choice>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="Slate">
+    <element name="slate">
+      <optional>
+        <ref name="UniqueID"/>
+      </optional>
+      <optional>
+        <ref name="LabelID"/>
+      </optional>
+      <optional>
+        <ref name="Component"/>
+      </optional>
+      <choice>
+        <ref name="JessieCodeAtt"/>
+        <group>
+          <attribute name="surface"/>
+          <optional>
+            <choice>
+              <attribute name="source"/>
+              <attribute name="material"/>
+            </choice>
+          </optional>
+          <optional>
+            <attribute name="aspect"/>
+          </optional>
+          <zeroOrMore>
+            <choice>
+              <ref name="Paragraph"/>
+              <ref name="Tabular"/>
+              <ref name="SideBySideNoCaption"/>
+              <ref name="SlateInput"/>
+              <optional>
+                <element name="xhtml:button">
+                  <attribute name="type"/>
+                  <attribute name="id"/>
+                  <zeroOrMore>
+                    <text/>
+                  </zeroOrMore>
+                </element>
+              </optional>
+              <zeroOrMore>
+                <text/>
+              </zeroOrMore>
+            </choice>
+          </zeroOrMore>
+        </group>
+      </choice>
+    </element>
+  </define>
+  <define name="JessieCodeAtt">
+    <attribute name="surface">
+      <value>jessiecode</value>
+    </attribute>
+    <optional>
+      <attribute name="axis">
+        <choice>
+          <value>true</value>
+          <value>false</value>
+        </choice>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="grid">
+        <choice>
+          <value>true</value>
+          <value>false</value>
+        </choice>
+      </attribute>
+    </optional>
+    <choice>
+      <attribute name="source"/>
+      <zeroOrMore>
+        <text/>
+      </zeroOrMore>
+    </choice>
+  </define>
+  <define name="SlateInput">
+    <element name="input">
+      <optional>
+        <attribute name="type"/>
+      </optional>
+      <optional>
+        <attribute name="value"/>
+      </optional>
+      <optional>
+        <attribute name="onkeypress"/>
+      </optional>
+      <optional>
+        <attribute name="onclick"/>
+      </optional>
+      <optional>
+        <attribute name="style"/>
+      </optional>
+    </element>
+  </define>
+  <!-- add Interactives where used -->
+  <define name="BlockStatement" combine="choice">
+    <ref name="Interactive"/>
+  </define>
+  <define name="Figure" combine="choice">
+    <element name="figure">
+      <ref name="MetaDataCaption"/>
+      <ref name="Interactive"/>
+    </element>
+  </define>
+  <define name="SideBySide" combine="choice">
+    <element name="sidebyside">
+      <ref name="SidebySideAttributes"/>
+      <oneOrMore>
+        <choice>
+          <ref name="Interactive"/>
+          <ref name="Slate"/>
+        </choice>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="SideBySideNoCaption" combine="choice">
+    <element name="sidebyside">
+      <ref name="SidebySideAttributes"/>
+      <oneOrMore>
+        <choice>
+          <ref name="Interactive"/>
+          <ref name="Slate"/>
+        </choice>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="Exercises" combine="choice">
+    <element name="exercises">
+      <ref name="MetaDataAltTitleOptional"/>
+      <optional>
+        <ref name="IntroductionDivision"/>
+      </optional>
+      <choice>
+        <oneOrMore>
+          <choice>
+            <ref name="Exercise"/>
+            <ref name="ExerciseGroup"/>
+          </choice>
+        </oneOrMore>
+        <oneOrMore>
+          <ref name="Subexercises"/>
+        </oneOrMore>
+        <ref name="Interactive"/>
+      </choice>
+      <optional>
+        <ref name="ConclusionDivision"/>
+      </optional>
+    </element>
+  </define>
+  <define name="ShortLicense_X">
+    <element name="shortlicense">
+      <interleave>
+        <ref name="TextLong"/>
+        <zeroOrMore>
+          <ref name="Footnote"/>
+        </zeroOrMore>
+      </interleave>
+    </element>
+  </define>
+  <define name="ShortLicense" combine="choice">
+    <ref name="ShortLicense_X"/>
+  </define>
+  <define name="Website_X">
+    <element name="website">
+      <element name="name">
+        <ref name="TextShort"/>
+      </element>
+      <element name="address">
+        <text/>
+      </element>
+    </element>
+  </define>
+  <define name="Website" combine="choice">
+    <ref name="Website_X"/>
+  </define>
+  <define name="Configuration" combine="choice">
+    <element name="blurb">
+      <attribute name="shelf"/>
+      <text/>
+    </element>
+  </define>
+  <define name="Configuration" combine="choice">
+    <element name="document-id">
+      <optional>
+        <attribute name="edition"/>
+      </optional>
+      <text/>
+    </element>
+  </define>
+  <define name="ProofLike">
+    <ref name="MetaDataTitleOptional"/>
+    <oneOrMore>
+      <choice>
+        <ref name="BlockStatement"/>
+        <ref name="Case"/>
+      </choice>
+    </oneOrMore>
+  </define>
+  <define name="Proof" combine="choice">
+    <choice>
+      <element name="proof">
+        <ref name="ProofLike"/>
+      </element>
+      <element name="argument">
+        <ref name="ProofLike"/>
+      </element>
+      <element name="justification">
+        <ref name="ProofLike"/>
+      </element>
+      <element name="reasoning">
+        <ref name="ProofLike"/>
+      </element>
+      <element name="explanation">
+        <ref name="ProofLike"/>
+      </element>
+    </choice>
+  </define>
+  <define name="Figure" combine="choice">
+    <element name="figure">
+      <ref name="MetaDataCaption"/>
+      <ref name="Tabular"/>
+    </element>
+  </define>
+  <!-- Main handout definition -->
+  <define name="Handout">
+    <element name="handout">
+      <ref name="PrintoutAttributes"/>
+      <ref name="MetaDataAltTitleOptional"/>
+      <interleave>
+        <optional>
+          <ref name="Objectives"/>
+        </optional>
+        <optional>
+          <ref name="IntroductionDivision"/>
+        </optional>
+      </interleave>
+      <choice>
+        <oneOrMore>
+          <ref name="Page"/>
+        </oneOrMore>
+        <oneOrMore>
+          <ref name="PrintoutBlock"/>
+        </oneOrMore>
+      </choice>
+      <interleave>
+        <optional>
+          <ref name="Outcomes"/>
+        </optional>
+        <optional>
+          <ref name="ConclusionDivision"/>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <!-- Add Handout to Printout options -->
+  <define name="Printout" combine="choice">
+    <ref name="Handout"/>
+  </define>
+  <define name="Solutions" combine="choice">
+    <element name="solutions">
+      <ref name="MetaDataAltTitleOptional"/>
+      <optional>
+        <attribute name="inline"/>
+      </optional>
+      <optional>
+        <attribute name="divisional"/>
+      </optional>
+      <optional>
+        <attribute name="project"/>
+      </optional>
+      <optional>
+        <attribute name="worksheet"/>
+      </optional>
+      <optional>
+        <attribute name="reading"/>
+      </optional>
+      <optional>
+        <attribute name="scope"/>
+      </optional>
+      <optional>
+        <attribute name="admit">
+          <choice>
+            <value>all</value>
+            <value>odd</value>
+            <value>even</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <ref name="IntroductionDivision"/>
+      </optional>
+      <optional>
+        <ref name="ConclusionDivision"/>
+      </optional>
+    </element>
+  </define>
+  <define name="MathDisplay" combine="choice">
+    <choice>
+      <element name="me">
+        <optional>
+          <ref name="MetaDataTarget"/>
+        </optional>
+        <mixed>
+          <zeroOrMore>
+            <choice>
+              <ref name="Xref"/>
+              <ref name="FillInMath"/>
+              <ref name="WWVariable"/>
+            </choice>
+          </zeroOrMore>
+        </mixed>
+      </element>
+      <element name="men">
+        <optional>
+          <ref name="MetaDataTarget"/>
+        </optional>
+        <mixed>
+          <zeroOrMore>
+            <choice>
+              <ref name="Xref"/>
+              <ref name="FillInMath"/>
+              <ref name="WWVariable"/>
+            </choice>
+          </zeroOrMore>
+        </mixed>
+      </element>
+      <element name="md">
+        <optional>
+          <attribute name="number">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="break">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="alignment"/>
+        </optional>
+        <optional>
+          <attribute name="alignat-columns"/>
+        </optional>
+        <ref name="MathRow"/>
+        <zeroOrMore>
+          <choice>
+            <ref name="MathRow"/>
+            <ref name="MathIntertext"/>
+          </choice>
+        </zeroOrMore>
+      </element>
+      <element name="mdn">
+        <optional>
+          <attribute name="number">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="break">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="alignment"/>
+        </optional>
+        <optional>
+          <attribute name="alignat-columns"/>
+        </optional>
+        <ref name="MathRow"/>
+        <zeroOrMore>
+          <choice>
+            <ref name="MathRow"/>
+            <ref name="MathIntertext"/>
+          </choice>
+        </zeroOrMore>
+      </element>
+    </choice>
+  </define>
+  <define name="MyOpenMath">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <ref name="IntroductionText"/>
+    </optional>
+    <element name="myopenmath">
+      <attribute name="problem"/>
+      <optional>
+        <attribute name="params"/>
+      </optional>
+    </element>
+    <optional>
+      <ref name="ConclusionText"/>
+    </optional>
+  </define>
+  <define name="TrueFalse">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <element name="statement">
+      <attribute name="correct">
+        <choice>
+          <value>yes</value>
+          <value>no</value>
+        </choice>
+      </attribute>
+      <ref name="Paragraph"/>
+    </element>
+    <optional>
+      <ref name="Feedback"/>
+    </optional>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+  </define>
+  <define name="MultipleChoice">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <ref name="StatementExercise"/>
+    <element name="choices">
+      <optional>
+        <attribute name="randomize">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <oneOrMore>
+        <ref name="Choice"/>
+      </oneOrMore>
+    </element>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+  </define>
+  <define name="Choice">
+    <element name="choice">
+      <optional>
+        <attribute name="correct">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <choice>
+        <mixed>
+          <optional>
+            <ref name="BlockText"/>
+          </optional>
+        </mixed>
+        <group>
+          <ref name="StatementExercise"/>
+          <optional>
+            <ref name="Feedback"/>
+          </optional>
+        </group>
+      </choice>
+    </element>
+  </define>
+  <define name="Parsons">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <optional>
+      <attribute name="language"/>
+    </optional>
+    <optional>
+      <attribute name="adaptive">
+        <choice>
+          <value>yes</value>
+          <value>no</value>
+        </choice>
+      </attribute>
+    </optional>
+    <optional>
+      <attribute name="indentation"/>
+    </optional>
+    <ref name="StatementExercise"/>
+    <element name="blocks">
+      <optional>
+        <attribute name="layout">
+          <value>horizontal</value>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="randomize">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <oneOrMore>
+        <ref name="Block"/>
+      </oneOrMore>
+    </element>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+    <optional>
+      <optional>
+        <element name="preamble">
+          <optional>
+            <attribute name="indent"/>
+          </optional>
+          <text/>
+        </element>
+      </optional>
+      <ref name="Program"/>
+      <optional>
+        <element name="postamble">
+          <optional>
+            <attribute name="indent"/>
+          </optional>
+          <text/>
+        </element>
+      </optional>
+    </optional>
+  </define>
+  <define name="Block">
+    <element name="block">
+      <optional>
+        <attribute name="order">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <choice>
+        <group>
+          <optional>
+            <attribute name="correct">
+              <choice>
+                <value>yes</value>
+                <value>no</value>
+              </choice>
+            </attribute>
+          </optional>
+          <oneOrMore>
+            <mixed>
+              <optional>
+                <ref name="BlockText"/>
+              </optional>
+              <optional>
+                <ref name="CodeLine"/>
+              </optional>
+            </mixed>
+          </oneOrMore>
+        </group>
+        <oneOrMore>
+          <element name="choice">
+            <optional>
+              <attribute name="correct">
+                <choice>
+                  <value>yes</value>
+                  <value>no</value>
+                </choice>
+              </attribute>
+            </optional>
+            <oneOrMore>
+              <mixed>
+                <optional>
+                  <ref name="BlockText"/>
+                </optional>
+                <optional>
+                  <ref name="CodeLine"/>
+                </optional>
+              </mixed>
+            </oneOrMore>
+          </element>
+        </oneOrMore>
+      </choice>
+    </element>
+  </define>
+  <define name="Matching">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <ref name="StatementExercise"/>
+    <optional>
+      <ref name="Feedback"/>
+    </optional>
+    <element name="matches">
+      <oneOrMore>
+        <ref name="Match"/>
+      </oneOrMore>
+    </element>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+  </define>
+  <define name="Match">
+    <element name="match">
+      <optional>
+        <attribute name="order">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <element name="premise">
+        <mixed>
+          <optional>
+            <ref name="BlockText"/>
+          </optional>
+        </mixed>
+      </element>
+      <element name="response">
+        <mixed>
+          <optional>
+            <ref name="BlockText"/>
+          </optional>
+        </mixed>
+      </element>
+    </element>
+  </define>
+  <define name="FreeResponse">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <optional>
+      <attribute name="attachment">
+        <choice>
+          <value>yes</value>
+          <value>no</value>
+        </choice>
+      </attribute>
+    </optional>
+    <choice>
+      <group>
+        <ref name="ExerciseBody"/>
+        <optional>
+          <ref name="Response"/>
+        </optional>
+      </group>
+      <group>
+        <ref name="StatementExercise"/>
+        <optional>
+          <ref name="Response"/>
+        </optional>
+        <zeroOrMore>
+          <ref name="Hint"/>
+        </zeroOrMore>
+        <zeroOrMore>
+          <ref name="Answer"/>
+        </zeroOrMore>
+        <zeroOrMore>
+          <ref name="Solution"/>
+        </zeroOrMore>
+      </group>
+      <group>
+        <optional>
+          <ref name="IntroductionStatement"/>
+        </optional>
+        <oneOrMore>
+          <ref name="Task"/>
+        </oneOrMore>
+        <optional>
+          <ref name="ConclusionStatement"/>
+        </optional>
+      </group>
+    </choice>
+  </define>
+  <define name="Response">
+    <element name="response">
+      <empty/>
+    </element>
+  </define>
+  <!-- Selectable areas -->
+  <define name="Area">
+    <element name="area">
+      <optional>
+        <attribute name="correct">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <ref name="TextLong"/>
+    </element>
+  </define>
+  <define name="TextLongAreas">
+    <mixed>
+      <zeroOrMore>
+        <choice>
+          <ref name="Area"/>
+          <ref name="Character"/>
+          <ref name="Generator"/>
+          <ref name="Verbatim"/>
+          <ref name="GroupAreas"/>
+          <ref name="MathInline"/>
+          <ref name="Music"/>
+          <ref name="Reference"/>
+          <ref name="WWVariable"/>
+        </choice>
+      </zeroOrMore>
+    </mixed>
+  </define>
+  <define name="GroupAreas" combine="choice">
+    <choice>
+      <element name="q">
+        <ref name="TextLongAreas"/>
+      </element>
+      <element name="sq">
+        <ref name="TextLongAreas"/>
+      </element>
+    </choice>
+  </define>
+  <define name="TextParagraphAreas">
+    <mixed>
+      <zeroOrMore>
+        <choice>
+          <ref name="Character"/>
+          <ref name="Generator"/>
+          <ref name="Verbatim"/>
+          <ref name="Group"/>
+          <ref name="WWVariable"/>
+          <ref name="MathInline"/>
+          <ref name="Music"/>
+          <ref name="Reference"/>
+          <ref name="CodeDisplay"/>
+          <ref name="MathDisplay"/>
+          <ref name="List"/>
+          <ref name="Footnote"/>
+          <ref name="Notation"/>
+          <ref name="Index"/>
+          <ref name="Area"/>
+          <ref name="GroupAreas"/>
+        </choice>
+      </zeroOrMore>
+    </mixed>
+  </define>
+  <define name="ParagraphAreas">
+    <element name="p">
+      <optional>
+        <ref name="UniqueID"/>
+      </optional>
+      <optional>
+        <ref name="LabelID"/>
+      </optional>
+      <optional>
+        <ref name="Component"/>
+      </optional>
+      <ref name="TextParagraphAreas"/>
+    </element>
+  </define>
+  <define name="Areas">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <ref name="StatementExercise"/>
+    <optional>
+      <ref name="Feedback"/>
+    </optional>
+    <element name="areas">
+      <oneOrMore>
+        <ref name="ParagraphAreas"/>
+      </oneOrMore>
+    </element>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+  </define>
+  <!-- General feedback element -->
+  <define name="Feedback">
+    <element name="feedback">
+      <ref name="MetaDataTitleOptional"/>
+      <oneOrMore>
+        <ref name="BlockSolution"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <!-- Include all exercise types in exercise and activity -->
+  <define name="Exercise" combine="choice">
+    <element name="exercise">
+      <choice>
+        <ref name="MyOpenMath"/>
+        <ref name="TrueFalse"/>
+        <ref name="MultipleChoice"/>
+        <ref name="Parsons"/>
+        <ref name="Matching"/>
+        <ref name="FreeResponse"/>
+        <ref name="Areas"/>
+      </choice>
+    </element>
+  </define>
+  <define name="ProjectLike" combine="choice">
+    <choice>
+      <ref name="MyOpenMath"/>
+      <ref name="TrueFalse"/>
+      <ref name="MultipleChoice"/>
+      <ref name="Parsons"/>
+      <ref name="Matching"/>
+      <ref name="FreeResponse"/>
+      <ref name="Areas"/>
+    </choice>
+  </define>
+</grammar>

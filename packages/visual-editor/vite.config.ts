@@ -6,7 +6,7 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: path.resolve(__dirname, "../../extension/out/media"), // Output to the media folder
+    outDir: path.resolve(__dirname, "../../dist/vscode-extension/out/media"), // Output to the dist media folder
     rollupOptions: {
       output: {
         entryFileNames: "visualEditor.js", // Output JavaScript file name

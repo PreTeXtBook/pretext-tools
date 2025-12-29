@@ -1,0 +1,77 @@
+{
+  "pretext article template": {
+    "prefix": "<!ptx-article",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<pretext>\n\t<article xml:id=\"$1\">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</article>\n</pretext>",
+    "description": "article template for empty/new PreTeXt document"
+  },
+  "pretext book template": {
+    "prefix": "<!ptx-book",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<pretext xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<book xml:id=\"${1:$TM_FILENAME_BASE}\">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</book>\n</pretext>",
+    "description": "book template for empty/new PreTeXt document"
+  },
+  "pretext slideshow template": {
+    "prefix": "<!ptx-slideshow",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<pretext xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<slideshow xml:id=\"${1:$TM_FILENAME_BASE}\">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</slideshow>\n</pretext>",
+    "description": "slideshow template for empty/new PreTeXt document"
+  },
+  "pretext part": {
+    "prefix": "<!ptx-part",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<part xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</part>",
+    "description": "template for creating a part of a PreTeXt book in an empty file."
+  },
+  "pretext chapter": {
+    "prefix": "<!ptx-chapter",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<chapter xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</chapter>",
+    "description": "template for creating a chapter of a PreTeXt book in an empty file."
+  },
+  "pretext section": {
+    "prefix": "<!ptx-section",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<section xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</section>",
+    "description": "template for creating a section of a PreTeXt book in an empty file."
+  },
+  "pretext exercises": {
+    "prefix": "<!ptx-exercises",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<exercises xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</exercises>",
+    "description": "template for creating a exercises of a PreTeXt book in an empty file."
+  },
+  "pretext worksheet": {
+    "prefix": "<!ptx-worksheet",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<worksheet xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</worksheet>",
+    "description": "template for creating a worksheet division of a PreTeXt book in an empty file."
+  },
+  "pretext handout": {
+    "prefix": "<!ptx-handout",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n\n<handout xml:id=\"${1:$TM_FILENAME_BASE}\" xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n\t<title>$2</title>\n\n\t$0\n\n</handout>",
+    "description": "template for creating a handout division of a PreTeXt book in an empty file."
+  },
+  "xi-namespace": {
+    "prefix": "@xmlns:xi",
+    "body": "xmlns:xi=\"http://www.w3.org/2001/XInclude\"",
+    "description": "xinclude namespace: add to top division of xinclude-ed file."
+  },
+  "xml:id": {
+    "prefix": "@xml:id",
+    "body": "xml:id=\"$1\"$0",
+    "description": "xml:id attribute, for references."
+  },
+  "&amp;": {
+    "prefix": "&amp;",
+    "body": "&amp;",
+    "description": "ampersand character"
+  },
+  "&lt;": {
+    "prefix": "&lt;",
+    "body": "&lt;",
+    "description": "less than character"
+  },
+  "?xml": {
+    "prefix": "<?xml...>",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+    "description": "XML declaration"
+  },
+  "xi:include": {
+    "prefix": "<xi:xinclude>",
+    "body": "<xi:include href=\"$1\" />$0",
+    "description": "XInclude"
+  }
+}

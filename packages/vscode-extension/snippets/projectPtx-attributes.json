@@ -1,0 +1,87 @@
+{
+  "asy-method": {
+    "body": "asy-method=\"${1|server,local|}\"",
+    "description": "whether to use a local asymptote installation or rely on the asymptote server when generating asymptote assets.",
+    "prefix": "@asy-method"
+  },
+  "braille-mode": {
+    "body": "braille-mode=\"${1|emboss,electronic|}\"$0",
+    "description": "Optional, default: emboss. Valid values: emboss or electronic. Only used when @format is braille, to specify the mode for braille.",
+    "prefix": "@braille-mode"
+  },
+  "compression": {
+    "body": "compression=\"zip\"$0",
+    "description": "Optional, no default. Only valid when @format is webwork or html and @platform is not runestone. Valid values: zip. Results in output being compressed (as .zip file).",
+    "prefix": "@compression"
+  },
+  "deploy-dir": {
+    "body": "deploy-dir=\"$1\"",
+    "description": "deploy-dir attribute, for slides",
+    "prefix": "@deploy-dir"
+  },
+  "format": {
+    "body": "format=\"${1|html,pdf,latex,epub,kindle,slides,braille,custom|}\"$0",
+    "description": "format, for this particular build target.",
+    "prefix": "@format"
+  },
+  "latex-engine": {
+    "body": "latex-engine=\"${1|xelatex,pdflatex,latex|}\"$0",
+    "description": "Optional, default: xelatex. Valid values: xelatex, pdflatex, or latex. Only used on targets that build with latex, to specify what latex command to call in that step.",
+    "prefix": "@latex-engine"
+  },
+  "name": {
+    "body": "name=\"${1:target name}\"$0",
+    "description": "Required name of target.  This is what you call when you want to build that target.",
+    "prefix": "@name"
+  },
+  "output-dir": {
+    "body": "output-dir=\"${1:path\\to\\output\\directory}\"",
+    "description": "path to the output directory",
+    "prefix": "@output-dir"
+  },
+  "output-filename": {
+    "body": "output-filename=\"$1\"$0",
+    "description": "Only valid for Only valid for formats that produce a single output file. Path to output file to be built (relative to the value of @output-dir of the same <target> element).",
+    "prefix": "@output-filename"
+  },
+  "parse": {
+    "body": "parse=\"${1|text|}\"$0",
+    "description": "Optional, no default. Path to subdirectory of deployed site where this target will live. If deploying multiple targets, then this attribute must have a value for it to be deployed.",
+    "prefix": "@parse"
+  },
+  "platform": {
+    "body": "platform=\"runestone\"$0",
+    "description": "Optional, no default. Only valid when @format is html. Valid values: runestone. Used to specify that the target will be hosted on Runestone.",
+    "prefix": "@platform"
+  },
+  "ptx-version": {
+    "body": "ptx-version=\"2\"$0",
+    "description": "ptx-version attribute, for project tag.  Must have value 2.",
+    "prefix": "@ptx-version"
+  },
+  "publication": {
+    "body": "publication=\"${1:path\\to\\publication\\file}\"$0",
+    "description": "path to publication file",
+    "prefix": "@publication"
+  },
+  "site": {
+    "body": "site=\"${1:path\\to\\site\\directory}\"$0",
+    "description": "site attribute",
+    "prefix": "@site"
+  },
+  "source": {
+    "body": "source=\"${1:path\\to\\source}\"$0",
+    "description": "As an attribute on 'project', gives the path to the folder containing the main source file.  As an attribute on a 'target', gives the path to the main source file, relative to the default source folder or path specified in project.",
+    "prefix": "@source"
+  },
+  "stage": {
+    "body": "stage=\"${1:path\\to\\staging\\directory}\"$0",
+    "description": "stage attribute",
+    "prefix": "@stage"
+  },
+  "xsl": {
+    "body": "xsl=\"${1:path\\to\\xsl}\"$0",
+    "description": "xsl attribute",
+    "prefix": "@xsl"
+  }
+}

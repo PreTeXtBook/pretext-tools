@@ -12,15 +12,11 @@
     "packages/*"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run build:all",
-    "build:extension": "npm run --workspace=vscode-extension esbuild -- --sourcemap",
-    "build:visual-editor": "npm run --workspace=visual-editor build",
-    "build:prettier-plugin": "npm run --workspace=prettier-plugin-pretext build:raw",
-    "build:all": "npm run build:prettier-plugin && npm run build:visual-editor && npm run build:extension",
-    "watch:extension": "npm run --workspace=vscode-extension watch",
-    "watch:visual-editor": "npm run --workspace=visual-editor watch",
-    "watch:all": "npm-run-all --parallel watch:extension watch:visual-editor",
-    "lint": "eslint packages/ --ext ts"
+    "build": "nx build vscode-extension",
+    "build:dev": "nx build:dev vscode-extension",
+    "watch": "nx build:watch vscode-extension",
+    "lint": "nx run-many -t eslint:lint",
+    "test": "nx run-many -t test"
   },
   "devDependencies": {
     "@nx/eslint": "^22.3.3",

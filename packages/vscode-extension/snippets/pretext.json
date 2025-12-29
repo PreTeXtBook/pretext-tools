@@ -1,0 +1,326 @@
+{
+  "part (division)": {
+    "prefix": "<part>",
+    "body": "<part xml:id=\"part-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</part>"
+  },
+  "chapter (division)": {
+    "prefix": "<chapter>",
+    "body": "<chapter xml:id=\"ch-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</chapter>"
+  },
+  "section (division)": {
+    "prefix": "<section>",
+    "body": "<section xml:id=\"sec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</section>"
+  },
+  "subsection (division)": {
+    "prefix": "<subsection>",
+    "body": "<subsection xml:id=\"subsec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</subsection>"
+  },
+  "subsubsection (division)": {
+    "prefix": "<subsubsection>",
+    "body": "<subsubsection xml:id=\"subsubsec-${1/^\\W*(\\w+)|[\\W|\\s]*(\\w+)|\\W+(\\w*)|\\W*/${1:/downcase}${2:+-}${2:/downcase}${3:/downcase}/gi}\">\n\t<title>$1</title>\n\t$0\n</subsubsection>"
+  },
+  "exercises (division)": {
+    "prefix": "<exercises>-division",
+    "body": "<exercises xml:id=\"exercises-$1\">\n\t$0\n</exercises>",
+    "description": "A division that holds exercises."
+  },
+  "paragraphs (division)": {
+    "prefix": "<paragraphs>",
+    "body": "<paragraphs>\n\t<title>$1</title>\n\t$0\n</paragraphs>"
+  },
+  "references (division)": {
+    "prefix": "<references>",
+    "body": "<references xml:id=\"refs-$1\">\n\t$0\n</references>"
+  },
+  "reading questions (division)": {
+    "prefix": "<reading-questions>",
+    "body": "<reading-questions xml:id=\"rqs-$1\">\n\t$0\n</reading-questions>"
+  },
+  "solutions-division": {
+    "prefix": "<division-solutions>",
+    "body": "<solutions $1>\n\t$0\n<solutions>"
+  },
+  "worksheet": {
+    "prefix": "<worksheet>",
+    "body": "<worksheet xml:id=\"ws-$1\">\n\t$0\n</worksheet>"
+  },
+  "handout": {
+    "prefix": "<handout>",
+    "body": "<handout xml:id=\"handout-$1\">\n\t$0\n</handout>"
+  },
+  "introduction": {
+    "prefix": "<introduction>",
+    "body": "<introduction>\n\t<p>\n\t\t$0\n\t</p>\n</introduction>"
+  },
+  "conclusion": {
+    "prefix": "<conclusion>",
+    "body": "<conclusion>\n\t<p>\n\t\t$0\n\t</p>\n</conclusion>"
+  },
+  "p (paragraph)": {
+    "prefix": ["<p>", "p"],
+    "body": ["<p>\n\t$0", "</p>"]
+  },
+  "math-inline": {
+    "prefix": ["m", "<m>", "$"],
+    "body": "<m>${1:$TM_SELECTED_TEXT}</m>$0"
+  },
+  "math-equation": {
+    "prefix": "<me>",
+    "body": ["<me>", "\t$1", "</me>\n$0"]
+  },
+  "math-equation numbered": {
+    "prefix": "<men>",
+    "body": "<men xml:id=\"eqn-$1\">\n\t$2\n</men>\n$0"
+  },
+  "mathdisplay": {
+    "prefix": "<md>",
+    "body": "<md>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</md>"
+  },
+  "mathdisplay numbered": {
+    "prefix": "<mdn>",
+    "body": "<mdn>\n\t<mrow>$1 \\\\amp $2</mrow>$0\n</mdn>"
+  },
+  "mrow": {
+    "prefix": "<mrow>",
+    "body": "<mrow>$1 \\\\amp $2</mrow>$0"
+  },
+  "code": {
+    "prefix": "<c>",
+    "body": "<c>${1:$TM_SELECTED_TEXT}</c>$0"
+  },
+  "code-display": {
+    "prefix": "<cd>",
+    "body": "<cd>\n\t<cline>$1</cline>$0\n</cd>"
+  },
+  "cline": {
+    "prefix": "<cline>",
+    "body": "<cline>$1</cline>$0"
+  },
+  "console": {
+    "prefix": "<console>",
+    "body": "<console>\n\t<input>$1</input>\n</console>"
+  },
+  "pre": {
+    "prefix": "<pre>",
+    "body": "<pre>\n$0\n</pre>"
+  },
+  "pre w cdata": {
+    "prefix": "<pre>_CDATA",
+    "body": "<pre>\n<![CDATA[\n\t$0\n]]>\n</pre>"
+  },
+  "cdata": {
+    "prefix": "CDATA",
+    "body": "<![CDATA[\n\t$0\n]]>"
+  },
+  "<": {
+    "prefix": ["&lt;", "<"],
+    "body": "&lt;"
+  },
+  "&": {
+    "prefix": ["&amp;", "&"],
+    "body": "&amp;"
+  },
+  "sage": {
+    "prefix": "<sage>",
+    "body": "<sage>\n\t<input>\n\t\t$1\n\t</input>\n\t<output>\n\t\t${2:(for static output)}\n\t</output>\n</sage>\n$0"
+  },
+  "sageplot": {
+    "prefix": "<sageplot>",
+    "body": "<sageplot>\n\t$0\n</sageplot>",
+    "description": "sage-plot, for including sage-generated images using the mbx script."
+  },
+  "index entry": {
+    "prefix": "<idx>",
+    "body": "<idx><h>$1</h></idx>$0"
+  },
+  "index header": {
+    "prefix": "<h>",
+    "body": "<h>$1</h>$0"
+  },
+  "index see": {
+    "prefix": "<see>",
+    "body": "<see>$1</see>$0"
+  },
+  "index see also": {
+    "prefix": "<seealso>",
+    "body": "<seealso>$1</seealso>$0"
+  },
+  "notation": {
+    "prefix": "<notation>",
+    "body": "<notation>\n\t<usage>${1:(in math mode)}</usage>\n  <description>$2</description>\n</notation>$0"
+  },
+  "reference": {
+    "prefix": "<xref>",
+    "body": "<xref ref=\"$1\"/>$0"
+  },
+  "reference (first-last)": {
+    "prefix": "<xref first last>",
+    "body": "<xref first=\"$1\" last=\"$2\"/>$0"
+  },
+  "url": {
+    "prefix": "<url>",
+    "body": "<url href=\"$1\">$2</url>$0"
+  },
+  "url-empty": {
+    "prefix": "<url/>",
+    "body": "<url href=\"$1\" />$0"
+  },
+  "email": {
+    "prefix": "<email>",
+    "body": "<email>$1</email>$0"
+  },
+  "footnote": {
+    "prefix": "<fn>",
+    "body": "<fn>$0</fn>"
+  },
+  "<env>": {
+    "prefix": "<inline-environment>",
+    "body": "<${1:tag}>\n\t$2\n</${1:tag}>",
+    "description": "A generic inline environment with xml:id."
+  },
+  "<env id>": {
+    "prefix": "<environment>",
+    "body": "<${1:env} xml:id=\"$2\">\n\t$0\n</${1:env}>",
+    "description": "A generic environment with xml:id."
+  },
+  "xml:id": {
+    "prefix": "xmlid",
+    "body": "xml:id=\"$1\"$0"
+  },
+
+  "emphasis": {
+    "prefix": "<em>",
+    "body": "<em>${1:$TM_SELECTED_TEXT}</em>$0"
+  },
+  "delete": {
+    "prefix": "<delete>",
+    "body": "<delete>${1:$TM_SELECTED_TEXT}</delete>$0"
+  },
+  "insert": {
+    "prefix": "<insert>",
+    "body": "<insert>${1:$TM_SELECTED_TEXT}</insert>$0"
+  },
+  "stale": {
+    "prefix": "<stale>",
+    "body": "<stale>${1:$TM_SELECTED_TEXT}</stale>$0"
+  },
+  "alert": {
+    "prefix": "<alert>",
+    "body": "<alert>${1:$TM_SELECTED_TEXT}</alert>$0"
+  },
+  "quote": {
+    "prefix": "<q>",
+    "body": "<q>${1:$TM_SELECTED_TEXT}</q>$0"
+  },
+  "term": {
+    "prefix": "<term>",
+    "body": "<term>${1:$TM_SELECTED_TEXT}</term>$0"
+  },
+  "abbreviations": {
+    "prefix": "<abbr>",
+    "body": "<abbr>${1:$TM_SELECTED_TEXT}</abbr>$0"
+  },
+  "acronym": {
+    "prefix": "<acro>",
+    "body": "<acro>${1:$TM_SELECTED_TEXT}</acro>$0"
+  },
+  "initialism": {
+    "prefix": "<init>",
+    "body": "<init>${1:$TM_SELECTED_TEXT}</init>$0"
+  },
+  "foreign": {
+    "prefix": "<foreign>",
+    "body": "<foreign>${1:$TM_SELECTED_TEXT}</foreign>$0"
+  },
+  "taxon": {
+    "prefix": "<taxon>",
+    "body": "<taxon>${1:$TM_SELECTED_TEXT}</taxon>$0"
+  },
+  "pubtitle": {
+    "prefix": "<pubtitle>",
+    "body": "<pubtitle>$1</pubtitle>$0"
+  },
+  "articletitle": {
+    "prefix": "<articletitle>",
+    "body": "<articletitle>$1</articletitle>$0"
+  },
+  "definition-list": {
+    "prefix": "<dl>",
+    "body": "<dl>\n\t<li>\n\t\t<title>$1</title>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</dl>"
+  },
+  "definition-list item": {
+    "prefix": "<li-d>",
+    "body": "<li>\n\t<title>$1</title>\n\t<p>\n\t\t$0\n\t</p>\n</li>"
+  },
+  "enumerate (ordered list)": {
+    "prefix": "<ol>",
+    "body": "<ol>\n\t<li>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</ol>"
+  },
+  "itemize (unordered list)": {
+    "prefix": "<ul>",
+    "body": "<ul>\n\t<li>\n\t\t<p>\n\t\t\t$0\n\t\t</p>\n\t</li>\n</ul>"
+  },
+  "list item": {
+    "prefix": "<li>",
+    "body": "<li>\n\t<p>\n\t\t$0\n\t</p>\n</li>"
+  },
+  "item": {
+    "prefix": "\\item",
+    "body": "<li>\n\t$0\n</li>"
+  },
+  "list item (short, no p)": {
+    "prefix": "<li> inline",
+    "body": "<li>$1</li>$0"
+  },
+  "title": {
+    "prefix": "<title>",
+    "body": "<title>$1</title>\n\n$0"
+  },
+  "creator": {
+    "prefix": "<creator>",
+    "body": "<creator>$1</creator>$0",
+    "description": "creator, for use in axiom-like."
+  },
+  "latex": {
+    "prefix": "<latex>",
+    "body": "<latex />$0"
+  },
+  "tex": {
+    "prefix": "<tex/>",
+    "body": "<tex />$0"
+  },
+  "pretext": {
+    "prefix": "<pretext/>",
+    "body": "<pretext />$0"
+  },
+  "webwork": {
+    "prefix": "<webwork/>",
+    "body": "<webwork/>$0"
+  },
+  "<?xml... top of document": {
+    "prefix": "<?xml...>",
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  },
+  "xinclude": {
+    "prefix": "<xi:xinclude>",
+    "body": "<xi:include href=\"$1\" />$0"
+  },
+  "tag": {
+    "prefix": "<tag>",
+    "body": "<tag>${1:$TM_SELECTED_TEXT}</tag>$0"
+  },
+  "tage": {
+    "prefix": "<tage>",
+    "body": "<tage>${1:$TM_SELECTED_TEXT}</tage>$0",
+    "description": "empty tag"
+  },
+  "attribute": {
+    "prefix": "<attr>",
+    "body": "<attr>$1</attr>$0"
+  },
+  "fillin": {
+    "prefix": "<fillin>",
+    "body": "<fillin characters=\"${1:5}\" />$0"
+  }
+
+}

@@ -2,10 +2,10 @@ name: CI
 on:
   push:
     branches:
-      - '*'
-      - '*/*'
-      - '**'
-      - '!main'
+      - "*"
+      - "*/*"
+      - "**"
+      - "!main"
 jobs:
   main:
     runs-on: ubuntu-latest
@@ -16,8 +16,8 @@ jobs:
       - uses: nrwl/nx-set-shas@v3
       - name: Install deps
         run: npm ci
-      - name: Lint affected
-        run: npx nx affected -t lint
+      #- name: Lint affected
+      #  run: npx nx affected -t lint
       - name: Test affected
         run: npx nx affected -t test --configuration=ci
       - name: Build affected

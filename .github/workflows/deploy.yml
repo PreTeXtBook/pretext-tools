@@ -39,27 +39,37 @@ jobs:
       - name: Update schema
         run: |
           node ./scripts/getSchemas.js
-          git add extension/assets/schema
+          git add packages/vscode-extension/assets/schema
           git commit -m "update schemas" || true
+
+      - name: Build Extension
+        run: |
+          npx nx build vscode-extension
 
       - name: Package
         run: |
-          cd extension
+          cd dist/vscode-extension
           vsce package ${{ inputs.level }}
+
+      - name: Update source package.json version
+        run: |
+          version=$(jq -r '.version' dist/vscode-extension/package.json)
+          jq --arg ver "$version" '.version = $ver' packages/vscode-extension/package.json > packages/vscode-extension/package.json.tmp
+          mv packages/vscode-extension/package.json.tmp packages/vscode-extension/package.json
 
       - name: Deploy to VSMarketplace
         run: |
-          cd extension
+          cd dist/vscode-extension
           vsce publish -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Deploy to Open VSX
         run: |
-          cd extension
+          cd dist/vscode-extension
           ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
 
       - name: setup variables and update changelog
         run: |
-          value=$(jq -r '.version' extension/package.json | tr -d '"')
+          value=$(jq -r '.version' dist/vscode-extension/package.json | tr -d '"')
           echo "VERSION=$value" >> "$GITHUB_ENV"
           newline="\\n## [${value}] - $(date +'%Y-%m-%d')"
           sed '/## \[UNRELEASED\]/a\'"$newline" CHANGELOG.md > CHANGELOG.md.tmp

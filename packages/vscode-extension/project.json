@@ -9,7 +9,8 @@
       "executor": "nx:run-commands",
       "dependsOn": [
         "@pretextbook/format:vite:build",
-        "@pretextbook/visual-editor:vite:build"
+        "@pretextbook/visual-editor:vite:build",
+        "copy-assets"
       ],
       "options": {
         "cwd": "packages/vscode-extension",
@@ -31,7 +32,7 @@
           "externalDependencies": ["esbuild"]
         }
       ],
-      "outputs": ["{workspaceRoot}/extension/out"],
+      "outputs": ["{workspaceRoot}/dist/vscode-extension"],
       "metadata": {
         "technologies": ["esbuild", "vscode"],
         "description": "Builds the VS Code extension with esbuild"
@@ -111,6 +112,42 @@
       },
       "metadata": {
         "description": "Packages the VS Code extension for distribution"
+      }
+    },
+    "copy-assets": {
+      "executor": "nx:run-commands",
+      "options": {
+        "commands": [
+          "mkdir -p ../../dist/vscode-extension",
+          "cp package.json ../../dist/vscode-extension/",
+          "cp logo.png ../../dist/vscode-extension/",
+          "cp language-configuration.json ../../dist/vscode-extension/",
+          "cp -r assets ../../dist/vscode-extension/",
+          "cp -r snippets ../../dist/vscode-extension/",
+          "cp -r syntaxes ../../dist/vscode-extension/"
+        ],
+        "cwd": "packages/vscode-extension",
+        "parallel": false
+      },
+      "cache": true,
+      "inputs": [
+        "{projectRoot}/package.json",
+        "{projectRoot}/logo.png",
+        "{projectRoot}/language-configuration.json",
+        "{projectRoot}/assets/**/*",
+        "{projectRoot}/snippets/**/*",
+        "{projectRoot}/syntaxes/**/*"
+      ],
+      "outputs": [
+        "{workspaceRoot}/dist/vscode-extension/package.json",
+        "{workspaceRoot}/dist/vscode-extension/logo.png",
+        "{workspaceRoot}/dist/vscode-extension/language-configuration.json",
+        "{workspaceRoot}/dist/vscode-extension/assets",
+        "{workspaceRoot}/dist/vscode-extension/snippets",
+        "{workspaceRoot}/dist/vscode-extension/syntaxes"
+      ],
+      "metadata": {
+        "description": "Copies assets and configuration files to the dist folder"
       }
     },
     "build-deps": {

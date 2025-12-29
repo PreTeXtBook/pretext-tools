@@ -1,0 +1,211 @@
+{
+  "&amp;": {
+    "prefix": "&amp;",
+    "body": "&amp;",
+    "description": "ampersand character"
+  },
+  "&lt;": {
+    "prefix": "&lt;",
+    "body": "&lt;",
+    "description": "less than character"
+  },
+  "abbr": {
+    "prefix": "<abbr>",
+    "body": "<abbr>${1:$TM_SELECTED_TEXT}</abbr>$0",
+    "description": "abbreviations"
+  },
+  "acro": {
+    "prefix": "<acro>",
+    "body": "<acro>${1:$TM_SELECTED_TEXT}</acro>$0",
+    "description": "acronym"
+  },
+  "alert": {
+    "prefix": "<alert>",
+    "body": "<alert>${1:$TM_SELECTED_TEXT}</alert>$0",
+    "description": "alert text"
+  },
+  "articletitle": {
+    "prefix": "<articletitle>",
+    "body": "<articletitle>$1</articletitle>$0",
+    "description": "article title"
+  },
+  "attr": {
+    "prefix": "<attr>",
+    "body": "<attr>$1</attr>$0",
+    "description": "attribute"
+  },
+  "c": {
+    "prefix": "<c>",
+    "body": "<c>${1:$TM_SELECTED_TEXT}</c>$0",
+    "description": "code"
+  },
+  "cell": {
+    "prefix": "<cell>",
+    "body": "<cell>$1</cell>$0",
+    "description": "cell (of row in tabular)"
+  },
+  "creator": {
+    "prefix": "<creator>",
+    "body": "<creator>$1</creator>$0",
+    "description": "creator"
+  },
+  "delete": {
+    "prefix": "<delete>",
+    "body": "<delete>${1:$TM_SELECTED_TEXT}</delete>$0",
+    "description": "delete (strike-through) text"
+  },
+  "em": {
+    "prefix": "<em>",
+    "body": "<em>${1:$TM_SELECTED_TEXT}</em>$0",
+    "description": "emphasis text",
+    "sort": "0"
+  },
+  "email": {
+    "prefix": "<email>",
+    "body": "<email>$1</email>$0",
+    "description": "email"
+  },
+  "fillin": {
+    "prefix": "<fillin>",
+    "body": "<fillin characters=\"${1:5}\" />$0",
+    "description": "fillin"
+  },
+  "fn": {
+    "prefix": "<fn>",
+    "body": "<fn>$0</fn>",
+    "description": "footnote"
+  },
+  "foreign": {
+    "prefix": "<foreign>",
+    "body": "<foreign>${1:$TM_SELECTED_TEXT}</foreign>$0",
+    "description": "foreign"
+  },
+  "h": {
+    "prefix": "<h>",
+    "body": "<h>$1</h>$0",
+    "description": "index header"
+  },
+  "idx": {
+    "prefix": "<idx>",
+    "body": "<idx><h>$1</h></idx>$0",
+    "description": "index entry"
+  },
+  "init": {
+    "prefix": "<init>",
+    "body": "<init>${1:$TM_SELECTED_TEXT}</init>$0",
+    "description": "initialism"
+  },
+  "insert": {
+    "prefix": "<insert>",
+    "body": "<insert>${1:$TM_SELECTED_TEXT}</insert>$0",
+    "description": "insert text"
+  },
+  "latex": {
+    "prefix": "<latex />",
+    "body": "<latex />$0",
+    "description": "latex (fancy letters)"
+  },
+  "m": {
+    "prefix": "<m>",
+    "body": "<m>${1:$TM_SELECTED_TEXT}</m>$0",
+    "description": "inline math",
+    "sort": "0"
+  },
+  "md": {
+    "prefix": "<md>",
+    "body": "<md>\n\t$1\n</md>$0",
+    "description": "display math",
+    "sort": "1"
+  },
+  "me": {
+    "prefix": "<me>",
+    "body": "<me>${1:$TM_SELECTED_TEXT}</me>$0",
+    "description": "math expression"
+  },
+  "notation": {
+    "prefix": "<notation>",
+    "body": "<notation>\n\t<usage>${1:(in math mode)}</usage>\n  <description>$2</description>\n</notation>$0"
+  },
+  "pretext": {
+    "prefix": "<pretext/>",
+    "body": "<pretext />$0",
+    "description": "pretext (fancy letters)"
+  },
+  "pubtitle": {
+    "prefix": "<pubtitle>",
+    "body": "<pubtitle>$1</pubtitle>$0",
+    "description": "publication title"
+  },
+  "q": {
+    "prefix": "<q>",
+    "body": "<q>${1:$TM_SELECTED_TEXT}</q>$0",
+    "description": "quote (double)"
+  },
+  "see": {
+    "prefix": "<see>",
+    "body": "<see>$1</see>$0",
+    "description": "see (index)"
+  },
+  "seealso": {
+    "prefix": "<seealso>",
+    "body": "<seealso>$1</seealso>$0",
+    "description": "see also (index)"
+  },
+  "sq": {
+    "prefix": "<sq>",
+    "body": "<sq>${1:$TM_SELECTED_TEXT}</sq>$0",
+    "description": "single quote"
+  },
+  "stale": {
+    "prefix": "<stale>",
+    "body": "<stale>${1:$TM_SELECTED_TEXT}</stale>$0",
+    "description": "stale text"
+  },
+  "tag": {
+    "prefix": "<tag>",
+    "body": "<tag>${1:$TM_SELECTED_TEXT}</tag>$0",
+    "description": "tag"
+  },
+  "tage": {
+    "prefix": "<tage>",
+    "body": "<tage>${1:$TM_SELECTED_TEXT}</tage>$0",
+    "description": "empty tag"
+  },
+  "taxon": {
+    "prefix": "<taxon>",
+    "body": "<taxon>${1:$TM_SELECTED_TEXT}</taxon>$0",
+    "description": "taxonomy"
+  },
+  "term": {
+    "prefix": "<term>",
+    "body": "<term>${1:$TM_SELECTED_TEXT}</term>$0",
+    "description": "term (for defined terms)",
+    "sort": "0"
+  },
+  "tex": {
+    "prefix": "<tex />",
+    "body": "<tex />$0",
+    "description": "tex (fancy letters)"
+  },
+  "url": {
+    "prefix": "<url>",
+    "body": "<url href=\"$1\">$2</url>$0",
+    "description": "url"
+  },
+  "url-empty": {
+    "prefix": "<url />",
+    "body": "<url href=\"$1\" />$0",
+    "description": "url (empty)"
+  },
+  "webwork": {
+    "prefix": "<webwork />",
+    "body": "<webwork />$0",
+    "description": "webwork (fancy letters)"
+  },
+  "xref": {
+    "prefix": "<xref>",
+    "body": "<xref ref=\"$1\"/>$0",
+    "description": "reference",
+    "retrigger": true
+  }
+}

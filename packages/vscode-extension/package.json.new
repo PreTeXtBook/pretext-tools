@@ -1,0 +1,46 @@
+{
+  "name": "pretext-tools",
+  "displayName": "PreTeXt-tools",
+  "description": "Language support and more for PreTeXt",
+  "version": "0.34.0",
+  "license": "See license in LICENSE",
+  "icon": "logo.png",
+  "publisher": "oscarlevin",
+  "repository": "https://github.com/PreTeXtBook/pretext-tools",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Formatters"
+  ],
+  "activationEvents": [
+    "workspaceContains:project.ptx"
+  ],
+  "main": "./out/extension.js",
+  "extensionDependencies": [
+    "redhat.vscode-xml"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "node build.mjs",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "watch": "npm run esbuild -- --watch",
+    "test-compile": "tsc -p ./",
+    "pretest": "npm run esbuild && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "vscode-test",
+    "package": "npm run esbuild -- --production"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "@pretextbook/format": "*"
+  },
+  "prettier": {
+    "tabWidth": 2
+  }
+}
