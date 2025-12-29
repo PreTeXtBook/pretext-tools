@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { getNonce } from "./utils";
-import { formatPTX } from "./formatter";
+import { formatPretext } from "@pretextbook/format";
 
 // Based on the example at https://github.com/microsoft/vscode-extension-samples/tree/main/custom-editor-sample.
 
@@ -112,7 +112,7 @@ export class PretextVisualEditorProvider
             return;
           }
           const edit = new vscode.WorkspaceEdit();
-          const newText = formatPTX(e.value);
+          const newText = formatPretext(e.value);
           edit.replace(
             document.uri,
             new vscode.Range(0, 0, document.lineCount, 0),

@@ -1,0 +1,135 @@
+{
+  "name": "vscode-extension",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "packages/vscode-extension/src",
+  "prefix": "pretext",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "@pretextbook/format:vite:build",
+        "@pretextbook/visual-editor:vite:build"
+      ],
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run esbuild-base -- --minify"
+      },
+      "configurations": {
+        "development": {
+          "command": "npm run esbuild"
+        },
+        "production": {
+          "command": "npm run vscode:prepublish"
+        }
+      },
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        {
+          "externalDependencies": ["esbuild"]
+        }
+      ],
+      "outputs": ["{workspaceRoot}/extension/out"],
+      "metadata": {
+        "technologies": ["esbuild", "vscode"],
+        "description": "Builds the VS Code extension with esbuild"
+      }
+    },
+    "build:dev": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "@pretextbook/format:vite:build",
+        "@pretextbook/visual-editor:vite:build"
+      ],
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run esbuild"
+      },
+      "cache": false,
+      "metadata": {
+        "description": "Builds the VS Code extension in development mode with sourcemaps"
+      }
+    },
+    "build:watch": {
+      "executor": "nx:run-commands",
+      "dependsOn": [
+        "@pretextbook/format:vite:build",
+        "@pretextbook/visual-editor:vite:build"
+      ],
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run esbuild-watch"
+      },
+      "isBackground": true,
+      "cache": false,
+      "metadata": {
+        "description": "Builds the VS Code extension in watch mode"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["^typecheck"],
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run test-compile"
+      },
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "metadata": {
+        "technologies": ["typescript"],
+        "description": "Type-checks the VS Code extension source"
+      }
+    },
+    "lint": {
+      "executor": "nx:noop",
+      "metadata": {
+        "technologies": ["eslint"],
+        "description": "Lints the VS Code extension source code (currently disabled)"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run test"
+      },
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "metadata": {
+        "technologies": ["vscode-test"],
+        "description": "Tests the VS Code extension"
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "options": {
+        "cwd": "packages/vscode-extension",
+        "command": "npm run package"
+      },
+      "metadata": {
+        "description": "Packages the VS Code extension for distribution"
+      }
+    },
+    "build-deps": {
+      "executor": "nx:noop",
+      "dependsOn": ["^build"],
+      "options": {},
+      "configurations": {}
+    },
+    "watch-deps": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build-deps"],
+      "options": {
+        "command": "npx nx watch --projects vscode-extension --includeDependentProjects -- npx nx build-deps vscode-extension"
+      },
+      "isBackground": true,
+      "continuous": true,
+      "cache": false
+    }
+  },
+  "tags": ["npm:private"],
+  "implicitDependencies": ["@pretextbook/format", "@pretextbook/visual-editor"]
+}

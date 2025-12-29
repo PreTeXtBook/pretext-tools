@@ -51,7 +51,7 @@ const buildOptions = {
   sourcemap: !production,
   sourcesContent: false,
   platform: "node",
-  external: ["vscode"],
+  external: ["vscode", "@pretextbook/format"],
   outfile: "../../extension/out/extension.js",
   plugins: [esbuildProblemMatcherPlugin],
 };
@@ -64,7 +64,7 @@ const buildOptionsLSP = {
   minify: production,
   sourcemap: !production,
   sourcesContent: false,
-  external: ["vscode"],
+  external: ["vscode", "@pretextbook/format"],
   outfile: "../../extension/out/lsp-server.js",
   plugins: [esbuildProblemMatcherPlugin],
 };

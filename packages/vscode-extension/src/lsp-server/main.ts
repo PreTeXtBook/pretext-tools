@@ -29,7 +29,7 @@ import {
   getCompletionDetails,
 } from "./completions/get-completions";
 //import { formatDocument, formatRange } from "./formatter";
-import { formatDocument, formatRange, formatText } from "./formatter-classic";
+import { formatDocument, formatRange, formatText } from "./formatter-ptx";
 import { getReferences, updateReferences } from "./completions/utils";
 import { getAst, initializeSchema, Schema } from "./schema";
 import path from "path";
@@ -198,6 +198,25 @@ connection.onDidChangeConfiguration((change) => {
         if (editorConfig && globalSettings.editor !== editorConfig) {
           console.log("Editor config changed to", editorConfig);
           globalSettings.editor = editorConfig;
+        }
+      });
+    connection.workspace
+      .getConfiguration(tabSizeConfigSection)
+      .then((tabSizeConfig) => {
+        if (tabSizeConfig && globalSettings.editor.tabSize !== tabSizeConfig) {
+          console.log("Tab size changed to", tabSizeConfig);
+          globalSettings.editor.tabSize = tabSizeConfig;
+        }
+      });
+    connection.workspace
+      .getConfiguration(insertSpacesConfigSection)
+      .then((insertSpacesConfig) => {
+        if (
+          insertSpacesConfig &&
+          globalSettings.editor.insertSpaces !== insertSpacesConfig
+        ) {
+          console.log("Insert spaces changed to", insertSpacesConfig);
+          globalSettings.editor.insertSpaces = insertSpacesConfig;
         }
       });
     // Only update schema if that is the configuration that changed:

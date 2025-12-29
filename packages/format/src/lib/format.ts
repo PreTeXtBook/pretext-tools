@@ -1,5 +1,9 @@
-import { blockTags, lineEndTags, newlineTags, verbatimTags } from "./docStructure";
-
+import {
+  blockTags,
+  lineEndTags,
+  newlineTags,
+  verbatimTags,
+} from "./docStructure";
 
 // Function to join lines of text, preserving verbatim blocks.
 function joinLines(fullText: string): string {
@@ -42,7 +46,6 @@ function joinLines(fullText: string): string {
   return joinedText;
 }
 
-
 export function formatPretext(
   text: string,
   options?: {
@@ -50,7 +53,7 @@ export function formatPretext(
     breakSentences?: boolean;
     insertSpaces?: boolean;
     tabSize?: number;
-  }
+  },
 ): string {
   // set default options
   const breakSentences = options?.breakSentences ?? false;
@@ -67,7 +70,7 @@ export function formatPretext(
       // start tag can be <tag>, <tag attr="val">, or <tag xmlns="..."> but shouldn't be self closing (no self closing tag would have xmlns in it)
       let startTag = new RegExp(
         "<" + btag + "(>|(\\s[^\\/]*?)>|(.*xmlns.*?)>)",
-        "g"
+        "g",
       );
       let endTag = new RegExp("<\\/" + btag + ">([\\s\\S]*?[.,!?;:]?)", "g");
       allText = allText.replace(startTag, "\n$&\n");
@@ -83,7 +86,6 @@ export function formatPretext(
     allText = allText.replace(endTag, "$&\n");
     allText = allText.replace(selfCloseTag, "$&\n");
   }
-
 
   // Set indent character to \t or a number of ss based on editor settings.
   let indentChar = "\t";
@@ -131,7 +133,7 @@ export function formatPretext(
       if (breakSentences) {
         trimmedLine = trimmedLine.replace(
           /\.\s+/g,
-          ".\n" + indentChar.repeat(level)
+          ".\n" + indentChar.repeat(level),
         );
       }
       fixedLines.push(indentChar.repeat(level) + trimmedLine);
