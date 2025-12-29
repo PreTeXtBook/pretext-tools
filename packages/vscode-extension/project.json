@@ -120,6 +120,8 @@
         "commands": [
           "mkdir -p ../../dist/vscode-extension",
           "cp package.json ../../dist/vscode-extension/",
+          "jq 'del(.scripts) | del(.devDependencies) | del(.dependencies[\"@pretextbook/format\"])' ../../dist/vscode-extension/package.json > ../../dist/vscode-extension/package.json.tmp && mv ../../dist/vscode-extension/package.json.tmp ../../dist/vscode-extension/package.json",
+          "cp ../../LICENSE ../../dist/vscode-extension/",
           "cp logo.png ../../dist/vscode-extension/",
           "cp language-configuration.json ../../dist/vscode-extension/",
           "cp -r assets ../../dist/vscode-extension/",
@@ -132,6 +134,7 @@
       "cache": true,
       "inputs": [
         "{projectRoot}/package.json",
+        "{workspaceRoot}/LICENSE",
         "{projectRoot}/logo.png",
         "{projectRoot}/language-configuration.json",
         "{projectRoot}/assets/**/*",
@@ -140,6 +143,7 @@
       ],
       "outputs": [
         "{workspaceRoot}/dist/vscode-extension/package.json",
+        "{workspaceRoot}/dist/vscode-extension/LICENSE",
         "{workspaceRoot}/dist/vscode-extension/logo.png",
         "{workspaceRoot}/dist/vscode-extension/language-configuration.json",
         "{workspaceRoot}/dist/vscode-extension/assets",
