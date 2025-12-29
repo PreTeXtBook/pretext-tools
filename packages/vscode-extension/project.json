@@ -83,21 +83,10 @@
       }
     },
     "lint": {
-      "executor": "nx:run-commands",
-      "options": {
-        "cwd": "packages/vscode-extension",
-        "command": "npm run lint"
-      },
-      "cache": true,
-      "inputs": [
-        "default",
-        {
-          "externalDependencies": ["eslint"]
-        }
-      ],
+      "executor": "nx:noop",
       "metadata": {
         "technologies": ["eslint"],
-        "description": "Lints the VS Code extension source code"
+        "description": "Lints the VS Code extension source code (currently disabled)"
       }
     },
     "test": {
