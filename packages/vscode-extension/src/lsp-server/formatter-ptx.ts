@@ -15,7 +15,7 @@ function getOptions() {
     blankLines: globalSettings.formatter.blankLines,
     indentSize: globalSettings.editor.tabSize,
     insertSpaces: globalSettings.editor.insertSpaces,
-  }
+  };
   return options;
 }
 

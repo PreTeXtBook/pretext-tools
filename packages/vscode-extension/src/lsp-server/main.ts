@@ -203,10 +203,7 @@ connection.onDidChangeConfiguration((change) => {
     connection.workspace
       .getConfiguration(tabSizeConfigSection)
       .then((tabSizeConfig) => {
-        if (
-          tabSizeConfig &&
-          globalSettings.editor.tabSize !== tabSizeConfig
-        ) {
+        if (tabSizeConfig && globalSettings.editor.tabSize !== tabSizeConfig) {
           console.log("Tab size changed to", tabSizeConfig);
           globalSettings.editor.tabSize = tabSizeConfig;
         }

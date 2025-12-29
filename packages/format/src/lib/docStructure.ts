@@ -153,7 +153,8 @@ const docEmpty = [
   "video",
   "slate",
   "webwork",
-]; const listLike = ["ol", "ul", "dl"];
+];
+const listLike = ["ol", "ul", "dl"];
 const mathDisplay = ["me", "men", "md", "mdn"];
 const footnoteLike = ["fn"];
 const nestableTags = [
@@ -203,4 +204,3 @@ export const blockTags = [
   ...nestableTags,
   ...mathDisplay,
 ];
-
