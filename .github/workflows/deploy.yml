@@ -85,16 +85,12 @@ jobs:
           git push origin main
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: "v${{ env.VERSION }}"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.VERSION }}
+        run: |
+          gh release create "v$tag" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="v$tag" \
+            --notes="See the [changelog](CHANGELOG.md) for details."
 
-          release_name: "v${{ env.VERSION }}"
-
-          body: |
-            See the [changelog](CHANGELOG.md) for details.
-          draft: false
-          prerelease: false
