@@ -19,10 +19,10 @@
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}/extension"
+                "--extensionDevelopmentPath=${workspaceFolder}/dist/vscode-extension"
             ],
             "outFiles": [
-                "${workspaceFolder}/extension/out/**/*.js"
+                "${workspaceFolder}/dist/vscode-extension/out/**/*.js"
             ],
             "preLaunchTask": "${defaultBuildTask}"
         },
@@ -33,7 +33,7 @@
             "port": 6009,
             "restart": true,
             "outFiles": [
-                "${workspaceRoot}/extension/out/lsp-server.js"
+                "${workspaceRoot}/dist/vscode-extension/out/lsp-server.js"
             ]
         },
         {
@@ -41,11 +41,11 @@
             "type": "extensionHost",
             "request": "launch",
             "args": [
-                "--extensionDevelopmentPath=${workspaceFolder}",
-                "--extensionTestsPath=${workspaceFolder}/extension/out/test/suite/index"
+                "--extensionDevelopmentPath=${workspaceFolder}/dist/vscode-extension",
+                "--extensionTestsPath=${workspaceFolder}/dist/vscode-extension/out/test/suite/index"
             ],
             "outFiles": [
-                "${workspaceFolder}/extension/out/test/**/*.js"
+                "${workspaceFolder}/dist/vscode-extension/out/test/**/*.js"
             ],
             "preLaunchTask": "${defaultBuildTask}"
         }

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Changed
+
+- Cleaned up convert menu options: PreTeXt Markdown is now the default choice; move Plastex conversion to experimental features.
+
 ## [0.34.1] - 2025-12-29
 
 ### Changed

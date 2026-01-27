@@ -40,6 +40,7 @@ import {
 import { projects } from "./project";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
+import { convertToPretext } from "./importFiles";
 
 // this method is called when your extension is activated
 export async function activate(context: ExtensionContext) {
@@ -137,6 +138,7 @@ export async function activate(context: ExtensionContext) {
     }),
     commands.registerCommand("pretext-tools.convertText", cmdConvertText),
     commands.registerCommand("pretext-tools.convertFile", cmdConvertFile),
+    commands.registerCommand("pretext-tools.convertFilePandoc", convertToPretext),
     commands.registerCommand("pretext-tools.showLog", showLog),
     commands.registerCommand("pretext-tools.refreshTargets", refreshProjects),
     //commands.registerCommand("pretext-tools.installSage", cmdInstallSage),

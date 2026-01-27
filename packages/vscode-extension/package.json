@@ -201,10 +201,17 @@
         "description": "Spell checks the PreTeXt source file using Code Spell Checker."
       },
       {
+        "command": "pretext-tools.convertFilePandoc",
+        "title": "Convert external file to PreTeXt using Pandoc",
+        "category": "PreTeXt",
+        "description": "Converts a selected external file to PreTeXt pandoc (if installed)."
+      },
+      {
         "command": "pretext-tools.convertFile",
         "title": "Convert external file to PreTeXt",
         "category": "PreTeXt",
-        "description": "Converts a selected external file to PreTeXt using plastex or pandoc (if installed)."
+        "description": "Converts a selected external file to PreTeXt using plastex or pandoc (if installed).",
+        "enablement": "config.pretext-tools.experimentalFeatures"
       },
       {
         "command": "pretext-tools.convertText",

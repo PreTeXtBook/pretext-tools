@@ -33,6 +33,9 @@ export function cmdConvertFile() {
     });
 }
 
+
+
+
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
   if (!editor) {
@@ -51,7 +54,7 @@ export async function cmdConvertText() {
     "Converting selected text to PreTeXt format.",
   );
   window
-    .showQuickPick(["LaTeX", "Markdown", "Mixed text"], {
+    .showQuickPick(["PreTeXt Markdown", "LaTeX", "Classic Markdown"], {
       placeHolder: "Which format is the selected text?",
     })
     .then(async (qpSelection) => {
@@ -62,11 +65,11 @@ export async function cmdConvertText() {
         case "LaTeX":
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
-        case "Markdown":
+        case "Classic Markdown":
           convertedText = await markdownToPretext(initialText);
           break;
-        case "Mixed text":
-          convertedText = await cmdConvertMixedtextToPretext(initialText);
+        case "PreTeXt Markdown":
+          convertedText = await cmdConvertPMDToPretext(initialText);
           break;
       }
     })
@@ -146,9 +149,9 @@ function convertWithUnified(text: string) {
   return convert(text).value as string;
 }
 
-async function cmdConvertMixedtextToPretext(initialText: string) {
+async function cmdConvertPMDToPretext(initialText: string) {
   pretextOutputChannel.appendLine(
-    "Mixed text to PreTeXt conversion is still very experiemental.  Use with care.",
+    "PreTeXt Markdown to PreTeXt conversion is still experiemental.  Use with care.",
   );
   const newText = FlexTeXtConvert(initialText);
   return lspFormatText(newText);
