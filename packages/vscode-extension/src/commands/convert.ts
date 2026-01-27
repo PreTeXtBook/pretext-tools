@@ -33,9 +33,6 @@ export function cmdConvertFile() {
     });
 }
 
-
-
-
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
   if (!editor) {
