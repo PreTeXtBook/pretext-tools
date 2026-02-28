@@ -51,8 +51,7 @@ jobs:
         working-directory: packages/${{ inputs.package }}
         run: |
           npm version ${{ inputs.version-bump }} -m "chore: release @pretextbook/${{ inputs.package }} %s"
-          npm publish
+          npm publish --provenance --access public
 
       - name: Push version changes
         run: git push --follow-tags
-
