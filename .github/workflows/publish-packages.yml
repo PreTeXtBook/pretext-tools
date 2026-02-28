@@ -1,71 +1,58 @@
-name: Publish Packages
+name: Publish NPM Packages
 on:
   workflow_dispatch:
     inputs:
-      publish-format:
-        description: "Publish @pretextbook/format"
-        required: false
-        default: false
-        type: boolean
-      publish-completions:
-        description: "Publish @pretextbook/completions"
-        required: false
-        default: false
-        type: boolean
+      package:
+        description: "Package to publish"
+        required: true
+        type: choice
+        options:
+          - format
+          - completions
+      version-bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 permissions:
   id-token: write
   contents: write
 
 jobs:
-  publish-format:
-    if: ${{ inputs.publish-format == true }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build format package
-        run: npx nx build format
+      - name: Build package
+        run: npx nx build ${{ inputs.package }}
 
-      - name: Release @pretextbook/format
-        working-directory: packages/format
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bump version and publish
+        working-directory: packages/${{ inputs.package }}
+        run: |
+          npm version ${{ inputs.version-bump }} -m "chore: release @pretextbook/${{ inputs.package }} %s"
+          npm publish
 
-  publish-completions:
-    if: ${{ inputs.publish-completions == true }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Push version changes
+        run: git push --follow-tags
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build completions package
-        run: npx nx build completions
-
-      - name: Release @pretextbook/completions
-        working-directory: packages/completions
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
