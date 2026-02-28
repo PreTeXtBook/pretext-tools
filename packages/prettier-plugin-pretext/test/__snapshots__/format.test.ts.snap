@@ -292,8 +292,8 @@ exports[`example3 1`] = `
   <p>This <term>is</term> a shorter line.</p>
 
   <p>
-    This is a paragraph with <alert>lots</alert> of <em>examples or such</em> of
-    <term>inline</term> and <m>\\sin(x)</m> math-like <c>expressions</c>.
+    This is a paragraph with <alert>lots</alert> of <em>examples or such</em> of <term>inline</term>
+    and <m>\\sin(x)</m> math-like <c>expressions</c>.
   </p>
 
   <p>

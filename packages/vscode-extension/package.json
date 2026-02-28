@@ -498,9 +498,9 @@
     "test": "vscode-test",
     "package": "npm run esbuild -- --production"
   },
-  "devDependencies": {},
   "dependencies": {
-    "@pretextbook/format": "*"
+    "@pretextbook/format": "*",
+    "@pretextbook/completions": "^0.0.1"
   },
   "prettier": {
     "tabWidth": 2

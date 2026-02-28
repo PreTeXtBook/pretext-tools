@@ -2,7 +2,7 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "nxCloudId": "69470f3642854522eaf8b355",
   "release": {
-    "projects": ["packages/format"]
+    "projects": ["packages/format", "packages/completions"]
   },
   "plugins": [
     {

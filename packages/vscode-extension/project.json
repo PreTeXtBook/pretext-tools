@@ -8,6 +8,7 @@
     "build": {
       "executor": "nx:run-commands",
       "dependsOn": [
+        "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
         "@pretextbook/visual-editor:vite:build",
         "copy-assets"
@@ -41,6 +42,7 @@
     "build:dev": {
       "executor": "nx:run-commands",
       "dependsOn": [
+        "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
         "@pretextbook/visual-editor:vite:build"
       ],
@@ -56,6 +58,7 @@
     "build:watch": {
       "executor": "nx:run-commands",
       "dependsOn": [
+        "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
         "@pretextbook/visual-editor:vite:build"
       ],
@@ -120,7 +123,7 @@
         "commands": [
           "mkdir -p ../../dist/vscode-extension",
           "cp package.json ../../dist/vscode-extension/",
-          "jq 'del(.scripts) | del(.devDependencies) | del(.dependencies[\"@pretextbook/format\"])' ../../dist/vscode-extension/package.json > ../../dist/vscode-extension/package.json.tmp && mv ../../dist/vscode-extension/package.json.tmp ../../dist/vscode-extension/package.json",
+          "jq 'del(.scripts) | del(.devDependencies) | del(.dependencies[\"@pretextbook/format\"]) | del(.dependencies[\"@pretextbook/completions\"])' ../../dist/vscode-extension/package.json > ../../dist/vscode-extension/package.json.tmp && mv ../../dist/vscode-extension/package.json.tmp ../../dist/vscode-extension/package.json",
           "cp ../../LICENSE ../../dist/vscode-extension/",
           "cp logo.png ../../dist/vscode-extension/",
           "cp language-configuration.json ../../dist/vscode-extension/",
@@ -172,5 +175,5 @@
     }
   },
   "tags": ["npm:private"],
-  "implicitDependencies": ["@pretextbook/format", "@pretextbook/visual-editor"]
+  "implicitDependencies": []
 }

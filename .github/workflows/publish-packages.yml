@@ -1,0 +1,71 @@
+name: Publish Packages
+on:
+  workflow_dispatch:
+    inputs:
+      publish-format:
+        description: "Publish @pretextbook/format"
+        required: false
+        default: false
+        type: boolean
+      publish-completions:
+        description: "Publish @pretextbook/completions"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  publish-format:
+    if: ${{ inputs.publish-format == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build format package
+        run: npx nx build format
+
+      - name: Release @pretextbook/format
+        working-directory: packages/format
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-completions:
+    if: ${{ inputs.publish-completions == true }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build completions package
+        run: npx nx build completions
+
+      - name: Release @pretextbook/completions
+        working-directory: packages/completions
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
