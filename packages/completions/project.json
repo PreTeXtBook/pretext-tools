@@ -8,7 +8,7 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "dependsOn": ["^build"],
+      "dependsOn": ["refresh-schema", "^build"],
       "options": {
         "cwd": "packages/completions",
         "command": "tsc --build tsconfig.lib.json"
@@ -23,6 +23,23 @@
       "options": {
         "cwd": "packages/completions",
         "command": "tsc --build --emitDeclarationOnly"
+      },
+      "cache": true,
+      "inputs": ["default", "^default"]
+    },
+    "refresh-schema": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/completions",
+        "command": "npm run fetch:dev-schema && npm run generate:schema"
+      },
+      "cache": false
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/completions",
+        "command": "vitest run"
       },
       "cache": true,
       "inputs": ["default", "^default"]

@@ -46,7 +46,7 @@ export async function getCompletions(
     schema,
     references,
     currentFileDir: path.dirname(URI.parse(uri).fsPath),
-    sourceFiles: glob.sync("source/**", { nodir: true }),
+    sourceFiles: glob.sync("source/**", { nodir: true, absolute: true }),
   });
 
   if (!completionItems || completionItems.length === 0) {

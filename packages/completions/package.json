@@ -28,6 +28,11 @@
     "src/**/*",
     "README.md"
   ],
+  "scripts": {
+    "fetch:dev-schema": "node ../../scripts/getSchemas.js --only-pretext-dev",
+    "generate:schema": "node ./scripts/generate-default-schema.mjs",
+    "prebuild": "npm run fetch:dev-schema && npm run generate:schema"
+  },
   "dependencies": {
     "vscode-languageserver": "^9.0.1"
   },

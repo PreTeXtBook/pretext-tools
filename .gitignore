@@ -72,3 +72,5 @@ dist
 .nx/workspace-data
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
+
+.nx/polygraph

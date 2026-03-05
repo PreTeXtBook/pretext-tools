@@ -22,7 +22,7 @@ export type ReferenceEntry = [string, string, string];
 export type GetPretextCompletionsParams = {
   text: string;
   position: Position;
-  schema: CompletionSchema;
+  schema?: CompletionSchema;
   references?: ReferenceEntry[];
   currentFileDir?: string;
   sourceFiles?: string[];
