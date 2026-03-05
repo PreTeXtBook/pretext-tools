@@ -29,7 +29,6 @@
     "README.md"
   ],
   "dependencies": {
-    "glob": "^13.0.0",
     "vscode-languageserver": "^9.0.1"
   },
   "publishConfig": {

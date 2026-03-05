@@ -15,7 +15,10 @@ const items = await getPretextCompletions({
   schema,
   references,
   currentFileDir,
+  sourceFiles,
 });
 ```
 
 The returned completion items follow `vscode-languageserver` completion item types.
+
+For `href`/`source` file completions, pass `sourceFiles` explicitly (typically discovered by the host environment).

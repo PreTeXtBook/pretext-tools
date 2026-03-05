@@ -2,6 +2,7 @@ import {
   CompletionItem,
   TextDocumentPositionParams,
 } from "vscode-languageserver/node";
+import { glob } from "glob";
 import { documents, getDocumentInfo } from "../state";
 import * as path from "path";
 import { URI } from "vscode-uri";
@@ -45,6 +46,7 @@ export async function getCompletions(
     schema,
     references,
     currentFileDir: path.dirname(URI.parse(uri).fsPath),
+    sourceFiles: glob.sync("source/**", { nodir: true }),
   });
 
   if (!completionItems || completionItems.length === 0) {

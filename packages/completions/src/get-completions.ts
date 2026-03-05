@@ -1,5 +1,3 @@
-import { glob } from "glob";
-import path from "path";
 import {
   CompletionItem,
   CompletionItemKind,
@@ -12,6 +10,22 @@ import {
 } from "./types";
 import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from "./constants";
 import { getCurrentTag, getTextInRange, linePrefix, rangeInLine } from "./utils";
+
+function normalizePath(filePath: string): string {
+  return filePath.replace(/\\/g, "/");
+}
+
+function toRelativeFilePath(filePath: string, currentFileDir?: string): string {
+  const normalizedFilePath = normalizePath(filePath);
+  if (!currentFileDir) {
+    return normalizedFilePath;
+  }
+  const normalizedCurrentDir = normalizePath(currentFileDir).replace(/\/+$/, "");
+  if (normalizedFilePath.startsWith(normalizedCurrentDir + "/")) {
+    return normalizedFilePath.slice(normalizedCurrentDir.length + 1);
+  }
+  return normalizedFilePath;
+}
 
 export function getCompletionType(
   text: string,
@@ -34,19 +48,18 @@ export function getCompletionType(
 export async function getPretextCompletions(
   params: GetPretextCompletionsParams,
 ): Promise<CompletionItem[] | null> {
-  const { text, position, schema } = params;
+  const { text, position } = params;
   const completionType = getCompletionType(text, position);
   let completionItems: CompletionItem[] = [];
 
   if (completionType === "file") {
-    const currentFileDir = params.currentFileDir || ".";
-    const files = params.sourceFiles || glob.sync("source/**", { nodir: true });
+    const files = params.sourceFiles || [];
     completionItems = files.flatMap((f) => {
-      let relPath = path.relative(currentFileDir, path.resolve(f));
-      relPath = relPath.replaceAll(path.sep, path.posix.sep);
+      const relPath = toRelativeFilePath(f, params.currentFileDir);
+      const dotRelative = relPath.startsWith("./") ? relPath : "./" + relPath;
       return [
         { label: relPath, kind: CompletionItemKind.File },
-        { label: "./" + relPath, kind: CompletionItemKind.File },
+        { label: dotRelative, kind: CompletionItemKind.File },
       ];
     });
     return completionItems;
