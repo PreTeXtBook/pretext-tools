@@ -1,17 +1,84 @@
-import { glob } from "glob";
-import path from "path";
 import {
   CompletionItem,
   CompletionItemKind,
   InsertTextFormat,
 } from "vscode-languageserver/node";
 import {
+  CompletionSchema,
   CompletionType,
   GetPretextCompletionsParams,
   ReferenceEntry,
 } from "./types";
+import { defaultDevSchema } from "./default-dev-schema";
 import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from "./constants";
 import { getCurrentTag, getTextInRange, linePrefix, rangeInLine } from "./utils";
+
+function normalizePath(filePath: string): string {
+  return filePath.replace(/\\/g, "/");
+}
+
+function isAbsolutePath(filePath: string): boolean {
+  return filePath.startsWith("/") || /^[A-Za-z]:\//.test(filePath);
+}
+
+function toPathSegments(filePath: string): string[] {
+  return filePath.replace(/\/+$/, "").split("/").filter(Boolean);
+}
+
+function toRelativeFilePath(filePath: string, currentFileDir?: string): string {
+  const normalizedFilePath = normalizePath(filePath);
+  if (!currentFileDir) {
+    return normalizedFilePath;
+  }
+
+  const normalizedCurrentDir = normalizePath(currentFileDir);
+  if (
+    !isAbsolutePath(normalizedFilePath) ||
+    !isAbsolutePath(normalizedCurrentDir)
+  ) {
+    return normalizedFilePath;
+  }
+
+  const fileSegments = toPathSegments(normalizedFilePath);
+  const currentDirSegments = toPathSegments(normalizedCurrentDir);
+
+  // Windows paths are case-insensitive; normalize for segment comparison.
+  const fileComparable = fileSegments.map((seg) => seg.toLowerCase());
+  const currentComparable = currentDirSegments.map((seg) => seg.toLowerCase());
+
+  let commonPrefixLength = 0;
+  while (
+    commonPrefixLength < fileComparable.length &&
+    commonPrefixLength < currentComparable.length &&
+    fileComparable[commonPrefixLength] === currentComparable[commonPrefixLength]
+  ) {
+    commonPrefixLength += 1;
+  }
+
+  if (commonPrefixLength === 0) {
+    return normalizedFilePath;
+  }
+
+  const parentSegments = Array.from(
+    { length: currentDirSegments.length - commonPrefixLength },
+    () => "..",
+  );
+  const childSegments = fileSegments.slice(commonPrefixLength);
+  const relativeSegments = [...parentSegments, ...childSegments];
+  return relativeSegments.join("/");
+}
+
+function withOptionalDotPrefix(filePath: string): string {
+  if (
+    filePath.startsWith("./") ||
+    filePath.startsWith("../") ||
+    filePath.startsWith("/") ||
+    /^[A-Za-z]:\//.test(filePath)
+  ) {
+    return filePath;
+  }
+  return "./" + filePath;
+}
 
 export function getCompletionType(
   text: string,
@@ -34,20 +101,27 @@ export function getCompletionType(
 export async function getPretextCompletions(
   params: GetPretextCompletionsParams,
 ): Promise<CompletionItem[] | null> {
-  const { text, position, schema } = params;
+  const { text, position } = params;
+  const schema = params.schema ?? defaultDevSchema;
   const completionType = getCompletionType(text, position);
   let completionItems: CompletionItem[] = [];
 
   if (completionType === "file") {
-    const currentFileDir = params.currentFileDir || ".";
-    const files = params.sourceFiles || glob.sync("source/**", { nodir: true });
+    const files = params.sourceFiles || [];
+    const labels = new Set<string>();
     completionItems = files.flatMap((f) => {
-      let relPath = path.relative(currentFileDir, path.resolve(f));
-      relPath = relPath.replaceAll(path.sep, path.posix.sep);
-      return [
-        { label: relPath, kind: CompletionItemKind.File },
-        { label: "./" + relPath, kind: CompletionItemKind.File },
-      ];
+      const relPath = toRelativeFilePath(f, params.currentFileDir);
+      const dotRelative = withOptionalDotPrefix(relPath);
+      const items: CompletionItem[] = [];
+
+      for (const label of [relPath, dotRelative]) {
+        if (label && !labels.has(label)) {
+          labels.add(label);
+          items.push({ label, kind: CompletionItemKind.File });
+        }
+      }
+
+      return items;
     });
     return completionItems;
   }
@@ -67,9 +141,9 @@ export async function getPretextCompletions(
   }
 
   if (completionType === "attribute") {
-    completionItems = getAttributeCompletions(params);
+    completionItems = getAttributeCompletions(params, schema);
   } else if (completionType === "element") {
-    completionItems = getElementCompletions(params);
+    completionItems = getElementCompletions(params, schema);
   }
 
   return completionItems;
@@ -87,8 +161,9 @@ function getRefCompletions(references: ReferenceEntry[]): CompletionItem[] {
 
 function getAttributeCompletions(
   params: GetPretextCompletionsParams,
+  schema: NonNullable<GetPretextCompletionsParams["schema"]>,
 ): CompletionItem[] {
-  const { text, position, schema } = params;
+  const { text, position } = params;
   const prefix = linePrefix(text, position);
   const match = prefix.match(/<[^>/]+$/);
   if (!match) {
@@ -135,8 +210,9 @@ function getAttributeCompletions(
 
 function getElementCompletions(
   params: GetPretextCompletionsParams,
+  schema: NonNullable<GetPretextCompletionsParams["schema"]>,
 ): CompletionItem[] {
-  const { text, position, schema } = params;
+  const { text, position } = params;
   const element = getCurrentTag(text, position);
 
   if (!element || !schema.elementChildren[element]?.elements) {
@@ -195,7 +271,7 @@ function getElementCompletions(
 function getExtraCompletions(
   element: string,
   range: ReturnType<typeof rangeInLine>,
-  schema: GetPretextCompletionsParams["schema"],
+  schema: CompletionSchema,
 ): CompletionItem[] {
   const extraCompletions: CompletionItem[] = [];
   for (const item of Object.values(EXTRA_ELEMENT_SNIPPETS)) {

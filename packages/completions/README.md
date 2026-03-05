@@ -12,10 +12,23 @@ import { getPretextCompletions } from "@pretextbook/completions";
 const items = await getPretextCompletions({
   text,
   position: { line: 10, character: 4 },
-  schema,
   references,
   currentFileDir,
+  sourceFiles,
 });
 ```
 
 The returned completion items follow `vscode-languageserver` completion item types.
+
+If `schema` is omitted, the package uses a bundled precomputed PreTeXt dev schema.
+You can still provide `schema` explicitly (for custom/stable/publication/project schema behavior).
+
+For `href`/`source` file completions, pass `sourceFiles` explicitly (typically discovered by the host environment).
+Absolute paths are recommended when `currentFileDir` is provided so the package can offer `../`-style relative suggestions.
+
+## Schema Refresh Workflow
+
+The bundled default schema is generated from `extension/assets/schema/pretext-dev.rng`.
+
+- `nx run @pretextbook/completions:build` refreshes the latest dev schema and regenerates `src/default-dev-schema.ts` before compiling.
+- `npm run refresh:schemas` (from workspace root) refreshes all extension schemas and regenerates the completions default schema.

@@ -15,6 +15,7 @@
     "build": "nx build vscode-extension",
     "build:dev": "nx build:dev vscode-extension",
     "watch": "nx build:watch vscode-extension",
+    "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs",
     "lint": "nx run-many -t eslint:lint",
     "test": "nx run-many -t test"
   },
