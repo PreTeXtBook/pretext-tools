@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/completions",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Reusable completion logic for PreTeXt documents",
   "author": "PreTeXt Contributors",
   "license": "MIT",
