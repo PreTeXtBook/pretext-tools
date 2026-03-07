@@ -1,0 +1,44 @@
+/* VisualEditor Component Styles - Namespaced with pretext-plus-editor prefix */
+
+.pretext-plus-editor__visual-editor {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+}
+
+.pretext-plus-editor__visual-editor-header {
+  position: relative;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+.pretext-plus-editor__visual-editor-title {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0;
+  text-align: center;
+}
+
+.pretext-plus-editor__edit-toggle {
+  position: absolute;
+  right: 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pretext-plus-editor__edit-checkbox {
+  margin-right: 0.5rem;
+  cursor: pointer;
+}
+
+.pretext-plus-editor__visual-editor-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 const tt2ptx = {
   para: "p",
   bulletList: "ul",
@@ -7,8 +6,17 @@ const tt2ptx = {
   italic: "em",
 };
 
+function encode(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
 function json2ptx(json: any) {
-  let ptx = '<?xml version="1.0" encoding="UTF-8"?>\n\n';
+  let ptx = "";
+  // NB we are omitting the XML declaration at the top for now.
+  // let ptx = '<?xml version="1.0" encoding="UTF-8"?>\n\n';
   // Top level node is a ptxFragment, but double check this:
   if (json.type !== "ptxFragment") {
     console.log("Top level node is not a ptxFragment");
@@ -25,6 +33,8 @@ function json2ptx(json: any) {
     return "";
   }
   ptx += processNode(json.content[0]);
+  // remove the remaining <ptxdoc> root tags; these are not part of pretext, just used for the visual editor.
+  ptx = ptx.replace(/^<ptxdoc>\s*/, '\n').replace(/\s*<\/ptxdoc>/, '');
   return ptx;
 }
 
@@ -41,7 +51,13 @@ function processNode(json: any) {
     if (elementName === "rawptx") {
       // rawptx nodes are special, they are the unknown tags that we strip away
       for (const fragment of json.content) {
-        ptx = ptx + processNode(fragment);
+        // fragment should have type text, and we just return its value unchanged
+        if (fragment.type !== "text") {
+          console.log(
+            "Unexpected non-text node inside rawptx: " + JSON.stringify(fragment)
+          );
+        }
+        ptx = ptx + fragment.text;
       }
     } else {
       // all other nodes are processed by adding the correct tag and attributes around its content
@@ -73,13 +89,15 @@ function processNode(json: any) {
           json.marks[0].type in tt2ptx
             ? tt2ptx[json.marks[0].type as keyof typeof tt2ptx]
             : json.marks[0].type;
-        ptx = ptx + "<" + markName + ">" + json.text + "</" + markName + ">";
+        ptx = ptx + "<" + markName + ">" + encode(json.text) + "</" + markName + ">";
       } else {
-        ptx = ptx + json.text;
+        ptx = ptx + encode(json.text);
       }
+    } else if (json.type === "hardBreak") {
+      ptx = ptx + "\n";
     } else {
       // console.log("Unexpected leaf node type:")
-      ptx = ptx + "<!-- Something is missing -->";
+      ptx = ptx + "<!-- Something is missing; got " + JSON.stringify(json) + " -->";
     }
   }
   return ptx;

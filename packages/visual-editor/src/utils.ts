@@ -26,14 +26,26 @@ import { whitespace } from "hast-util-whitespace";
 import type { ElementContent, Root, RootContent } from "xast"; // Import ElementContent type
 import { wrappingInputRule } from "@tiptap/core";
 import { KNOWN_TAGS } from "./knownTags";
+//import { useEffect, useState } from "react";
 
 /*
  * Clean up incoming PreTeXt source to ensure all tags are ones that the visual editor can handle.
  * Tags that are not recognized are wrapped with the <rawptx> placeholder, that can be rendered back to the original.
  */
 export function cleanPtx(origXml: string) {
+  // Always add the root <ptxdoc> tag to make sure the XML is well-formed.  The visual editor expects exactly this as the root element.
+  let xml = origXml.trim();
+  // remove xml declaration if present
+  if (xml.startsWith("<?xml")) {
+    const endDecl = xml.indexOf("?>");
+    if (endDecl !== -1) {
+      xml = xml.slice(endDecl + 2).trim();
+    }
+  }
+  xml = `<ptxdoc>\n${xml}\n</ptxdoc>`;
   // We use xast to parse the XML into a AST
-  const tree = fromXml(origXml);
+  const tree = fromXml(xml);
+  console.log("xast before: ", tree);
   // Visit each node until we find an unknown tag
   visit(tree, (node, index, parent) => {
     if (node.type === "element" && !KNOWN_TAGS.includes(node.name)) {
@@ -58,15 +70,14 @@ export function cleanPtx(origXml: string) {
   console.log("xast after: ", tree);
   // Convert the resulting tree back to XML
   const newXml = toXml(tree);
-  //console.log("back to xml: ", xml);
+  //console.log("back to xml: ", newXml);
   return newXml;
 }
 
 export function ptxToJson(xml: string) {
-  let json = {};
   const tree = fromXml(xml);
   console.log(JSON.stringify(buildJsonFromTree(tree), null, 2));
-  return json;
+  return JSON.stringify(buildJsonFromTree(tree), null, 2);
 }
 
 function buildJsonFromTree(tree: Root | RootContent) {
@@ -128,3 +139,4 @@ export function generateInputRules(prefix: string, nodeType: any) {
     }),
   ];
 }
+
