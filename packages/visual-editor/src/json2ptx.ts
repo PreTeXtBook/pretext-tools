@@ -10,10 +10,18 @@ function encode(text: string) {
   return text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
+    .replace(/>/g, "&gt;");
 }
 
-function json2ptx(json: any) {
+interface JsonNode {
+  type: string;
+  content?: JsonNode[];
+  attrs?: Record<string, string | null>;
+  text?: string;
+  marks?: Array<{ type: string }>;
+}
+
+function json2ptx(json: JsonNode) {
   let ptx = "";
   // NB we are omitting the XML declaration at the top for now.
   // let ptx = '<?xml version="1.0" encoding="UTF-8"?>\n\n';
@@ -34,11 +42,11 @@ function json2ptx(json: any) {
   }
   ptx += processNode(json.content[0]);
   // remove the remaining <ptxdoc> root tags; these are not part of pretext, just used for the visual editor.
-  ptx = ptx.replace(/^<ptxdoc>\s*/, '\n').replace(/\s*<\/ptxdoc>/, '');
+  ptx = ptx.replace(/^<ptxdoc>\s*/, "\n").replace(/\s*<\/ptxdoc>/, "");
   return ptx;
 }
 
-function processNode(json: any) {
+function processNode(json: JsonNode) {
   let ptx = "";
   if (json.content) {
     // every node should have a type; if it needs to be changed, we do so:
@@ -54,7 +62,8 @@ function processNode(json: any) {
         // fragment should have type text, and we just return its value unchanged
         if (fragment.type !== "text") {
           console.log(
-            "Unexpected non-text node inside rawptx: " + JSON.stringify(fragment)
+            "Unexpected non-text node inside rawptx: " +
+              JSON.stringify(fragment),
           );
         }
         ptx = ptx + fragment.text;
@@ -89,15 +98,24 @@ function processNode(json: any) {
           json.marks[0].type in tt2ptx
             ? tt2ptx[json.marks[0].type as keyof typeof tt2ptx]
             : json.marks[0].type;
-        ptx = ptx + "<" + markName + ">" + encode(json.text) + "</" + markName + ">";
+        ptx =
+          ptx +
+          "<" +
+          markName +
+          ">" +
+          encode(json.text || "") +
+          "</" +
+          markName +
+          ">";
       } else {
-        ptx = ptx + encode(json.text);
+        ptx = ptx + encode(json.text || "");
       }
     } else if (json.type === "hardBreak") {
       ptx = ptx + "\n";
     } else {
       // console.log("Unexpected leaf node type:")
-      ptx = ptx + "<!-- Something is missing; got " + JSON.stringify(json) + " -->";
+      ptx =
+        ptx + "<!-- Something is missing; got " + JSON.stringify(json) + " -->";
     }
   }
   return ptx;

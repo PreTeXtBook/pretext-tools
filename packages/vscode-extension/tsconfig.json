@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    "sourceMap": true,
+    "rootDir": "src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true
+  },
+  "exclude": ["node_modules", "out", "dist", "src/webview", "*.config.mts", "*.config.ts"],
+  "references": [
+    {
+      "path": "../format"
+    },
+    {
+      "path": "./tsconfig.webview.json"
+    }
+  ]
+}

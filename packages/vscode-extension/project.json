@@ -64,12 +64,12 @@
       ],
       "options": {
         "cwd": "packages/vscode-extension",
-        "command": "npm run esbuild-watch"
+        "command": "npm run watch:all"
       },
       "isBackground": true,
       "cache": false,
       "metadata": {
-        "description": "Builds the VS Code extension in watch mode"
+        "description": "Builds the VS Code extension, webview, and visual-editor in watch mode"
       }
     },
     "typecheck": {

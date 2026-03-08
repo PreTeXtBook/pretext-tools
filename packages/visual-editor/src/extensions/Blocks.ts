@@ -8,13 +8,14 @@ import TheoremLike from "./TheoremLike";
 import AxiomLike from "./AxiomLike";
 import Statement from "./Statement";
 import ExampleLike from "./ExampleLike";
+import RemarkLike from "./RemarkLike";
 
 const Para = Node.create({
   name: "p",
 
   content: "inline*",
 
-  group: "BasicBlock",
+  group: "BasicBlock paragraph",
 
   //   selectable: false,
 
@@ -53,7 +54,7 @@ const Blocks = Extension.create({
   name: "blocks",
 
   addExtensions() {
-    return [Para, TheoremLike, ExampleLike, AxiomLike, Statement];
+    return [Para, TheoremLike, ExampleLike, AxiomLike, RemarkLike, Statement];
   },
 });
 

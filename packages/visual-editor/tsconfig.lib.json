@@ -27,5 +27,10 @@
     "src/App.tsx",
     "src/vite-env.d.ts",
     "src/ptxSourceSlice.ts"
+  ],
+  "references": [
+    {
+      "path": "../format/tsconfig.lib.json"
+    }
   ]
 }

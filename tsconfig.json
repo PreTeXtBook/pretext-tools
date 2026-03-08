@@ -3,10 +3,7 @@
     "module": "commonjs",
     "target": "esnext",
     "outDir": "out",
-    "lib": [
-      "es2022",
-      "WebWorker"
-    ],
+    "lib": ["es2022", "WebWorker"],
     "sourceMap": true,
     "rootDir": ".",
     "baseUrl": ".",
@@ -16,14 +13,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "paths": {
-      "format": [
-        "packages/format/src/index.ts"
-      ]
+      "format": ["packages/format/src/index.ts"]
     }
   },
-  "exclude": [
-    "node_modules",
-    ".vscode-test"
-  ],
-  "references": []
+  "exclude": ["node_modules", ".vscode-test"],
+  "references": [
+    {
+      "path": "./packages/format"
+    }
+  ]
 }

@@ -25,6 +25,7 @@ import { SKIP, visit } from "unist-util-visit";
 import { whitespace } from "hast-util-whitespace";
 import type { ElementContent, Root, RootContent } from "xast"; // Import ElementContent type
 import { wrappingInputRule } from "@tiptap/core";
+import type { NodeType } from "@tiptap/pm/model";
 import { KNOWN_TAGS } from "./knownTags";
 //import { useEffect, useState } from "react";
 
@@ -123,7 +124,7 @@ export function blockAttributes() {
   };
 }
 
-export function generateInputRules(prefix: string, nodeType: any) {
+export function generateInputRules(prefix: string, nodeType: NodeType) {
   return [
     wrappingInputRule({
       find: new RegExp(`^#${prefix}\\s$`, "i"),
@@ -139,4 +140,3 @@ export function generateInputRules(prefix: string, nodeType: any) {
     }),
   ];
 }
-
