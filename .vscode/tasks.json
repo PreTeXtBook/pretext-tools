@@ -4,16 +4,46 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "type": "npm",
-        "script": "watch",
-        "problemMatcher": "$tsc-watch",
+        "label": "watch: extension + visual-editor",
+        "type": "shell",
+        "command": "npm",
+        "args": ["run", "watch"],
         "isBackground": true,
+        "problemMatcher": {
+          "pattern": "$eslint-stylish",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^\\s*(transforming|watching|\\[.*\\]).*",
+            "endsPattern": "(✓|✗|ERROR|error)"
+          }
+        },
         "presentation": {
-          "reveal": "never"
+          "reveal": "always",
+          "panel": "new",
+          "focus": false
         },
         "group": {
           "kind": "build",
           "isDefault": true
+        }
+      },
+      {
+        "label": "watch: extension only",
+        "type": "shell",
+        "cwd": "${workspaceFolder}/packages/vscode-extension",
+        "command": "npm",
+        "args": ["run", "esbuild-watch"],
+        "isBackground": true,
+        "problemMatcher": {
+          "pattern": "$tsc",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "\\[watch\\] build started",
+            "endsPattern": "\\[watch\\] build finished"
+          }
+        },
+        "presentation": {
+          "reveal": "silent"
         }
       }
     ]

@@ -5,6 +5,35 @@ import {
   wrappingInputRule,
 } from "@tiptap/core";
 
+const PtxDoc = Node.create({
+  name: "ptxdoc",
+
+  content: "title? (BasicBlock|block|rawptx|division)*",
+
+  group: "root",
+
+  selectable: false,
+  draggable: false,
+
+  defining: false,
+
+  parseHTML() {
+    return [
+      {
+        tag: "ptxdoc",
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "div",
+      mergeAttributes({ class: "ptxdoc", ptxtag: "ptxdoc" }, HTMLAttributes),
+      0,
+    ];
+  },
+});
+
 const Introduction = Node.create({
   name: "introduction",
 
@@ -165,7 +194,7 @@ const Divisions = Extension.create({
   name: "divisions",
 
   addExtensions() {
-    return [Introduction, Chapter, Section, Subsection];
+    return [PtxDoc, Introduction, Chapter, Section, Subsection];
   },
 });
 

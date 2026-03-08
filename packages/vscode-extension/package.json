@@ -487,11 +487,14 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "vscode:prepublish": "npm run build:all",
+    "build:all": "npm run esbuild-base -- --minify && npm run build:webview",
+    "build:webview": "vite build --config vite.webview.config.mts",
     "esbuild-base": "node build.mjs",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "watch": "npm run esbuild -- --watch",
+    "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && concurrently --kill-others -n \"visual-editor,extension,webview\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\"",
+    "watch": "npm run esbuild-watch",
     "test-compile": "tsc -p ./",
     "pretest": "npm run esbuild && npm run lint",
     "lint": "eslint src --ext ts",
@@ -500,7 +503,15 @@
   },
   "dependencies": {
     "@pretextbook/format": "*",
-    "@pretextbook/completions": "^0.0.1"
+    "@pretextbook/completions": "^0.0.3",
+    "@pretextbook/visual-editor": "*",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.4",
+    "concurrently": "^9.1.2",
+    "vite": "^7.3.1"
   },
   "prettier": {
     "tabWidth": 2

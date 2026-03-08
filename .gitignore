@@ -58,6 +58,7 @@ Temporary Items
 node_modules
 out
 dist
+dist-demo
 
 #
 *.bak

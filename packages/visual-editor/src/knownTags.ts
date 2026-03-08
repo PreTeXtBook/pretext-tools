@@ -8,6 +8,15 @@ const theoremLikeElements = [
   "proof",
 ];
 
+const remarkLikeElements = [
+  "convention",
+  "insight",
+  "note",
+  "observation",
+  "remark",
+  "warning",
+];
+
 const axiomLikeElements = [
   "assumption",
   "axiom",
@@ -17,26 +26,34 @@ const axiomLikeElements = [
   "principle",
 ];
 
-const divisions = ["introduction", "chapter", "section", "subsection"];
+const divisions = ["introduction", "part", "chapter", "section", "subsection", "worksheet"];
 
 const exampleLikeElements = ["example", "question", "problem"];
 
 const solutionLikeElements = ["solution", "answer", "hint"];
 
 export const KNOWN_TAGS = [
+  "ptxdoc",
   "p",
   "m",
   "me",
+  "md",
+  "ol",
+  "ul",
+  "li",
   ...divisions,
   "title",
   "definition",
   "statement",
   ...theoremLikeElements,
   ...axiomLikeElements,
+  ...remarkLikeElements,
   ...exampleLikeElements,
   ...solutionLikeElements,
   "term",
   "em",
   "alert",
+  "c",
   "pre",
+  "url",
 ];
