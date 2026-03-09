@@ -11,6 +11,7 @@
         "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
         "@pretextbook/visual-editor:vite:build",
+        "@pretextbook/latex-pretext:build",
         "copy-assets"
       ],
       "options": {
@@ -44,7 +45,8 @@
       "dependsOn": [
         "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
-        "@pretextbook/visual-editor:vite:build"
+        "@pretextbook/visual-editor:vite:build",
+        "@pretextbook/latex-pretext:build"
       ],
       "options": {
         "cwd": "packages/vscode-extension",
@@ -60,6 +62,7 @@
       "dependsOn": [
         "@pretextbook/completions:build",
         "@pretextbook/format:vite:build",
+        "@pretextbook/latex-pretext:build",
         "@pretextbook/visual-editor:vite:build"
       ],
       "options": {

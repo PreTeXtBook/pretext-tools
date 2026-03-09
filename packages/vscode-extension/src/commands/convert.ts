@@ -16,6 +16,8 @@ import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import { SKIP, visit } from "unist-util-visit";
 import { fromMarkdown } from "mdast-util-from-markdown";
+import { VNotebookDocumentChangeEvent } from "vscode-languageclient";
+import { latexToPretext } from "@pretextbook/latex-pretext";
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -93,57 +95,17 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   return lspFormatText(newText.replace(/(>)(<)/g, "$1 $2"));
 }
 
-//const myMacroReplacements = {
-//  myfoo: (node: Macro) => {
-//    console.log("myfoo node is", node.args);
-//    const args = getArgsContent(node);
-//    console.log("args are", args);
-//    return htmlLike({
-//      tag: "myptxfoo",
-//    });
-//  }
-//}
-
-const ptxExtraEnvironmentReplacements = {
-  solution: (node: Environment) => {
-    return htmlLike({
-      tag: "solution",
-      content: node.content,
-    });
-  },
-  answer: (node: Environment) => {
-    return htmlLike({
-      tag: "answer",
-      content: node.content,
-    });
-  },
-  hint: (node: Environment) => {
-    return htmlLike({
-      tag: "hint",
-      content: node.content,
-    });
-  },
-};
-
 function convertWithUnified(text: string) {
-  const convert = (value: string) =>
-    processLatexViaUnified()
-      .use(unifiedLatexToPretext, {
-        producePretextFragment: true,
-        //macroReplacements: myMacroReplacements,
-        environmentReplacements: ptxExtraEnvironmentReplacements,
-      })
-      .use(xmlCompilePlugin)
-      .processSync({ value });
+  const converted = latexToPretext(text);
 
   pretextOutputChannel.append("Converting selected text to PreTeXt.\n");
-  if (convert(text).messages) {
-    for (let message of convert(text).messages) {
+  if (converted.messages) {
+    for (const message of converted.messages) {
       pretextOutputChannel.appendLine(message.message);
       console.log(message);
     }
   }
-  return convert(text).value as string;
+  return converted.value as string;
 }
 
 async function cmdConvertPMDToPretext(initialText: string) {

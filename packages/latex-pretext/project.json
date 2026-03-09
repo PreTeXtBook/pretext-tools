@@ -1,0 +1,28 @@
+{
+  "name": "@pretextbook/latex-pretext",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/latex-pretext/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/latex-pretext",
+        "command": "tsc --noEmit -p tsconfig.lib.json"
+      },
+      "cache": true,
+      "inputs": ["default", "^default"]
+    },
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/latex-pretext",
+        "main": "packages/latex-pretext/src/index.ts",
+        "tsConfig": "packages/latex-pretext/tsconfig.lib.json",
+        "assets": ["packages/latex-pretext/*.md"]
+      }
+    }
+  }
+}

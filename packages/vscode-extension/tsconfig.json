@@ -11,7 +11,14 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "exclude": ["node_modules", "out", "dist", "src/webview", "*.config.mts", "*.config.ts"],
+  "exclude": [
+    "node_modules",
+    "out",
+    "dist",
+    "src/webview",
+    "*.config.mts",
+    "*.config.ts"
+  ],
   "references": [
     {
       "path": "../format"

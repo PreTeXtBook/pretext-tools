@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "nxCloudId": "69470f3642854522eaf8b355",
-
   "plugins": [
     {
       "plugin": "@nx/js/typescript",
@@ -46,5 +45,12 @@
       },
       "disabled": true
     }
-  ]
+  ],
+  "targetDefaults": {
+    "@nx/js:tsc": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"]
+    }
+  }
 }

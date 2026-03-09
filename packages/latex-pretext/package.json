@@ -1,0 +1,13 @@
+{
+  "name": "@pretextbook/latex-pretext",
+  "version": "0.0.1",
+  "private": false,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#dist",
+    "@unified-latex/unified-latex": "github:pretextplus/unified-latex#dist"
+  }
+}
