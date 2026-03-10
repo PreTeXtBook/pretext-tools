@@ -59,10 +59,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-hooks": "7.1.0-canary-46103596-20260305",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.57.0"
   },
   "publishConfig": {
     "access": "public"

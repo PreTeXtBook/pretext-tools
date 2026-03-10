@@ -23,6 +23,8 @@ export default tseslint.config(
       'eqeqeq': 'warn',
       'no-throw-literal': 'warn',
       'no-var': 'warn',
+      'no-useless-assignment': 'warn',
+      'preserve-caught-error': 'warn',
       'no-useless-escape': 'warn',
       'no-control-regex': 'warn',
       'no-case-declarations': 'warn',

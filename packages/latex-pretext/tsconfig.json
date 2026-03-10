@@ -2,13 +2,23 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "commonjs",
+    "moduleResolution": "node",
+    "paths": {
+      "@unified-latex/unified-latex": [
+        "packages/latex-pretext/src/types/unified-latex-import.d.ts"
+      ],
+      "@unified-latex/unified-latex-to-pretext": [
+        "packages/latex-pretext/src/types/unified-latex-to-pretext-import.d.ts"
+      ]
+    },
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "importHelpers": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noPropertyAccessFromIndexSignature": true
+    "noPropertyAccessFromIndexSignature": false,
+    "skipLibCheck": true
   },
   "files": [],
   "include": [],

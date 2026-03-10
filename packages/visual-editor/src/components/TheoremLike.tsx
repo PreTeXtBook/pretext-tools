@@ -1,7 +1,7 @@
-import { NodeViewContent, NodeViewWrapper } from "@tiptap/react";
+import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
 //import React from 'react'
 
-const TheoremLikeComponent = (props: any) => {
+const TheoremLikeComponent = (props: NodeViewProps) => {
   const nameCapitalized =
     props.node.type.name.charAt(0).toUpperCase() +
     props.node.type.name.slice(1);
