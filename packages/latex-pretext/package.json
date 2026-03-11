@@ -1,13 +1,28 @@
 {
   "name": "@pretextbook/latex-pretext",
   "version": "0.0.1",
+  "description": "Tools for working with PreTeXt documents in LaTeX format",
+  "author": "Oscar Levin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/latex-pretext#readme",
   "private": false,
-  "type": "commonjs",
+  "type": "module",
   "main": "./src/index.js",
+  "module": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
     "@unified-latex/unified-latex": "^1.8.3",
     "@unified-latex/unified-latex-to-pretext": "^1.8.3",
     "tslib": "^2.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
