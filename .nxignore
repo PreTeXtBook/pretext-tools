@@ -1,0 +1,2 @@
+# Exclude transient checkout/build artifacts from Nx project graph inference.
+tmp/**
