@@ -12,16 +12,6 @@ on:
           - "patch"
           - "minor"
           - "major"
-      unified_latex_fork:
-        description: "Fork repo in owner/name form"
-        required: true
-        type: string
-        default: "pretextplus/unified-latex"
-      unified_latex_ref:
-        description: "Branch, tag, or SHA from the fork"
-        required: true
-        type: string
-        default: "main"
 
 permissions:
   id-token: write
@@ -42,16 +32,6 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
-
-      - name: Checkout unified-latex fork
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.unified_latex_fork }}
-          ref: ${{ inputs.unified_latex_ref }}
-          path: tmp/unified-latex-fork
-
-      - name: Build and Install unified-latex from fork
-        run: node ./scripts/install-unified-latex-from-source.cjs ./tmp/unified-latex-fork
 
       - name: Build Package
         run: npm exec nx build @pretextbook/latex-pretext
