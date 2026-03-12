@@ -18,8 +18,9 @@
   "module": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "@unified-latex/unified-latex": "^1.8.3",
-    "@unified-latex/unified-latex-to-pretext": "^1.8.3",
+    "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#release/unified-latex-to-pretext",
+    "@unified-latex/unified-latex-util-parse": "github:pretextplus/unified-latex#release/unified-latex-util-parse",
+    "@unified-latex/unified-latex-types": "github:pretextplus/unified-latex#release/unified-latex-types",
     "tslib": "^2.3.0"
   },
   "publishConfig": {
