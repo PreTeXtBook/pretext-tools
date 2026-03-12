@@ -13,6 +13,10 @@ on:
           - "minor"
           - "major"
 
+permissions:
+  id-token: write
+  contents: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -43,11 +47,9 @@ jobs:
         run: echo "VERSION=$(jq -r '.version' packages/visual-editor/package.json)" >> $GITHUB_OUTPUT
 
       - name: Publish to npm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd packages/visual-editor
-          npm publish
+          npm publish --provenance
 
       - name: Commit and Push
         run: |
