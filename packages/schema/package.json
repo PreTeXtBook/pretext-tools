@@ -1,7 +1,7 @@
 {
-  "name": "@pretextbook/completions",
-  "version": "0.0.3",
-  "description": "Reusable completion logic for PreTeXt documents",
+  "name": "@pretextbook/schema",
+  "version": "0.0.1",
+  "description": "PreTeXt schema data and types",
   "author": "PreTeXt Contributors",
   "license": "MIT",
   "repository": {
@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/completions",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/schema",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",
@@ -28,10 +28,10 @@
     "src/**/*",
     "README.md"
   ],
-  "scripts": {},
-  "dependencies": {
-    "@pretextbook/schema": "*",
-    "vscode-languageserver": "^9.0.1"
+  "scripts": {
+    "fetch:dev-schema": "node ../../scripts/getSchemas.js --only-pretext-dev",
+    "generate:schema": "node ./scripts/generate-schema.mjs",
+    "prebuild": "npm run fetch:dev-schema && npm run generate:schema"
   },
   "publishConfig": {
     "access": "public"

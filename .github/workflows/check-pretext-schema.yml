@@ -1,0 +1,87 @@
+name: Check PreTeXt Schema for Updates
+
+on:
+  schedule:
+    # Runs every Monday at 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch: {}
+
+jobs:
+  check-schema:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download latest pretext-dev.rng
+        run: |
+          curl -fsSL \
+            "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pretext-dev.rng" \
+            -o /tmp/pretext-dev-latest.rng
+
+      - name: Compare with stored schema
+        id: compare
+        run: |
+          STORED="extension/assets/schema/pretext-dev.rng"
+          LATEST="/tmp/pretext-dev-latest.rng"
+
+          if [ ! -f "$STORED" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Stored schema file not found" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          STORED_HASH=$(sha256sum "$STORED" | cut -d ' ' -f1)
+          LATEST_HASH=$(sha256sum "$LATEST" | cut -d ' ' -f1)
+
+          echo "Stored hash: $STORED_HASH"
+          echo "Latest hash: $LATEST_HASH"
+
+          if [ "$STORED_HASH" != "$LATEST_HASH" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "reason=SHA-256 hash mismatch" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check for existing open schema update issue
+        if: steps.compare.outputs.changed == 'true'
+        id: existing-issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ISSUE_NUMBER=$(gh issue list \
+            --label "schema-update" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      - name: Create issue for schema update
+        if: steps.compare.outputs.changed == 'true' && steps.existing-issue.outputs.issue_number == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_COMMIT=$(curl -fsSL \
+            "https://api.github.com/repos/PreTeXtBook/pretext/commits?path=schema/pretext-dev.rng&per_page=1" \
+            | python3 -c "import sys,json; data=json.load(sys.stdin); print(data[0]['sha'][:7] if data else 'unknown')")
+
+          gh issue create \
+            --title "Schema update needed: pretext-dev.rng has changed upstream" \
+            --label "schema-update" \
+            --body "The PreTeXt schema file \`pretext-dev.rng\` in the [PreTeXtBook/pretext](https://github.com/PreTeXtBook/pretext) repository has changed since our last update.
+
+          **Latest upstream commit:** \`${LATEST_COMMIT}\`
+
+          ## Steps to update
+
+          1. Run \`npm run refresh:schemas\` from the workspace root to download the latest schema and regenerate \`packages/schema/src/schema.ts\`.
+          2. Review the diff to understand what changed in the schema.
+          3. Update any element descriptions or extra metadata in \`packages/schema/src/schema.ts\` as needed.
+          4. Commit the updated \`extension/assets/schema/pretext-dev.rng\` and \`packages/schema/src/schema.ts\`.
+
+          This issue was created automatically by the [check-pretext-schema workflow](https://github.com/${{ github.repository }}/actions/workflows/check-pretext-schema.yml)."

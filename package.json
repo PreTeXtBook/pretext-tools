@@ -16,7 +16,7 @@
     "build": "nx build vscode-extension",
     "build:dev": "nx build:dev vscode-extension",
     "watch": "NX_TUI=false nx build:watch vscode-extension --outputStyle=stream",
-    "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs",
+    "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/schema/scripts/generate-schema.mjs",
     "lint": "nx run-many -t eslint:lint",
     "test": "nx run-many -t test"
   },

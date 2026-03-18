@@ -1,0 +1,68 @@
+name: Publish Schema Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "Release level"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Package
+        run: npx nx build schema
+
+      - name: Bump Version
+        run: |
+          cd packages/schema
+          npm version ${{ inputs.level }}
+          cd ../..
+
+      - name: Get Version
+        id: version
+        run: echo "VERSION=$(jq -r '.version' packages/schema/package.json)" >> $GITHUB_OUTPUT
+
+      - name: Publish to npm
+        run: |
+          cd packages/schema
+          npm publish --provenance
+
+      - name: Commit and Push
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add packages/schema/package.json
+          git commit -m "chore(schema): bump to v${{ steps.version.outputs.VERSION }}"
+          git push origin main
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "schema-v${{ steps.version.outputs.VERSION }}" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="Schema Package v${{ steps.version.outputs.VERSION }}"
