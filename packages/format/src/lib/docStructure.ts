@@ -189,7 +189,6 @@ export const verbatimTags = [
   "tikz",
   "code",
   "c",
-  "webwork",
 ];
 export const newlineTags = [
   ...docStructure,
