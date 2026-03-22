@@ -82,9 +82,17 @@ export function formatPretext(
     let startTag = new RegExp("<" + tag + "(.*?)>", "g");
     let endTag = new RegExp("<\\/" + tag + ">([\\s\\S]*?[.,!?;:]?)", "g");
     let selfCloseTag = new RegExp("<" + tag + "(.*?)\\/>", "g");
-    allText = allText.replace(startTag, "\n$&");
+    // Don't insert a newline before the tag if it appears inline (immediately after a `>`)
+    allText = allText.replace(startTag, (match, _p1, offset, str) => {
+      if (offset > 0 && str[offset - 1] === ">") return match;
+      return "\n" + match;
+    });
     allText = allText.replace(endTag, "$&\n");
-    allText = allText.replace(selfCloseTag, "$&\n");
+    // Don't insert a newline after a self-closing tag if it appears inline (immediately before a `<`)
+    allText = allText.replace(selfCloseTag, (match, _p1, offset, str) => {
+      if (str[offset + match.length] === "<") return match;
+      return match + "\n";
+    });
   }
 
   // Set indent character to \t or a number of ss based on editor settings.
