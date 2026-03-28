@@ -46,7 +46,7 @@ jobs:
       - name: Publish to VSMarketplace
         run: |
           cd dist/vscode-extension
-          npx vsce publish ${{ inputs.level }} -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
+          npx vsce publish ${{ inputs.level }} --no-dependencies -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Update source package.json version
         run: |
@@ -57,7 +57,7 @@ jobs:
       - name: Deploy to Open VSX
         run: |
           cd dist/vscode-extension
-          npx ovsx publish *.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}
+          npx ovsx publish *.vsix --no-dependencies -p ${{ secrets.OPEN_VSX_TOKEN }}
 
       - name: setup variables and update changelog
         run: |
