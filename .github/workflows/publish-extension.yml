@@ -1,0 +1,95 @@
+name: Publish VSCode Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "The level of release to make"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Dependencies
+        run: |
+          npm install
+          npm install -g @vscode/vsce
+          npm install -g ovsx
+
+      - name: Set up git user
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Update schema
+        run: |
+          node ./scripts/getSchemas.js
+          git add packages/vscode-extension/assets/schema
+          git commit -m "update schemas" || true
+
+      - name: Build Extension
+        run: |
+          npx nx build vscode-extension
+
+      - name: Package
+        run: |
+          cd dist/vscode-extension
+          vsce package ${{ inputs.level }}
+
+      - name: Update source package.json version
+        run: |
+          version=$(jq -r '.version' dist/vscode-extension/package.json)
+          jq --arg ver "$version" '.version = $ver' packages/vscode-extension/package.json > packages/vscode-extension/package.json.tmp
+          mv packages/vscode-extension/package.json.tmp packages/vscode-extension/package.json
+
+      - name: Deploy to VSMarketplace
+        run: |
+          cd dist/vscode-extension
+          vsce publish -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
+
+      - name: Deploy to Open VSX
+        run: |
+          cd dist/vscode-extension
+          ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
+
+      - name: setup variables and update changelog
+        run: |
+          value=$(jq -r '.version' dist/vscode-extension/package.json | tr -d '"')
+          echo "VERSION=$value" >> "$GITHUB_ENV"
+          newline="\\n## [${value}] - $(date +'%Y-%m-%d')"
+          sed '/## \[UNRELEASED\]/a\'"$newline" CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
+
+      - name: Commit
+        run: |
+          git add .
+          git commit -m "update version and changelog"
+
+      - name: push commit
+        run: |
+          git push origin main
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ env.VERSION }}
+        run: |
+          gh release create "v$tag" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="v$tag" \
+            --notes="See the [changelog](CHANGELOG.md) for details."
