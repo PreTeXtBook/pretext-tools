@@ -13,6 +13,9 @@ on:
           - "minor"
           - "major"
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -39,6 +42,11 @@ jobs:
           git add packages/vscode-extension/assets/schema
           git commit -m "update schemas" || true
 
+      - name: Bump Version
+        run: |
+          cd packages/vscode-extension
+          npm version ${{ inputs.level }} --no-git-tag-version
+
       - name: Build Extension
         run: |
           npx nx build vscode-extension
@@ -46,13 +54,11 @@ jobs:
       - name: Package
         run: |
           cd dist/vscode-extension
-          npx vsce package ${{ inputs.level }} --no-dependencies
+          npx vsce package --no-dependencies
 
-      - name: Update source package.json version
-        run: |
-          version=$(jq -r '.version' dist/vscode-extension/package.json)
-          jq --arg ver "$version" '.version = $ver' packages/vscode-extension/package.json > packages/vscode-extension/package.json.tmp
-          mv packages/vscode-extension/package.json.tmp packages/vscode-extension/package.json
+      - name: Get Version
+        id: version
+        run: echo "VERSION=$(jq -r '.version' packages/vscode-extension/package.json)" >> $GITHUB_OUTPUT
 
       - name: Deploy to VSMarketplace
         run: |
@@ -64,18 +70,16 @@ jobs:
           cd dist/vscode-extension
           npx ovsx publish --no-dependencies -p ${{ secrets.OPEN_VSX_TOKEN }}
 
-      - name: setup variables and update changelog
+      - name: Update changelog
         run: |
-          value=$(jq -r '.version' dist/vscode-extension/package.json | tr -d '"')
-          echo "VERSION=$value" >> "$GITHUB_ENV"
-          newline="\\n## [${value}] - $(date +'%Y-%m-%d')"
+          newline="\\n## [${{ steps.version.outputs.VERSION }}] - $(date +'%Y-%m-%d')"
           sed '/## \[UNRELEASED\]/a\'"$newline" CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
 
       - name: Commit
         run: |
           git add .
-          git commit -m "update version and changelog"
+          git commit -m "chore(vscode-extension): bump to v${{ steps.version.outputs.VERSION }}"
 
       - name: push commit
         run: |
@@ -84,9 +88,8 @@ jobs:
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag: ${{ env.VERSION }}
         run: |
-          gh release create "v$tag" \
+          gh release create "v${{ steps.version.outputs.VERSION }}" \
             --repo="$GITHUB_REPOSITORY" \
-            --title="v$tag" \
+            --title="v${{ steps.version.outputs.VERSION }}" \
             --notes="See the [changelog](CHANGELOG.md) for details."
