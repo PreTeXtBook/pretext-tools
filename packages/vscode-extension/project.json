@@ -132,7 +132,8 @@
           "cp language-configuration.json ../../dist/vscode-extension/",
           "cp -r assets ../../dist/vscode-extension/",
           "cp -r snippets ../../dist/vscode-extension/",
-          "cp -r syntaxes ../../dist/vscode-extension/"
+          "cp -r syntaxes ../../dist/vscode-extension/",
+          "cp .vscodeignore ../../dist/vscode-extension/"
         ],
         "cwd": "packages/vscode-extension",
         "parallel": false
@@ -145,7 +146,8 @@
         "{projectRoot}/language-configuration.json",
         "{projectRoot}/assets/**/*",
         "{projectRoot}/snippets/**/*",
-        "{projectRoot}/syntaxes/**/*"
+        "{projectRoot}/syntaxes/**/*",
+        "{projectRoot}/.vscodeignore"
       ],
       "outputs": [
         "{workspaceRoot}/dist/vscode-extension/package.json",
@@ -154,7 +156,8 @@
         "{workspaceRoot}/dist/vscode-extension/language-configuration.json",
         "{workspaceRoot}/dist/vscode-extension/assets",
         "{workspaceRoot}/dist/vscode-extension/snippets",
-        "{workspaceRoot}/dist/vscode-extension/syntaxes"
+        "{workspaceRoot}/dist/vscode-extension/syntaxes",
+        "{workspaceRoot}/dist/vscode-extension/.vscodeignore"
       ],
       "metadata": {
         "description": "Copies assets and configuration files to the dist folder"

@@ -1,0 +1,5 @@
+# Exclude previously-packaged extension files
+*.vsix
+
+# Exclude source maps
+**/*.map
