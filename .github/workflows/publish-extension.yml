@@ -54,15 +54,15 @@ jobs:
           jq --arg ver "$version" '.version = $ver' packages/vscode-extension/package.json > packages/vscode-extension/package.json.tmp
           mv packages/vscode-extension/package.json.tmp packages/vscode-extension/package.json
 
-      - name: Publish to VSMarketplace
+      - name: Deploy to VSMarketplace
         run: |
           cd dist/vscode-extension
-          npx vsce publish --no-dependencies -p ${{ secrets.VS_MARKETPLACE_TOKEN }} *.vsix
+          npx vsce publish --no-dependencies -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Deploy to Open VSX
         run: |
           cd dist/vscode-extension
-          npx ovsx publish *.vsix --no-dependencies -p ${{ secrets.OPEN_VSX_TOKEN }}
+          npx ovsx publish --no-dependencies -p ${{ secrets.OPEN_VSX_TOKEN }}
 
       - name: setup variables and update changelog
         run: |
