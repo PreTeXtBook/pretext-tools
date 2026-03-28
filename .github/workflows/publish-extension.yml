@@ -13,9 +13,6 @@ on:
           - "minor"
           - "major"
 
-permissions:
-  contents: write
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
