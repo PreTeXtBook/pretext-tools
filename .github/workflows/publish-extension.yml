@@ -13,12 +13,15 @@ on:
           - "minor"
           - "major"
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,10 +29,7 @@ jobs:
           node-version: "24"
 
       - name: Install Dependencies
-        run: |
-          npm install
-          npm install -g @vscode/vsce
-          npm install -g ovsx
+        run: npm install
 
       - name: Set up git user
         run: |
@@ -46,10 +46,10 @@ jobs:
         run: |
           npx nx build vscode-extension
 
-      - name: Package
+      - name: Publish to VSMarketplace
         run: |
           cd dist/vscode-extension
-          vsce package ${{ inputs.level }}
+          npx vsce publish ${{ inputs.level }} -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
 
       - name: Update source package.json version
         run: |
@@ -57,15 +57,10 @@ jobs:
           jq --arg ver "$version" '.version = $ver' packages/vscode-extension/package.json > packages/vscode-extension/package.json.tmp
           mv packages/vscode-extension/package.json.tmp packages/vscode-extension/package.json
 
-      - name: Deploy to VSMarketplace
-        run: |
-          cd dist/vscode-extension
-          vsce publish -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
-
       - name: Deploy to Open VSX
         run: |
           cd dist/vscode-extension
-          ovsx publish -p ${{ secrets.OPEN_VSX_TOKEN }}
+          npx ovsx publish *.vsix -p ${{ secrets.OPEN_VSX_TOKEN }}
 
       - name: setup variables and update changelog
         run: |

@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const outputDir = path.join(__dirname, "..", "extension", "assets", "schema");
+const outputDir = path.join(__dirname, "..", "packages", "vscode-extension", "assets", "schema");
 
 const schemaUrls = [
   "https://raw.githubusercontent.com/PreTeXtBook/pretext-cli/refs/heads/main/schema/project-ptx.rng",
