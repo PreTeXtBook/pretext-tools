@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [0.35.1] - 2026-03-27
+
 ### Fixed
 
 - Formatter will now keep xi:include elements on their current line, instead of reformatting them to their own line (which messed up including webwork pg files).
