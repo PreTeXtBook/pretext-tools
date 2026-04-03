@@ -17,6 +17,10 @@
   "main": "./src/index.js",
   "module": "./src/index.js",
   "types": "./src/index.d.ts",
+  "scripts": {
+    "dev": "npm exec vite playground",
+    "dev:build": "npm exec vite -- build playground --outDir ../../../dist/packages/latex-pretext/playground"
+  },
   "dependencies": {
     "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#release/unified-latex-to-pretext",
     "@unified-latex/unified-latex-util-parse": "github:pretextplus/unified-latex#release/unified-latex-util-parse",

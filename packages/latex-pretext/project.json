@@ -5,6 +5,31 @@
   "projectType": "library",
   "tags": [],
   "targets": {
+    "playground": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/latex-pretext",
+        "command": "npm run dev"
+      },
+      "isBackground": true,
+      "cache": false,
+      "metadata": {
+        "description": "Runs a local LaTeX to PreTeXt playground for development"
+      }
+    },
+    "playground:build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "packages/latex-pretext",
+        "command": "npm run dev:build"
+      },
+      "outputs": ["{workspaceRoot}/dist/packages/latex-pretext/playground"],
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "metadata": {
+        "description": "Builds the latex-pretext development playground"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {

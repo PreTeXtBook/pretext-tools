@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>latex-pretext playground</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <h1>latex-pretext playground</h1>
+      <p>Type LaTeX on the left and inspect PreTeXt output on the right.</p>
+    </header>
+
+    <main class="split">
+      <section class="panel">
+        <label for="latex-input">LaTeX input</label>
+        <textarea id="latex-input" spellcheck="false"></textarea>
+      </section>
+
+      <section class="panel">
+        <label for="pretext-output">PreTeXt output</label>
+        <textarea id="pretext-output" readonly spellcheck="false"></textarea>
+      </section>
+    </main>
+
+    <footer class="status" id="status">Ready</footer>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
