@@ -40,14 +40,13 @@
       "inputs": ["default", "^default"]
     },
     "build": {
-      "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "executor": "@nx/vite:build",
+      "outputs": ["{workspaceRoot}/dist/packages/latex-pretext"],
       "options": {
-        "outputPath": "dist/packages/latex-pretext",
-        "main": "packages/latex-pretext/src/index.ts",
-        "tsConfig": "packages/latex-pretext/tsconfig.lib.json",
-        "assets": ["packages/latex-pretext/*.md"]
-      }
+        "outputPath": "dist/packages/latex-pretext"
+      },
+      "cache": true,
+      "dependsOn": ["^build"]
     }
   }
 }

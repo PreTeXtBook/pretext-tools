@@ -14,9 +14,25 @@
   "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/latex-pretext#readme",
   "private": false,
   "type": "module",
-  "main": "./src/index.js",
-  "module": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "*.d.cts",
+    "lib"
+  ],
   "scripts": {
     "dev": "npm exec vite playground",
     "dev:build": "npm exec vite -- build playground --outDir ../../../dist/packages/latex-pretext/playground"

@@ -21,6 +21,9 @@
   ],
   "references": [
     {
+      "path": "../latex-pretext"
+    },
+    {
       "path": "../format"
     },
     {

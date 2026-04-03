@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "composite": true,
+    "module": "es2022",
+    "moduleResolution": "bundler",
     "paths": {
       "@unified-latex/unified-latex": [
         "packages/latex-pretext/src/types/unified-latex-import.d.ts"
