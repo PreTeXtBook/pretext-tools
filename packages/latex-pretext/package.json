@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/latex-pretext",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Tools for working with PreTeXt documents in LaTeX format",
   "author": "Oscar Levin",
   "license": "MIT",
