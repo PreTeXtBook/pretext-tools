@@ -33,29 +33,32 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Build Package
-        run: npm exec nx build @pretextbook/latex-pretext
+      - name: Update unified-latex to latest release branch commits
+        run: npm update @unified-latex/unified-latex-to-pretext @unified-latex/unified-latex-util-parse @unified-latex/unified-latex-types
 
       - name: Bump Version
         run: |
           cd packages/latex-pretext
-          npm version ${{ inputs.level }}
+          npm version ${{ inputs.level }} --no-git-tag-version
           cd ../..
 
       - name: Get Version
         id: version
         run: echo "VERSION=$(jq -r '.version' packages/latex-pretext/package.json)" >> $GITHUB_OUTPUT
 
+      - name: Build Package
+        run: npm exec nx build @pretextbook/latex-pretext
+
       - name: Publish to npm
         run: |
-          cd packages/latex-pretext
+          cd dist/packages/latex-pretext
           npm publish --provenance
 
       - name: Commit and Push
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git add packages/latex-pretext/package.json
+          git add packages/latex-pretext/package.json package-lock.json
           git commit -m "chore(latex-pretext): bump to v${{ steps.version.outputs.VERSION }}"
           git push origin main
 
