@@ -112,24 +112,38 @@ async function openFileExternally(
 
   if (!outputFile) {
     pretextOutputChannel.appendLine(
-      `[External Preview] No ${extension} file found, running build...`,
+      `[External Preview] No ${extension} file found, building first...`,
     );
-    const buildResult = await new Promise<boolean>((resolve) => {
+    pretextOutputChannel.show();
+    utils.updateStatusBarItem(ptxSBItem, "building");
+
+    await new Promise<boolean>((resolve) => {
       const fullCommand = cli.cmd() + " build " + target;
+      pretextOutputChannel.appendLine(`[External Preview] Running: ${fullCommand}`);
       const buildProcess = spawn(fullCommand, [], {
         cwd: projectPath,
         shell: true,
       });
-      buildProcess.on("close", (code) => resolve(code === 0));
+      buildProcess.stdout?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+      });
+      buildProcess.stderr?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+      });
+      buildProcess.on("close", (code) => {
+        pretextOutputChannel.appendLine(`[External Preview] Build exited with code ${code}`);
+        resolve(true);
+      });
     });
 
-    if (buildResult) {
-      try {
-        const files = fs.readdirSync(outputDir);
-        outputFile = files.find((f) => f.endsWith(extension));
-      } catch {
-        // still not found
-      }
+    // Check if the build produced the file
+    try {
+      const files = fs.readdirSync(outputDir);
+      outputFile = files.find((f) => f.endsWith(extension));
+    } catch {
+      // still not found
     }
 
     if (!outputFile) {
@@ -170,15 +184,30 @@ async function openFilePreview(
 
   if (!outputFile) {
     pretextOutputChannel.appendLine(
-      `[File Preview] No ${extension} file found, running build...`,
+      `[File Preview] No ${extension} file found, building first...`,
     );
+    pretextOutputChannel.show();
+    utils.updateStatusBarItem(ptxSBItem, "building");
+
     const buildResult = await new Promise<boolean>((resolve) => {
       const fullCommand = cli.cmd() + " build " + target;
+      pretextOutputChannel.appendLine(`[File Preview] Running: ${fullCommand}`);
       const buildProcess = spawn(fullCommand, [], {
         cwd: projectPath,
         shell: true,
       });
-      buildProcess.on("close", (code) => resolve(code === 0));
+      buildProcess.stdout?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+      });
+      buildProcess.stderr?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+      });
+      buildProcess.on("close", (code) => {
+        pretextOutputChannel.appendLine(`[File Preview] Build exited with code ${code}`);
+        resolve(true);
+      });
     });
 
     if (buildResult) {
