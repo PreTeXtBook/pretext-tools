@@ -14,6 +14,7 @@ import {
   cmdViewCodeChat,
   cmdViewVisualEditor,
 } from "./commands/view";
+import { cmdLivePreview, cmdForwardSearch, disposeLivePreview } from "./livePreview";
 import { cmdNew } from "./commands/new";
 import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
@@ -125,6 +126,8 @@ export async function activate(context: ExtensionContext) {
       "pretext-tools.viewVisualEditor",
       cmdViewVisualEditor,
     ),
+    commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
@@ -174,6 +177,7 @@ export async function activate(context: ExtensionContext) {
 
 // this method is called when your extension is deactivated
 export function deactivate() {
+  disposeLivePreview();
   lspDeactivate();
   if (pretextTerminal) {
     pretextTerminal.dispose();

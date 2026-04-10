@@ -12,26 +12,29 @@ export function cmdView(runInTerminal: boolean = false) {
   // Create and use a quick-select box if user has not set a configuration for view:
   if (selectedViewMethod === "Ask") {
     let viewMethods = [];
+    // Live Preview is always available as the first option
+    viewMethods.push({
+      label: "Live Preview (side-by-side)",
+      command: "pretext-tools.livePreview",
+    });
     if (extensions.getExtension("CodeChat.codechat")) {
       viewMethods.push({
         label: "Use CodeChat",
         command: "pretext-tools.viewCodeChat",
       });
     }
-    if (viewMethods.length > 0) {
-      viewMethods.push({
-        label: "Use PreTeXt's view command",
-        command: "pretext-tools.viewCLI",
-      });
-      window.showQuickPick(viewMethods).then((qpSelection) => {
-        if (!qpSelection) {
-          return;
-        }
-        commands.executeCommand(qpSelection.command);
-      });
-    } else {
-      commands.executeCommand("pretext-tools.viewCLI", runInTerminal);
-    }
+    viewMethods.push({
+      label: "Use PreTeXt's view command (external browser)",
+      command: "pretext-tools.viewCLI",
+    });
+    window.showQuickPick(viewMethods).then((qpSelection) => {
+      if (!qpSelection) {
+        return;
+      }
+      commands.executeCommand(qpSelection.command);
+    });
+  } else if (selectedViewMethod === "Live Preview") {
+    commands.executeCommand("pretext-tools.livePreview");
   } else {
     // otherwise honor the users setting choice.
     switch (selectedViewMethod) {
