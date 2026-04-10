@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<grammar xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+<grammar xmlns:a="http://relaxng.org/ns/compatibility/annotations/1.0" xmlns:pf="https://prefigure.org" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
   <start>
     <choice>
       <ref name="PretextRoot"/>
@@ -1022,6 +1022,9 @@
         </choice>
       </zeroOrMore>
       <optional>
+        <ref name="Glossary"/>
+      </optional>
+      <optional>
         <ref name="References"/>
       </optional>
       <optional>
@@ -1829,6 +1832,7 @@
           <choice>
             <value>codelens</value>
             <value>activecode</value>
+            <value>no</value>
           </choice>
         </attribute>
       </optional>
@@ -2186,6 +2190,9 @@
   <define name="Task">
     <element name="task">
       <ref name="MetaDataTitleOptional"/>
+      <optional>
+        <attribute name="workspace"/>
+      </optional>
       <choice>
         <oneOrMore>
           <ref name="BlockStatement"/>
@@ -2530,6 +2537,22 @@
       <text/>
     </element>
   </define>
+  <define name="AnyPFContent">
+    <choice>
+      <text/>
+      <element>
+        <anyName/>
+        <zeroOrMore>
+          <attribute>
+            <anyName/>
+          </attribute>
+        </zeroOrMore>
+        <zeroOrMore>
+          <ref name="AnyPFContent"/>
+        </zeroOrMore>
+      </element>
+    </choice>
+  </define>
   <define name="ImageCode">
     <element name="image">
       <optional>
@@ -2594,6 +2617,23 @@
                   <attribute name="aspect"/>
                 </optional>
                 <text/>
+              </element>
+              <element name="mermaid">
+                <optional>
+                  <ref name="LabelID"/>
+                </optional>
+                <optional>
+                  <ref name="Component"/>
+                </optional>
+                <text/>
+              </element>
+              <element name="pf:prefigure">
+                <optional>
+                  <attribute name="label"/>
+                </optional>
+                <zeroOrMore>
+                  <ref name="AnyPFContent"/>
+                </zeroOrMore>
               </element>
             </choice>
           </interleave>
@@ -2904,6 +2944,26 @@
         <ref name="AttributesYouTubePlaylist"/>
         <ref name="AttributesVimeo"/>
       </choice>
+      <zeroOrMore>
+        <ref name="Track"/>
+      </zeroOrMore>
+    </element>
+  </define>
+  <define name="Track">
+    <element name="track">
+      <attribute name="kind"/>
+      <optional>
+        <attribute name="listing"/>
+      </optional>
+      <optional>
+        <ref name="XMLLang"/>
+      </optional>
+      <attribute name="source"/>
+      <optional>
+        <attribute name="default">
+          <value>yes</value>
+        </attribute>
+      </optional>
     </element>
   </define>
   <define name="AttributesSourceFile">
@@ -2963,6 +3023,9 @@
       <ref name="MetaDataTitleOptional"/>
       <optional>
         <attribute name="number"/>
+      </optional>
+      <optional>
+        <attribute name="workspace"/>
       </optional>
       <choice>
         <ref name="ExerciseBody"/>
@@ -3829,6 +3892,7 @@
           <ref name="MathInline"/>
           <ref name="Music"/>
           <ref name="Reference"/>
+          <ref name="Custom"/>
           <ref name="CodeDisplay"/>
           <ref name="MathDisplay"/>
           <ref name="List"/>
@@ -3903,6 +3967,7 @@
           <ref name="MathInline"/>
           <ref name="Music"/>
           <ref name="Reference"/>
+          <ref name="Custom"/>
           <ref name="WWVariable"/>
         </choice>
       </zeroOrMore>
@@ -3973,6 +4038,8 @@
       <value>type-hybrid</value>
       <value>phrase-global</value>
       <value>phrase-hybrid</value>
+      <value>type-local-title</value>
+      <value>type-global-title</value>
       <value>title</value>
       <value>custom</value>
     </choice>
@@ -3981,7 +4048,28 @@
     <choice>
       <ref name="Url"/>
       <ref name="Xref"/>
+      <ref name="DataUrl"/>
     </choice>
+  </define>
+  <define name="Custom">
+    <element name="custom">
+      <attribute name="ref"/>
+      <empty/>
+    </element>
+  </define>
+  <define name="DataUrl">
+    <element name="dataurl">
+      <choice>
+        <attribute name="href"/>
+        <attribute name="source"/>
+      </choice>
+      <optional>
+        <attribute name="visual"/>
+      </optional>
+      <optional>
+        <ref name="TextShort"/>
+      </optional>
+    </element>
   </define>
   <define name="Url">
     <element name="url">
