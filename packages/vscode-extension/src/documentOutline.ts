@@ -28,6 +28,13 @@ import {
 } from "vscode";
 
 /**
+ * Check if a filename is a PreTeXt source file (.ptx or .xml).
+ */
+function isPretextFile(fileName: string): boolean {
+  return fileName.endsWith(".ptx") || fileName.endsWith(".xml");
+}
+
+/**
  * Represents a single node in the document outline tree.
  */
 class OutlineNode {
@@ -47,88 +54,36 @@ class OutlineNode {
  */
 const ELEMENT_CONFIG: Record<
   string,
-  { icon: string; label: string; showInTree: boolean; canHaveChildren: boolean }
+  { icon: string; label: string }
 > = {
-  article: {
-    icon: "book",
-    label: "Article",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  frontmatter: {
-    icon: "info",
-    label: "Front Matter",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  backmatter: {
-    icon: "info",
-    label: "Back Matter",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  section: {
-    icon: "symbol-class",
-    label: "Section",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  subsection: {
-    icon: "symbol-method",
-    label: "Subsection",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  subsubsection: {
-    icon: "symbol-field",
-    label: "Subsubsection",
-    showInTree: true,
-    canHaveChildren: true,
-  },
-  paragraphs: {
-    icon: "symbol-text",
-    label: "Paragraphs",
-    showInTree: true,
-    canHaveChildren: false,
-  },
-  figure: {
-    icon: "file-media",
-    label: "Figure",
-    showInTree: true,
-    canHaveChildren: false,
-  },
-  table: {
-    icon: "symbol-enum",
-    label: "Table",
-    showInTree: true,
-    canHaveChildren: false,
-  },
-  abstract: {
-    icon: "note",
-    label: "Abstract",
-    showInTree: true,
-    canHaveChildren: false,
-  },
-  references: {
-    icon: "references",
-    label: "References",
-    showInTree: true,
-    canHaveChildren: false,
-  },
+  book: { icon: "book", label: "Book" },
+  article: { icon: "book", label: "Article" },
+  frontmatter: { icon: "info", label: "Front Matter" },
+  backmatter: { icon: "info", label: "Back Matter" },
+  chapter: { icon: "symbol-class", label: "Chapter" },
+  section: { icon: "symbol-class", label: "Section" },
+  subsection: { icon: "symbol-method", label: "Subsection" },
+  subsubsection: { icon: "symbol-field", label: "Subsubsection" },
+  paragraphs: { icon: "symbol-text", label: "Paragraphs" },
+  references: { icon: "references", label: "References" },
+  appendix: { icon: "symbol-class", label: "Appendix" },
 };
+
+// Only these tags appear in the outline — section headings and structural containers
+const OUTLINE_TAGS = new Set(Object.keys(ELEMENT_CONFIG));
 
 // Tags that can contain other outline-relevant elements
 const CONTAINER_TAGS = new Set([
+  "book",
   "article",
   "frontmatter",
   "backmatter",
+  "chapter",
   "section",
   "subsection",
   "subsubsection",
+  "appendix",
 ]);
-
-// All tags we want to show in the outline
-const OUTLINE_TAGS = new Set(Object.keys(ELEMENT_CONFIG));
 
 /**
  * TreeDataProvider that parses a .ptx file and provides the document
@@ -160,7 +115,7 @@ export class PretextDocumentOutlineProvider
         if (
           window.activeTextEditor &&
           e.document === window.activeTextEditor.document &&
-          e.document.fileName.endsWith(".ptx")
+          isPretextFile(e.document.fileName)
         ) {
           this.refresh();
         }
@@ -176,7 +131,7 @@ export class PretextDocumentOutlineProvider
    */
   refresh(): void {
     const editor = window.activeTextEditor;
-    if (editor && editor.document.fileName.endsWith(".ptx")) {
+    if (editor && isPretextFile(editor.document.fileName)) {
       this.roots = this.parseDocument(editor.document);
     } else {
       this.roots = [];
@@ -186,9 +141,7 @@ export class PretextDocumentOutlineProvider
 
   getTreeItem(element: OutlineNode): TreeItem {
     const config = ELEMENT_CONFIG[element.tag];
-    const hasChildren =
-      element.children.length > 0 &&
-      config?.canHaveChildren;
+    const hasChildren = element.children.length > 0;
 
     const item = new TreeItem(
       this.getDisplayLabel(element),
@@ -312,16 +265,7 @@ export class PretextDocumentOutlineProvider
         }
 
         // Extract title — look for <title>...</title> in the next few lines
-        const title = this.extractTitle(lines, lineNum);
-
-        // For figures, extract caption instead
-        let displayTitle = title;
-        if (tag === "figure" || tag === "table") {
-          const caption = this.extractCaption(lines, lineNum);
-          if (caption) {
-            displayTitle = caption;
-          }
-        }
+        const displayTitle = this.extractTitle(lines, lineNum);
 
         const node = new OutlineNode(
           tag,

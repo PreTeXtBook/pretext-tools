@@ -19,6 +19,7 @@ import {
   WebviewPanel,
   commands,
   env,
+  extensions,
   window,
   workspace,
 } from "vscode";
@@ -70,17 +71,301 @@ export async function cmdLivePreview(): Promise<void> {
     `Starting live preview for target: ${currentTarget}`,
   );
 
-  await startViewServer(currentTarget, currentProjectPath);
+  // PDF and braille targets can't use the HTML server — open the file directly
+  if (currentTarget === "pdf" || currentTarget === "print") {
+    await openFilePreview(currentTarget, currentProjectPath, ".pdf");
+  } else if (currentTarget === "braille") {
+    await openFilePreview(currentTarget, currentProjectPath, ".brf");
+  } else if (currentTarget === "epub") {
+    // If an EPUB viewer extension is installed, open in VS Code; otherwise open externally
+    const hasEpubViewer = extensions.all.some(
+      (ext) => ext.id.toLowerCase().includes("epub"),
+    );
+    if (hasEpubViewer) {
+      await openFilePreview(currentTarget, currentProjectPath, ".epub");
+    } else {
+      await openFileExternally(currentTarget, currentProjectPath, ".epub");
+    }
+  } else {
+    await startViewServer(currentTarget, currentProjectPath);
+  }
+}
+
+/**
+ * Open a file with the system's default external application.
+ * Used for formats like EPUB that have no VS Code viewer.
+ */
+async function openFileExternally(
+  target: string,
+  projectPath: string,
+  extension: string,
+): Promise<void> {
+  const outputDir = path.join(projectPath, "output", target);
+  let outputFile: string | undefined;
+
+  try {
+    const files = fs.readdirSync(outputDir);
+    outputFile = files.find((f) => f.endsWith(extension));
+  } catch {
+    // not found
+  }
+
+  if (!outputFile) {
+    pretextOutputChannel.appendLine(
+      `[External Preview] No ${extension} file found, running build...`,
+    );
+    const buildResult = await new Promise<boolean>((resolve) => {
+      const fullCommand = cli.cmd() + " build " + target;
+      const buildProcess = spawn(fullCommand, [], {
+        cwd: projectPath,
+        shell: true,
+      });
+      buildProcess.on("close", (code) => resolve(code === 0));
+    });
+
+    if (buildResult) {
+      try {
+        const files = fs.readdirSync(outputDir);
+        outputFile = files.find((f) => f.endsWith(extension));
+      } catch {
+        // still not found
+      }
+    }
+
+    if (!outputFile) {
+      window.showErrorMessage(
+        `Could not find or build a ${extension} file. Check the PreTeXt output log.`,
+      );
+      return;
+    }
+  }
+
+  const filePath = path.join(outputDir, outputFile);
+  pretextOutputChannel.appendLine(
+    `[External Preview] Opening in system viewer: ${filePath}`,
+  );
+  env.openExternal(Uri.file(filePath));
+}
+
+/**
+ * Open a non-HTML output file (PDF, BRF) directly in VS Code.
+ * Sets up a file watcher to auto-rebuild on save and reopen.
+ */
+async function openFilePreview(
+  target: string,
+  projectPath: string,
+  extension: string,
+): Promise<void> {
+  const outputDir = path.join(projectPath, "output", target);
+  let outputFile: string | undefined;
+
+  try {
+    const files = fs.readdirSync(outputDir);
+    outputFile = files.find((f) => f.endsWith(extension));
+  } catch {
+    pretextOutputChannel.appendLine(
+      `[File Preview] Output directory not found, building first...`,
+    );
+  }
+
+  if (!outputFile) {
+    pretextOutputChannel.appendLine(
+      `[File Preview] No ${extension} file found, running build...`,
+    );
+    const buildResult = await new Promise<boolean>((resolve) => {
+      const fullCommand = cli.cmd() + " build " + target;
+      const buildProcess = spawn(fullCommand, [], {
+        cwd: projectPath,
+        shell: true,
+      });
+      buildProcess.on("close", (code) => resolve(code === 0));
+    });
+
+    if (buildResult) {
+      try {
+        const files = fs.readdirSync(outputDir);
+        outputFile = files.find((f) => f.endsWith(extension));
+      } catch {
+        // still not found
+      }
+    }
+
+    if (!outputFile) {
+      window.showErrorMessage(
+        `Could not find or build a ${extension} file. Check the PreTeXt output log.`,
+      );
+      return;
+    }
+  }
+
+  const filePath = path.join(outputDir, outputFile);
+  pretextOutputChannel.appendLine(
+    `[File Preview] Opening: ${filePath}`,
+  );
+
+  const fileUri = Uri.file(filePath);
+  await commands.executeCommand("vscode.open", fileUri, { viewColumn: ViewColumn.Beside, preview: true });
+
+  // Set up file watcher for auto-rebuild
+  if (fileWatcher) {
+    fileWatcher.dispose();
+  }
+  fileWatcher = workspace.onDidSaveTextDocument((document) => {
+    if (!document.fileName.match(/\.(ptx|xml)$/)) {
+      return;
+    }
+    const autoCompile: boolean =
+      workspace
+        .getConfiguration("pretext-tools")
+        .get("livePreview.autoCompile") ?? true;
+    if (!autoCompile) {
+      return;
+    }
+    if (buildInProgress) {
+      return;
+    }
+    if (buildDebounceTimer) {
+      clearTimeout(buildDebounceTimer);
+    }
+    buildDebounceTimer = setTimeout(() => {
+      triggerFileBuildAndReopen(target, projectPath, filePath);
+    }, BUILD_DEBOUNCE_MS);
+  });
+}
+
+/**
+ * Build a non-HTML target and reopen the output file.
+ */
+function triggerFileBuildAndReopen(
+  target: string,
+  projectPath: string,
+  filePath: string,
+): void {
+  if (buildInProgress) {
+    return;
+  }
+  buildInProgress = true;
+  utils.updateStatusBarItem(ptxSBItem, "building");
+  pretextOutputChannel.appendLine(
+    `[File Preview] Auto-building target: ${target}`,
+  );
+
+  const fullCommand = cli.cmd() + " build " + target;
+  const buildProcess = spawn(fullCommand, [], {
+    cwd: projectPath,
+    shell: true,
+  });
+
+  buildProcess.stdout?.on("data", (data: Buffer) => {
+    pretextOutputChannel.appendLine(utils.stripColorCodes(data.toString()));
+  });
+  buildProcess.stderr?.on("data", (data: Buffer) => {
+    const text = utils.stripColorCodes(data.toString());
+    if (text.trim()) {
+      pretextOutputChannel.appendLine(`[build stderr] ${text}`);
+    }
+  });
+
+  buildProcess.on("close", (code: number | null) => {
+    buildInProgress = false;
+    if (code === 0) {
+      pretextOutputChannel.appendLine(
+        "[File Preview] Build complete. Reopening file.",
+      );
+      utils.updateStatusBarItem(ptxSBItem, "success");
+      const fileUri = Uri.file(filePath);
+      commands.executeCommand("vscode.open", fileUri, { viewColumn: ViewColumn.Beside, preview: true });
+    } else {
+      pretextOutputChannel.appendLine(
+        `[File Preview] Build failed (code ${code}).`,
+      );
+      utils.updateStatusBarItem(ptxSBItem, "ready");
+    }
+  });
 }
 
 /**
  * Start `pretext view <target>` and open the WebviewPanel when ready.
+ * Builds the target first if the output directory is missing or empty.
  */
 async function startViewServer(
   target: string,
   projectPath: string,
 ): Promise<void> {
-  const fullCommand = cli.cmd() + " view --no-launch " + target;
+  // Check if the output exists; if not, build first
+  const outputDir = path.join(projectPath, "output", target);
+  let needsBuild = true;
+  try {
+    const files = fs.readdirSync(outputDir);
+    needsBuild = !files.some((f) => f.endsWith(".html"));
+  } catch {
+    needsBuild = true;
+  }
+
+  if (needsBuild) {
+    pretextOutputChannel.appendLine(
+      `[Live Preview] No HTML output found for "${target}", building first...`,
+    );
+    pretextOutputChannel.show(); // Show the output channel so user sees build progress
+    utils.updateStatusBarItem(ptxSBItem, "building");
+
+    const buildOk = await new Promise<boolean>((resolve) => {
+      const buildCmd = cli.cmd() + " build " + target;
+      pretextOutputChannel.appendLine(`[Live Preview] Running: ${buildCmd}`);
+      const proc = spawn(buildCmd, [], {
+        cwd: projectPath,
+        shell: true,
+      });
+      proc.stdout?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
+      });
+      proc.stderr?.on("data", (data: Buffer) => {
+        const text = utils.stripColorCodes(data.toString());
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
+      });
+      proc.on("close", (code) => {
+        pretextOutputChannel.appendLine(
+          `[Live Preview] Build process exited with code ${code}`,
+        );
+        resolve(true); // Always continue — check for output files below
+      });
+    });
+
+    // Check if the build produced any HTML output, even if exit code was non-zero
+    // (PreTeXt often exits 1 due to missing optional tools like Sage)
+    let hasOutput = false;
+    try {
+      const files = fs.readdirSync(outputDir);
+      hasOutput = files.some((f) => f.endsWith(".html"));
+    } catch {
+      hasOutput = false;
+    }
+
+    if (!hasOutput) {
+      window.showErrorMessage(
+        "PreTeXt build produced no HTML output. Check the output log for details.",
+        "Show Log",
+      ).then((choice) => {
+        if (choice === "Show Log") {
+          pretextOutputChannel.show();
+        }
+      });
+      utils.updateStatusBarItem(ptxSBItem, "ready");
+      return;
+    }
+
+    pretextOutputChannel.appendLine(
+      `[Live Preview] Build complete. Starting preview server...`,
+    );
+  }
+
+  // Use --restart-server to ensure we get a fresh server (handles stale servers)
+  const fullCommand = cli.cmd() + " view --no-launch --restart-server " + target;
 
   pretextOutputChannel.appendLine(`Running: ${fullCommand}`);
   utils.updateStatusBarItem(ptxSBItem, "building");
@@ -90,34 +375,54 @@ async function startViewServer(
     shell: true,
   });
 
-  viewProcess.stdout?.on("data", (data: Buffer) => {
-    const text = utils.stripColorCodes(data.toString());
-    pretextOutputChannel.appendLine(text);
+  // Buffer to accumulate output for URL detection (data may arrive in chunks)
+  let outputBuffer = "";
 
-    // PreTeXt CLI outputs two URLs:
-    //   "Server will soon be available at http://localhost:8130"
-    //   "The target `html` will be available at http://localhost:8130/output/html"
-    // We want the second one (with the /output/ path).
-    const targetUrlMatch = text.match(/(?:will be available|Opening browser).*?(https?:\/\/[^\s]*\/output\/[^\s]+)/);
+  function checkForServerUrl(text: string): void {
+    outputBuffer += text;
+    // Look for the target-specific URL
+    const targetUrlMatch = outputBuffer.match(/(?:will be available|Opening browser).*?(https?:\/\/[^\s]*\/output\/[^\s]+)/);
     if (targetUrlMatch && !serverUrl) {
       serverUrl = targetUrlMatch[1];
-      pretextOutputChannel.appendLine(`Preview server ready at: ${serverUrl}`);
+      pretextOutputChannel.appendLine(`[Live Preview] Server ready at: ${serverUrl}`);
       utils.updateStatusBarItem(ptxSBItem, "success");
       injectInverseSearchScript(projectPath, target);
       openPreviewPanel(serverUrl, target);
       setupFileWatcher(target, projectPath);
     }
+  }
+
+  viewProcess.stdout?.on("data", (data: Buffer) => {
+    const text = utils.stripColorCodes(data.toString());
+    pretextOutputChannel.appendLine(text);
+    checkForServerUrl(text);
   });
 
   viewProcess.stderr?.on("data", (data: Buffer) => {
     const text = utils.stripColorCodes(data.toString());
     if (text.trim()) {
-      pretextOutputChannel.appendLine(`[preview stderr] ${text}`);
+      pretextOutputChannel.appendLine(text);
     }
+    checkForServerUrl(text);
   });
 
   viewProcess.on("close", (code: number | null) => {
-    pretextOutputChannel.appendLine(`Preview server exited (code ${code})`);
+    pretextOutputChannel.appendLine(
+      `[Live Preview] Server process exited (code ${code}). serverUrl=${serverUrl || "NOT DETECTED"}`,
+    );
+    if (!serverUrl) {
+      pretextOutputChannel.appendLine(
+        `[Live Preview] ERROR: Server exited without providing a URL. Accumulated output:\n${outputBuffer.substring(0, 1000)}`,
+      );
+      window.showErrorMessage(
+        "PreTeXt server failed to start. Check the output log.",
+        "Show Log",
+      ).then((choice) => {
+        if (choice === "Show Log") {
+          pretextOutputChannel.show();
+        }
+      });
+    }
     serverUrl = undefined;
     viewProcess = undefined;
     utils.updateStatusBarItem(ptxSBItem, "ready");
@@ -172,11 +477,11 @@ function openPreviewPanel(url: string, target: string): void {
     editorTracker.dispose();
   }
   // Capture the current editor before the webview takes focus
-  if (window.activeTextEditor?.document.fileName.endsWith(".ptx")) {
+  if (window.activeTextEditor?.document.fileName.match(/\.(ptx|xml)$/)) {
     lastPtxEditor = window.activeTextEditor;
   }
   editorTracker = window.onDidChangeActiveTextEditor((editor) => {
-    if (editor && editor.document.fileName.endsWith(".ptx")) {
+    if (editor && editor.document.fileName.match(/\.(ptx|xml)$/)) {
       lastPtxEditor = editor;
     }
   });
@@ -253,6 +558,15 @@ function getWebviewContent(url: string): string {
     '                        var u = previewUrl.split("#")[0] + "#" + message.id;',
     '                        iframe.src = u;',
     '                    }',
+    '                }',
+    '',
+    '                // Navigate to a specific HTML page and scroll to an element',
+    '                if (message.command === "navigateAndScroll" && message.file && message.id) {',
+    '                    console.log("[WebviewWrapper] navigateAndScroll:", message.file, message.id);',
+    '                    var baseUrl = previewUrl.endsWith("/") ? previewUrl : previewUrl + "/";',
+    '                    var targetUrl = baseUrl + message.file + "#" + message.id;',
+    '                    console.log("[WebviewWrapper] Loading:", targetUrl);',
+    '                    iframe.src = targetUrl;',
     '                }',
     '',
     '                // Inverse search: the iframe sends this via window.parent.postMessage',
@@ -399,7 +713,7 @@ function setupFileWatcher(target: string, projectPath: string): void {
   }
 
   fileWatcher = workspace.onDidSaveTextDocument((document) => {
-    if (!document.fileName.endsWith(".ptx")) {
+    if (!document.fileName.match(/\.(ptx|xml)$/)) {
       return;
     }
 
@@ -512,77 +826,88 @@ export function cmdForwardSearch(): void {
   const document = editor.document;
   const fullText = document.getText();
   const offset = document.offsetAt(editor.selection.active);
-  const textBefore = fullText.substring(0, offset);
 
-  // Find the last xml:id="..." before the cursor
-  const idRegex = /xml:id=["']([^"']+)["']/g;
-  let lastId: string | undefined;
-  let lastIdEnd: number = 0;
-  let match: RegExpExecArray | null;
-  while ((match = idRegex.exec(textBefore)) !== null) {
-    lastId = match[1];
-    lastIdEnd = match.index + match[0].length;
-  }
+  // Extract ~300 chars of source text AFTER the cursor (the paragraph the user
+  // is looking at), strip XML tags to get plain prose words.
+  const contextEnd = Math.min(fullText.length, offset + 300);
+  const rawContext = fullText.substring(offset, contextEnd);
+  // Strip XML tags completely
+  const plainContext = rawContext.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
-  if (!lastId) {
-    window.showInformationMessage(
-      "No xml:id found before cursor position.",
-    );
+  // Extract distinctive words (5+ chars to avoid common short words like
+  // "the", "and", "this"). Also skip XML-ish words.
+  const skipWords = new Set(["xmlns", "pretext", "include"]);
+  const words = plainContext
+    .replace(/[^a-zA-Z\s-]/g, " ")  // keep hyphens for compound words
+    .split(/\s+/)
+    .filter((w) => w.length >= 5 && !skipWords.has(w.toLowerCase()));
+
+  pretextOutputChannel.appendLine(
+    `[Forward Search] Context words: ${words.slice(0, 6).join(", ")}`,
+  );
+
+  if (words.length < 2) {
+    // Fall back to nearest xml:id
+    const idRegex = /xml:id=["']([^"']+)["']/g;
+    let lastId: string | undefined;
+    let match: RegExpExecArray | null;
+    const textBefore = fullText.substring(0, offset);
+    while ((match = idRegex.exec(textBefore)) !== null) {
+      lastId = match[1];
+    }
+    if (lastId) {
+      pretextOutputChannel.appendLine(
+        `[Forward Search] Too few words, falling back to xml:id: ${lastId}`,
+      );
+      currentPanel.webview.postMessage({ command: "scrollTo", id: lastId });
+    } else {
+      window.showInformationMessage("No identifiable content near cursor.");
+    }
     return;
   }
 
-  // Count which <p> tag the cursor is inside (within the enclosing block)
-  // to get paragraph-level precision
-  const textBetween = fullText.substring(lastIdEnd, offset);
-  const pMatches = textBetween.match(/<p\b/g);
-  const pCount = pMatches ? pMatches.length : 0;
+  // Search the HTML output files for these words to find the element ID + page
+  const result = findHtmlIdByText(words.slice(0, 5));
 
-  pretextOutputChannel.appendLine(
-    `[Forward Search] Nearest xml:id: "${lastId}", cursor offset: ${offset}, lastIdEnd: ${lastIdEnd}, <p> count between: ${pCount}`,
-  );
-
-  let targetId = lastId;
-  if (pCount > 0) {
-    // Look up the HTML file to find the suffixed ID for the Nth paragraph
+  if (result) {
     pretextOutputChannel.appendLine(
-      `[Forward Search] Looking up HTML id for para #${pCount} in block "${lastId}"`,
+      `[Forward Search] Found HTML element: ${result.id} in ${result.file}`,
     );
-    const htmlId = getHtmlIdForNthPara(lastId, pCount);
-    if (htmlId) {
-      targetId = htmlId;
-      pretextOutputChannel.appendLine(
-        `[Forward Search] Mapped to HTML id: ${htmlId}`,
-      );
-    } else {
-      pretextOutputChannel.appendLine(
-        `[Forward Search] No HTML id found for para #${pCount}, using block id`,
-      );
-    }
+    // Navigate to the correct page and scroll to the element
+    currentPanel.webview.postMessage({
+      command: "navigateAndScroll",
+      file: result.file,
+      id: result.id,
+    });
   } else {
-    pretextOutputChannel.appendLine(
-      `[Forward Search] Cursor is before any <p> in this block, using block id`,
-    );
+    // Fall back to nearest xml:id
+    const idRegex = /xml:id=["']([^"']+)["']/g;
+    let lastId: string | undefined;
+    let match: RegExpExecArray | null;
+    const textBefore = fullText.substring(0, offset);
+    while ((match = idRegex.exec(textBefore)) !== null) {
+      lastId = match[1];
+    }
+    if (lastId) {
+      pretextOutputChannel.appendLine(
+        `[Forward Search] Text search failed, falling back to xml:id: ${lastId}`,
+      );
+      currentPanel.webview.postMessage({ command: "scrollTo", id: lastId });
+    } else {
+      window.showInformationMessage("Could not find matching content in preview.");
+    }
   }
-
-  pretextOutputChannel.appendLine(
-    `[Forward Search] Scrolling to: ${targetId}`,
-  );
-
-  currentPanel.webview.postMessage({
-    command: "scrollTo",
-    id: targetId,
-  });
 }
 
 /**
- * Look up the HTML output to find the suffixed ID for the Nth
- * <div class="para"> within a block. This is the inverse of
- * getParaIndexFromHtml.
+ * Search all HTML output files for the given words and return the
+ * nearest element ID that contains them.
  */
-function getHtmlIdForNthPara(blockId: string, paraIndex: number): string | undefined {
+function findHtmlIdByText(words: string[]): { id: string; file: string } | undefined {
   if (!currentProjectPath || !currentTarget) {
     return undefined;
   }
+
   const htmlDir = path.join(currentProjectPath, "output", currentTarget);
   let htmlFiles: string[];
   try {
@@ -593,6 +918,12 @@ function getHtmlIdForNthPara(blockId: string, paraIndex: number): string | undef
     return undefined;
   }
 
+  // Build a regex: word1.{1,120}?word2.{1,120}?word3...
+  // Escape regex special chars in words (hyphens are literal in words like "cross-reference")
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const phrase = escaped.join("[\\s\\S]{1,120}?");
+  const phraseRegex = new RegExp(phrase, "i");
+
   for (const file of htmlFiles) {
     const filePath = path.join(htmlDir, file);
     let content: string;
@@ -602,37 +933,22 @@ function getHtmlIdForNthPara(blockId: string, paraIndex: number): string | undef
       continue;
     }
 
-    const parentPattern = new RegExp(`id="${escapeRegex(blockId)}"`);
-    const parentMatch = parentPattern.exec(content);
-    if (!parentMatch) {
+    const phraseMatch = phraseRegex.exec(content);
+    if (!phraseMatch) {
       continue;
     }
 
-    const afterParent = content.substring(parentMatch.index);
-    // Bound by next sibling section
-    const nextSectionRegex = new RegExp(
-      `<section[^>]+id="(?!${escapeRegex(blockId)})`,
-    );
-    const nextSection = nextSectionRegex.exec(afterParent.substring(100));
-    const blockHtml = nextSection
-      ? afterParent.substring(0, 100 + nextSection.index)
-      : afterParent.substring(0, 20000);
+    // Found the text. Now walk backward from the match to find the
+    // nearest element with an id attribute.
+    const before = content.substring(0, phraseMatch.index);
+    const idMatches = [...before.matchAll(/\bid="([^"]+)"/g)];
 
-    // Find all <div class="para" id="blockId-N"> and return the Nth one
-    const paraRegex = new RegExp(
-      `<div class="para" id="(${escapeRegex(blockId)}-\\d+)"`,
-      "g",
-    );
-    let count = 0;
-    let m: RegExpExecArray | null;
-    while ((m = paraRegex.exec(blockHtml)) !== null) {
-      count++;
-      if (count === paraIndex) {
-        pretextOutputChannel.appendLine(
-          `[Forward Search] Para #${paraIndex} maps to HTML id: ${m[1]}`,
-        );
-        return m[1];
-      }
+    if (idMatches.length > 0) {
+      const nearestId = idMatches[idMatches.length - 1][1];
+      pretextOutputChannel.appendLine(
+        `[Forward Search] Text "${words.slice(0, 3).join(" ")}" found in ${file}, nearest id: ${nearestId}`,
+      );
+      return { id: nearestId, file };
     }
   }
 
@@ -658,13 +974,29 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
     idsToTry.push(stripped);
     current = stripped;
   }
+  // PreTeXt HTML may use the "label" attribute (with prefixes like "section-")
+  // instead of xml:id. Also try stripping common prefixes.
+  const prefixes = ["section-", "subsection-", "subsubsection-", "chapter-"];
+  const baseIds = [...idsToTry];
+  for (const id of baseIds) {
+    for (const prefix of prefixes) {
+      if (id.startsWith(prefix)) {
+        const without = id.substring(prefix.length);
+        if (without && !idsToTry.includes(without)) {
+          idsToTry.push(without);
+        }
+      }
+    }
+  }
+  // Also search for label="..." attribute in addition to xml:id="..."
+  // (PreTeXt uses label for HTML id generation when present)
 
   pretextOutputChannel.appendLine(
     `[Inverse Search] Looking for: ${idsToTry.join(", ")}${textSnippet ? " | text: \"" + textSnippet.substring(0, 40) + "...\"" : ""}`,
   );
 
   // Use lastPtxEditor since the webview has focus (activeTextEditor is undefined)
-  const editor = window.activeTextEditor?.document.fileName.endsWith(".ptx")
+  const editor = window.activeTextEditor?.document.fileName.match(/\.(ptx|xml)$/)
     ? window.activeTextEditor
     : lastPtxEditor;
 
@@ -673,29 +1005,12 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   );
 
   if (editor) {
-    // If the exact ID wasn't found but the stripped parent was,
-    // count which <div class="para"> this is within the HTML block
-    // and jump to the corresponding <p> in the source.
-    if (idsToTry.length > 1) {
-      const parentId = idsToTry[1]; // stripped ID
-      const paraIndex = getParaIndexFromHtml(xmlId, parentId);
-      pretextOutputChannel.appendLine(
-        `[Inverse Search] getParaIndexFromHtml("${xmlId}", "${parentId}") = ${paraIndex}`,
-      );
-      if (paraIndex >= 0) {
-        const jumped = jumpToNthPara(editor, parentId, paraIndex);
-        if (jumped) {
-          pretextOutputChannel.appendLine(
-            `[Inverse Search] Found para #${paraIndex} of "${parentId}"`,
-          );
-          return;
-        }
-      }
-    }
-
-    // Fall back to ID-based search
+    // Search for each candidate ID with text-based refinement.
+    // Text refinement uses the paragraph's visible text to jump to
+    // the exact line, even when the HTML ID numbering doesn't map
+    // cleanly to source structure (proofs, corollaries, objectives, etc.)
     for (const id of idsToTry) {
-      const found = searchDocumentForId(editor.document, id);
+      const found = searchDocumentForId(editor.document, id, textSnippet);
       if (found) {
         pretextOutputChannel.appendLine(
           `[Inverse Search] Found "${id}" in active editor`,
@@ -703,31 +1018,97 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
         return;
       }
     }
+
+    // No ID matched — try pure text search in the active editor
+    if (textSnippet && textSnippet.length > 15) {
+      const jumped = pureTextSearch(editor, textSnippet);
+      if (jumped) {
+        pretextOutputChannel.appendLine(
+          `[Inverse Search] Found via pure text search in active editor`,
+        );
+        return;
+      }
+    }
   }
 
-  // Search across all .ptx files in the workspace
+  // Search across all .ptx/xml files in the workspace
   pretextOutputChannel.appendLine(
     `[Inverse Search] Searching workspace files...`,
   );
-  workspace.findFiles("**/*.ptx", null, 100).then((files) => {
+  workspace.findFiles("**/*.{ptx,xml}", null, 100).then((files) => {
     for (const file of files) {
       workspace.openTextDocument(file).then((doc) => {
+        // Try ID search first
         for (const id of idsToTry) {
-          if (searchDocumentForId(doc, id)) {
-            window.showTextDocument(doc, ViewColumn.One).then((ed) => {
-              if (id !== xmlId && textSnippet && textSnippet.length > 15) {
-                refineSearchByText(ed, id, textSnippet);
-              }
-            });
+          if (searchDocumentForId(doc, id, textSnippet)) {
+            window.showTextDocument(doc, ViewColumn.One);
             pretextOutputChannel.appendLine(
               `[Inverse Search] Found "${id}" in ${doc.fileName}`,
             );
             return;
           }
         }
+        // Try pure text search
+        if (textSnippet && textSnippet.length > 15) {
+          const text = doc.getText();
+          const words = textSnippet
+            .replace(/[^a-zA-Z\s]/g, " ")
+            .split(/\s+/)
+            .filter((w) => w.length >= 5);
+          if (words.length >= 2) {
+            const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+            const m = new RegExp(phrase, "i").exec(text);
+            if (m) {
+              window.showTextDocument(doc, ViewColumn.One).then((ed) => {
+                const pos = doc.positionAt(m.index);
+                ed.revealRange(new Range(pos, pos), 2);
+                ed.selection = new Selection(pos, pos);
+              });
+              pretextOutputChannel.appendLine(
+                `[Inverse Search] Found via text in ${doc.fileName}`,
+              );
+              return;
+            }
+          }
+        }
       });
     }
   });
+}
+
+/**
+ * Pure text search: find paragraph text in the document without any ID.
+ * Used when PreTeXt's auto-generated HTML IDs have no source counterpart.
+ */
+function pureTextSearch(
+  editor: import("vscode").TextEditor,
+  textSnippet: string,
+): boolean {
+  const document = editor.document;
+  const text = document.getText();
+
+  const words = textSnippet
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 5);
+
+  if (words.length < 2) {
+    return false;
+  }
+
+  const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+  const m = new RegExp(phrase, "i").exec(text);
+  if (m) {
+    const pos = document.positionAt(m.index);
+    pretextOutputChannel.appendLine(
+      `[Inverse Search] Pure text match: "${words.slice(0, 4).join(" ")}" at line ${pos.line + 1}`,
+    );
+    editor.revealRange(new Range(pos, pos), 2);
+    editor.selection = new Selection(pos, pos);
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -990,24 +1371,48 @@ function refineSearchByText(
 function searchDocumentForId(
   document: import("vscode").TextDocument,
   xmlId: string,
+  textSnippet?: string,
 ): boolean {
   const text = document.getText();
 
-  // Search for xml:id="value" or id="value" (PreTeXt uses xml:id)
+  // Search for xml:id="value", id="value", or label="value"
   const patterns = [
     new RegExp(`xml:id=["']${escapeRegex(xmlId)}["']`),
+    new RegExp(`\\blabel=["']${escapeRegex(xmlId)}["']`),
     new RegExp(`\\bid=["']${escapeRegex(xmlId)}["']`),
   ];
 
   for (const pattern of patterns) {
     const match = pattern.exec(text);
-    pretextOutputChannel.appendLine(
-      `[searchDocumentForId] pattern: ${pattern}, match: ${match ? "YES at " + match.index : "no"}`,
-    );
     if (match) {
-      const pos = document.positionAt(match.index);
+      let jumpIdx = match.index;
+
+      // If we have a text snippet, try to refine to the exact paragraph
+      // Search the ENTIRE file since chunked HTML pages may combine content
+      // from multiple source sections.
+      if (textSnippet && textSnippet.length > 15) {
+        const words = textSnippet
+          .replace(/[^a-zA-Z\s]/g, " ")
+          .split(/\s+/)
+          .filter((w) => w.length >= 4);
+
+        if (words.length >= 2) {
+          const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+          const phraseRegex = new RegExp(phrase, "i");
+
+          const phraseMatch = phraseRegex.exec(text);
+          if (phraseMatch) {
+            jumpIdx = phraseMatch.index;
+            pretextOutputChannel.appendLine(
+              `[searchDocumentForId] Text refined: "${words.slice(0, 4).join(" ")}" at offset ${jumpIdx}`,
+            );
+          }
+        }
+      }
+
+      const pos = document.positionAt(jumpIdx);
       pretextOutputChannel.appendLine(
-        `[searchDocumentForId] Jumping to line ${pos.line + 1}, char ${pos.character}`,
+        `[searchDocumentForId] Jumping to line ${pos.line + 1}`,
       );
       const editor = window.activeTextEditor;
       if (editor && editor.document === document) {
@@ -1044,6 +1449,15 @@ export function disposeLivePreview(): void {
   if (viewProcess && !viewProcess.killed) {
     viewProcess.kill();
     viewProcess = undefined;
+  }
+  // Stop the pretext view server if we have project info
+  if (currentProjectPath && currentTarget) {
+    try {
+      const stopCmd = cli.cmd() + " view --stop-server " + currentTarget;
+      spawn(stopCmd, [], { cwd: currentProjectPath, shell: true });
+    } catch {
+      // best effort
+    }
   }
   if (fileWatcher) {
     fileWatcher.dispose();
