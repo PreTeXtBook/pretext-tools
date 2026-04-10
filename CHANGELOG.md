@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- Greatly improved conversion of LaTeX to PreTeXt.
+
 ## [0.35.2] - 2026-03-28
 
 ## [0.35.1] - 2026-03-27

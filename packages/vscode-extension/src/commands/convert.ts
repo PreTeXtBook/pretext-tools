@@ -53,15 +53,18 @@ export async function cmdConvertText() {
     "Converting selected text to PreTeXt format.",
   );
   window
-    .showQuickPick(["PreTeXt Markdown", "LaTeX", "Classic Markdown"], {
-      placeHolder: "Which format is the selected text?",
-    })
+    .showQuickPick(
+      ["LaTeX-style PreTeXt", "PreTeXt Markdown", "Classic Markdown"],
+      {
+        placeHolder: "Which format is the selected text?",
+      },
+    )
     .then(async (qpSelection) => {
       if (!qpSelection) {
         return;
       }
       switch (qpSelection) {
-        case "LaTeX":
+        case "LaTeX-style PreTeXt":
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
         case "Classic Markdown":
