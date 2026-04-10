@@ -33,7 +33,28 @@
       <optional>
         <attribute name="version"/>
       </optional>
+      <optional>
+        <attribute name="circuitjs"/>
+      </optional>
+      <optional>
+        <attribute name="calcplot3d"/>
+      </optional>
+      <optional>
+        <attribute name="variant"/>
+      </optional>
+      <optional>
+        <attribute name="dark-mode-enabled"/>
+      </optional>
+      <optional>
+        <attribute name="resize-behavior"/>
+      </optional>
       <interleave>
+        <optional>
+          <ref name="ImageShortDescription"/>
+        </optional>
+        <optional>
+          <ref name="ImageDescription"/>
+        </optional>
         <zeroOrMore>
           <choice>
             <ref name="Slate"/>
@@ -702,11 +723,7 @@
     <optional>
       <ref name="Feedback"/>
     </optional>
-    <element name="matches">
-      <oneOrMore>
-        <ref name="Match"/>
-      </oneOrMore>
-    </element>
+    <ref name="Matches"/>
     <zeroOrMore>
       <ref name="Hint"/>
     </zeroOrMore>
@@ -717,26 +734,50 @@
       <ref name="Solution"/>
     </zeroOrMore>
   </define>
+  <define name="Matches">
+    <choice>
+      <element name="cardsort">
+        <oneOrMore>
+          <ref name="Match"/>
+        </oneOrMore>
+      </element>
+      <element name="matching">
+        <oneOrMore>
+          <element name="premise">
+            <optional>
+              <attribute name="ref"/>
+            </optional>
+            <ref name="TextLong"/>
+          </element>
+        </oneOrMore>
+        <oneOrMore>
+          <element name="response">
+            <ref name="UniqueID"/>
+            <optional>
+              <attribute name="order">
+                <data type="integer"/>
+              </attribute>
+            </optional>
+            <ref name="TextLong"/>
+          </element>
+        </oneOrMore>
+      </element>
+    </choice>
+  </define>
   <define name="Match">
     <element name="match">
-      <optional>
-        <attribute name="order">
-          <data type="integer"/>
-        </attribute>
-      </optional>
-      <element name="premise">
-        <mixed>
+      <oneOrMore>
+        <element name="premise">
           <optional>
-            <ref name="BlockText"/>
+            <attribute name="order">
+              <data type="integer"/>
+            </attribute>
           </optional>
-        </mixed>
-      </element>
+          <ref name="TextLong"/>
+        </element>
+      </oneOrMore>
       <element name="response">
-        <mixed>
-          <optional>
-            <ref name="BlockText"/>
-          </optional>
-        </mixed>
+        <ref name="TextLong"/>
       </element>
     </element>
   </define>
@@ -905,9 +946,308 @@
       </oneOrMore>
     </element>
   </define>
+  <!-- Fill-in-the-blank exercises (new-style evaluation) -->
+  <define name="FillInBlank">
+    <ref name="MetaDataTitleOptional"/>
+    <optional>
+      <attribute name="number"/>
+    </optional>
+    <ref name="StatementExercise"/>
+    <ref name="Evaluation"/>
+    <zeroOrMore>
+      <ref name="Hint"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Answer"/>
+    </zeroOrMore>
+    <zeroOrMore>
+      <ref name="Solution"/>
+    </zeroOrMore>
+  </define>
+  <define name="Evaluation">
+    <element name="evaluation">
+      <optional>
+        <attribute name="answers-coupled">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <oneOrMore>
+        <ref name="Evaluate"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="Evaluate">
+    <element name="evaluate">
+      <optional>
+        <attribute name="name"/>
+      </optional>
+      <optional>
+        <attribute name="submit"/>
+      </optional>
+      <optional>
+        <attribute name="all">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <oneOrMore>
+        <ref name="FITBTest"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="FITBTest">
+    <element name="test">
+      <optional>
+        <attribute name="correct">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <ref name="FITBComparison"/>
+      <optional>
+        <ref name="Feedback"/>
+      </optional>
+    </element>
+  </define>
+  <define name="FITBComparison">
+    <choice>
+      <ref name="FITBNumcmp"/>
+      <ref name="FITBStrcmp"/>
+      <ref name="FITBJscmp"/>
+      <ref name="FITBMathcmp"/>
+      <ref name="FITBLogic"/>
+    </choice>
+  </define>
+  <define name="FITBNumcmp">
+    <element name="numcmp">
+      <optional>
+        <attribute name="use-answer">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="value"/>
+      </optional>
+      <optional>
+        <attribute name="tolerance"/>
+      </optional>
+      <optional>
+        <attribute name="min"/>
+      </optional>
+      <optional>
+        <attribute name="max"/>
+      </optional>
+      <optional>
+        <attribute name="object"/>
+      </optional>
+    </element>
+  </define>
+  <define name="FITBStrcmp">
+    <element name="strcmp">
+      <optional>
+        <attribute name="use-answer">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="case">
+          <value>insensitive</value>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="strip">
+          <value>no</value>
+        </attribute>
+      </optional>
+      <text/>
+    </element>
+  </define>
+  <define name="FITBJscmp">
+    <element name="jscmp">
+      <text/>
+    </element>
+  </define>
+  <define name="FITBMathcmp">
+    <element name="mathcmp">
+      <optional>
+        <attribute name="obj"/>
+      </optional>
+      <mixed>
+        <zeroOrMore>
+          <ref name="AnyElement"/>
+        </zeroOrMore>
+      </mixed>
+    </element>
+  </define>
+  <define name="FITBLogic">
+    <element name="logic">
+      <attribute name="op">
+        <choice>
+          <value>and</value>
+          <value>or</value>
+          <value>not</value>
+        </choice>
+      </attribute>
+      <oneOrMore>
+        <ref name="FITBComparison"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="AnyElement">
+    <element>
+      <anyName/>
+      <zeroOrMore>
+        <attribute>
+          <anyName/>
+        </attribute>
+      </zeroOrMore>
+      <mixed>
+        <zeroOrMore>
+          <ref name="AnyElement"/>
+        </zeroOrMore>
+      </mixed>
+    </element>
+  </define>
+  <!-- Extended fillin with interactive attributes -->
+  <define name="FillIn" combine="choice">
+    <element name="fillin">
+      <optional>
+        <attribute name="characters">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="cols">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="rows">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="width"/>
+      </optional>
+      <optional>
+        <attribute name="answer"/>
+      </optional>
+      <optional>
+        <attribute name="mode">
+          <choice>
+            <value>string</value>
+            <value>number</value>
+            <value>math</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="name"/>
+      </optional>
+      <optional>
+        <attribute name="ansobj"/>
+      </optional>
+      <optional>
+        <attribute name="fill"/>
+      </optional>
+    </element>
+  </define>
+  <!-- Datafile element for student data -->
+  <define name="Datafile">
+    <element name="datafile">
+      <optional>
+        <ref name="UniqueID"/>
+      </optional>
+      <optional>
+        <ref name="LabelID"/>
+      </optional>
+      <optional>
+        <ref name="Component"/>
+      </optional>
+      <attribute name="filename"/>
+      <optional>
+        <attribute name="rows">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="cols">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="editable">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
+        <attribute name="include-source">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <choice>
+        <element name="pre">
+          <optional>
+            <attribute name="source"/>
+          </optional>
+          <text/>
+        </element>
+        <ref name="Image"/>
+      </choice>
+    </element>
+  </define>
+  <define name="BlockStatement" combine="choice">
+    <ref name="Datafile"/>
+  </define>
+  <!-- Query (poll/survey) element -->
+  <define name="Query">
+    <element name="query">
+      <optional>
+        <ref name="LabelID"/>
+      </optional>
+      <optional>
+        <attribute name="scale">
+          <data type="integer"/>
+        </attribute>
+      </optional>
+      <ref name="StatementExercise"/>
+      <optional>
+        <element name="choices">
+          <oneOrMore>
+            <ref name="Choice"/>
+          </oneOrMore>
+        </element>
+      </optional>
+    </element>
+  </define>
+  <define name="BlockStatement" combine="choice">
+    <ref name="Query"/>
+  </define>
   <!-- Include all exercise types in exercise and activity -->
   <define name="Exercise" combine="choice">
     <element name="exercise">
+      <optional>
+        <attribute name="workspace"/>
+      </optional>
       <choice>
         <ref name="MyOpenMath"/>
         <ref name="TrueFalse"/>
@@ -915,8 +1255,29 @@
         <ref name="Parsons"/>
         <ref name="Matching"/>
         <ref name="FreeResponse"/>
+        <ref name="FillInBlank"/>
         <ref name="Areas"/>
       </choice>
+    </element>
+  </define>
+  <!-- STACK assessment exercise type -->
+  <define name="Exercise" combine="choice">
+    <element name="exercise">
+      <ref name="MetaDataTitleOptional"/>
+      <optional>
+        <ref name="IntroductionStatement"/>
+      </optional>
+      <element name="stack">
+        <optional>
+          <ref name="LabelID"/>
+        </optional>
+        <optional>
+          <attribute name="source"/>
+        </optional>
+      </element>
+      <optional>
+        <ref name="ConclusionStatement"/>
+      </optional>
     </element>
   </define>
   <define name="ProjectLike" combine="choice">
@@ -927,6 +1288,7 @@
       <ref name="Parsons"/>
       <ref name="Matching"/>
       <ref name="FreeResponse"/>
+      <ref name="FillInBlank"/>
       <ref name="Areas"/>
     </choice>
   </define>
