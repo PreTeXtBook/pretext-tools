@@ -15,6 +15,7 @@ import {
   cmdViewVisualEditor,
 } from "./commands/view";
 import { cmdLivePreview, cmdForwardSearch, disposeLivePreview } from "./livePreview";
+import { PretextDocumentOutlineProvider, cmdOutlineJumpToLine } from "./documentOutline";
 import { cmdNew } from "./commands/new";
 import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
@@ -128,6 +129,7 @@ export async function activate(context: ExtensionContext) {
     ),
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
+    commands.registerCommand("pretext-tools.outlineJumpToLine", cmdOutlineJumpToLine),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
@@ -156,6 +158,15 @@ export async function activate(context: ExtensionContext) {
         "oscarlevin.pretext-tools#gettingStarted",
       );
     }),
+  );
+
+  // Register the document outline tree view
+  const outlineProvider = new PretextDocumentOutlineProvider();
+  context.subscriptions.push(
+    window.registerTreeDataProvider("pretextDocumentOutline", outlineProvider),
+    commands.registerCommand("pretext-tools.refreshOutline", () =>
+      outlineProvider.refresh(),
+    ),
   );
 
   console.log("Current projects: ", projects);
