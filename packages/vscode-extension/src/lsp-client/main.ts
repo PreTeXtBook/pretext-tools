@@ -47,6 +47,7 @@ export function activate(context: ExtensionContext) {
   const serverModule = context.asAbsolutePath(
     path.join("out", "lsp-server.js"),
   );
+
   // The debug options for the server
   // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
   const debugOptions = { execArgv: ["--nolazy", "--inspect=6009"] };
@@ -80,12 +81,6 @@ export function activate(context: ExtensionContext) {
     serverOptions,
     clientOptions,
   );
-
-  //context.subscriptions.push(
-  //    vscode.commands.registerCommand("myExtension.sayHello", () => {
-  //        vscode.window.showWarningMessage("Hello!");
-  //    })
-  //);
 
   // Start the client. This will also launch the server
   client.start();

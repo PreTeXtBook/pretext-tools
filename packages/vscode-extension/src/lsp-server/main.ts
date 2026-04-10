@@ -81,9 +81,9 @@ connection.onInitialize((params: InitializeParams) => {
       // documentSymbolProvider: { label: "PreTeXt Symbols" },
       // documentLinkProvider: {},
       // codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
-      // executeCommandProvider: {
-      //     commands: ["editor.action.addCommentLine"],
-      // },
+      executeCommandProvider: {
+        commands: ["formatDocument", "formatText"],
+      },
       documentFormattingProvider: true,
       documentRangeFormattingProvider: true,
     },
