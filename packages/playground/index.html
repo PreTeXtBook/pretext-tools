@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PreTeXt Playground</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <span class="logo">⊕ PreTeXt Playground</span>
+      <div class="toolbar-right">
+        <label for="format-select">Input:</label>
+        <select id="format-select">
+          <option value="markdown">Markdown</option>
+          <option value="pretext-xml">PreTeXt XML</option>
+        </select>
+        <span id="status" class="status"></span>
+      </div>
+    </header>
+
+    <div class="workspace" id="workspace">
+      <div class="pane input-pane">
+        <div class="pane-header">
+          <span id="input-title" class="pane-title">Markdown</span>
+        </div>
+        <textarea
+          id="input"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+        ></textarea>
+      </div>
+
+      <div class="divider" id="divider"></div>
+
+      <div class="pane output-pane">
+        <div class="pane-header tabs">
+          <button class="tab active" data-tab="xml">PreTeXt XML</button>
+          <button class="tab" data-tab="ptxast">ptxast</button>
+          <button class="tab" data-tab="mdast">mdast</button>
+          <button class="copy-btn" id="copy-btn" title="Copy output">Copy</button>
+        </div>
+        <pre id="output" class="output-content"></pre>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
