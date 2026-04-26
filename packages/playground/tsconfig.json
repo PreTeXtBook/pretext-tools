@@ -10,5 +10,22 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../ptxast-util-to-mdast"
+    },
+    {
+      "path": "../ptxast-util-from-xml"
+    },
+    {
+      "path": "../ptxast-util-to-xml"
+    },
+    {
+      "path": "../remark-pretext"
+    },
+    {
+      "path": "../ptxast"
+    }
+  ]
 }

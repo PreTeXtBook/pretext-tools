@@ -5,6 +5,7 @@ import remarkMath from 'remark-math';
 import { remarkPretext } from '@pretextbook/remark-pretext';
 import { ptxastRootToXml } from '@pretextbook/ptxast-util-to-xml';
 import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
+import { ptxastToMarkdown } from '@pretextbook/ptxast-util-to-mdast';
 import type { Root as MdastRoot } from 'mdast';
 import type { PtxRoot } from '@pretextbook/ptxast';
 
@@ -59,13 +60,14 @@ const SAMPLE_PRETEXT_XML = `<section xml:id="sec-pythagoras">
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'xml' | 'ptxast' | 'mdast';
+type Tab = 'xml' | 'ptxast' | 'mdast' | 'markdown-out';
 type Format = 'markdown' | 'pretext-xml';
 
 interface ConversionResult {
   xml?: string;
   ptxast?: PtxRoot;
   mdast?: MdastRoot;
+  markdownOut?: string;
   error?: string;
 }
 
@@ -97,13 +99,15 @@ function convertMarkdown(md: string): ConversionResult {
   const mdast = processor.parse(md) as MdastRoot;
   const ptxast = processor.runSync(mdast) as PtxRoot;
   const xml = ptxastRootToXml(ptxast);
-  return { xml, ptxast, mdast };
+  const markdownOut = ptxastToMarkdown(ptxast);
+  return { xml, ptxast, mdast, markdownOut };
 }
 
 function convertPretextXml(xml: string): ConversionResult {
   const ptxast = ptxastFromXml(xml);
   const rexml = ptxastRootToXml(ptxast);
-  return { xml: rexml, ptxast };
+  const markdownOut = ptxastToMarkdown(ptxast);
+  return { xml: rexml, ptxast, markdownOut };
 }
 
 // ─── Run & render ─────────────────────────────────────────────────────────────
@@ -148,6 +152,9 @@ function renderOutput() {
       outputEl.textContent = lastResult.mdast
         ? JSON.stringify(stripForDisplay(lastResult.mdast), null, 2)
         : '(not available for this input format)';
+      break;
+    case 'markdown-out':
+      outputEl.textContent = lastResult.markdownOut ?? '(no output)';
       break;
   }
 }
