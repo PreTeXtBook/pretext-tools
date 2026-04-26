@@ -1,0 +1,9 @@
+{
+  "name": "@pretextbook/ptxast",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ptxast/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "targets": {}
+}
