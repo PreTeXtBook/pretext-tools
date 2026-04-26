@@ -28,6 +28,9 @@
     },
     {
       "path": "./packages/ptxast-util-to-xml"
+    },
+    {
+      "path": "./packages/ptxast-util-from-xml"
     }
   ]
 }

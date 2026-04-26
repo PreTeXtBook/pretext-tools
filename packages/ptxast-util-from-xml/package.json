@@ -1,0 +1,29 @@
+{
+  "name": "@pretextbook/ptxast-util-from-xml",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pretextbook/pretext-tools.git",
+    "directory": "packages/ptxast-util-from-xml"
+  },
+  "dependencies": {
+    "@pretextbook/ptxast": "*",
+    "xast-util-from-xml": "^4.0.0"
+  },
+  "devDependencies": {
+    "@pretextbook/ptxast-util-to-xml": "*"
+  }
+}
