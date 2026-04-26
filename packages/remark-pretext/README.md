@@ -11,15 +11,17 @@ Standard Markdown extended with [generic directives](https://github.com/remarkjs
 
 A paragraph with inline $math$ and **important** terms.
 
-:::theorem[Pythagorean Theorem]{#thm-pythagoras}
+::::theorem[Pythagorean Theorem]{#thm-pythagoras}
 For a right triangle with legs $a$, $b$ and hypotenuse $c$:
 
-$$a^2 + b^2 = c^2$$
+$$
+a^2 + b^2 = c^2
+$$
 
 :::proof
 Left as an exercise.
 :::
-:::
+::::
 ```
 
 ## Usage
@@ -36,15 +38,21 @@ const tree = unified()
   .use(remarkDirective)   // enables ::: directives
   .use(remarkMath)        // enables $...$ and $$...$$
   .use(remarkPretext)
-  .parse(markdownString)
 
-// tree is now a PtxRoot node
+const mdast = processor.parse(markdownString);
+const ptxast = processor.runSync(mdast); // PtxRoot
+
+// Serialize to XML (use @pretextbook/ptxast-util-to-xml)
 ```
+
+> **Note:** Use `.runSync()` (or `.run()`) rather than `.parse()` — `.parse()` only runs the parser phase; transformers (including `remarkPretext`) run during the transform phase.
 
 ## Syntax Rules
 
 - `:::name[optional title]{#id attr=val}` opens a block directive
 - `:::` alone closes it
+- **Nesting**: use one more colon for the outer container when nesting directives:
+  - `::::theorem` containing `:::proof` — use `::::` for theorem, `:::` for proof
 - All standard PreTeXt block names are recognised (see `DIRECTIVE_MAP`)
 - Standard Markdown headings map to divisions:
   - `#` → `<chapter>`
@@ -56,7 +64,7 @@ const tree = unified()
   - `**text**` → `<alert>` (semantic emphasis in PreTeXt)
   - `` `code` `` → `<c>`
   - `$math$` → `<m>`
-  - `$$math$$` → `<me>`
+  - `$$\nmath\n$$` → `<me>` (display math requires `$$` on its own line)
 
 ## Supported Directives
 
