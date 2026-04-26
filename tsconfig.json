@@ -25,6 +25,9 @@
     },
     {
       "path": "./packages/remark-pretext"
+    },
+    {
+      "path": "./packages/ptxast-util-to-xml"
     }
   ]
 }

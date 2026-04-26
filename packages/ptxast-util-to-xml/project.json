@@ -1,0 +1,10 @@
+{
+  "name": "@pretextbook/ptxast-util-to-xml",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ptxast-util-to-xml/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "// targets": "to see all targets run: nx show project ptxast-util-to-xml --web",
+  "targets": {}
+}
