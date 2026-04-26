@@ -1,0 +1,183 @@
+name: Publish ptxast Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: "Release level (applies to all packages)"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
+
+concurrency:
+  group: publish-ptxast
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install Dependencies
+        run: npm install
+
+      # ── Build all packages in dependency order ────────────────────────────
+      # ptxast has no internal deps, must be built first.
+      # All other packages depend on @pretextbook/ptxast.
+
+      - name: Build ptxast
+        run: npx nx build ptxast
+
+      - name: Build remark-pretext
+        run: npx nx build remark-pretext
+
+      - name: Build ptxast-util-to-xml
+        run: npx nx build ptxast-util-to-xml
+
+      - name: Build ptxast-util-from-xml
+        run: npx nx build ptxast-util-from-xml
+
+      - name: Build ptxast-util-to-mdast
+        run: npx nx build ptxast-util-to-mdast
+
+      # ── Bump versions in source package.json files ────────────────────────
+      # npm version writes to the source file; Vite build already ran so we
+      # commit the bump for git history. The dist/packages/*/package.json is
+      # rebuilt below with the new version.
+
+      - name: Bump ptxast version
+        run: |
+          cd packages/ptxast
+          npm version ${{ inputs.level }} --no-git-tag-version
+
+      - name: Bump remark-pretext version
+        run: |
+          cd packages/remark-pretext
+          npm version ${{ inputs.level }} --no-git-tag-version
+
+      - name: Bump ptxast-util-to-xml version
+        run: |
+          cd packages/ptxast-util-to-xml
+          npm version ${{ inputs.level }} --no-git-tag-version
+
+      - name: Bump ptxast-util-from-xml version
+        run: |
+          cd packages/ptxast-util-from-xml
+          npm version ${{ inputs.level }} --no-git-tag-version
+
+      - name: Bump ptxast-util-to-mdast version
+        run: |
+          cd packages/ptxast-util-to-mdast
+          npm version ${{ inputs.level }} --no-git-tag-version
+
+      # ── Update internal dependency ranges to the new ptxast version ─────
+      # ^0.0.x semver only accepts 0.0.x patches; after any bump the range
+      # would be stale. Rewrite every internal @pretextbook/ptxast dependency
+      # to "^<new_version>" so the published packages resolve correctly.
+
+      - name: Update internal ptxast dependency ranges
+        run: |
+          NEW_VER=$(jq -r '.version' packages/ptxast/package.json)
+          for dir in packages/remark-pretext packages/ptxast-util-to-xml packages/ptxast-util-from-xml packages/ptxast-util-to-mdast; do
+            jq --arg v "^$NEW_VER" \
+              'if .dependencies["@pretextbook/ptxast"] then .dependencies["@pretextbook/ptxast"] = $v else . end' \
+              "$dir/package.json" > /tmp/pkg.json && mv /tmp/pkg.json "$dir/package.json"
+          done
+
+      # ── Rebuild with bumped versions so dist/package.json is up to date ──
+
+      - name: Rebuild all with new versions
+        run: |
+          npx nx build ptxast
+          npx nx build remark-pretext
+          npx nx build ptxast-util-to-xml
+          npx nx build ptxast-util-from-xml
+          npx nx build ptxast-util-to-mdast
+
+      # ── Read versions for tags ────────────────────────────────────────────
+
+      - name: Get versions
+        id: versions
+        run: |
+          echo "PTXAST=$(jq -r '.version' packages/ptxast/package.json)" >> $GITHUB_OUTPUT
+          echo "REMARK=$(jq -r '.version' packages/remark-pretext/package.json)" >> $GITHUB_OUTPUT
+          echo "TO_XML=$(jq -r '.version' packages/ptxast-util-to-xml/package.json)" >> $GITHUB_OUTPUT
+          echo "FROM_XML=$(jq -r '.version' packages/ptxast-util-from-xml/package.json)" >> $GITHUB_OUTPUT
+          echo "TO_MDAST=$(jq -r '.version' packages/ptxast-util-to-mdast/package.json)" >> $GITHUB_OUTPUT
+
+      # ── Publish from the dist directory (actual compiled output) ─────────
+
+      - name: Publish ptxast
+        run: npm publish --provenance
+        working-directory: dist/packages/ptxast
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish remark-pretext
+        run: npm publish --provenance
+        working-directory: dist/packages/remark-pretext
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish ptxast-util-to-xml
+        run: npm publish --provenance
+        working-directory: dist/packages/ptxast-util-to-xml
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish ptxast-util-from-xml
+        run: npm publish --provenance
+        working-directory: dist/packages/ptxast-util-from-xml
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish ptxast-util-to-mdast
+        run: npm publish --provenance
+        working-directory: dist/packages/ptxast-util-to-mdast
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # ── Commit bumped versions and create releases ────────────────────────
+
+      - name: Commit and Push
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add \
+            packages/ptxast/package.json \
+            packages/remark-pretext/package.json \
+            packages/ptxast-util-to-xml/package.json \
+            packages/ptxast-util-from-xml/package.json \
+            packages/ptxast-util-to-mdast/package.json
+          git commit -m "chore(ptxast): bump packages to v${{ steps.versions.outputs.PTXAST }}"
+          git push origin ${{ github.ref_name }}
+
+      - name: Create ptxast release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "ptxast-v${{ steps.versions.outputs.PTXAST }}" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="ptxast v${{ steps.versions.outputs.PTXAST }}" \
+            --notes "Publishes:
+          - @pretextbook/ptxast v${{ steps.versions.outputs.PTXAST }}
+          - @pretextbook/remark-pretext v${{ steps.versions.outputs.REMARK }}
+          - @pretextbook/ptxast-util-to-xml v${{ steps.versions.outputs.TO_XML }}
+          - @pretextbook/ptxast-util-from-xml v${{ steps.versions.outputs.FROM_XML }}
+          - @pretextbook/ptxast-util-to-mdast v${{ steps.versions.outputs.TO_MDAST }}"

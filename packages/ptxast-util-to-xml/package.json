@@ -1,7 +1,23 @@
 {
   "name": "@pretextbook/ptxast-util-to-xml",
   "version": "0.0.1",
+  "description": "Compile ptxast to PreTeXt XML",
+  "author": "Oscar Levin",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pretextbook/pretext-tools.git",
+    "directory": "packages/ptxast-util-to-xml"
+  },
+  "bugs": {
+    "url": "https://github.com/pretextbook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/pretextbook/pretext-tools/packages/ptxast-util-to-xml#readme",
+  "private": false,
   "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -10,17 +26,19 @@
       "default": "./index.js"
     }
   },
-  "main": "./index.cjs",
-  "module": "./index.js",
-  "types": "./index.d.ts",
-  "license": "GPL-3.0-or-later",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pretextbook/pretext-tools.git",
-    "directory": "packages/ptxast-util-to-xml"
-  },
+  "sideEffects": false,
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "*.d.cts",
+    "lib"
+  ],
   "dependencies": {
-    "@pretextbook/ptxast": "*",
+    "@pretextbook/ptxast": "^0.0.1",
     "xast-util-to-xml": "^4.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
