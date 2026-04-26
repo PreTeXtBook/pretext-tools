@@ -1,0 +1,70 @@
+# @pretextbook/remark-pretext
+
+A [remark](https://github.com/remarkjs/remark) plugin that transforms **markdown-style PreTeXt** into a [`@pretextbook/ptxast`](../ptxast) tree.
+
+## What is markdown-style PreTeXt?
+
+Standard Markdown extended with [generic directives](https://github.com/remarkjs/remark-directive) to express PreTeXt-specific environments:
+
+```markdown
+## Pythagorean Theorem
+
+A paragraph with inline $math$ and **important** terms.
+
+:::theorem[Pythagorean Theorem]{#thm-pythagoras}
+For a right triangle with legs $a$, $b$ and hypotenuse $c$:
+
+$$a^2 + b^2 = c^2$$
+
+:::proof
+Left as an exercise.
+:::
+:::
+```
+
+## Usage
+
+```ts
+import { unified } from 'unified'
+import remarkParse from 'remark-parse'
+import remarkDirective from 'remark-directive'
+import remarkMath from 'remark-math'
+import { remarkPretext } from '@pretextbook/remark-pretext'
+
+const tree = unified()
+  .use(remarkParse)
+  .use(remarkDirective)   // enables ::: directives
+  .use(remarkMath)        // enables $...$ and $$...$$
+  .use(remarkPretext)
+  .parse(markdownString)
+
+// tree is now a PtxRoot node
+```
+
+## Syntax Rules
+
+- `:::name[optional title]{#id attr=val}` opens a block directive
+- `:::` alone closes it
+- All standard PreTeXt block names are recognised (see `DIRECTIVE_MAP`)
+- Standard Markdown headings map to divisions:
+  - `#` → `<chapter>`
+  - `##` → `<section>`
+  - `###` → `<subsection>`
+  - `####` → `<subsubsection>`
+- Inline elements:
+  - `*text*` → `<em>`
+  - `**text**` → `<alert>` (semantic emphasis in PreTeXt)
+  - `` `code` `` → `<c>`
+  - `$math$` → `<m>`
+  - `$$math$$` → `<me>`
+
+## Supported Directives
+
+| Category | Names |
+|----------|-------|
+| theorem-like | `theorem`, `lemma`, `corollary`, `proposition`, `claim`, `fact`, `conjecture`, `axiom`, `principle`, `hypothesis`, `algorithm` |
+| definition-like | `definition`, `notation` |
+| remark-like | `remark`, `note`, `observation`, `warning`, `insight`, `assemblage` |
+| example-like | `example`, `question`, `problem`, `exercise`, `activity`, `exploration`, `investigation`, `project` |
+| proof-like | `proof`, `case` |
+| solution-like | `solution`, `hint`, `answer` |

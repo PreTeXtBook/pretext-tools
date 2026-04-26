@@ -19,6 +19,12 @@
     },
     {
       "path": "./packages/latex-pretext"
+    },
+    {
+      "path": "./packages/ptxast"
+    },
+    {
+      "path": "./packages/remark-pretext"
     }
   ]
 }

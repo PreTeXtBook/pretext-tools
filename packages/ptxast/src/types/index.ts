@@ -64,9 +64,14 @@ export interface Subtitle extends PtxParent {
 // Document-level
 // ---------------------------------------------------------------------------
 
+/**
+ * Root document node — used as the output of transformers (a document
+ * fragment). Children are intentionally broad so that parsers and transformers
+ * can place any ptxast content here without wrapping in a full Pretext tree.
+ */
 export interface PtxRoot extends PtxParent {
   type: 'root';
-  children: (Pretext | PtxText)[];
+  children: PtxContent[];
 }
 
 export interface Pretext extends PtxParent {

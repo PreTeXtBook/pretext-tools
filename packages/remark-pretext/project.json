@@ -1,0 +1,9 @@
+{
+  "name": "@pretextbook/remark-pretext",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/remark-pretext/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "targets": {}
+}
