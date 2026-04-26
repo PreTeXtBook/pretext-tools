@@ -15,6 +15,7 @@
     "latex-pretext:use-local-unified-latex": "node ./scripts/install-unified-latex-from-source.cjs ../unified-latex",
     "build": "nx build vscode-extension",
     "build:dev": "nx build:dev vscode-extension",
+    "build:packages": "nx run-many -t build --exclude=vscode-extension,playground",
     "watch": "NX_TUI=false nx build:watch vscode-extension --outputStyle=stream",
     "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs",
     "lint": "nx run-many -t eslint:lint",
