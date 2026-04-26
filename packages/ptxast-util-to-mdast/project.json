@@ -1,0 +1,10 @@
+{
+  "name": "@pretextbook/ptxast-util-to-mdast",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ptxast-util-to-mdast/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "// targets": "to see all targets run: nx show project ptxast-util-to-mdast --web",
+  "targets": {}
+}

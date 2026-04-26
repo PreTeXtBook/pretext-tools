@@ -1,0 +1,29 @@
+{
+  "name": "@pretextbook/ptxast-util-to-mdast",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "license": "GPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pretextbook/pretext-tools.git",
+    "directory": "packages/ptxast-util-to-mdast"
+  },
+  "dependencies": {
+    "@pretextbook/ptxast": "*",
+    "@types/mdast": "^4.0.0",
+    "mdast-util-directive": "^3.0.0",
+    "mdast-util-math": "^3.0.0",
+    "mdast-util-to-markdown": "^2.0.0"
+  }
+}

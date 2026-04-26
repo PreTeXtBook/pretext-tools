@@ -100,6 +100,27 @@ describe('ptxastFromXml', () => {
     expect(last.value).toBe('!');
   });
 
+  it('preserves single space between inline elements', () => {
+    const root = ptxastFromXml('<p><em>a</em> <em>b</em></p>');
+    const p = root.children[0] as P;
+    // Space node between the two em elements must be preserved
+    const space = p.children.find(n => n.type === 'text' && (n as PtxText).value === ' ');
+    expect(space).toBeDefined();
+  });
+
+  it('handles CDATA content in value nodes', () => {
+    const root = ptxastFromXml('<c><![CDATA[a < b & c > d]]></c>');
+    const c = root.children[0] as C;
+    expect(c.type).toBe('c');
+    expect(c.value).toBe('a < b & c > d');
+  });
+
+  it('handles CDATA content in paragraph text', () => {
+    const root = ptxastFromXml('<p><![CDATA[a < b]]></p>');
+    const p = root.children[0] as P;
+    expect((p.children[0] as PtxText).value).toBe('a < b');
+  });
+
   it('drops XML comments', () => {
     const root = ptxastFromXml('<p><!-- comment -->text</p>');
     const p = root.children[0] as P;

@@ -4,7 +4,10 @@
  *
  * Strategy:
  *   - xast `root`    → PtxRoot (children converted recursively)
- *   - xast `text`    → PtxText (whitespace-only text nodes are dropped)
+ *   - xast `text`    → PtxText; whitespace-only nodes with newlines are dropped
+ *                    (indentation whitespace); space-only nodes are preserved
+ *                    since they may be significant between inline elements
+ *   - xast `cdata`   → PtxText (CDATA content treated identically to text)
  *   - xast `element` with a name in VALUE_TYPES and only text children
  *                    → ptxast value node (type = name, value = text content)
  *   - xast `element` otherwise
@@ -14,7 +17,7 @@
  *                    → dropped (not representable in ptxast)
  */
 
-import type { Root as XastRoot, RootContent, Element, Text as XastText } from 'xast';
+import type { Root as XastRoot, RootContent, Element, Text as XastText, Cdata } from 'xast';
 import type { PtxRoot, PtxContent, PtxText } from '@pretextbook/ptxast';
 
 // These element names use `value: string` in ptxast instead of `children`.
@@ -69,12 +72,20 @@ function convertNode(node: RootContent): PtxContent | null {
   switch (node.type) {
     case 'element': return convertElement(node as Element);
     case 'text':    return convertText(node as XastText);
-    default:        return null; // comment, instruction, cdata, doctype → drop
+    case 'cdata':   return convertCdata(node as Cdata);
+    default:        return null; // comment, instruction, doctype → drop
   }
 }
 
 function convertText(node: XastText): PtxText | null {
-  if (/^\s*$/.test(node.value)) return null; // drop whitespace-only
+  // Drop whitespace-only nodes that contain newlines (indentation/formatting).
+  // Preserve single-space and tab-only nodes — they may be significant between
+  // inline elements (e.g., `<em>a</em> <em>b</em>`).
+  if (/^\s*$/.test(node.value) && /[\n\r]/.test(node.value)) return null;
+  return { type: 'text', value: node.value };
+}
+
+function convertCdata(node: Cdata): PtxText {
   return { type: 'text', value: node.value };
 }
 
@@ -103,6 +114,7 @@ function extractTextValue(children: RootContent[]): string {
   let result = '';
   for (const child of children) {
     if (child.type === 'text') result += (child as XastText).value;
+    else if (child.type === 'cdata') result += (child as Cdata).value;
     else if (child.type === 'element') result += extractTextValue((child as Element).children as RootContent[]);
   }
   return result;
