@@ -18,7 +18,7 @@ import { remarkPretext } from "@pretextbook/remark-pretext";
 import { ptxastRootToXml } from "@pretextbook/ptxast-util-to-xml";
 import { ptxastFromXml } from "@pretextbook/ptxast-util-from-xml";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
-import type { PtxRoot } from "@pretextbook/ptxast";
+import type { PtxRoot, PtxContent } from "@pretextbook/ptxast";
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -144,8 +144,20 @@ async function validateAndFormatConvertedPretext(
 
 function appendConversionValidation(sourceLabel: string, xml: string) {
   try {
-    const root = ptxastFromXml(xml);
-    const violations = collectPtxSchemaViolations(root);
+    // Wrap in a <root> element so fragments with multiple top-level elements
+    // are parsed safely (xast-util-from-xml requires a single XML root).
+    // The resulting PtxRoot has one child — the wrapper <root> element —
+    // whose children are the actual fragment nodes.
+    const wrapped = ptxastFromXml(`<root>${xml}</root>`);
+    const wrapperElement = wrapped.children[0];
+    const fragmentRoot: PtxRoot = {
+      type: "root",
+      children:
+        wrapperElement !== undefined && "children" in wrapperElement
+          ? (wrapperElement as { children: PtxContent[] }).children
+          : wrapped.children,
+    };
+    const violations = collectPtxSchemaViolations(fragmentRoot);
     if (violations.length === 0) {
       pretextOutputChannel.appendLine(
         `${sourceLabel} conversion passed XML-to-ptxast validation.`,
