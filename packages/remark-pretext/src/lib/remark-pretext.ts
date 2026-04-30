@@ -8,14 +8,16 @@
  * import remarkParse from 'remark-parse'
  * import remarkDirective from 'remark-directive'
  * import remarkMath from 'remark-math'
- * import remarkPretext from '@pretextbook/remark-pretext'
+ * import { remarkPretext } from '@pretextbook/remark-pretext'
  *
- * const tree = unified()
+ * const processor = unified()
  *   .use(remarkParse)
  *   .use(remarkDirective)
  *   .use(remarkMath)
  *   .use(remarkPretext)
- *   .parse(markdownString)
+ *
+ * const mdast = processor.parse(markdownString)
+ * const ptxast = processor.runSync(mdast) // PtxRoot
  * ```
  *
  * The output tree is a `PtxRoot` node whose children are the converted

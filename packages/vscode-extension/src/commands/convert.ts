@@ -90,13 +90,15 @@ export async function cmdConvertText() {
 
 async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   let newText = convertWithUnified(initialText);
-  appendConversionValidation("LaTeX-style PreTeXt", newText);
 
   // Remove the starting <p> tag if we selected text in the middle of a line.
   const pTagMatch = newText.match(/^<p>/);
   if (pTagMatch && selectionRange.start.character > 0) {
     newText = newText.replace(/^<p>/, "");
   }
+
+  // Validate the final XML that will be formatted/inserted.
+  appendConversionValidation("LaTeX-style PreTeXt", newText);
 
   // Split consecutive tags with a space if present before formatting.
   return formatConvertedPretext(newText);

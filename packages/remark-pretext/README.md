@@ -33,7 +33,7 @@ import remarkDirective from 'remark-directive'
 import remarkMath from 'remark-math'
 import { remarkPretext } from '@pretextbook/remark-pretext'
 
-const tree = unified()
+const processor = unified()
   .use(remarkParse)
   .use(remarkDirective)   // enables ::: directives
   .use(remarkMath)        // enables $...$ and $$...$$
