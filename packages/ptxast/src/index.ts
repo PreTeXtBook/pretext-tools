@@ -181,5 +181,39 @@ export type {
   PtxMathContent,
 } from './types/index.js';
 
+export { ptxSchemaElementChildren } from './types/generated.js';
+
+export type {
+  GeneratedPtxCuratedElementName,
+  GeneratedPtxAttributeForElement,
+  GeneratedPtxAttributeName,
+  GeneratedPtxChildElementName,
+  GeneratedPtxElementName,
+  GeneratedPtxUnmodeledSchemaElementName,
+} from './types/generated.js';
+
+export type {
+  PtxCuratedElementName,
+  PtxSchemaAttributeForElement,
+  PtxSchemaAttributeName,
+  PtxSchemaChildElementName,
+  PtxSchemaChildNode,
+  PtxSchemaCustomization,
+  PtxSchemaElementName,
+  PtxSchemaNode,
+  PtxUnmodeledSchemaElementName,
+} from './types/schema.js';
+
+export {
+  collectPtxSchemaViolations,
+  getPtxCuratedElementNames,
+  getPtxSchemaAttributeNames,
+  getPtxSchemaChildElementNames,
+  getPtxSchemaElementNames,
+  getPtxUnmodeledSchemaElementNames,
+  isPtxCuratedElementName,
+  isPtxSchemaElementName,
+} from './types/schema.js';
+
 export * from './lib/guards.js';
 export * from './lib/builders.js';

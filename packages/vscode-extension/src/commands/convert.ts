@@ -1,23 +1,24 @@
 import { Range, window } from "vscode";
 import { markdownToPretext } from "md2ptx";
+import { unified } from "unified";
+import remarkDirective from "remark-directive";
+import remarkMath from "remark-math";
+import remarkParse from "remark-parse";
 import { pretextOutputChannel } from "../ui";
 import { convertToPretext } from "../importFiles";
-import { processLatexViaUnified } from "@unified-latex/unified-latex";
-import { htmlLike } from "@unified-latex/unified-latex-util-html-like";
-import {
-  unifiedLatexToPretext,
-  xmlCompilePlugin,
-} from "@unified-latex/unified-latex-to-pretext";
-// @ts-ignore
+// @ts-expect-error frankenmarkup does not publish types.
 import { FlexTeXtConvert } from "frankenmarkup";
-import { Environment, Macro } from "@unified-latex/unified-latex-types";
 import { lspFormatText } from "../lsp-client/main";
 import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import { SKIP, visit } from "unist-util-visit";
 import { fromMarkdown } from "mdast-util-from-markdown";
-import { VNotebookDocumentChangeEvent } from "vscode-languageclient";
 import { latexToPretext } from "@pretextbook/latex-pretext";
+import { remarkPretext } from "@pretextbook/remark-pretext";
+import { ptxastRootToXml } from "@pretextbook/ptxast-util-to-xml";
+import { ptxastFromXml } from "@pretextbook/ptxast-util-from-xml";
+import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
+import type { PtxRoot } from "@pretextbook/ptxast";
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -68,7 +69,10 @@ export async function cmdConvertText() {
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
         case "Classic Markdown":
-          convertedText = await markdownToPretext(initialText);
+          convertedText = await validateAndFormatConvertedPretext(
+            "Classic Markdown",
+            await markdownToPretext(initialText),
+          );
           break;
         case "PreTeXt Markdown":
           convertedText = await cmdConvertPMDToPretext(initialText);
@@ -85,8 +89,8 @@ export async function cmdConvertText() {
 }
 
 async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
-  //var newText = latexToPretext(initialText);
   let newText = convertWithUnified(initialText);
+  appendConversionValidation("LaTeX-style PreTeXt", newText);
 
   // Remove the starting <p> tag if we selected text in the middle of a line.
   const pTagMatch = newText.match(/^<p>/);
@@ -95,7 +99,7 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   }
 
   // Split consecutive tags with a space if present before formatting.
-  return lspFormatText(newText.replace(/(>)(<)/g, "$1 $2"));
+  return formatConvertedPretext(newText);
 }
 
 function convertWithUnified(text: string) {
@@ -115,8 +119,57 @@ async function cmdConvertPMDToPretext(initialText: string) {
   pretextOutputChannel.appendLine(
     "PreTeXt Markdown to PreTeXt conversion is still experiemental.  Use with care.",
   );
-  const newText = FlexTeXtConvert(initialText);
-  return lspFormatText(newText);
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkDirective)
+    .use(remarkMath)
+    .use(remarkPretext);
+  const mdast = processor.parse(initialText);
+  const ptxast = processor.runSync(mdast) as PtxRoot;
+  const newText = ptxastRootToXml(ptxast);
+  return validateAndFormatConvertedPretext("PreTeXt Markdown", newText);
+}
+
+function formatConvertedPretext(xml: string) {
+  return lspFormatText(xml.replace(/(>)(<)/g, "$1 $2"));
+}
+
+async function validateAndFormatConvertedPretext(
+  sourceLabel: string,
+  xml: string,
+) {
+  appendConversionValidation(sourceLabel, xml);
+  return formatConvertedPretext(xml);
+}
+
+function appendConversionValidation(sourceLabel: string, xml: string) {
+  try {
+    const root = ptxastFromXml(xml);
+    const violations = collectPtxSchemaViolations(root);
+    if (violations.length === 0) {
+      pretextOutputChannel.appendLine(
+        `${sourceLabel} conversion passed XML-to-ptxast validation.`,
+      );
+      return;
+    }
+
+    pretextOutputChannel.appendLine(
+      `${sourceLabel} conversion produced ${violations.length} schema warning(s):`,
+    );
+    for (const violation of violations.slice(0, 10)) {
+      pretextOutputChannel.appendLine(`  - ${violation}`);
+    }
+    if (violations.length > 10) {
+      pretextOutputChannel.appendLine(
+        `  - ...and ${violations.length - 10} more warning(s).`,
+      );
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    pretextOutputChannel.appendLine(
+      `${sourceLabel} conversion could not be parsed back into ptxast: ${message}`,
+    );
+  }
 }
 
 ////////////////// Experiments /////////////////////
@@ -210,7 +263,9 @@ async function convertPmdWithXast(initialText: string) {
 
       const subtree = fromXml(converted);
       // replace the node with the subtree
-      if (typeof index !== "number" || !parent) return;
+      if (typeof index !== "number" || !parent) {
+        return;
+      }
 
       parent.children.splice(index, 1, ...subtree.children);
       return SKIP;

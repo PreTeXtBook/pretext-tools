@@ -19,9 +19,6 @@
       "path": "../ptxast-util-from-xml"
     },
     {
-      "path": "../ptxast-util-to-xml"
-    },
-    {
       "path": "../remark-pretext"
     },
     {

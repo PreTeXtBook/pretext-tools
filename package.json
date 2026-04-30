@@ -18,8 +18,10 @@
     "build:packages": "nx run-many -t build --exclude=vscode-extension,playground",
     "watch": "NX_TUI=false nx build:watch vscode-extension --outputStyle=stream",
     "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs",
+    "check:schema-generated": "node ./scripts/check-schema-generated.mjs",
     "lint": "nx run-many -t eslint:lint",
-    "test": "nx run-many -t test"
+    "test": "nx run-many -t test",
+    "test:reliability": "npm exec vitest run packages/remark-pretext/src/lib/remark-pretext.spec.ts packages/ptxast-util-from-xml/src/lib/ptxast-util-from-xml.spec.ts packages/ptxast-util-to-mdast/src/lib/ptxast-util-to-mdast.spec.ts packages/latex-pretext/src/lib/latex-pretext.spec.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -24,6 +24,8 @@ import type {
   Proof,
   Theorem,
 } from '@pretextbook/ptxast';
+import { ptxastRootToXml } from '@pretextbook/ptxast-util-to-xml';
+import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
 import type { Root as MdastRoot } from 'mdast';
 
 /** Helper: parse markdown and transform to ptxast. */
@@ -35,6 +37,28 @@ function parse(md: string): PtxRoot {
     .use(remarkPretext);
   const mdast = processor.parse(md);
   return processor.runSync(mdast) as unknown as PtxRoot;
+}
+
+function nodeTypeCounts(root: PtxRoot): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const stack: unknown[] = [root];
+
+  while (stack.length > 0) {
+    const current = stack.pop() as { type?: unknown; children?: unknown };
+    if (!current || typeof current !== 'object') continue;
+
+    if (typeof current.type === 'string') {
+      counts[current.type] = (counts[current.type] ?? 0) + 1;
+    }
+
+    if (Array.isArray(current.children)) {
+      for (let i = current.children.length - 1; i >= 0; i -= 1) {
+        stack.push(current.children[i]);
+      }
+    }
+  }
+
+  return counts;
 }
 
 describe('paragraph conversion', () => {
@@ -245,5 +269,43 @@ describe('mdastToPtxast standalone function', () => {
     const ptx = mdastToPtxast(mdast);
     expect(ptx.type).toBe('root');
     expect(ptx.children[0].type).toBe('p');
+  });
+});
+
+describe('semantic round-trip (markdown -> ptxast -> xml -> ptxast)', () => {
+  it('preserves structure for representative markdown fixtures', () => {
+    const fixtures = [
+      {
+        name: 'section + theorem + proof + list + math',
+        markdown:
+          '## Section One\n\n:::theorem[Main]{#thm-main}\nStatement with $x^2$.\n\n:::proof\nProof text.\n:::\n:::\n\n1. first\n2. second',
+        requiredTypes: ['section', 'title', 'theorem', 'statement', 'proof', 'ol', 'li', 'm'],
+      },
+      {
+        name: 'chapter with subsection and display math',
+        markdown: '# Chapter A\n\n### Sub A\n\n$$\na^2+b^2=c^2\n$$\n',
+        requiredTypes: ['chapter', 'subsection', 'title', 'me'],
+      },
+      {
+        name: 'inline formatting paragraph',
+        markdown: 'A paragraph with *emphasis*, **alert**, and `code`.',
+        requiredTypes: ['p', 'em', 'alert', 'c'],
+      },
+    ];
+
+    for (const fixture of fixtures) {
+      const parsed = parse(fixture.markdown);
+      const xml = ptxastRootToXml(parsed);
+      const reparsed = ptxastFromXml(xml);
+
+      const before = nodeTypeCounts(parsed);
+      const after = nodeTypeCounts(reparsed);
+
+      for (const t of fixture.requiredTypes) {
+        expect(after[t], `${fixture.name}: missing ${t} after xml round-trip`).toBe(
+          before[t],
+        );
+      }
+    }
   });
 });

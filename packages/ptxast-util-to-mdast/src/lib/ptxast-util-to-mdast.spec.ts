@@ -9,12 +9,52 @@ import { describe, it, expect } from 'vitest';
 import { ptxastToMdast } from './ptxast-to-mdast.js';
 import { ptxastToMarkdown } from './ptxast-util-to-mdast.js';
 import type { PtxRoot } from '@pretextbook/ptxast';
+import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkDirective from 'remark-directive';
+import remarkMath from 'remark-math';
+import { remarkPretext } from '@pretextbook/remark-pretext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Render ptxast to markdown and normalize whitespace for snapshot comparisons. */
 function md(root: PtxRoot): string {
   return ptxastToMarkdown(root).trim();
+}
+
+function parseMarkdownToPtxast(markdown: string): PtxRoot {
+  const processor = unified()
+    .use(remarkParse)
+    .use(remarkDirective)
+    .use(remarkMath)
+    .use(remarkPretext);
+  const mdast = processor.parse(markdown);
+  return processor.runSync(mdast) as PtxRoot;
+}
+
+function nodeTypeCounts(root: PtxRoot): Map<string, number> {
+  const counts = new Map<string, number>();
+  const stack: unknown[] = [root];
+
+  while (stack.length > 0) {
+    const current = stack.pop() as {
+      type?: unknown;
+      children?: unknown;
+    };
+    if (!current || typeof current !== 'object') continue;
+    if (typeof current.type === 'string') {
+      counts.set(current.type, (counts.get(current.type) ?? 0) + 1);
+    }
+
+    if (Array.isArray(current.children)) {
+      for (let i = current.children.length - 1; i >= 0; i -= 1) {
+        stack.push(current.children[i]);
+      }
+    }
+  }
+
+  return counts;
 }
 
 // ─── Plain text & paragraphs ─────────────────────────────────────────────────
@@ -467,5 +507,97 @@ describe('unknown node handling', () => {
     expect(para.children).toHaveLength(2);
     expect(para.children[0].value).toBe('before ');
     expect(para.children[1].value).toBe(' after');
+  });
+});
+
+describe('semantic round-trip (ptxast -> markdown -> ptxast)', () => {
+  it('preserves major theorem-like and list structure', () => {
+    const root: PtxRoot = {
+      type: 'root',
+      children: [
+        {
+          type: 'section',
+          attributes: { 'xml:id': 'sec-rt' },
+          children: [
+            { type: 'title', children: [{ type: 'text', value: 'Round Trip' }] },
+            {
+              type: 'theorem',
+              attributes: { 'xml:id': 'thm-rt' },
+              children: [
+                { type: 'title', children: [{ type: 'text', value: 'Key Result' }] },
+                {
+                  type: 'statement',
+                  children: [
+                    {
+                      type: 'p',
+                      children: [
+                        { type: 'text', value: 'If ' },
+                        { type: 'em', children: [{ type: 'text', value: 'x' }] },
+                        { type: 'text', value: ' then ' },
+                        { type: 'm', value: 'x^2' },
+                        { type: 'text', value: '.' },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: 'proof',
+                  children: [
+                    { type: 'p', children: [{ type: 'text', value: 'Direct.' }] },
+                  ],
+                },
+              ],
+            },
+            {
+              type: 'ol',
+              children: [
+                { type: 'li', children: [{ type: 'p', children: [{ type: 'text', value: 'First' }] }] },
+                { type: 'li', children: [{ type: 'p', children: [{ type: 'text', value: 'Second' }] }] },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const markdown = ptxastToMarkdown(root);
+    const reparsed = parseMarkdownToPtxast(markdown);
+    const counts = nodeTypeCounts(reparsed);
+
+    expect(counts.get('section')).toBe(1);
+    expect(counts.get('theorem')).toBe(1);
+    expect(counts.get('statement')).toBe(1);
+    expect(counts.get('proof')).toBe(1);
+    expect(counts.get('ol')).toBe(1);
+    expect(counts.get('li')).toBe(2);
+    expect(counts.get('m')).toBe(1);
+  });
+});
+
+describe('semantic round-trip (xml -> ptxast -> markdown -> ptxast)', () => {
+  it('preserves core structure and xml:id for theorem-like blocks', () => {
+    const xml =
+      '<section xml:id="sec-xml"><title>XML Route</title><theorem xml:id="thm-xml"><title>Main</title><statement><p>If <m>x^2</m> then done.</p></statement><proof><p>Direct proof.</p></proof></theorem><ol><li><p>One</p></li><li><p>Two</p></li></ol></section>';
+
+    const fromXml = ptxastFromXml(xml);
+    const markdown = ptxastToMarkdown(fromXml);
+    const reparsed = parseMarkdownToPtxast(markdown);
+    const counts = nodeTypeCounts(reparsed);
+
+    expect(counts.get('section')).toBe(1);
+    expect(counts.get('theorem')).toBe(1);
+    expect(counts.get('statement')).toBe(1);
+    expect(counts.get('proof')).toBe(1);
+    expect(counts.get('ol')).toBe(1);
+    expect(counts.get('li')).toBe(2);
+    expect(counts.get('m')).toBe(1);
+
+    const section = reparsed.children.find(node => node.type === 'section');
+    // Acceptable lossy boundary: heading-derived section xml:id is not encoded in markdown.
+    expect(section?.attributes?.['xml:id']).toBeUndefined();
+    if (section?.type === 'section') {
+      const theorem = section.children.find(node => node.type === 'theorem');
+      expect(theorem?.attributes?.['xml:id']).toBe('thm-xml');
+    }
   });
 });

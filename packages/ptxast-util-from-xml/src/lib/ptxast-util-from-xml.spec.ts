@@ -170,4 +170,13 @@ describe('round-trip: ptxastFromXml → ptxastRootToXml', () => {
     const out = ptxastRootToXml(ptx);
     expect(out).toBe(xml);
   });
+
+  it('round-trips theorem structure with statement and proof', async () => {
+    const { ptxastRootToXml } = await import('@pretextbook/ptxast-util-to-xml');
+    const xml =
+      '<theorem xml:id="thm-main"><title>Main theorem</title><statement><p>Claim.</p></statement><proof><p>Proof sketch.</p></proof></theorem>';
+    const ptx = ptxastFromXml(xml);
+    const out = ptxastRootToXml(ptx);
+    expect(out).toBe(xml);
+  });
 });
