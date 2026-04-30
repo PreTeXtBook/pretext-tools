@@ -21,6 +21,14 @@
     "src/**/*.spec.jsx"
   ],
   "references": [
-    { "path": "../ptxast/tsconfig.lib.json" }
+    {
+      "path": "../remark-pretext/tsconfig.lib.json"
+    },
+    {
+      "path": "../ptxast-util-from-xml/tsconfig.lib.json"
+    },
+    {
+      "path": "../ptxast/tsconfig.lib.json"
+    }
   ]
 }
