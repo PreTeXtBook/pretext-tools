@@ -1,0 +1,44 @@
+{
+  "name": "@pretextbook/ptxast",
+  "version": "0.0.1",
+  "description": "TypeScript type definitions for the PreTeXt AST (ptxast)",
+  "author": "Oscar Levin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pretextbook/pretext-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pretextbook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/pretextbook/pretext-tools/packages/ptxast#readme",
+  "private": false,
+  "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "*.d.cts",
+    "lib",
+    "types"
+  ],
+  "dependencies": {
+    "@types/unist": "^3.0.0",
+    "@types/xast": "^2.0.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

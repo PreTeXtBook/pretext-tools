@@ -1,0 +1,17 @@
+{
+  "name": "@pretextbook/ptxast-util-to-mdast",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/ptxast-util-to-mdast/src",
+  "projectType": "library",
+  "private": false,
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/ptxast-util-to-mdast"
+      }
+    }
+  }
+}

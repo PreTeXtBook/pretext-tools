@@ -1,0 +1,29 @@
+{
+  "name": "@pretextbook/playground",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Interactive playground for testing PreTeXt conversion pipelines",
+  "type": "module",
+  "scripts": {
+    "dev": "run-p dev:deps dev:vite",
+    "dev:vite": "vite",
+    "dev:deps": "npm exec nx -- run playground:watch-deps",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@pretextbook/ptxast": "*",
+    "@pretextbook/remark-pretext": "*",
+    "@pretextbook/ptxast-util-to-xml": "*",
+    "@pretextbook/ptxast-util-from-xml": "*",
+    "@pretextbook/ptxast-util-to-mdast": "*",
+    "remark-directive": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.0"
+  },
+  "devDependencies": {
+    "@nx/vite": "*",
+    "vite": "*",
+    "typescript": "*"
+  }
+}

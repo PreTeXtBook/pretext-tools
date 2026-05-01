@@ -495,19 +495,26 @@
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
     "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && concurrently --kill-others -n \"visual-editor,extension,webview\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\"",
     "watch": "npm run esbuild-watch",
-    "test-compile": "tsc -p ./",
+    "test-compile": "tsc -p ./ --noEmit",
     "pretest": "npm run esbuild && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "package": "npm run esbuild -- --production"
   },
   "dependencies": {
-    "@pretextbook/format": "^0.0.5",
     "@pretextbook/completions": "^0.0.3",
+    "@pretextbook/format": "^0.0.5",
     "@pretextbook/latex-pretext": "^0.0.7",
+    "@pretextbook/ptxast": "^0.0.1",
+    "@pretextbook/ptxast-util-from-xml": "^0.0.1",
+    "@pretextbook/ptxast-util-to-xml": "^0.0.1",
+    "@pretextbook/remark-pretext": "^0.0.1",
     "@pretextbook/visual-editor": "^0.0.1",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "remark-directive": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",

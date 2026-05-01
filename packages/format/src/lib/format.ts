@@ -186,5 +186,11 @@ export function formatPretext(
 
   allText = fixedLines.join("\n");
 
+  // Preserve the common inline WebWork include form as a single line.
+  allText = allText.replace(
+    /<webwork>\s*<xi:include([^>]*)\/>\s*<\/webwork>/g,
+    "<webwork><xi:include$1/></webwork>",
+  );
+
   return allText;
 }

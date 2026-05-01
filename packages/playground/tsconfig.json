@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "../ptxast-util-to-mdast"
+    },
+    {
+      "path": "../ptxast-util-from-xml"
+    },
+    {
+      "path": "../ptxast-util-to-xml"
+    },
+    {
+      "path": "../remark-pretext"
+    },
+    {
+      "path": "../ptxast"
+    }
+  ]
+}
