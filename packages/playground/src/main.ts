@@ -1,7 +1,6 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
-import remarkMath from 'remark-math';
 import { remarkPretext } from '@pretextbook/remark-pretext';
 import { ptxastRootToXml } from '@pretextbook/ptxast-util-to-xml';
 import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
@@ -94,10 +93,9 @@ function convertMarkdown(md: string): ConversionResult {
   const processor = unified()
     .use(remarkParse)
     .use(remarkDirective)
-    .use(remarkMath)
     .use(remarkPretext);
   const mdast = processor.parse(md) as MdastRoot;
-  const ptxast = processor.runSync(mdast) as PtxRoot;
+  const ptxast = processor.runSync(mdast, { value: md }) as PtxRoot;
   const xml = ptxastRootToXml(ptxast);
   const markdownOut = ptxastToMarkdown(ptxast);
   return { xml, ptxast, mdast, markdownOut };

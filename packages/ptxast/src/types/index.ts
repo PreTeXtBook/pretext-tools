@@ -640,16 +640,26 @@ export interface Men extends PtxNode {
 }
 
 /** Multi-line display math (unnumbered): `<md>`. */
-export interface Md extends PtxParent {
-  type: 'md';
-  children: Mrow[];
-}
+export type Md =
+  | (PtxParent & {
+      type: 'md';
+      children: Mrow[];
+    })
+  | (PtxNode & {
+      type: 'md';
+      value: string;
+    });
 
 /** Multi-line display math (numbered): `<mdn>`. */
-export interface Mdn extends PtxParent {
-  type: 'mdn';
-  children: Mrow[];
-}
+export type Mdn =
+  | (PtxParent & {
+      type: 'mdn';
+      children: Mrow[];
+    })
+  | (PtxNode & {
+      type: 'mdn';
+      value: string;
+    });
 
 /** A row in `<md>` or `<mdn>`. */
 export interface Mrow extends PtxNode {
@@ -755,6 +765,10 @@ export type PtxInlineContent =
   | Pubtitle
   | Stitle
   | M
+  | Me
+  | Md
+  | Men
+  | Mdn
   | Xref
   | Url
   | Fn
@@ -848,3 +862,4 @@ export type PtxContent =
   | Dd
   | H
   | Li;
+ 

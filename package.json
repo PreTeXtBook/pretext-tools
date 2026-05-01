@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "latex-pretext:use-local-unified-latex": "node ./scripts/install-unified-latex-from-source.cjs ../unified-latex",
+    "playground:dev": "npm run dev -w @pretextbook/playground",
     "build": "nx build vscode-extension",
     "build:dev": "nx build:dev vscode-extension",
     "build:packages": "nx run-many -t build --exclude=vscode-extension,playground",
@@ -61,7 +62,6 @@
     "nx-release": "^2.1.0",
     "ovsx": "^0.10.9",
     "remark-directive": "^4.0.0",
-    "remark-math": "^6.0.0",
     "replace-json-property": "^1.9.0",
     "sass-embedded": "^1.97.3",
     "tslib": "^2.3.0",

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ptxastFromXml, ptxastNodeFromXml } from './ptxast-util-from-xml.js';
-import type { PtxRoot, P, M, Me, Theorem, Section, Title, Statement, Em, C, Ol, Li, PtxText } from '@pretextbook/ptxast';
+import type { PtxRoot, P, M, Me, Md, Mdn, Theorem, Section, Title, Statement, Em, C, Ol, Li, PtxText } from '@pretextbook/ptxast';
 
 describe('ptxastFromXml', () => {
   it('parses an empty fragment', () => {
@@ -45,6 +45,21 @@ describe('ptxastFromXml', () => {
     const me = root.children[0] as Me;
     expect(me.type).toBe('me');
     expect(me.value).toBe('a^2 + b^2 = c^2');
+  });
+
+  it('parses md value form', () => {
+    const root = ptxastFromXml('<md>a=b</md>');
+    const md = root.children[0] as Md;
+    expect(md.type).toBe('md');
+    expect((md as { value?: string }).value).toBe('a=b');
+  });
+
+  it('parses mdn mrow-children form', () => {
+    const root = ptxastFromXml('<mdn><mrow>a=b</mrow><mrow>c=d</mrow></mdn>');
+    const mdn = root.children[0] as Mdn;
+    expect(mdn.type).toBe('mdn');
+    expect((mdn as { children?: { type: string; value?: string }[] }).children?.[0].type).toBe('mrow');
+    expect((mdn as { children?: { type: string; value?: string }[] }).children?.[1].value).toBe('c=d');
   });
 
   it('parses a section with xml:id and title', () => {
@@ -124,7 +139,8 @@ describe('ptxastFromXml', () => {
   it('drops XML comments', () => {
     const root = ptxastFromXml('<p><!-- comment -->text</p>');
     const p = root.children[0] as P;
-    expect(p.children.every(c => c.type !== 'comment')).toBe(true);
+    expect(p.children).toHaveLength(1);
+    expect((p.children[0] as PtxText).value).toBe('text');
   });
 
   it('handles elements with no attributes (no attributes field)', () => {

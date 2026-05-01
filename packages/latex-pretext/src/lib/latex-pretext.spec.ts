@@ -37,7 +37,7 @@ function normalizeLatexXmlForParsing(xml: string): string {
 
 describe("latexToPretext", () => {
   it("converts inline math to PreTeXt m tags", () => {
-    const out = String(latexToPretext("Let $x^2+1$.").value);
+    const out = String((latexToPretext("Let $x^2+1$.") as { value: string }).value);
     expect(out).toContain("<m>");
     expect(out).toContain("</m>");
     expect(out).toContain("x^{2}+1");
@@ -45,7 +45,7 @@ describe("latexToPretext", () => {
 
   it("converts theorem environments to theorem/statement structure", () => {
     const out = String(
-      latexToPretext("\\begin{theorem}A thing.\\end{theorem}").value,
+      (latexToPretext("\\begin{theorem}A thing.\\end{theorem}") as { value: string }).value,
     );
 
     expect(out).toContain("<theorem>");
@@ -56,7 +56,7 @@ describe("latexToPretext", () => {
   });
 
   it("converts section headings to section/title structure", () => {
-    const out = String(latexToPretext("\\section{Intro} Body text.").value);
+    const out = String((latexToPretext("\\section{Intro} Body text.") as { value: string }).value);
 
     expect(out).toContain("<section>");
     expect(out).toContain("<title>Intro</title>");
@@ -98,7 +98,7 @@ describe("latexToPretext", () => {
     ];
 
     for (const fixture of fixtures) {
-      const xml = String(latexToPretext(fixture.latex).value);
+      const xml = String((latexToPretext(fixture.latex) as { value: string }).value);
       const normalized = normalizeLatexXmlForParsing(xml);
       const parsed = ptxastFromXml(normalized);
       const counts = countNodeTypes(parsed);

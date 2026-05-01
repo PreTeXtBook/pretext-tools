@@ -205,7 +205,9 @@ function convertBlock(node: PtxContent): BlockContent | DefinitionContent | null
     case 'ul':         return convertList(node, false);
     case 'program':    return convertProgram(node);
     case 'me':
-    case 'men':        return convertDisplayMath(node);
+    case 'men':
+    case 'md':
+    case 'mdn':        return convertDisplayMath(node);
     default: {
       const directive = TYPE_TO_DIRECTIVE.get(node.type);
       if (directive) return convertDirective(node, directive);
@@ -275,9 +277,17 @@ function convertProgram(node: PtxContent): Code {
 
 function convertDisplayMath(node: PtxContent): MdastMath {
   const obj = node as unknown as Record<string, unknown>;
+  const children = (obj['children'] as Array<Record<string, unknown>>) ?? [];
+  const value = typeof obj['value'] === 'string'
+    ? (obj['value'] as string)
+    : children
+      .filter((child) => child['type'] === 'mrow' && typeof child['value'] === 'string')
+      .map((child) => child['value'] as string)
+      .join(' \\\\\n');
+
   return {
     type: 'math',
-    value: (obj['value'] as string) ?? '',
+    value,
   };
 }
 

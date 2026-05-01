@@ -22,6 +22,8 @@ const VALUE_TYPES = new Set([
   'm',
   'me',
   'men',
+  'md',
+  'mdn',
   'mrow',
   'c',
 ]);

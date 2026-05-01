@@ -8,12 +8,11 @@
 import { describe, it, expect } from 'vitest';
 import { ptxastToMdast } from './ptxast-to-mdast.js';
 import { ptxastToMarkdown } from './ptxast-util-to-mdast.js';
-import type { PtxRoot } from '@pretextbook/ptxast';
+import type { PtxInlineContent, PtxRoot } from '@pretextbook/ptxast';
 import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
-import remarkMath from 'remark-math';
 import { remarkPretext } from '@pretextbook/remark-pretext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -27,10 +26,9 @@ function parseMarkdownToPtxast(markdown: string): PtxRoot {
   const processor = unified()
     .use(remarkParse)
     .use(remarkDirective)
-    .use(remarkMath)
     .use(remarkPretext);
   const mdast = processor.parse(markdown);
-  return processor.runSync(mdast) as PtxRoot;
+  return processor.runSync(mdast, { value: markdown }) as PtxRoot;
 }
 
 function nodeTypeCounts(root: PtxRoot): Map<string, number> {
@@ -140,6 +138,30 @@ describe('display math', () => {
       children: [{ type: 'men', value: 'e = mc^2' }],
     };
     expect(ptxastToMdast(root).children[0]).toMatchObject({ type: 'math' });
+  });
+
+  it('converts md value form to display math block', () => {
+    const root: PtxRoot = {
+      type: 'root',
+      children: [{ type: 'md', value: 'a=b' }],
+    };
+    expect(ptxastToMdast(root).children[0]).toMatchObject({ type: 'math', value: 'a=b' });
+  });
+
+  it('converts mdn mrow-children form to display math block', () => {
+    const root: PtxRoot = {
+      type: 'root',
+      children: [{
+        type: 'mdn',
+        children: [
+          { type: 'mrow', value: 'a=b' },
+          { type: 'mrow', value: 'c=d' },
+        ],
+      }],
+    };
+    const result = ptxastToMdast(root);
+    const expected = ['a=b', 'c=d'].join(' \\\\\n');
+    expect(result.children[0]).toMatchObject({ type: 'math', value: expected });
   });
 });
 
@@ -496,7 +518,7 @@ describe('unknown node handling', () => {
           type: 'p',
           children: [
             { type: 'text', value: 'before ' },
-            { type: 'xref' } as unknown as import('@pretextbook/ptxast').PtxContent,
+            { type: 'xref' } as unknown as PtxInlineContent,
             { type: 'text', value: ' after' },
           ],
         },

@@ -2,7 +2,6 @@ import { Range, window } from "vscode";
 import { markdownToPretext } from "md2ptx";
 import { unified } from "unified";
 import remarkDirective from "remark-directive";
-import remarkMath from "remark-math";
 import remarkParse from "remark-parse";
 import { pretextOutputChannel } from "../ui";
 import { convertToPretext } from "../importFiles";
@@ -124,10 +123,9 @@ async function cmdConvertPMDToPretext(initialText: string) {
   const processor = unified()
     .use(remarkParse)
     .use(remarkDirective)
-    .use(remarkMath)
     .use(remarkPretext);
   const mdast = processor.parse(initialText);
-  const ptxast = processor.runSync(mdast) as PtxRoot;
+  const ptxast = processor.runSync(mdast, { value: initialText }) as PtxRoot;
   const newText = ptxastRootToXml(ptxast);
   return validateAndFormatConvertedPretext("PreTeXt Markdown", newText);
 }

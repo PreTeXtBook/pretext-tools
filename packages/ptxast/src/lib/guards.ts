@@ -85,6 +85,15 @@ function hasTypeValue<T extends string>(type: T) {
     hasType(type)(node) && typeof (node as unknown as Record<string, unknown>)['value'] === 'string';
 }
 
+/** Checks type + either children array or string value (hybrid parent/value nodes). */
+function hasTypeParentOrValue<T extends string>(type: T) {
+  return (node: unknown): node is PtxNode & { type: T; children?: unknown[]; value?: string } => {
+    if (!hasType(type)(node)) return false;
+    const n = node as unknown as Record<string, unknown>;
+    return Array.isArray(n['children']) || typeof n['value'] === 'string';
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Text
 // ---------------------------------------------------------------------------
@@ -249,8 +258,8 @@ export const isOutput = hasTypeValue<'output'>('output') as (node: unknown) => n
 export const isM = hasTypeValue<'m'>('m') as (node: unknown) => node is M;
 export const isMe = hasTypeValue<'me'>('me') as (node: unknown) => node is Me;
 export const isMen = hasTypeValue<'men'>('men') as (node: unknown) => node is Men;
-export const isMd = hasTypeParent<'md'>('md') as (node: unknown) => node is Md;
-export const isMdn = hasTypeParent<'mdn'>('mdn') as (node: unknown) => node is Mdn;
+export const isMd = hasTypeParentOrValue<'md'>('md') as (node: unknown) => node is Md;
+export const isMdn = hasTypeParentOrValue<'mdn'>('mdn') as (node: unknown) => node is Mdn;
 export const isMrow = hasTypeValue<'mrow'>('mrow') as (node: unknown) => node is Mrow;
 
 // ---------------------------------------------------------------------------

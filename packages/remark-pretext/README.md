@@ -30,17 +30,15 @@ Left as an exercise.
 import { unified } from 'unified'
 import remarkParse from 'remark-parse'
 import remarkDirective from 'remark-directive'
-import remarkMath from 'remark-math'
 import { remarkPretext } from '@pretextbook/remark-pretext'
 
 const processor = unified()
   .use(remarkParse)
   .use(remarkDirective)   // enables ::: directives
-  .use(remarkMath)        // enables $...$ and $$...$$
   .use(remarkPretext)
 
-const mdast = processor.parse(markdownString);
-const ptxast = processor.runSync(mdast); // PtxRoot
+const mdast = processor.parse(markdownString)
+const ptxast = processor.runSync(mdast, { value: markdownString }) // PtxRoot
 
 // Serialize to XML (use @pretextbook/ptxast-util-to-xml)
 ```
@@ -63,8 +61,8 @@ const ptxast = processor.runSync(mdast); // PtxRoot
   - `*text*` → `<em>`
   - `**text**` → `<alert>` (semantic emphasis in PreTeXt)
   - `` `code` `` → `<c>`
-  - `$math$` → `<m>`
-  - `$$\nmath\n$$` → `<me>` (display math requires `$$` on its own line)
+  - `$...$` and `\(...\)` → `<m>`
+  - `$$...$$` and `\[...\]` → display math (`<md>`)
 
 ## Supported Directives
 

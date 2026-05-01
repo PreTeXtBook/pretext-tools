@@ -8,9 +8,9 @@
  *   - Blockquotes → blockquote nodes
  *   - Lists → ol/ul nodes with li children
  *   - Fenced code → program nodes
- *   - Display math (remark-math `math` nodes) → me nodes
+ *   - Display math (custom parser or mdast `math` nodes) → md nodes
  *   - Container directives (remark-directive) → theorem/proof/example/... nodes
- *   - Inline: text, emphasis, strong, inlineCode, inlineMath
+ *   - Inline: text, emphasis, strong, inlineCode, custom `math` nodes
  */
 
 import type {
@@ -31,7 +31,7 @@ import type {
   Code,
 } from 'mdast';
 import type { ContainerDirective } from 'mdast-util-directive';
-import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
+import type { Math as CustomMath } from './math-parser.js';
 import type {
   PtxRoot,
   PtxContent,
@@ -49,13 +49,14 @@ import type {
   Alert,
   C,
   M,
-  Me,
   Ol,
   Ul,
   Li,
   Blockquote,
   Program,
   Statement,
+  Md,
+  Mrow,
 } from '@pretextbook/ptxast';
 import { DIRECTIVE_MAP, PROOF_SOLUTION_NAMES } from './directive-map.js';
 
@@ -94,11 +95,12 @@ function nestSections(nodes: Array<BlockContent | DefinitionContent>): PtxConten
   }
   // No headings — convert all blocks directly
   if (minDepth === 7) {
-    return nodes.map(convertBlock).filter((n): n is PtxBlockContent => n !== null);
+    return convertBlockSequence(nodes);
   }
 
   const result: PtxContent[] = [];
   let currentHeading: Heading | null = null;
+  let preHeadingNodes: Array<BlockContent | DefinitionContent> = [];
   let currentBody: Array<BlockContent | DefinitionContent> = [];
 
   const flushSection = () => {
@@ -110,18 +112,69 @@ function nestSections(nodes: Array<BlockContent | DefinitionContent>): PtxConten
 
   for (const node of nodes) {
     if (node.type === 'heading' && (node as Heading).depth === minDepth) {
+      if (!currentHeading && preHeadingNodes.length > 0) {
+        result.push(...convertBlockSequence(preHeadingNodes));
+        preHeadingNodes = [];
+      }
       flushSection();
       currentHeading = node as Heading;
       currentBody = [];
     } else if (currentHeading) {
       currentBody.push(node);
     } else {
-      // Content before any heading — emit as-is
-      const converted = convertBlock(node);
-      if (converted !== null) result.push(converted);
+      // Content before any heading — keep sequence context for math/paragraph merging
+      preHeadingNodes.push(node);
     }
   }
+  if (!currentHeading && preHeadingNodes.length > 0) {
+    result.push(...convertBlockSequence(preHeadingNodes));
+  }
   flushSection();
+  return result;
+}
+
+function convertBlockSequence(nodes: Array<BlockContent | DefinitionContent>): PtxBlockContent[] {
+  const result: PtxBlockContent[] = [];
+
+  for (let i = 0; i < nodes.length; i += 1) {
+    const node = nodes[i];
+
+    const converted = convertBlock(node);
+    if (converted === null) continue;
+
+    // Fold display-math-only paragraphs into paragraph flow instead of creating
+    // standalone paragraphs for display math blocks.
+    if (
+      converted.type === 'p'
+      && converted.children.length === 1
+      && converted.children[0].type === 'md'
+    ) {
+      const md = converted.children[0] as Md;
+      const prev = result[result.length - 1];
+      const nextConverted = i + 1 < nodes.length ? convertBlock(nodes[i + 1]) : null;
+      const nextParagraphChildren = nextConverted?.type === 'p' ? nextConverted.children : null;
+
+      if (prev?.type === 'p') {
+        prev.children.push(md as unknown as PtxInlineContent);
+        if (nextParagraphChildren) {
+          prev.children.push(...nextParagraphChildren);
+          i += 1;
+        }
+      } else {
+        const children: PtxInlineContent[] = [md as unknown as PtxInlineContent];
+        if (nextParagraphChildren) {
+          children.push(...nextParagraphChildren);
+          i += 1;
+        }
+        result.push({ type: 'p', children });
+      }
+
+      continue;
+    }
+
+    result.push(converted);
+  }
+
   return result;
 }
 
@@ -163,7 +216,6 @@ function convertBlock(node: BlockContent | DefinitionContent): PtxBlockContent |
     case 'blockquote':         return convertBlockquote(node as MdastBlockquote);
     case 'list':               return convertList(node as List);
     case 'code':               return convertCode(node as Code);
-    case 'math':               return convertDisplayMath(node as MdastMath);
     case 'containerDirective': return convertContainerDirective(node as ContainerDirective);
     default:                   return null;
   }
@@ -188,9 +240,7 @@ function convertList(node: List): Ol | Ul {
 }
 
 function convertListItem(node: ListItem): Li {
-  const children = (node.children as Array<BlockContent | DefinitionContent>)
-    .map(convertBlock)
-    .filter((n): n is PtxBlockContent => n !== null);
+  const children = convertBlockSequence(node.children as Array<BlockContent | DefinitionContent>);
   return { type: 'li', children };
 }
 
@@ -202,8 +252,29 @@ function convertCode(node: Code): Program {
   };
 }
 
-function convertDisplayMath(node: MdastMath): Me {
-  return { type: 'me', value: node.value };
+function convertDisplayMath(node: CustomMath): Md {
+  // Split on both literal newlines (from markdown) and escaped backslashes (\\) from LaTeX
+  const rows = node.value
+    .split(/\\\\|[\r\n]+/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0);
+
+  if (rows.length > 1) {
+    // Multi-row display math: wrap each row in an mrow
+    return { type: 'md', children: rows.map(line => ({ type: 'mrow', value: line })) };
+  }
+  // Single-expression math: no mrows, just the content in the value
+  return { type: 'md', value: rows[0] };
+}
+
+/** Handle both display and inline math nodes from custom math parser. */
+function convertMathNode(node: CustomMath): M | Md | null {
+  if (node.meta === 'inline') {
+    // Inline math: $...$ or \(...\)
+    return { type: 'm', value: node.value };
+  }
+  // Display math: $$...$$ or \[...\]
+  return convertDisplayMath(node);
 }
 
 // ---------------------------------------------------------------------------
@@ -288,9 +359,7 @@ function buildTheoremLike(
     }
   }
 
-  const statementChildren = bodyNodes
-    .map(convertBlock)
-    .filter((n): n is PtxBlockContent => n !== null);
+  const statementChildren = convertBlockSequence(bodyNodes);
 
   const result: PtxContent[] = [];
   if (title) result.push(title);
@@ -317,10 +386,7 @@ function buildContentBlock(
 ): PtxBlockContent {
   const converted: PtxContent[] = [];
   if (title) converted.push(title);
-  for (const child of children) {
-    const c = convertBlock(child);
-    if (c) converted.push(c);
-  }
+  converted.push(...convertBlockSequence(children));
   return { type, ...(attrs ? { attributes: attrs } : {}), children: converted } as unknown as PtxBlockContent;
 }
 
@@ -351,7 +417,7 @@ function convertInline(node: PhrasingContent): PtxInlineContent | null {
     case 'emphasis':   return { type: 'em',    children: convertInlineNodes((node as Emphasis).children) } as Em;
     case 'strong':     return { type: 'alert', children: convertInlineNodes((node as Strong).children) } as Alert;
     case 'inlineCode': return { type: 'c',     value: (node as InlineCode).value } as C;
-    case 'inlineMath': return { type: 'm',     value: (node as InlineMath).value } as M;
+    case 'math':       return convertMathNode(node as unknown as CustomMath);
     default:           return null;
   }
 }

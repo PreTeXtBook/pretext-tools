@@ -1,9 +1,9 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
-import remarkMath from 'remark-math';
 import { describe, it, expect } from 'vitest';
 import { remarkPretext, mdastToPtxast } from '../index.js';
+import remarkMath from './math-parser.js';
 import type {
   PtxRoot,
   Section,
@@ -15,7 +15,7 @@ import type {
   Alert,
   C,
   M,
-  Me,
+  Md,
   Ol,
   Ul,
   Li,
@@ -33,10 +33,9 @@ function parse(md: string): PtxRoot {
   const processor = unified()
     .use(remarkParse)
     .use(remarkDirective)
-    .use(remarkMath)
     .use(remarkPretext);
   const mdast = processor.parse(md);
-  return processor.runSync(mdast) as unknown as PtxRoot;
+  return processor.runSync(mdast, { value: md }) as unknown as PtxRoot;
 }
 
 function nodeTypeCounts(root: PtxRoot): Record<string, number> {
@@ -120,11 +119,88 @@ describe('inline element conversion', () => {
 });
 
 describe('display math', () => {
-  it('display math → me', () => {
+  it('display math is placed in a paragraph as md', () => {
     const tree = parse('$$\na^2 + b^2 = c^2\n$$');
-    expect(tree.children[0].type).toBe('me');
-    const me = tree.children[0] as Me;
-    expect(me.value).toBe('a^2 + b^2 = c^2');
+    expect(tree.children[0].type).toBe('p');
+    const p = tree.children[0] as P;
+    const md = p.children[0] as Md;
+    expect(md.type).toBe('md');
+    // Single-line display math has value, not children
+    expect('value' in md).toBe(true);
+    expect((md as { value: string }).value).toBe('a^2 + b^2 = c^2');
+  });
+
+  it('display math joins previous and next paragraphs', () => {
+     const tree = parse('Before.\n\n$$\na^2 + b^2 = c^2\n$$\n\nAfter.');
+      expect(tree.children).toHaveLength(1);
+      const p = tree.children[0] as P;
+      expect(p.type).toBe('p');
+      expect((p.children[0] as PtxText).value).toBe('Before.');
+      const md = p.children[1] as Md;
+     expect(md.type).toBe('md');
+     expect('value' in md).toBe(true);
+      expect((md as { value: string }).value).toBe('a^2 + b^2 = c^2');
+      expect((p.children[2] as PtxText).value).toBe('After.');
+  });
+
+  it('multi-line display math renders as mrows', () => {
+    const tree = parse('$$\na^2\nb^2\nc^2\n$$');
+    expect(tree.children[0].type).toBe('p');
+    const p = tree.children[0] as P;
+    const md = p.children[0] as Md;
+    expect(md.type).toBe('md');
+    // Multi-line display math has children (mrows), not a single value
+    expect('children' in md).toBe(true);
+    expect((md as { children: { value: string }[] }).children).toHaveLength(3);
+    expect((md as { children: { value: string }[] }).children[0].value).toBe('a^2');
+    expect((md as { children: { value: string }[] }).children[1].value).toBe('b^2');
+    expect((md as { children: { value: string }[] }).children[2].value).toBe('c^2');
+  });
+
+  it('inline $$ delimiters create display math (custom parser)', () => {
+     // Note: In our custom parser, $$ always creates display math (meta:'display')
+     // even when used inline. This is standard LaTeX/PreTeXt convention.
+     // Use single $ for inline math.
+    const tree = parse('Text $$a^2+b^2=c^2$$ more text');
+    const p = tree.children[0] as P;
+     const hasMath = p.children.some(child => child.type === 'md');
+    expect(hasMath).toBe(true);
+     const md = p.children.find(child => child.type === 'md') as Md;
+     expect(md?.type).toBe('md');
+     expect('value' in md).toBe(true);
+    expect((md as { value: string }).value).toBe('a^2+b^2=c^2');
+  });
+
+  it('LaTeX \\[...\\] delimiters are converted to display math', () => {
+    const tree = parse('\\[a^2+b^2=c^2\\]');
+    expect(tree.children[0].type).toBe('p');
+    const p = tree.children[0] as P;
+    const md = p.children[0] as Md;
+    expect(md.type).toBe('md');
+    expect('value' in md).toBe(true);
+    expect((md as { value: string }).value).toBe('a^2+b^2=c^2');
+  });
+
+  it('LaTeX \\[...\\] with multiple lines creates mrows', () => {
+    const tree = parse('\\[\na^2\nb^2\nc^2\n\\]');
+    const p = tree.children[0] as P;
+    const md = p.children[0] as Md;
+    expect(md.type).toBe('md');
+    expect('children' in md).toBe(true);
+    expect((md as { children: { value: string }[] }).children).toHaveLength(3);
+    expect((md as { children: { value: string }[] }).children[0].value).toBe('a^2');
+    expect((md as { children: { value: string }[] }).children[1].value).toBe('b^2');
+    expect((md as { children: { value: string }[] }).children[2].value).toBe('c^2');
+  });
+
+  it('LaTeX \\(...\\) delimiters are converted to inline math', () => {
+    const tree = parse('Text \\(x^2\\) more text');
+    const p = tree.children[0] as P;
+    const hasInlineMath = p.children.some(child => child.type === 'm');
+    expect(hasInlineMath).toBe(true);
+    const m = p.children.find(child => child.type === 'm') as M;
+    expect(m.type).toBe('m');
+    expect(m.value).toBe('x^2');
   });
 });
 
@@ -258,7 +334,7 @@ describe('container directives', () => {
   it('unknown directive is dropped (returns null)', () => {
     const tree = parse(':::unknownblock\nContent.\n:::');
     // unknown directive → no ptxast node → dropped from output
-    expect(tree.children.every(c => c.type !== 'unknownblock')).toBe(true);
+    expect(tree.children).toHaveLength(0);
   });
 });
 
@@ -284,7 +360,7 @@ describe('semantic round-trip (markdown -> ptxast -> xml -> ptxast)', () => {
       {
         name: 'chapter with subsection and display math',
         markdown: '# Chapter A\n\n### Sub A\n\n$$\na^2+b^2=c^2\n$$\n',
-        requiredTypes: ['chapter', 'subsection', 'title', 'me'],
+        requiredTypes: ['chapter', 'subsection', 'title', 'md'],
       },
       {
         name: 'inline formatting paragraph',

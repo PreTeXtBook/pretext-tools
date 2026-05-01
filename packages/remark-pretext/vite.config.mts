@@ -34,12 +34,10 @@ export default defineConfig(() => ({
       external: [
         '@pretextbook/ptxast',
         'remark-directive',
-        'remark-math',
         'remark-parse',
         'unified',
         'unist-util-visit',
         'mdast-util-directive',
-        'mdast-util-math',
         '@types/mdast',
       ],
     },

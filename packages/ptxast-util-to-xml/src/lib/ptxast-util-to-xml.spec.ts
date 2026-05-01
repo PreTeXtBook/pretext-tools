@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ptxastRootToXml, ptxastNodeToXml } from './ptxast-util-to-xml.js';
-import type { PtxRoot, P, M, Me, Theorem, Section, Title, Statement, PtxText, Em, C, Ol, Li } from '@pretextbook/ptxast';
+import type { PtxRoot, P, M, Me, Md, Mdn, Theorem, Section, Title, Statement, PtxText, Em, C, Ol, Li } from '@pretextbook/ptxast';
 
 describe('ptxastRootToXml', () => {
   it('serializes an empty root', () => {
@@ -62,6 +62,28 @@ describe('ptxastRootToXml', () => {
       children: [{ type: 'me', value: 'a^2 + b^2 = c^2' } as Me],
     };
     expect(ptxastRootToXml(root)).toBe('<me>a^2 + b^2 = c^2</me>');
+  });
+
+  it('serializes md value form', () => {
+    const root: PtxRoot = {
+      type: 'root',
+      children: [{ type: 'md', value: 'a=b' } as Md],
+    };
+    expect(ptxastRootToXml(root)).toBe('<md>a=b</md>');
+  });
+
+  it('serializes mdn mrow-children form', () => {
+    const root: PtxRoot = {
+      type: 'root',
+      children: [{
+        type: 'mdn',
+        children: [
+          { type: 'mrow', value: 'a=b' },
+          { type: 'mrow', value: 'c=d' },
+        ],
+      } as Mdn],
+    };
+    expect(ptxastRootToXml(root)).toBe('<mdn><mrow>a=b</mrow><mrow>c=d</mrow></mdn>');
   });
 
   it('serializes a section with title and paragraph', () => {

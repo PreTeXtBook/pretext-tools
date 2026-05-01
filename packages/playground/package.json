@@ -5,7 +5,9 @@
   "description": "Interactive playground for testing PreTeXt conversion pipelines",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "run-p dev:deps dev:vite",
+    "dev:vite": "vite",
+    "dev:deps": "npm exec nx -- run playground:watch-deps",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -16,7 +18,6 @@
     "@pretextbook/ptxast-util-from-xml": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",
     "remark-directive": "^4.0.0",
-    "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.0"
   },

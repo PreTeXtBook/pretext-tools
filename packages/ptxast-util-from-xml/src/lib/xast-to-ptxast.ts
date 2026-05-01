@@ -92,6 +92,26 @@ function convertCdata(node: Cdata): PtxText {
 function convertElement(el: Element): PtxContent {
   const { name, attributes, children } = el;
 
+  if (name === 'md' || name === 'mdn') {
+    const mrowElements = (children as RootContent[]).filter(
+      (child): child is Element => child.type === 'element' && (child as Element).name === 'mrow'
+    );
+
+    if (mrowElements.length > 0) {
+      return {
+        type: name,
+        ...(Object.keys(attributes).length ? { attributes } : {}),
+        children: mrowElements.map((mrow) => convertElement(mrow)),
+      } as unknown as PtxContent;
+    }
+
+    return {
+      type: name,
+      ...(Object.keys(attributes).length ? { attributes } : {}),
+      value: extractTextValue(children as RootContent[]),
+    } as unknown as PtxContent;
+  }
+
   if (VALUE_TYPES.has(name)) {
     return {
       type: name,
