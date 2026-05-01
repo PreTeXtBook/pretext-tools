@@ -263,8 +263,8 @@ function convertDisplayMath(node: CustomMath): Md {
     // Multi-row display math: wrap each row in an mrow
     return { type: 'md', children: rows.map(line => ({ type: 'mrow', value: line })) };
   }
-  // Single-expression math: no mrows, just the content in the value
-  return { type: 'md', value: rows[0] };
+  // Single-expression math (or empty): no mrows, just the content in the value
+  return { type: 'md', value: rows[0] ?? '' };
 }
 
 /** Handle both display and inline math nodes from custom math parser. */

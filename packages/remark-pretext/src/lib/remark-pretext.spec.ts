@@ -157,6 +157,28 @@ describe('display math', () => {
     expect((md as { children: { value: string }[] }).children[2].value).toBe('c^2');
   });
 
+  it('empty display math produces an md node with empty string value', () => {
+    // $$ $$ has only whitespace content – rows is empty after filtering
+    const tree = parse('$$ $$');
+    const p = tree.children[0] as P;
+    const md = p.children.find(n => n.type === 'md') as Md;
+    expect(md).toBeDefined();
+    expect(md.type).toBe('md');
+    expect('value' in md).toBe(true);
+    expect((md as { value: string }).value).toBe('');
+  });
+
+  it('inline code containing $ is not treated as math', () => {
+    const tree = parse('Use `$x$` here.');
+    const p = tree.children[0] as P;
+    const c = p.children.find(n => n.type === 'c') as C;
+    expect(c).toBeDefined();
+    // The code node value must be the original content, not a leaked token
+    expect(c.value).toBe('$x$');
+    // No math nodes should be present
+    expect(p.children.some(n => n.type === 'm' || n.type === 'md')).toBe(false);
+  });
+
   it('inline $$ delimiters create display math (custom parser)', () => {
      // Note: In our custom parser, $$ always creates display math (meta:'display')
      // even when used inline. This is standard LaTeX/PreTeXt convention.

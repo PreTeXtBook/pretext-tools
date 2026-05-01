@@ -86,6 +86,50 @@ function findNextDelimiter(text: string, pos: number): {
   return nextMatch;
 }
 
+/**
+ * Find the extent of the next backtick code region (inline code span or fenced
+ * code block) starting at or after `fromPos`. Returns `{start, end}` where
+ * `end` is the index of the first character AFTER the region, or `null` if no
+ * code region exists.
+ */
+function findNextCodeRegion(text: string, fromPos: number): { start: number; end: number } | null {
+  let p = fromPos;
+
+  while (p < text.length) {
+    const backtickIndex = text.indexOf('`', p);
+    if (backtickIndex === -1) return null;
+
+    // Count consecutive backticks at this position
+    let tickCount = 0;
+    let q = backtickIndex;
+    while (q < text.length && text[q] === '`') {
+      tickCount++;
+      q++;
+    }
+
+    const openTicks = '`'.repeat(tickCount);
+    // Search for a matching closing run of exactly the same length
+    let searchFrom = q;
+    while (searchFrom < text.length) {
+      const closeIndex = text.indexOf(openTicks, searchFrom);
+      if (closeIndex === -1) break;
+
+      const afterClose = closeIndex + tickCount;
+      // Exact match: the character after the closing run must not be another backtick
+      if (afterClose >= text.length || text[afterClose] !== '`') {
+        return { start: backtickIndex, end: afterClose };
+      }
+      // Closing run has extra backticks – keep searching
+      searchFrom = closeIndex + 1;
+    }
+
+    // No valid close found for this opening run – skip past it and keep looking
+    p = backtickIndex + tickCount;
+  }
+
+  return null;
+}
+
 export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult {
   const tokens = new Map<string, Math>();
   let out = '';
@@ -93,7 +137,18 @@ export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult
   let id = 0;
 
   while (pos < markdown.length) {
+    // Skip any backtick code region that precedes the next math delimiter,
+    // so that $ signs inside code spans are never tokenized as math.
+    const codeRegion = findNextCodeRegion(markdown, pos);
     const next = findNextDelimiter(markdown, pos);
+
+    if (codeRegion && (!next || codeRegion.start < next.index)) {
+      // Copy everything up to and including the code region verbatim
+      out += markdown.substring(pos, codeRegion.end);
+      pos = codeRegion.end;
+      continue;
+    }
+
     if (!next) {
       out += markdown.substring(pos);
       break;
