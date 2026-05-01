@@ -1,4 +1,4 @@
-import { Range, window } from "vscode";
+import { Range, window, workspace } from "vscode";
 import { markdownToPretext } from "md2ptx";
 import { unified } from "unified";
 import remarkDirective from "remark-directive";
@@ -52,13 +52,21 @@ export async function cmdConvertText() {
   pretextOutputChannel.appendLine(
     "Converting selected text to PreTeXt format.",
   );
+  const experimentalFeaturesEnabled = workspace
+    .getConfiguration("pretext-tools")
+    .get<boolean>("experimentalFeatures", false);
+  const conversionOptions = [
+    "LaTeX-style PreTeXt",
+    "PreTeXt Markdown",
+    "Classic Markdown",
+    ...(experimentalFeaturesEnabled
+      ? ["PreTeXt Markdown (Experimental ptxast)"]
+      : []),
+  ];
   window
-    .showQuickPick(
-      ["LaTeX-style PreTeXt", "PreTeXt Markdown", "Classic Markdown"],
-      {
-        placeHolder: "Which format is the selected text?",
-      },
-    )
+    .showQuickPick(conversionOptions, {
+      placeHolder: "Which format is the selected text?",
+    })
     .then(async (qpSelection) => {
       if (!qpSelection) {
         return;
@@ -75,6 +83,9 @@ export async function cmdConvertText() {
           break;
         case "PreTeXt Markdown":
           convertedText = await cmdConvertPMDToPretext(initialText);
+          break;
+        case "PreTeXt Markdown (Experimental ptxast)":
+          convertedText = await cmdConvertPMDToPretextExperimental(initialText);
           break;
       }
     })
@@ -117,8 +128,13 @@ function convertWithUnified(text: string) {
 }
 
 async function cmdConvertPMDToPretext(initialText: string) {
+  const newText = FlexTeXtConvert(initialText);
+  return validateAndFormatConvertedPretext("PreTeXt Markdown", newText);
+}
+
+async function cmdConvertPMDToPretextExperimental(initialText: string) {
   pretextOutputChannel.appendLine(
-    "PreTeXt Markdown to PreTeXt conversion is still experiemental.  Use with care.",
+    "PreTeXt Markdown ptxast conversion is experimental. Use with care.",
   );
   const processor = unified()
     .use(remarkParse)
@@ -127,7 +143,10 @@ async function cmdConvertPMDToPretext(initialText: string) {
   const mdast = processor.parse(initialText);
   const ptxast = processor.runSync(mdast, { value: initialText }) as PtxRoot;
   const newText = ptxastRootToXml(ptxast);
-  return validateAndFormatConvertedPretext("PreTeXt Markdown", newText);
+  return validateAndFormatConvertedPretext(
+    "PreTeXt Markdown (Experimental ptxast)",
+    newText,
+  );
 }
 
 function formatConvertedPretext(xml: string) {
