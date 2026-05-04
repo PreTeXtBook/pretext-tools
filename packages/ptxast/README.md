@@ -53,11 +53,11 @@ if (isSection(tree)) {
 ## Building
 
 ```sh
-nx build ptxast
+npm run build -w @pretextbook/ptxast
 ```
 
 ## Testing
 
 ```sh
-nx test ptxast
+npm run test -w @pretextbook/ptxast
 ```

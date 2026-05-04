@@ -31,12 +31,8 @@ This allows you to specify the maximum line length and indentation level for the
 
 ## Building
 
-Run `nx build format` to build the library.
+Run `npm run build -w @pretextbook/format` to build the library.
 
 ## Running unit tests
 
-Run `nx test format` to execute the unit tests via [Vitest](https://vitest.dev/).
-
-## About
-
-This library was generated with [Nx](https://nx.dev).
+Run `npm run test -w @pretextbook/format` to execute the unit tests via [Vitest](https://vitest.dev/).
