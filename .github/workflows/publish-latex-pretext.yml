@@ -47,7 +47,7 @@ jobs:
         run: echo "VERSION=$(jq -r '.version' packages/latex-pretext/package.json)" >> $GITHUB_OUTPUT
 
       - name: Build Package
-        run: npm exec nx build @pretextbook/latex-pretext
+        run: npm run build -w @pretextbook/latex-pretext
 
       - name: Publish to npm
         run: |
