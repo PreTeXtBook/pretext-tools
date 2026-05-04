@@ -34,6 +34,10 @@
     "*.d.cts",
     "lib"
   ],
+  "scripts": {
+    "build": "vite build --outDir ../../../dist/packages/ptxast-util-to-xml",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@pretextbook/ptxast": "^0.0.1",
     "xast-util-to-xml": "^4.0.0"

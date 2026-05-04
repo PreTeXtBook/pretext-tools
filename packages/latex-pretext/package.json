@@ -35,7 +35,11 @@
   ],
   "scripts": {
     "dev": "npm exec vite playground",
-    "dev:build": "npm exec vite -- build playground --outDir ../../../dist/packages/latex-pretext/playground"
+    "dev:build": "npm exec vite -- build playground --outDir ../../../dist/packages/latex-pretext/playground",
+    "build": "vite build --outDir ../../../dist/packages/latex-pretext",
+    "typecheck": "tsc --noEmit -p tsconfig.lib.json",
+    "playground": "npm run dev",
+    "playground:build": "npm run dev:build"
   },
   "dependencies": {
     "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#release/unified-latex-to-pretext",

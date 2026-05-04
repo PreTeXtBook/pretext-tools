@@ -49,7 +49,7 @@ jobs:
 
       - name: Build Extension
         run: |
-          npx nx build vscode-extension
+          npm run build -w pretext-tools
 
       - name: Package
         run: |

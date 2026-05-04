@@ -34,6 +34,10 @@
     "*.d.cts",
     "lib"
   ],
+  "scripts": {
+    "build": "vite build --outDir ../../../dist/packages/ptxast-util-to-mdast",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@pretextbook/ptxast": "^0.0.1",
     "@types/mdast": "^4.0.0",

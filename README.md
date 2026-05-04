@@ -78,6 +78,60 @@ While we are still trying to find a better solution for converting documents to 
 
 You can track the ongoing development progress in the [Changelog](CHANGELOG.md).
 
+## Development
+
+This monorepo contains the VS Code extension (`packages/vscode-extension`) and several supporting packages for PreTeXt language support, formatting, and conversion.
+
+### Building
+
+Build the main VS Code extension:
+```bash
+npm run build
+```
+
+Build all packages (without the extension):
+```bash
+npm run build:packages
+```
+
+Build a specific package:
+```bash
+npm run build -w @pretextbook/format
+```
+
+### Development Mode
+
+Watch mode for the extension:
+```bash
+npm run watch
+```
+
+### Testing
+
+Run all tests:
+```bash
+npm test
+```
+
+Test a specific package:
+```bash
+npm run test -w @pretextbook/completions
+```
+
+### Linting
+
+Lint all packages:
+```bash
+npm run lint
+```
+
+### Installing Dependencies
+
+This workspace uses npm workspaces. After cloning, install dependencies with:
+```bash
+npm install
+```
+
 ## Contributions
 
 Like this extension? [Star it on GitHub](https://github.com/oscarlevin/pretext-tools/stargazers)!

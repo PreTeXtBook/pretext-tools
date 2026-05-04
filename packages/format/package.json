@@ -32,6 +32,10 @@
     "*.d.ts",
     "*.d.cts"
   ],
+  "scripts": {
+    "build": "vite build --outDir ../../../dist/packages/format",
+    "test": "vitest run"
+  },
   "dependencies": {},
   "publishConfig": {
     "access": "public"
