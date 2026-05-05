@@ -34,6 +34,10 @@
     "lib",
     "types"
   ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@pretextbook/ptxast": "^0.0.1",
     "@types/mdast": "^4.0.0",

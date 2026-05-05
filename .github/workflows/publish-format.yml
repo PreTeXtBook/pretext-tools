@@ -34,7 +34,7 @@ jobs:
         run: npm install
 
       - name: Build Package
-        run: npx nx build format
+        run: npm run build -w @pretextbook/format
 
       - name: Bump Version
         run: |

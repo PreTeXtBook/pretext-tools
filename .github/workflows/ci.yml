@@ -10,15 +10,11 @@ jobs:
   main:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
-          fetch-depth: 0
-      - uses: nrwl/nx-set-shas@v3
+          node-version: 24
       - name: Install deps
         run: npm ci
-      #- name: Lint affected
-      #  run: npx nx affected -t lint
-      #- name: Test affected
-      #  run: npx nx affected -t test --configuration=ci
-      - name: Build affected
-        run: npx nx affected -t build
+      - name: Build
+        run: npm run build

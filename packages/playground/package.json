@@ -5,9 +5,8 @@
   "description": "Interactive playground for testing PreTeXt conversion pipelines",
   "type": "module",
   "scripts": {
-    "dev": "run-p dev:deps dev:vite",
+    "dev": "vite",
     "dev:vite": "vite",
-    "dev:deps": "npm exec nx -- run playground:watch-deps",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -22,7 +21,6 @@
     "unified": "^11.0.0"
   },
   "devDependencies": {
-    "@nx/vite": "*",
     "vite": "*",
     "typescript": "*"
   }

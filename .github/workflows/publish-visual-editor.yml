@@ -34,7 +34,7 @@ jobs:
         run: npm install
 
       - name: Build Package
-        run: npx nx build:lib visual-editor
+        run: npm run build:lib -w @pretextbook/visual-editor
 
       - name: Bump Version
         run: |

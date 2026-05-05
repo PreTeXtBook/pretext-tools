@@ -42,19 +42,19 @@ jobs:
       # All other packages depend on @pretextbook/ptxast.
 
       - name: Build ptxast
-        run: npx nx build ptxast
+        run: npm run build -w @pretextbook/ptxast
 
       - name: Build remark-pretext
-        run: npx nx build remark-pretext
+        run: npm run build -w @pretextbook/remark-pretext
 
       - name: Build ptxast-util-to-xml
-        run: npx nx build ptxast-util-to-xml
+        run: npm run build -w @pretextbook/ptxast-util-to-xml
 
       - name: Build ptxast-util-from-xml
-        run: npx nx build ptxast-util-from-xml
+        run: npm run build -w @pretextbook/ptxast-util-from-xml
 
       - name: Build ptxast-util-to-mdast
-        run: npx nx build ptxast-util-to-mdast
+        run: npm run build -w @pretextbook/ptxast-util-to-mdast
 
       # ── Bump versions in source package.json files ────────────────────────
       # npm version writes to the source file; Vite build already ran so we
@@ -104,11 +104,11 @@ jobs:
 
       - name: Rebuild all with new versions
         run: |
-          npx nx build ptxast
-          npx nx build remark-pretext
-          npx nx build ptxast-util-to-xml
-          npx nx build ptxast-util-from-xml
-          npx nx build ptxast-util-to-mdast
+          npm run build -w @pretextbook/ptxast
+          npm run build -w @pretextbook/remark-pretext
+          npm run build -w @pretextbook/ptxast-util-to-xml
+          npm run build -w @pretextbook/ptxast-util-from-xml
+          npm run build -w @pretextbook/ptxast-util-to-mdast
 
       # ── Read versions for tags ────────────────────────────────────────────
 

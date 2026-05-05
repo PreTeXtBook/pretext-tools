@@ -34,6 +34,10 @@
     "lib",
     "types"
   ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@types/unist": "^3.0.0",
     "@types/xast": "^2.0.4"

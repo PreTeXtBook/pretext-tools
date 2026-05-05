@@ -32,6 +32,10 @@
     "*.d.ts",
     "*.d.cts"
   ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
   "dependencies": {},
   "publishConfig": {
     "access": "public"
