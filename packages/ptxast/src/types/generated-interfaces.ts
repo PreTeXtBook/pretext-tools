@@ -15,24 +15,30 @@ export type StartElement = ElementPretextRoot;
 export interface ElementPretextRoot extends XMLElement {
   name: "pretext";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:lang"?: string;
   };
   children: (ElementArticle | ElementBook | ElementDocInfo | ElementLetter | ElementMemorandum)[];
 }
 
-export interface ElementMemorandum extends Omit<XMLElement, "attributes"> {
+export interface ElementMemorandum extends XMLElement {
   name: "memo";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementLetter extends Omit<XMLElement, "attributes"> {
+export interface ElementLetter extends XMLElement {
   name: "letter";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementDocInfo extends XMLElement {
   name: "docinfo";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:base"?: string;
     "xml:lang"?: string;
   };
@@ -42,6 +48,7 @@ export interface ElementDocInfo extends XMLElement {
 export interface ElementRename extends XMLElement {
   name: "rename";
   attributes: {
+    [key: string]: string | null | undefined;
     element: string;
     "xml:lang"?: string;
   };
@@ -51,6 +58,7 @@ export interface ElementRename extends XMLElement {
 export interface ElementPrograms extends XMLElement {
   name: "programs";
   attributes: {
+    [key: string]: string | null | undefined;
     language?: string;
     "compiler-args"?: string;
     download?: "yes" | "no";
@@ -65,19 +73,23 @@ export interface ElementPrograms extends XMLElement {
 export interface ElementParsons extends XMLElement {
   name: "parsons";
   attributes: {
+    [key: string]: string | null | undefined;
     language?: string;
   };
   children: never[];
 }
 
-export interface ElementNumbering extends Omit<XMLElement, "attributes"> {
+export interface ElementNumbering extends XMLElement {
   name: "numbering";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementDivision[];
 }
 
 export interface ElementDivision extends XMLElement {
   name: "division";
   attributes: {
+    [key: string]: string | null | undefined;
     part: "decorative" | "structural";
   };
   children: never[];
@@ -86,53 +98,68 @@ export interface ElementDivision extends XMLElement {
 export interface ElementMathPackage extends XMLElement {
   name: "math-package";
   attributes: {
+    [key: string]: string | null | undefined;
     "latex-name": string;
     "mathjax-name": string;
   };
   children: never[];
 }
 
-export interface ElementMacros extends Omit<XMLElement, "attributes"> {
+export interface ElementMacros extends XMLElement {
   name: "macros";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementLatexImagePreamble extends Omit<XMLElement, "attributes"> {
+export interface ElementLatexImagePreamble extends XMLElement {
   name: "latex-image-preamble";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementInitialism extends Omit<XMLElement, "attributes"> {
+export interface ElementInitialism extends XMLElement {
   name: "initialism";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementImages extends Omit<XMLElement, "attributes"> {
+export interface ElementImages extends XMLElement {
   name: "images";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementArchive[];
 }
 
 export interface ElementArchive extends XMLElement {
   name: "archive";
   attributes: {
+    [key: string]: string | null | undefined;
     from?: string;
   };
   children: XMLText[];
 }
 
-export interface ElementFeedback1 extends Omit<XMLElement, "attributes"> {
+export interface ElementFeedback1 extends XMLElement {
   name: "feedback";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementFeedbackUrl[];
 }
 
-export interface ElementFeedbackUrl extends Omit<XMLElement, "attributes"> {
+export interface ElementFeedbackUrl extends XMLElement {
   name: "url";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementDocumentId extends XMLElement {
   name: "document-id";
   attributes: {
+    [key: string]: string | null | undefined;
     edition?: string;
   };
   children: XMLText[];
@@ -141,6 +168,7 @@ export interface ElementDocumentId extends XMLElement {
 export interface ElementCrossReferences extends XMLElement {
   name: "cross-references";
   attributes: {
+    [key: string]: string | null | undefined;
     text: "local" | "global" | "hybrid" | "type-local" | "type-global" | "type-hybrid" | "phrase-global" | "phrase-hybrid" | "title" | "custom";
   };
   children: never[];
@@ -149,6 +177,7 @@ export interface ElementCrossReferences extends XMLElement {
 export interface ElementBrandlogo extends XMLElement {
   name: "brandlogo";
   attributes: {
+    [key: string]: string | null | undefined;
     url?: string;
     source: string;
   };
@@ -158,6 +187,7 @@ export interface ElementBrandlogo extends XMLElement {
 export interface ElementBlurb extends XMLElement {
   name: "blurb";
   attributes: {
+    [key: string]: string | null | undefined;
     shelf: string;
   };
   children: XMLText[];
@@ -166,19 +196,23 @@ export interface ElementBlurb extends XMLElement {
 export interface ElementAuthorBiographies extends XMLElement {
   name: "author-biographies";
   attributes: {
+    [key: string]: string | null | undefined;
     length: "short" | "long";
   };
   children: never[];
 }
 
-export interface ElementAsymptotePreamble extends Omit<XMLElement, "attributes"> {
+export interface ElementAsymptotePreamble extends XMLElement {
   name: "asymptote-preamble";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementBook extends XMLElement {
   name: "book";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -191,6 +225,7 @@ export interface ElementBook extends XMLElement {
 export interface ElementWorksheet extends XMLElement {
   name: "worksheet";
   attributes: {
+    [key: string]: string | null | undefined;
     margin?: string;
     top?: string;
     bottom?: string;
@@ -208,6 +243,7 @@ export interface ElementWorksheet extends XMLElement {
 export interface ElementWarning extends XMLElement {
   name: "warning";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -220,6 +256,7 @@ export interface ElementWarning extends XMLElement {
 export interface ElementVideo extends XMLElement {
   name: "video";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -239,14 +276,17 @@ export interface ElementVideo extends XMLElement {
   children: never[];
 }
 
-export interface ElementTitle extends Omit<XMLElement, "attributes"> {
+export interface ElementTitle extends XMLElement {
   name: "title";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementXref extends XMLElement {
   name: "xref";
   attributes: {
+    [key: string]: string | null | undefined;
     ref?: string;
     first?: string;
     last?: string;
@@ -257,73 +297,97 @@ export interface ElementXref extends XMLElement {
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementXetex extends Omit<XMLElement, "attributes"> {
+export interface ElementXetex extends XMLElement {
   name: "xetex";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementXelatex extends Omit<XMLElement, "attributes"> {
+export interface ElementXelatex extends XMLElement {
   name: "xelatex";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementWebwork extends Omit<XMLElement, "attributes"> {
+export interface ElementWebwork extends XMLElement {
   name: "webwork";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementVs extends Omit<XMLElement, "attributes"> {
+export interface ElementVs extends XMLElement {
   name: "vs";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementViz extends Omit<XMLElement, "attributes"> {
+export interface ElementViz extends XMLElement {
   name: "viz";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementTrademark extends Omit<XMLElement, "attributes"> {
+export interface ElementTrademark extends XMLElement {
   name: "trademark";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementToday extends Omit<XMLElement, "attributes"> {
+export interface ElementToday extends XMLElement {
   name: "today";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementTimesignature extends XMLElement {
   name: "timesignature";
   attributes: {
+    [key: string]: string | null | undefined;
     top: string;
     bottom: string;
   };
   children: never[];
 }
 
-export interface ElementTimes extends Omit<XMLElement, "attributes"> {
+export interface ElementTimes extends XMLElement {
   name: "times";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementTimeofday extends Omit<XMLElement, "attributes"> {
+export interface ElementTimeofday extends XMLElement {
   name: "timeofday";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementTex extends Omit<XMLElement, "attributes"> {
+export interface ElementTex extends XMLElement {
   name: "tex";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementTerm extends Omit<XMLElement, "attributes"> {
+export interface ElementTerm extends XMLElement {
   name: "term";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementWWVariable extends XMLElement {
   name: "var";
   attributes: {
+    [key: string]: string | null | undefined;
     name?: string;
     evaluator?: string;
     width?: string;
@@ -336,6 +400,7 @@ export interface ElementWWVariable extends XMLElement {
 export interface ElementUrl extends XMLElement {
   name: "url";
   attributes: {
+    [key: string]: string | null | undefined;
     href: string;
     visual?: string;
   };
@@ -345,99 +410,135 @@ export interface ElementUrl extends XMLElement {
 export interface ElementTaxon extends XMLElement {
   name: "taxon";
   attributes: {
+    [key: string]: string | null | undefined;
     ncbi?: string;
   };
   children: (ElementGenus | ElementSpecies | XMLText)[];
 }
 
-export interface ElementSpecies extends Omit<XMLElement, "attributes"> {
+export interface ElementSpecies extends XMLElement {
   name: "species";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementGenus extends Omit<XMLElement, "attributes"> {
+export interface ElementGenus extends XMLElement {
   name: "genus";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementTage extends Omit<XMLElement, "attributes"> {
+export interface ElementTage extends XMLElement {
   name: "tage";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementTag extends Omit<XMLElement, "attributes"> {
+export interface ElementTag extends XMLElement {
   name: "tag";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementSwungdash extends Omit<XMLElement, "attributes"> {
+export interface ElementSwungdash extends XMLElement {
   name: "swungdash";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementStale extends Omit<XMLElement, "attributes"> {
+export interface ElementStale extends XMLElement {
   name: "stale";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementSq extends Omit<XMLElement, "attributes"> {
+export interface ElementSq extends XMLElement {
   name: "sq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementSolidus extends Omit<XMLElement, "attributes"> {
+export interface ElementSolidus extends XMLElement {
   name: "solidus";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementServicemark extends Omit<XMLElement, "attributes"> {
+export interface ElementServicemark extends XMLElement {
   name: "servicemark";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementSectionMark extends Omit<XMLElement, "attributes"> {
+export interface ElementSectionMark extends XMLElement {
   name: "section-mark";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementScaledeg extends Omit<XMLElement, "attributes"> {
+export interface ElementScaledeg extends XMLElement {
   name: "scaledeg";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementRsq extends Omit<XMLElement, "attributes"> {
+export interface ElementRsq extends XMLElement {
   name: "rsq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementRq extends Omit<XMLElement, "attributes"> {
+export interface ElementRq extends XMLElement {
   name: "rq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementRegistered extends Omit<XMLElement, "attributes"> {
+export interface ElementRegistered extends XMLElement {
   name: "registered";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementRdblbracket extends Omit<XMLElement, "attributes"> {
+export interface ElementRdblbracket extends XMLElement {
   name: "rdblbracket";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementRangle extends Omit<XMLElement, "attributes"> {
+export interface ElementRangle extends XMLElement {
   name: "rangle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementQuantity extends Omit<XMLElement, "attributes"> {
+export interface ElementQuantity extends XMLElement {
   name: "quantity";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementMag | ElementPer | ElementUnit)[];
 }
 
 export interface ElementUnit extends XMLElement {
   name: "unit";
   attributes: {
+    [key: string]: string | null | undefined;
     prefix?: string;
     base: string;
     exp?: string;
@@ -448,6 +549,7 @@ export interface ElementUnit extends XMLElement {
 export interface ElementPer extends XMLElement {
   name: "per";
   attributes: {
+    [key: string]: string | null | undefined;
     prefix?: string;
     base: string;
     exp?: string;
@@ -455,102 +557,138 @@ export interface ElementPer extends XMLElement {
   children: never[];
 }
 
-export interface ElementMag extends Omit<XMLElement, "attributes"> {
+export interface ElementMag extends XMLElement {
   name: "mag";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementQ extends Omit<XMLElement, "attributes"> {
+export interface ElementQ extends XMLElement {
   name: "q";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementPubtitle extends Omit<XMLElement, "attributes"> {
+export interface ElementPubtitle extends XMLElement {
   name: "pubtitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementPs extends Omit<XMLElement, "attributes"> {
+export interface ElementPs extends XMLElement {
   name: "ps";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPrime extends Omit<XMLElement, "attributes"> {
+export interface ElementPrime extends XMLElement {
   name: "prime";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPretext extends Omit<XMLElement, "attributes"> {
+export interface ElementPretext extends XMLElement {
   name: "pretext";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPrefigure extends Omit<XMLElement, "attributes"> {
+export interface ElementPrefigure extends XMLElement {
   name: "prefigure";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPm extends Omit<XMLElement, "attributes"> {
+export interface ElementPm extends XMLElement {
   name: "pm";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPlusminus extends Omit<XMLElement, "attributes"> {
+export interface ElementPlusminus extends XMLElement {
   name: "plusminus";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPilcrow extends Omit<XMLElement, "attributes"> {
+export interface ElementPilcrow extends XMLElement {
   name: "pilcrow";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPhonomark extends Omit<XMLElement, "attributes"> {
+export interface ElementPhonomark extends XMLElement {
   name: "phonomark";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementPf extends XMLElement {
   name: "pf";
   attributes: {
+    [key: string]: string | null | undefined;
     language?: string;
   };
   children: XMLText[];
 }
 
-export interface ElementPermille extends Omit<XMLElement, "attributes"> {
+export interface ElementPermille extends XMLElement {
   name: "permille";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementObelus extends Omit<XMLElement, "attributes"> {
+export interface ElementObelus extends XMLElement {
   name: "obelus";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementNdash extends Omit<XMLElement, "attributes"> {
+export interface ElementNdash extends XMLElement {
   name: "ndash";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementNbsp extends Omit<XMLElement, "attributes"> {
+export interface ElementNbsp extends XMLElement {
   name: "nbsp";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementNb extends Omit<XMLElement, "attributes"> {
+export interface ElementNb extends XMLElement {
   name: "nb";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementNatural extends Omit<XMLElement, "attributes"> {
+export interface ElementNatural extends XMLElement {
   name: "natural";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementN extends XMLElement {
   name: "n";
   attributes: {
+    [key: string]: string | null | undefined;
     pc: "A" | "B" | "C" | "D" | "E" | "F" | "G" | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10";
     acc?: "doublesharp" | "sharp" | "flat" | "doubleflat";
     octave?: "1" | "2" | "3" | "4" | "5";
@@ -558,129 +696,171 @@ export interface ElementN extends XMLElement {
   children: never[];
 }
 
-export interface ElementMusicSharp extends Omit<XMLElement, "attributes"> {
+export interface ElementMusicSharp extends XMLElement {
   name: "sharp";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementMusicFlat extends Omit<XMLElement, "attributes"> {
+export interface ElementMusicFlat extends XMLElement {
   name: "flat";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementMinus extends Omit<XMLElement, "attributes"> {
+export interface ElementMinus extends XMLElement {
   name: "minus";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementMidpoint extends Omit<XMLElement, "attributes"> {
+export interface ElementMidpoint extends XMLElement {
   name: "midpoint";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementMdash extends Omit<XMLElement, "attributes"> {
+export interface ElementMdash extends XMLElement {
   name: "mdash";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementMathInline extends Omit<XMLElement, "attributes"> {
+export interface ElementMathInline extends XMLElement {
   name: "m";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementFillInMath | ElementWWVariable | XMLText)[];
 }
 
 export interface ElementFillInMath extends XMLElement {
   name: "fillin";
   attributes: {
+    [key: string]: string | null | undefined;
     fill?: string;
     characters?: string;
   };
   children: never[];
 }
 
-export interface ElementLsq extends Omit<XMLElement, "attributes"> {
+export interface ElementLsq extends XMLElement {
   name: "lsq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementLq extends Omit<XMLElement, "attributes"> {
+export interface ElementLq extends XMLElement {
   name: "lq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementLdblbracket extends Omit<XMLElement, "attributes"> {
+export interface ElementLdblbracket extends XMLElement {
   name: "ldblbracket";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementLatex extends Omit<XMLElement, "attributes"> {
+export interface ElementLatex extends XMLElement {
   name: "latex";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementLangle extends Omit<XMLElement, "attributes"> {
+export interface ElementLangle extends XMLElement {
   name: "langle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementKbd extends XMLElement {
   name: "kbd";
   attributes: {
+    [key: string]: string | null | undefined;
     name?: string;
   };
   children: XMLText[];
 }
 
-export interface ElementInsert extends Omit<XMLElement, "attributes"> {
+export interface ElementInsert extends XMLElement {
   name: "insert";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementInit extends Omit<XMLElement, "attributes"> {
+export interface ElementInit extends XMLElement {
   name: "init";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
 export interface ElementIcon extends XMLElement {
   name: "icon";
   attributes: {
+    [key: string]: string | null | undefined;
     name: string;
   };
   children: XMLText[];
 }
 
-export interface ElementEllipsis extends Omit<XMLElement, "attributes"> {
+export interface ElementEllipsis extends XMLElement {
   name: "ellipsis";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementDegree extends Omit<XMLElement, "attributes"> {
+export interface ElementDegree extends XMLElement {
   name: "degree";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementDblprime extends Omit<XMLElement, "attributes"> {
+export interface ElementDblprime extends XMLElement {
   name: "dblprime";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementCopyrightCharacter extends Omit<XMLElement, "attributes"> {
+export interface ElementCopyrightCharacter extends XMLElement {
   name: "copyright";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementCopyleft extends Omit<XMLElement, "attributes"> {
+export interface ElementCopyleft extends XMLElement {
   name: "copyleft";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementIe extends Omit<XMLElement, "attributes"> {
+export interface ElementIe extends XMLElement {
   name: "ie";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementForeign extends XMLElement {
   name: "foreign";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:lang"?: string;
   };
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
@@ -689,6 +869,7 @@ export interface ElementForeign extends XMLElement {
 export interface ElementFillInText extends XMLElement {
   name: "fillin";
   attributes: {
+    [key: string]: string | null | undefined;
     characters?: string;
     rows?: string;
     cols?: string;
@@ -696,54 +877,73 @@ export interface ElementFillInText extends XMLElement {
   children: never[];
 }
 
-export interface ElementEtc extends Omit<XMLElement, "attributes"> {
+export interface ElementEtc extends XMLElement {
   name: "etc";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementEtal extends Omit<XMLElement, "attributes"> {
+export interface ElementEtal extends XMLElement {
   name: "etal";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementEmail extends Omit<XMLElement, "attributes"> {
+export interface ElementEmail extends XMLElement {
   name: "email";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementEm extends Omit<XMLElement, "attributes"> {
+export interface ElementEm extends XMLElement {
   name: "em";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementEg extends Omit<XMLElement, "attributes"> {
+export interface ElementEg extends XMLElement {
   name: "eg";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementDoublesharp extends Omit<XMLElement, "attributes"> {
+export interface ElementDoublesharp extends XMLElement {
   name: "doublesharp";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementDoubleflat extends Omit<XMLElement, "attributes"> {
+export interface ElementDoubleflat extends XMLElement {
   name: "doubleflat";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementDelete extends Omit<XMLElement, "attributes"> {
+export interface ElementDelete extends XMLElement {
   name: "delete";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementDblbrackets extends Omit<XMLElement, "attributes"> {
+export interface ElementDblbrackets extends XMLElement {
   name: "dblbrackets";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementChord extends XMLElement {
   name: "chord";
   attributes: {
+    [key: string]: string | null | undefined;
     root?: string;
     mode?: string;
     bps?: string;
@@ -754,69 +954,94 @@ export interface ElementChord extends XMLElement {
   children: ElementAlteration[];
 }
 
-export interface ElementAlteration extends Omit<XMLElement, "attributes"> {
+export interface ElementAlteration extends XMLElement {
   name: "alteration";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementCa extends Omit<XMLElement, "attributes"> {
+export interface ElementCa extends XMLElement {
   name: "ca";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementC extends Omit<XMLElement, "attributes"> {
+export interface ElementC extends XMLElement {
   name: "c";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementBc extends Omit<XMLElement, "attributes"> {
+export interface ElementBc extends XMLElement {
   name: "bc";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementAttr extends Omit<XMLElement, "attributes"> {
+export interface ElementAttr extends XMLElement {
   name: "attr";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementArticletitle extends Omit<XMLElement, "attributes"> {
+export interface ElementArticletitle extends XMLElement {
   name: "articletitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementAngles extends Omit<XMLElement, "attributes"> {
+export interface ElementAngles extends XMLElement {
   name: "angles";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementAm extends Omit<XMLElement, "attributes"> {
+export interface ElementAm extends XMLElement {
   name: "am";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementAlert extends Omit<XMLElement, "attributes"> {
+export interface ElementAlert extends XMLElement {
   name: "alert";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementAd extends Omit<XMLElement, "attributes"> {
+export interface ElementAd extends XMLElement {
   name: "ad";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementAcro extends Omit<XMLElement, "attributes"> {
+export interface ElementAcro extends XMLElement {
   name: "acro";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementAbbr extends Omit<XMLElement, "attributes"> {
+export interface ElementAbbr extends XMLElement {
   name: "abbr";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
 export interface ElementTabular extends XMLElement {
   name: "tabular";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     width?: string;
     margins?: string;
@@ -834,6 +1059,7 @@ export interface ElementTabular extends XMLElement {
 export interface ElementTableRow extends XMLElement {
   name: "row";
   attributes: {
+    [key: string]: string | null | undefined;
     header?: "yes" | "no" | "vertical";
     halign?: "left" | "center" | "right" | "justify";
     valign?: "top" | "middle" | "bottom";
@@ -846,6 +1072,7 @@ export interface ElementTableRow extends XMLElement {
 export interface ElementTableCell extends XMLElement {
   name: "cell";
   attributes: {
+    [key: string]: string | null | undefined;
     halign?: "left" | "center" | "right" | "justify";
     bottom?: "none" | "minor" | "medium" | "major";
     right?: "none" | "minor" | "medium" | "major";
@@ -857,6 +1084,7 @@ export interface ElementTableCell extends XMLElement {
 export interface ElementParagraph extends XMLElement {
   name: "p";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -867,6 +1095,7 @@ export interface ElementParagraph extends XMLElement {
 export interface ElementUl extends XMLElement {
   name: "ul";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     cols?: "2" | "3" | "4" | "5" | "6";
     marker?: "disc" | "circle" | "square" | "";
@@ -877,6 +1106,7 @@ export interface ElementUl extends XMLElement {
 export interface ElementListItem extends XMLElement {
   name: "li";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -889,6 +1119,7 @@ export interface ElementListItem extends XMLElement {
 export interface ElementTable extends XMLElement {
   name: "table";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -899,19 +1130,24 @@ export interface ElementTable extends XMLElement {
   children: (ElementIndex | ElementPlainTitle | ElementShortTitle | ElementTabular | ElementTitle)[];
 }
 
-export interface ElementShortTitle extends Omit<XMLElement, "attributes"> {
+export interface ElementShortTitle extends XMLElement {
   name: "shorttitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementPlainTitle extends Omit<XMLElement, "attributes"> {
+export interface ElementPlainTitle extends XMLElement {
   name: "plaintitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementIndex extends XMLElement {
   name: "idx";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -922,19 +1158,24 @@ export interface ElementIndex extends XMLElement {
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIdxHeading | ElementIe | ElementIndex | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementSee | ElementSeealso | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementSeealso extends Omit<XMLElement, "attributes"> {
+export interface ElementSeealso extends XMLElement {
   name: "seealso";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementSee extends Omit<XMLElement, "attributes"> {
+export interface ElementSee extends XMLElement {
   name: "see";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
 export interface ElementIdxHeading extends XMLElement {
   name: "h";
   attributes: {
+    [key: string]: string | null | undefined;
     sortby?: string;
   };
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
@@ -943,6 +1184,7 @@ export interface ElementIdxHeading extends XMLElement {
 export interface ElementSidebyside1 extends XMLElement {
   name: "sidebyside";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -956,6 +1198,7 @@ export interface ElementSidebyside1 extends XMLElement {
 export interface ElementSlate extends XMLElement {
   name: "slate";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -972,6 +1215,7 @@ export interface ElementSlate extends XMLElement {
 export interface ElementXhtmlbutton extends XMLElement {
   name: "xhtml:button";
   attributes: {
+    [key: string]: string | null | undefined;
     type: string;
     id: string;
   };
@@ -981,6 +1225,7 @@ export interface ElementXhtmlbutton extends XMLElement {
 export interface ElementSlateInput extends XMLElement {
   name: "input";
   attributes: {
+    [key: string]: string | null | undefined;
     type?: string;
     value?: string;
     onkeypress?: string;
@@ -993,6 +1238,7 @@ export interface ElementSlateInput extends XMLElement {
 export interface ElementSidebyside3 extends XMLElement {
   name: "sidebyside";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -1006,6 +1252,7 @@ export interface ElementSidebyside3 extends XMLElement {
 export interface ElementInteractive extends XMLElement {
   name: "interactive";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1020,14 +1267,17 @@ export interface ElementInteractive extends XMLElement {
   children: (ElementInstructions | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementSlate | ElementStatic)[];
 }
 
-export interface ElementStatic extends Omit<XMLElement, "attributes"> {
+export interface ElementStatic extends XMLElement {
   name: "static";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementImageCode | ElementImageRaster)[];
 }
 
 export interface ElementImageRaster extends XMLElement {
   name: "image";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     component?: string;
     width?: string;
@@ -1040,19 +1290,24 @@ export interface ElementImageRaster extends XMLElement {
   children: (ElementImageDescription | ElementImageShortDescription)[];
 }
 
-export interface ElementImageShortDescription extends Omit<XMLElement, "attributes"> {
+export interface ElementImageShortDescription extends XMLElement {
   name: "shortdescription";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementImageDescription extends Omit<XMLElement, "attributes"> {
+export interface ElementImageDescription extends XMLElement {
   name: "description";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementParagraph | ElementTabular)[];
 }
 
 export interface ElementImageCode extends XMLElement {
   name: "image";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     component?: string;
     width?: string;
@@ -1066,6 +1321,7 @@ export interface ElementImageCode extends XMLElement {
 export interface ElementSageplot extends XMLElement {
   name: "sageplot";
   attributes: {
+    [key: string]: string | null | undefined;
     label?: string;
     component?: string;
     variant?: "2d" | "3d";
@@ -1074,14 +1330,17 @@ export interface ElementSageplot extends XMLElement {
   children: XMLText[];
 }
 
-export interface ElementImageShortDescriptionCode extends Omit<XMLElement, "attributes"> {
+export interface ElementImageShortDescriptionCode extends XMLElement {
   name: "shortdescription";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementWWVariable | XMLText)[];
 }
 
 export interface ElementCodeLatexImage extends XMLElement {
   name: "latex-image";
   attributes: {
+    [key: string]: string | null | undefined;
     label?: string;
     component?: string;
   };
@@ -1091,6 +1350,7 @@ export interface ElementCodeLatexImage extends XMLElement {
 export interface ElementAsymptote extends XMLElement {
   name: "asymptote";
   attributes: {
+    [key: string]: string | null | undefined;
     label?: string;
     component?: string;
   };
@@ -1100,6 +1360,7 @@ export interface ElementAsymptote extends XMLElement {
 export interface ElementSidebyside2 extends XMLElement {
   name: "sidebyside";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -1110,14 +1371,17 @@ export interface ElementSidebyside2 extends XMLElement {
   children: (ElementConsole | ElementDl | ElementImageCode | ElementImageRaster | ElementOl | ElementParagraph | ElementPoem | ElementPreformatted | ElementProgram | ElementStack | ElementStack1 | ElementTabular | ElementUl | ElementVideo)[];
 }
 
-export interface ElementStack1 extends Omit<XMLElement, "attributes"> {
+export interface ElementStack1 extends XMLElement {
   name: "stack";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementConsole | ElementDl | ElementImageCode | ElementImageRaster | ElementOl | ElementParagraph | ElementPreformatted | ElementProgram | ElementSlate | ElementTabular | ElementUl | ElementVideo)[];
 }
 
 export interface ElementProgram extends XMLElement {
   name: "program";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     label?: string;
     "xml:id"?: string;
@@ -1150,34 +1414,44 @@ export interface ElementProgram extends XMLElement {
 export interface ElementProgramTests extends XMLElement {
   name: "tests";
   attributes: {
+    [key: string]: string | null | undefined;
     visible?: "yes" | "no";
   };
   children: (ElementIotest | XMLText)[];
 }
 
-export interface ElementIotest extends Omit<XMLElement, "attributes"> {
+export interface ElementIotest extends XMLElement {
   name: "iotest";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementInput | ElementOutput)[];
 }
 
-export interface ElementOutput extends Omit<XMLElement, "attributes"> {
+export interface ElementOutput extends XMLElement {
   name: "output";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementInput extends Omit<XMLElement, "attributes"> {
+export interface ElementInput extends XMLElement {
   name: "input";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementProgramStdin extends Omit<XMLElement, "attributes"> {
+export interface ElementProgramStdin extends XMLElement {
   name: "stdin";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementProgramPreamble extends XMLElement {
   name: "preamble";
   attributes: {
+    [key: string]: string | null | undefined;
     visible?: "yes" | "no";
   };
   children: XMLText[];
@@ -1186,19 +1460,23 @@ export interface ElementProgramPreamble extends XMLElement {
 export interface ElementProgramPostamble extends XMLElement {
   name: "postamble";
   attributes: {
+    [key: string]: string | null | undefined;
     visible?: "yes" | "no";
   };
   children: XMLText[];
 }
 
-export interface ElementProgramCode extends Omit<XMLElement, "attributes"> {
+export interface ElementProgramCode extends XMLElement {
   name: "code";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementCodelensCheckpoint extends XMLElement {
   name: "checkpoint";
   attributes: {
+    [key: string]: string | null | undefined;
     line: string;
     answer?: string;
     "answer-variable"?: string;
@@ -1206,24 +1484,31 @@ export interface ElementCodelensCheckpoint extends XMLElement {
   children: (ElementFeedback2 | ElementPrompt)[];
 }
 
-export interface ElementPrompt extends Omit<XMLElement, "attributes"> {
+export interface ElementPrompt extends XMLElement {
   name: "prompt";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
-export interface ElementPreformatted extends Omit<XMLElement, "attributes"> {
+export interface ElementPreformatted extends XMLElement {
   name: "pre";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCodeLine | XMLText)[];
 }
 
-export interface ElementCodeLine extends Omit<XMLElement, "attributes"> {
+export interface ElementCodeLine extends XMLElement {
   name: "cline";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementConsole extends XMLElement {
   name: "console";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     prompt?: string;
     continuation?: string;
@@ -1233,14 +1518,17 @@ export interface ElementConsole extends XMLElement {
   children: (ElementConsoleInput | ElementConsoleOutput)[];
 }
 
-export interface ElementConsoleOutput extends Omit<XMLElement, "attributes"> {
+export interface ElementConsoleOutput extends XMLElement {
   name: "output";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementConsoleInput extends XMLElement {
   name: "input";
   attributes: {
+    [key: string]: string | null | undefined;
     prompt?: string;
     continuation?: string;
   };
@@ -1250,6 +1538,7 @@ export interface ElementConsoleInput extends XMLElement {
 export interface ElementBlockQuote extends XMLElement {
   name: "blockquote";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1259,24 +1548,31 @@ export interface ElementBlockQuote extends XMLElement {
   children: (ElementAttribution | ElementIndex | ElementParagraph | ElementTitle)[];
 }
 
-export interface ElementAttribution extends Omit<XMLElement, "attributes"> {
+export interface ElementAttribution extends XMLElement {
   name: "attribution";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLongLine | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementLongLine extends Omit<XMLElement, "attributes"> {
+export interface ElementLongLine extends XMLElement {
   name: "line";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementFeedback2 extends Omit<XMLElement, "attributes"> {
+export interface ElementFeedback2 extends XMLElement {
   name: "feedback";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementOl extends XMLElement {
   name: "ol";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     cols?: "2" | "3" | "4" | "5" | "6";
     marker?: string;
@@ -1287,6 +1583,7 @@ export interface ElementOl extends XMLElement {
 export interface ElementDl extends XMLElement {
   name: "dl";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     width?: "narrow" | "medium" | "wide";
   };
@@ -1296,6 +1593,7 @@ export interface ElementDl extends XMLElement {
 export interface ElementDefinitionListItem extends XMLElement {
   name: "li";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1308,6 +1606,7 @@ export interface ElementDefinitionListItem extends XMLElement {
 export interface ElementSidebyside extends XMLElement {
   name: "sidebyside";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -1318,14 +1617,17 @@ export interface ElementSidebyside extends XMLElement {
   children: (ElementConsole | ElementDl | ElementFigure | ElementFigure1 | ElementFigure2 | ElementImageCode | ElementImageRaster | ElementList | ElementListing | ElementOl | ElementParagraph | ElementPoem | ElementPreformatted | ElementProgram | ElementStack | ElementStack1 | ElementTable | ElementTabular | ElementUl | ElementVideo)[];
 }
 
-export interface ElementStack extends Omit<XMLElement, "attributes"> {
+export interface ElementStack extends XMLElement {
   name: "stack";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementConsole | ElementDl | ElementImageCode | ElementImageRaster | ElementOl | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementUl | ElementVideo)[];
 }
 
 export interface ElementPoem extends XMLElement {
   name: "poem";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1339,6 +1641,7 @@ export interface ElementPoem extends XMLElement {
 export interface ElementStanza extends XMLElement {
   name: "stanza";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1351,6 +1654,7 @@ export interface ElementStanza extends XMLElement {
 export interface ElementPoemLine extends XMLElement {
   name: "line";
   attributes: {
+    [key: string]: string | null | undefined;
     indent?: string;
   };
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
@@ -1359,6 +1663,7 @@ export interface ElementPoemLine extends XMLElement {
 export interface ElementPoemAuthor extends XMLElement {
   name: "author";
   attributes: {
+    [key: string]: string | null | undefined;
     halign?: "left" | "center" | "right";
   };
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
@@ -1367,6 +1672,7 @@ export interface ElementPoemAuthor extends XMLElement {
 export interface ElementListing extends XMLElement {
   name: "listing";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1380,6 +1686,7 @@ export interface ElementListing extends XMLElement {
 export interface ElementList extends XMLElement {
   name: "list";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1390,19 +1697,24 @@ export interface ElementList extends XMLElement {
   children: (ElementConclusionText | ElementDl | ElementIndex | ElementIntroductionText | ElementOl | ElementPlainTitle | ElementShortTitle | ElementTitle | ElementUl)[];
 }
 
-export interface ElementIntroductionText extends Omit<XMLElement, "attributes"> {
+export interface ElementIntroductionText extends XMLElement {
   name: "introduction";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
-export interface ElementConclusionText extends Omit<XMLElement, "attributes"> {
+export interface ElementConclusionText extends XMLElement {
   name: "conclusion";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementFigure2 extends XMLElement {
   name: "figure";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1412,14 +1724,17 @@ export interface ElementFigure2 extends XMLElement {
   children: (ElementCaption | ElementIndex | ElementTabular | ElementTitle)[];
 }
 
-export interface ElementCaption extends Omit<XMLElement, "attributes"> {
+export interface ElementCaption extends XMLElement {
   name: "caption";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementFigure1 extends XMLElement {
   name: "figure";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1432,6 +1747,7 @@ export interface ElementFigure1 extends XMLElement {
 export interface ElementFigure extends XMLElement {
   name: "figure";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1445,6 +1761,7 @@ export interface ElementFigure extends XMLElement {
 export interface ElementSideBySideGroup extends XMLElement {
   name: "sbsgroup";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -1458,6 +1775,7 @@ export interface ElementSideBySideGroup extends XMLElement {
 export interface ElementMuseScore extends XMLElement {
   name: "score";
   attributes: {
+    [key: string]: string | null | undefined;
     musescoreuser: string;
     musescore: string;
   };
@@ -1467,6 +1785,7 @@ export interface ElementMuseScore extends XMLElement {
 export interface ElementSage extends XMLElement {
   name: "sage";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     doctest?: string;
     tolerance?: string;
@@ -1477,19 +1796,24 @@ export interface ElementSage extends XMLElement {
   children: (ElementSageInput | ElementSageOutput)[];
 }
 
-export interface ElementSageOutput extends Omit<XMLElement, "attributes"> {
+export interface ElementSageOutput extends XMLElement {
   name: "output";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementSageInput extends Omit<XMLElement, "attributes"> {
+export interface ElementSageInput extends XMLElement {
   name: "input";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementHistorical extends XMLElement {
   name: "historical";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1502,6 +1826,7 @@ export interface ElementHistorical extends XMLElement {
 export interface ElementBiographical extends XMLElement {
   name: "biographical";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1514,6 +1839,7 @@ export interface ElementBiographical extends XMLElement {
 export interface ElementAside extends XMLElement {
   name: "aside";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1526,6 +1852,7 @@ export interface ElementAside extends XMLElement {
 export interface ElementSideBySideGroupNoCaption extends XMLElement {
   name: "sbsgroup";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -1539,6 +1866,7 @@ export interface ElementSideBySideGroupNoCaption extends XMLElement {
 export interface ElementInstructions extends XMLElement {
   name: "instructions";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1548,24 +1876,31 @@ export interface ElementInstructions extends XMLElement {
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementIndex | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementTitle | ElementVideo | XMLText)[];
 }
 
-export interface ElementNotation extends Omit<XMLElement, "attributes"> {
+export interface ElementNotation extends XMLElement {
   name: "notation";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementNotationDescription | ElementUsage)[];
 }
 
-export interface ElementUsage extends Omit<XMLElement, "attributes"> {
+export interface ElementUsage extends XMLElement {
   name: "usage";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementMathInline[];
 }
 
-export interface ElementNotationDescription extends Omit<XMLElement, "attributes"> {
+export interface ElementNotationDescription extends XMLElement {
   name: "description";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
 export interface ElementMen1 extends XMLElement {
   name: "men";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1576,6 +1911,7 @@ export interface ElementMen1 extends XMLElement {
 export interface ElementMen extends XMLElement {
   name: "men";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1586,6 +1922,7 @@ export interface ElementMen extends XMLElement {
 export interface ElementMe1 extends XMLElement {
   name: "me";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1593,14 +1930,17 @@ export interface ElementMe1 extends XMLElement {
   children: (ElementFillInMath | ElementIndex | ElementWWVariable | ElementXref | XMLText)[];
 }
 
-export interface ElementMe extends Omit<XMLElement, "attributes"> {
+export interface ElementMe extends XMLElement {
   name: "me";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementFillInMath | ElementWWVariable | XMLText)[];
 }
 
 export interface ElementMdn1 extends XMLElement {
   name: "mdn";
   attributes: {
+    [key: string]: string | null | undefined;
     number?: "yes" | "no";
     break?: "yes" | "no";
     alignment?: string;
@@ -1612,6 +1952,7 @@ export interface ElementMdn1 extends XMLElement {
 export interface ElementMathRow extends XMLElement {
   name: "mrow";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1622,14 +1963,17 @@ export interface ElementMathRow extends XMLElement {
   children: (ElementFillInMath | ElementIndex | ElementWWVariable | ElementXref | XMLText)[];
 }
 
-export interface ElementMathIntertext extends Omit<XMLElement, "attributes"> {
+export interface ElementMathIntertext extends XMLElement {
   name: "intertext";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementMdn extends XMLElement {
   name: "mdn";
   attributes: {
+    [key: string]: string | null | undefined;
     number?: "yes" | "no";
     break?: "yes" | "no";
     alignment?: string;
@@ -1641,6 +1985,7 @@ export interface ElementMdn extends XMLElement {
 export interface ElementMd1 extends XMLElement {
   name: "md";
   attributes: {
+    [key: string]: string | null | undefined;
     number?: "yes" | "no";
     break?: "yes" | "no";
     alignment?: string;
@@ -1652,6 +1997,7 @@ export interface ElementMd1 extends XMLElement {
 export interface ElementMd extends XMLElement {
   name: "md";
   attributes: {
+    [key: string]: string | null | undefined;
     number?: "yes" | "no";
     break?: "yes" | "no";
     alignment?: string;
@@ -1663,6 +2009,7 @@ export interface ElementMd extends XMLElement {
 export interface ElementFootnote extends XMLElement {
   name: "fn";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1673,6 +2020,7 @@ export interface ElementFootnote extends XMLElement {
 export interface ElementCodeDisplay extends XMLElement {
   name: "cd";
   attributes: {
+    [key: string]: string | null | undefined;
     latexsep?: string;
   };
   children: (ElementCodeLine | XMLText)[];
@@ -1681,6 +2029,7 @@ export interface ElementCodeDisplay extends XMLElement {
 export interface ElementTableColumn extends XMLElement {
   name: "col";
   attributes: {
+    [key: string]: string | null | undefined;
     halign?: "left" | "center" | "right" | "justify";
     top?: "none" | "minor" | "medium" | "major";
     right?: "none" | "minor" | "medium" | "major";
@@ -1692,6 +2041,7 @@ export interface ElementTableColumn extends XMLElement {
 export interface ElementTheorem extends XMLElement {
   name: "theorem";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1701,14 +2051,17 @@ export interface ElementTheorem extends XMLElement {
   children: (ElementArgument | ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementCreator | ElementExplanation | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementInteractive | ElementJustification | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementProof | ElementProof1 | ElementReasoning | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementStatement | ElementTable | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementStatement extends Omit<XMLElement, "attributes"> {
+export interface ElementStatement extends XMLElement {
   name: "statement";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementInteractive | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementReasoning extends XMLElement {
   name: "reasoning";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1721,6 +2074,7 @@ export interface ElementReasoning extends XMLElement {
 export interface ElementCase extends XMLElement {
   name: "case";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1734,6 +2088,7 @@ export interface ElementCase extends XMLElement {
 export interface ElementProof1 extends XMLElement {
   name: "proof";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1746,6 +2101,7 @@ export interface ElementProof1 extends XMLElement {
 export interface ElementProof extends XMLElement {
   name: "proof";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1758,6 +2114,7 @@ export interface ElementProof extends XMLElement {
 export interface ElementJustification extends XMLElement {
   name: "justification";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1770,6 +2127,7 @@ export interface ElementJustification extends XMLElement {
 export interface ElementExplanation extends XMLElement {
   name: "explanation";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1779,14 +2137,17 @@ export interface ElementExplanation extends XMLElement {
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementCase | ElementConsole | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementInteractive | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementCreator extends Omit<XMLElement, "attributes"> {
+export interface ElementCreator extends XMLElement {
   name: "creator";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
 export interface ElementArgument extends XMLElement {
   name: "argument";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1799,6 +2160,7 @@ export interface ElementArgument extends XMLElement {
 export interface ElementTechnology extends XMLElement {
   name: "technology";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1811,6 +2173,7 @@ export interface ElementTechnology extends XMLElement {
 export interface ElementRemark extends XMLElement {
   name: "remark";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1823,6 +2186,7 @@ export interface ElementRemark extends XMLElement {
 export interface ElementQuestion extends XMLElement {
   name: "question";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1835,6 +2199,7 @@ export interface ElementQuestion extends XMLElement {
 export interface ElementTask extends XMLElement {
   name: "task";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1847,6 +2212,7 @@ export interface ElementTask extends XMLElement {
 export interface ElementSolution extends XMLElement {
   name: "solution";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1856,14 +2222,17 @@ export interface ElementSolution extends XMLElement {
   children: (ElementArgument | ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementExplanation | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementInteractive | ElementJustification | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementProof | ElementProof1 | ElementReasoning | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementIntroductionStatement extends Omit<XMLElement, "attributes"> {
+export interface ElementIntroductionStatement extends XMLElement {
   name: "introduction";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementInteractive | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementHint extends XMLElement {
   name: "hint";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1873,14 +2242,17 @@ export interface ElementHint extends XMLElement {
   children: (ElementArgument | ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementExplanation | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementInteractive | ElementJustification | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementProof | ElementProof1 | ElementReasoning | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementConclusionStatement extends Omit<XMLElement, "attributes"> {
+export interface ElementConclusionStatement extends XMLElement {
   name: "conclusion";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementInteractive | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementAnswer extends XMLElement {
   name: "answer";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1893,6 +2265,7 @@ export interface ElementAnswer extends XMLElement {
 export interface ElementProposition extends XMLElement {
   name: "proposition";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1905,6 +2278,7 @@ export interface ElementProposition extends XMLElement {
 export interface ElementProject extends XMLElement {
   name: "project";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1922,6 +2296,7 @@ export interface ElementProject extends XMLElement {
 export interface ElementWebWorkSource extends XMLElement {
   name: "webwork";
   attributes: {
+    [key: string]: string | null | undefined;
     source?: string;
     seed?: string;
   };
@@ -1931,6 +2306,7 @@ export interface ElementWebWorkSource extends XMLElement {
 export interface ElementWebWorkAuthored extends XMLElement {
   name: "webwork";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1940,29 +2316,38 @@ export interface ElementWebWorkAuthored extends XMLElement {
   children: (ElementConclusionText | ElementHintWW | ElementIntroductionText | ElementPgCode | ElementSolutionWW | ElementStatementExerciseWW | ElementTaskWW | ElementWWDescription | ElementWWMacros | XMLText)[];
 }
 
-export interface ElementWWMacros extends Omit<XMLElement, "attributes"> {
+export interface ElementWWMacros extends XMLElement {
   name: "pg-macros";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementMacroFile[];
 }
 
-export interface ElementMacroFile extends Omit<XMLElement, "attributes"> {
+export interface ElementMacroFile extends XMLElement {
   name: "macro-file";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementWWDescription extends Omit<XMLElement, "attributes"> {
+export interface ElementWWDescription extends XMLElement {
   name: "description";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSimpleLine | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementSimpleLine extends Omit<XMLElement, "attributes"> {
+export interface ElementSimpleLine extends XMLElement {
   name: "line";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
 export interface ElementTaskWW extends XMLElement {
   name: "task";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -1972,19 +2357,24 @@ export interface ElementTaskWW extends XMLElement {
   children: (ElementConclusionText | ElementHintWW | ElementIndex | ElementIntroductionText | ElementSolutionWW | ElementStatementExerciseWW | ElementTaskWW | ElementTitle)[];
 }
 
-export interface ElementStatementExerciseWW extends Omit<XMLElement, "attributes"> {
+export interface ElementStatementExerciseWW extends XMLElement {
   name: "statement";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementImageWW | ElementParagraph | ElementPreformatted | ElementTabular | ElementWWInstruction)[];
 }
 
-export interface ElementWWInstruction extends Omit<XMLElement, "attributes"> {
+export interface ElementWWInstruction extends XMLElement {
   name: "instruction";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
 export interface ElementImageWW extends XMLElement {
   name: "image";
   attributes: {
+    [key: string]: string | null | undefined;
     "pg-name"?: string;
     width?: string;
     decorative?: "no";
@@ -1992,34 +2382,45 @@ export interface ElementImageWW extends XMLElement {
   children: (ElementImageDescription | ElementImageShortDescriptionCode | ElementWWLatexImage)[];
 }
 
-export interface ElementWWLatexImage extends Omit<XMLElement, "attributes"> {
+export interface ElementWWLatexImage extends XMLElement {
   name: "latex-image";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementSolutionWW extends Omit<XMLElement, "attributes"> {
+export interface ElementSolutionWW extends XMLElement {
   name: "solution";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementImageWW | ElementParagraph | ElementPreformatted | ElementTabular)[];
 }
 
-export interface ElementHintWW extends Omit<XMLElement, "attributes"> {
+export interface ElementHintWW extends XMLElement {
   name: "hint";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementImageWW | ElementParagraph | ElementPreformatted | ElementTabular)[];
 }
 
-export interface ElementPgCode extends Omit<XMLElement, "attributes"> {
+export interface ElementPgCode extends XMLElement {
   name: "pg-code";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementStatementExercise extends Omit<XMLElement, "attributes"> {
+export interface ElementStatementExercise extends XMLElement {
   name: "statement";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementExerciseOrderedList | ElementFigure | ElementFigure1 | ElementFigure2 | ElementHistorical | ElementImageCode | ElementImageRaster | ElementInteractive | ElementList | ElementListing | ElementParagraph | ElementPreformatted | ElementProgram | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementExerciseOrderedList extends XMLElement {
   name: "ol";
   attributes: {
+    [key: string]: string | null | undefined;
     cols?: string;
     marker?: string;
   };
@@ -2029,6 +2430,7 @@ export interface ElementExerciseOrderedList extends XMLElement {
 export interface ElementExerciseListItem extends XMLElement {
   name: "li";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2039,37 +2441,46 @@ export interface ElementExerciseListItem extends XMLElement {
 export interface ElementStatement2 extends XMLElement {
   name: "statement";
   attributes: {
+    [key: string]: string | null | undefined;
     correct: "yes" | "no";
   };
   children: ElementParagraph[];
 }
 
-export interface ElementResponse extends Omit<XMLElement, "attributes"> {
+export interface ElementResponse extends XMLElement {
   name: "response";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementPrelude extends Omit<XMLElement, "attributes"> {
+export interface ElementPrelude extends XMLElement {
   name: "prelude";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementPreamble extends XMLElement {
   name: "preamble";
   attributes: {
+    [key: string]: string | null | undefined;
     indent?: string;
   };
   children: XMLText[];
 }
 
-export interface ElementPostlude extends Omit<XMLElement, "attributes"> {
+export interface ElementPostlude extends XMLElement {
   name: "postlude";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementPostamble extends XMLElement {
   name: "postamble";
   attributes: {
+    [key: string]: string | null | undefined;
     indent?: string;
   };
   children: XMLText[];
@@ -2078,38 +2489,47 @@ export interface ElementPostamble extends XMLElement {
 export interface ElementMyopenmath extends XMLElement {
   name: "myopenmath";
   attributes: {
+    [key: string]: string | null | undefined;
     problem: string;
     params?: string;
   };
   children: never[];
 }
 
-export interface ElementMatches extends Omit<XMLElement, "attributes"> {
+export interface ElementMatches extends XMLElement {
   name: "matches";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementMatch[];
 }
 
 export interface ElementMatch extends XMLElement {
   name: "match";
   attributes: {
+    [key: string]: string | null | undefined;
     order?: string;
   };
   children: (ElementPremise | ElementResponse2)[];
 }
 
-export interface ElementResponse2 extends Omit<XMLElement, "attributes"> {
+export interface ElementResponse2 extends XMLElement {
   name: "response";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo | XMLText)[];
 }
 
-export interface ElementPremise extends Omit<XMLElement, "attributes"> {
+export interface ElementPremise extends XMLElement {
   name: "premise";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementBlockQuote | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo | XMLText)[];
 }
 
 export interface ElementFeedback extends XMLElement {
   name: "feedback";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2122,6 +2542,7 @@ export interface ElementFeedback extends XMLElement {
 export interface ElementChoices extends XMLElement {
   name: "choices";
   attributes: {
+    [key: string]: string | null | undefined;
     randomize?: "yes" | "no";
   };
   children: ElementChoice[];
@@ -2130,6 +2551,7 @@ export interface ElementChoices extends XMLElement {
 export interface ElementChoice extends XMLElement {
   name: "choice";
   attributes: {
+    [key: string]: string | null | undefined;
     correct?: "yes" | "no";
   };
   children: (ElementBlockQuote | ElementConsole | ElementFeedback | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementStatementExercise | ElementTabular | ElementVideo | XMLText)[];
@@ -2138,6 +2560,7 @@ export interface ElementChoice extends XMLElement {
 export interface ElementBlocks extends XMLElement {
   name: "blocks";
   attributes: {
+    [key: string]: string | null | undefined;
     layout?: "horizontal";
     randomize?: "yes" | "no";
   };
@@ -2147,6 +2570,7 @@ export interface ElementBlocks extends XMLElement {
 export interface ElementBlock extends XMLElement {
   name: "block";
   attributes: {
+    [key: string]: string | null | undefined;
     order?: string;
     correct?: "yes" | "no";
   };
@@ -2156,19 +2580,23 @@ export interface ElementBlock extends XMLElement {
 export interface ElementChoice2 extends XMLElement {
   name: "choice";
   attributes: {
+    [key: string]: string | null | undefined;
     correct?: "yes" | "no";
   };
   children: (ElementBlockQuote | ElementCodeLine | ElementConsole | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementTabular | ElementVideo | XMLText)[];
 }
 
-export interface ElementAreas extends Omit<XMLElement, "attributes"> {
+export interface ElementAreas extends XMLElement {
   name: "areas";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementParagraphAreas[];
 }
 
 export interface ElementParagraphAreas extends XMLElement {
   name: "p";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2176,19 +2604,24 @@ export interface ElementParagraphAreas extends XMLElement {
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArea | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCodeDisplay | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDl | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementFootnote | ElementForeign | ElementIcon | ElementIe | ElementIndex | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMd | ElementMd1 | ElementMdash | ElementMdn | ElementMdn1 | ElementMe | ElementMe1 | ElementMen | ElementMen1 | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementNotation | ElementObelus | ElementOl | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQ1 | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementSq1 | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUl | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementSq1 extends Omit<XMLElement, "attributes"> {
+export interface ElementSq1 extends XMLElement {
   name: "sq";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAd | ElementAm | ElementArea | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementIcon | ElementIe | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementQ1 | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq1 | ElementSwungdash | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementQ1 extends Omit<XMLElement, "attributes"> {
+export interface ElementQ1 extends XMLElement {
   name: "q";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAd | ElementAm | ElementArea | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementIcon | ElementIe | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementQ1 | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq1 | ElementSwungdash | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementArea extends XMLElement {
   name: "area";
   attributes: {
+    [key: string]: string | null | undefined;
     correct?: "yes" | "no";
   };
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
@@ -2197,6 +2630,7 @@ export interface ElementArea extends XMLElement {
 export interface ElementProblem extends XMLElement {
   name: "problem";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2209,6 +2643,7 @@ export interface ElementProblem extends XMLElement {
 export interface ElementPrintoutSideBySide extends XMLElement {
   name: "sidebyside";
   attributes: {
+    [key: string]: string | null | undefined;
     component?: string;
     margins?: string;
     width?: string;
@@ -2222,6 +2657,7 @@ export interface ElementPrintoutSideBySide extends XMLElement {
 export interface ElementPrintoutTask extends XMLElement {
   name: "task";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2235,6 +2671,7 @@ export interface ElementPrintoutTask extends XMLElement {
 export interface ElementPrintoutExercise extends XMLElement {
   name: "exercise";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2249,6 +2686,7 @@ export interface ElementPrintoutExercise extends XMLElement {
 export interface ElementPrinciple extends XMLElement {
   name: "principle";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2258,14 +2696,17 @@ export interface ElementPrinciple extends XMLElement {
   children: (ElementCreator | ElementIndex | ElementStatement | ElementTitle)[];
 }
 
-export interface ElementPage extends Omit<XMLElement, "attributes"> {
+export interface ElementPage extends XMLElement {
   name: "page";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementActivity | ElementAlgorithm | ElementArgument | ElementAside | ElementAssemblage | ElementAssumption | ElementAxiom | ElementBiographical | ElementBlockQuote | ElementClaim | ElementComputation | ElementConjecture | ElementConsole | ElementConvention | ElementCorollary | ElementData | ElementDefinition | ElementExample | ElementExplanation | ElementExploration | ElementFact | ElementFigure | ElementFigure1 | ElementFigure2 | ElementFragment | ElementHeuristic | ElementHistorical | ElementHypothesis | ElementIdentity | ElementImageCode | ElementImageRaster | ElementInsight | ElementInteractive | ElementInvestigation | ElementJustification | ElementLemma | ElementList | ElementListGenerator | ElementListing | ElementNote | ElementObservation | ElementParagraph | ElementPoem | ElementPreformatted | ElementPrinciple | ElementPrintoutExercise | ElementPrintoutSideBySide | ElementProblem | ElementProgram | ElementProject | ElementProof | ElementProof1 | ElementProposition | ElementQuestion | ElementReasoning | ElementRemark | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementTechnology | ElementTheorem | ElementVideo | ElementWarning)[];
 }
 
 export interface ElementObservation extends XMLElement {
   name: "observation";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2278,6 +2719,7 @@ export interface ElementObservation extends XMLElement {
 export interface ElementNote extends XMLElement {
   name: "note";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2290,6 +2732,7 @@ export interface ElementNote extends XMLElement {
 export interface ElementListGenerator extends XMLElement {
   name: "list-of";
   attributes: {
+    [key: string]: string | null | undefined;
     elements: string;
     scope?: string;
     divisions?: string;
@@ -2301,6 +2744,7 @@ export interface ElementListGenerator extends XMLElement {
 export interface ElementLemma extends XMLElement {
   name: "lemma";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2313,6 +2757,7 @@ export interface ElementLemma extends XMLElement {
 export interface ElementInvestigation extends XMLElement {
   name: "investigation";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2330,6 +2775,7 @@ export interface ElementInvestigation extends XMLElement {
 export interface ElementInsight extends XMLElement {
   name: "insight";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2342,6 +2788,7 @@ export interface ElementInsight extends XMLElement {
 export interface ElementIdentity extends XMLElement {
   name: "identity";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2354,6 +2801,7 @@ export interface ElementIdentity extends XMLElement {
 export interface ElementHypothesis extends XMLElement {
   name: "hypothesis";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2366,6 +2814,7 @@ export interface ElementHypothesis extends XMLElement {
 export interface ElementHeuristic extends XMLElement {
   name: "heuristic";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2378,6 +2827,7 @@ export interface ElementHeuristic extends XMLElement {
 export interface ElementFragment extends XMLElement {
   name: "fragment";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     filename?: string;
   };
@@ -2387,19 +2837,23 @@ export interface ElementFragment extends XMLElement {
 export interface ElementFragref extends XMLElement {
   name: "fragref";
   attributes: {
+    [key: string]: string | null | undefined;
     ref: string;
   };
   children: XMLText[];
 }
 
-export interface ElementCode extends Omit<XMLElement, "attributes"> {
+export interface ElementCode extends XMLElement {
   name: "code";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementFact extends XMLElement {
   name: "fact";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2412,6 +2866,7 @@ export interface ElementFact extends XMLElement {
 export interface ElementExploration extends XMLElement {
   name: "exploration";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2429,6 +2884,7 @@ export interface ElementExploration extends XMLElement {
 export interface ElementExample extends XMLElement {
   name: "example";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2441,6 +2897,7 @@ export interface ElementExample extends XMLElement {
 export interface ElementDefinition extends XMLElement {
   name: "definition";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2453,6 +2910,7 @@ export interface ElementDefinition extends XMLElement {
 export interface ElementData extends XMLElement {
   name: "data";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2465,6 +2923,7 @@ export interface ElementData extends XMLElement {
 export interface ElementCorollary extends XMLElement {
   name: "corollary";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2477,6 +2936,7 @@ export interface ElementCorollary extends XMLElement {
 export interface ElementConvention extends XMLElement {
   name: "convention";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2489,6 +2949,7 @@ export interface ElementConvention extends XMLElement {
 export interface ElementConjecture extends XMLElement {
   name: "conjecture";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2501,6 +2962,7 @@ export interface ElementConjecture extends XMLElement {
 export interface ElementComputation extends XMLElement {
   name: "computation";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2513,6 +2975,7 @@ export interface ElementComputation extends XMLElement {
 export interface ElementClaim extends XMLElement {
   name: "claim";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2525,6 +2988,7 @@ export interface ElementClaim extends XMLElement {
 export interface ElementAxiom extends XMLElement {
   name: "axiom";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2537,6 +3001,7 @@ export interface ElementAxiom extends XMLElement {
 export interface ElementAssumption extends XMLElement {
   name: "assumption";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2549,6 +3014,7 @@ export interface ElementAssumption extends XMLElement {
 export interface ElementAssemblage extends XMLElement {
   name: "assemblage";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2561,6 +3027,7 @@ export interface ElementAssemblage extends XMLElement {
 export interface ElementAlgorithm extends XMLElement {
   name: "algorithm";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2573,6 +3040,7 @@ export interface ElementAlgorithm extends XMLElement {
 export interface ElementActivity extends XMLElement {
   name: "activity";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2590,6 +3058,7 @@ export interface ElementActivity extends XMLElement {
 export interface ElementOutcomes extends XMLElement {
   name: "outcomes";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2602,6 +3071,7 @@ export interface ElementOutcomes extends XMLElement {
 export interface ElementObjectives extends XMLElement {
   name: "objectives";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2614,6 +3084,7 @@ export interface ElementObjectives extends XMLElement {
 export interface ElementIntroductionDivision extends XMLElement {
   name: "introduction";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2626,6 +3097,7 @@ export interface ElementIntroductionDivision extends XMLElement {
 export interface ElementExercise1 extends XMLElement {
   name: "exercise";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2643,6 +3115,7 @@ export interface ElementExercise1 extends XMLElement {
 export interface ElementExercise extends XMLElement {
   name: "exercise";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2656,6 +3129,7 @@ export interface ElementExercise extends XMLElement {
 export interface ElementConclusionDivision extends XMLElement {
   name: "conclusion";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2665,14 +3139,17 @@ export interface ElementConclusionDivision extends XMLElement {
   children: (ElementActivity | ElementAlgorithm | ElementArgument | ElementAside | ElementAssemblage | ElementAssumption | ElementAxiom | ElementBiographical | ElementBlockQuote | ElementClaim | ElementComputation | ElementConjecture | ElementConsole | ElementConvention | ElementCorollary | ElementData | ElementDefinition | ElementExample | ElementExercise | ElementExercise1 | ElementExplanation | ElementExploration | ElementFact | ElementFigure | ElementFigure1 | ElementFigure2 | ElementFragment | ElementHeuristic | ElementHistorical | ElementHypothesis | ElementIdentity | ElementImageCode | ElementImageRaster | ElementIndex | ElementInsight | ElementInteractive | ElementInvestigation | ElementJustification | ElementLemma | ElementList | ElementListGenerator | ElementListing | ElementNote | ElementObservation | ElementParagraph | ElementPoem | ElementPreformatted | ElementPrinciple | ElementProblem | ElementProgram | ElementProject | ElementProof | ElementProof1 | ElementProposition | ElementQuestion | ElementReasoning | ElementRemark | ElementSage | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementTable | ElementTabular | ElementTechnology | ElementTheorem | ElementTitle | ElementVideo | ElementWarning)[];
 }
 
-export interface ElementSubtitle extends Omit<XMLElement, "attributes"> {
+export interface ElementSubtitle extends XMLElement {
   name: "subtitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementPart extends XMLElement {
   name: "part";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2682,14 +3159,17 @@ export interface ElementPart extends XMLElement {
   children: (ElementChapter | ElementIndex | ElementLinedTitle | ElementPlainTitle | ElementShortTitle | ElementTitle)[];
 }
 
-export interface ElementLinedTitle extends Omit<XMLElement, "attributes"> {
+export interface ElementLinedTitle extends XMLElement {
   name: "title";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementLongLine[];
 }
 
 export interface ElementChapter extends XMLElement {
   name: "chapter";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2702,6 +3182,7 @@ export interface ElementChapter extends XMLElement {
 export interface ElementSolutions1 extends XMLElement {
   name: "solutions";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2721,6 +3202,7 @@ export interface ElementSolutions1 extends XMLElement {
 export interface ElementSolutions extends XMLElement {
   name: "solutions";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2737,6 +3219,7 @@ export interface ElementSolutions extends XMLElement {
 export interface ElementSection extends XMLElement {
   name: "section";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2749,6 +3232,7 @@ export interface ElementSection extends XMLElement {
 export interface ElementSubsection extends XMLElement {
   name: "subsection";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2761,6 +3245,7 @@ export interface ElementSubsection extends XMLElement {
 export interface ElementSubsubsection extends XMLElement {
   name: "subsubsection";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2773,6 +3258,7 @@ export interface ElementSubsubsection extends XMLElement {
 export interface ElementReferences extends XMLElement {
   name: "references";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2785,6 +3271,7 @@ export interface ElementReferences extends XMLElement {
 export interface ElementBibliographyItem extends XMLElement {
   name: "biblio";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2793,76 +3280,99 @@ export interface ElementBibliographyItem extends XMLElement {
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementBibAuthor | ElementBibEditor | ElementBibJournal | ElementBibNote | ElementBibNumber | ElementBibPages | ElementBibPublisher | ElementBibSeries | ElementBibTitle | ElementBibVolume | ElementBibYear | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIbid | ElementIcon | ElementIe | ElementIndex | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementIbid extends Omit<XMLElement, "attributes"> {
+export interface ElementIbid extends XMLElement {
   name: "ibid";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
-export interface ElementBibYear extends Omit<XMLElement, "attributes"> {
+export interface ElementBibYear extends XMLElement {
   name: "year";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementBibVolume extends Omit<XMLElement, "attributes"> {
+export interface ElementBibVolume extends XMLElement {
   name: "volume";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementBibTitle extends Omit<XMLElement, "attributes"> {
+export interface ElementBibTitle extends XMLElement {
   name: "title";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementBibSeries extends Omit<XMLElement, "attributes"> {
+export interface ElementBibSeries extends XMLElement {
   name: "series";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementBibPublisher extends Omit<XMLElement, "attributes"> {
+export interface ElementBibPublisher extends XMLElement {
   name: "publisher";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementBibPages extends XMLElement {
   name: "pages";
   attributes: {
+    [key: string]: string | null | undefined;
     start?: string;
     end?: string;
   };
   children: XMLText[];
 }
 
-export interface ElementBibNumber extends Omit<XMLElement, "attributes"> {
+export interface ElementBibNumber extends XMLElement {
   name: "number";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementBibNote extends XMLElement {
   name: "note";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
   };
   children: ElementParagraph[];
 }
 
-export interface ElementBibJournal extends Omit<XMLElement, "attributes"> {
+export interface ElementBibJournal extends XMLElement {
   name: "journal";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementBibEditor extends Omit<XMLElement, "attributes"> {
+export interface ElementBibEditor extends XMLElement {
   name: "editor";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementBibAuthor extends Omit<XMLElement, "attributes"> {
+export interface ElementBibAuthor extends XMLElement {
   name: "author";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
 export interface ElementReadingQuestions extends XMLElement {
   name: "reading-questions";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2875,6 +3385,7 @@ export interface ElementReadingQuestions extends XMLElement {
 export interface ElementParagraphs extends XMLElement {
   name: "paragraphs";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2887,6 +3398,7 @@ export interface ElementParagraphs extends XMLElement {
 export interface ElementHandout extends XMLElement {
   name: "handout";
   attributes: {
+    [key: string]: string | null | undefined;
     margin?: string;
     top?: string;
     bottom?: string;
@@ -2904,6 +3416,7 @@ export interface ElementHandout extends XMLElement {
 export interface ElementGlossary extends XMLElement {
   name: "glossary";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2913,14 +3426,17 @@ export interface ElementGlossary extends XMLElement {
   children: (ElementGlossaryItem | ElementHeadNote | ElementIndex | ElementPlainTitle | ElementShortTitle | ElementTitle)[];
 }
 
-export interface ElementHeadNote extends Omit<XMLElement, "attributes"> {
+export interface ElementHeadNote extends XMLElement {
   name: "headnote";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementHistorical | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementGlossaryItem extends XMLElement {
   name: "gi";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2933,6 +3449,7 @@ export interface ElementGlossaryItem extends XMLElement {
 export interface ElementExercises1 extends XMLElement {
   name: "exercises";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2945,6 +3462,7 @@ export interface ElementExercises1 extends XMLElement {
 export interface ElementSubexercises extends XMLElement {
   name: "subexercises";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2957,6 +3475,7 @@ export interface ElementSubexercises extends XMLElement {
 export interface ElementExerciseGroup extends XMLElement {
   name: "exercisegroup";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2967,19 +3486,24 @@ export interface ElementExerciseGroup extends XMLElement {
   children: (ElementConclusionStatementNoCaption | ElementExercise | ElementExercise1 | ElementIndex | ElementIntroductionStatementNoCaption | ElementTitle)[];
 }
 
-export interface ElementIntroductionStatementNoCaption extends Omit<XMLElement, "attributes"> {
+export interface ElementIntroductionStatementNoCaption extends XMLElement {
   name: "introduction";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementHistorical | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementTabular | ElementVideo)[];
 }
 
-export interface ElementConclusionStatementNoCaption extends Omit<XMLElement, "attributes"> {
+export interface ElementConclusionStatementNoCaption extends XMLElement {
   name: "conclusion";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementHistorical | ElementImageCode | ElementImageRaster | ElementParagraph | ElementPreformatted | ElementProgram | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementTabular | ElementVideo)[];
 }
 
 export interface ElementExercises extends XMLElement {
   name: "exercises";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -2989,19 +3513,24 @@ export interface ElementExercises extends XMLElement {
   children: (ElementConclusionDivision | ElementExercise | ElementExercise1 | ElementExerciseGroup | ElementIndex | ElementIntroductionDivision | ElementPlainTitle | ElementShortTitle | ElementSubexercises | ElementTitle)[];
 }
 
-export interface ElementAuthorByline extends Omit<XMLElement, "attributes"> {
+export interface ElementAuthorByline extends XMLElement {
   name: "author";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | ElementXref | XMLText)[];
 }
 
-export interface ElementLinedSubtitle extends Omit<XMLElement, "attributes"> {
+export interface ElementLinedSubtitle extends XMLElement {
   name: "subtitle";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementLongLine[];
 }
 
 export interface ElementBookFrontMatter extends XMLElement {
   name: "frontmatter";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3011,19 +3540,24 @@ export interface ElementBookFrontMatter extends XMLElement {
   children: (ElementAcknowledgement | ElementBibinfo | ElementBiography | ElementColophonFront | ElementDedication | ElementIndex | ElementPreface | ElementTitle | ElementTitlePage)[];
 }
 
-export interface ElementTitlePage extends Omit<XMLElement, "attributes"> {
+export interface ElementTitlePage extends XMLElement {
   name: "titlepage";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementTitlepageItems[];
 }
 
-export interface ElementTitlepageItems extends Omit<XMLElement, "attributes"> {
+export interface ElementTitlepageItems extends XMLElement {
   name: "titlepage-items";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementPreface extends XMLElement {
   name: "preface";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3036,6 +3570,7 @@ export interface ElementPreface extends XMLElement {
 export interface ElementParagraphsNoNumber extends XMLElement {
   name: "paragraphs";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3045,14 +3580,17 @@ export interface ElementParagraphsNoNumber extends XMLElement {
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementParagraph | ElementPreformatted | ElementProgram | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementContributors extends Omit<XMLElement, "attributes"> {
+export interface ElementContributors extends XMLElement {
   name: "contributors";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementContributor[];
 }
 
 export interface ElementContributor extends XMLElement {
   name: "contributor";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3060,39 +3598,52 @@ export interface ElementContributor extends XMLElement {
   children: (ElementAffiliation | ElementDepartment | ElementEmail | ElementIndex | ElementInstitution | ElementLocation | ElementPersonName)[];
 }
 
-export interface ElementPersonName extends Omit<XMLElement, "attributes"> {
+export interface ElementPersonName extends XMLElement {
   name: "personname";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementLocation extends Omit<XMLElement, "attributes"> {
+export interface ElementLocation extends XMLElement {
   name: "location";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementShortLine | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementShortLine extends Omit<XMLElement, "attributes"> {
+export interface ElementShortLine extends XMLElement {
   name: "line";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementInstitution extends Omit<XMLElement, "attributes"> {
+export interface ElementInstitution extends XMLElement {
   name: "institution";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementShortLine | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementDepartment extends Omit<XMLElement, "attributes"> {
+export interface ElementDepartment extends XMLElement {
   name: "department";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementShortLine | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementAffiliation extends Omit<XMLElement, "attributes"> {
+export interface ElementAffiliation extends XMLElement {
   name: "affiliation";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementDepartment | ElementInstitution | ElementLocation)[];
 }
 
 export interface ElementDedication extends XMLElement {
   name: "dedication";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3105,6 +3656,7 @@ export interface ElementDedication extends XMLElement {
 export interface ElementParagraphLined extends XMLElement {
   name: "p";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3112,14 +3664,17 @@ export interface ElementParagraphLined extends XMLElement {
   children: ElementLine[];
 }
 
-export interface ElementLine extends Omit<XMLElement, "attributes"> {
+export interface ElementLine extends XMLElement {
   name: "line";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
 export interface ElementColophonFront extends XMLElement {
   name: "colophon";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3127,14 +3682,17 @@ export interface ElementColophonFront extends XMLElement {
   children: (ElementColophonItems | ElementIndex)[];
 }
 
-export interface ElementColophonItems extends Omit<XMLElement, "attributes"> {
+export interface ElementColophonItems extends XMLElement {
   name: "colophon-items";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementBiography extends XMLElement {
   name: "biography";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3144,39 +3702,52 @@ export interface ElementBiography extends XMLElement {
   children: (ElementAside | ElementBiographical | ElementBlockQuote | ElementConsole | ElementHistorical | ElementImageCode | ElementImageRaster | ElementIndex | ElementParagraph | ElementParagraphsNoNumber | ElementPreformatted | ElementProgram | ElementSideBySideGroupNoCaption | ElementSidebyside2 | ElementSidebyside3 | ElementTabular | ElementTitle | ElementVideo)[];
 }
 
-export interface ElementBibinfo extends Omit<XMLElement, "attributes"> {
+export interface ElementBibinfo extends XMLElement {
   name: "bibinfo";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAuthor | ElementColophonCredit | ElementCopyright | ElementCredit | ElementDate | ElementEdition | ElementEditor | ElementKeywords | ElementSupport | ElementWebsite | ElementWebsite_X)[];
 }
 
-export interface ElementWebsite_X extends Omit<XMLElement, "attributes"> {
+export interface ElementWebsite_X extends XMLElement {
   name: "website";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAddress | ElementName)[];
 }
 
-export interface ElementName extends Omit<XMLElement, "attributes"> {
+export interface ElementName extends XMLElement {
   name: "name";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementAddress extends Omit<XMLElement, "attributes"> {
+export interface ElementAddress extends XMLElement {
   name: "address";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementWebsite extends Omit<XMLElement, "attributes"> {
+export interface ElementWebsite extends XMLElement {
   name: "website";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: ElementUrl[];
 }
 
-export interface ElementSupport extends Omit<XMLElement, "attributes"> {
+export interface ElementSupport extends XMLElement {
   name: "support";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCodeDisplay | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDl | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementFootnote | ElementForeign | ElementIcon | ElementIe | ElementIndex | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMd | ElementMd1 | ElementMdash | ElementMdn | ElementMdn1 | ElementMe | ElementMe1 | ElementMen | ElementMen1 | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementNotation | ElementObelus | ElementOl | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUl | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementKeywords extends XMLElement {
   name: "keywords";
   attributes: {
+    [key: string]: string | null | undefined;
     authority?: string;
     variant?: string;
   };
@@ -3186,88 +3757,117 @@ export interface ElementKeywords extends XMLElement {
 export interface ElementKeyword extends XMLElement {
   name: "keyword";
   attributes: {
+    [key: string]: string | null | undefined;
     primary?: "yes" | "no";
   };
   children: (ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEllipsis | ElementIcon | ElementKbd | ElementLangle | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPrime | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTimes | ElementTrademark | XMLText)[];
 }
 
-export interface ElementEditor extends Omit<XMLElement, "attributes"> {
+export interface ElementEditor extends XMLElement {
   name: "editor";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAffiliation | ElementDepartment | ElementEmail | ElementInstitution | ElementLocation | ElementPersonName)[];
 }
 
-export interface ElementEdition extends Omit<XMLElement, "attributes"> {
+export interface ElementEdition extends XMLElement {
   name: "edition";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementDate extends Omit<XMLElement, "attributes"> {
+export interface ElementDate extends XMLElement {
   name: "date";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAd | ElementAm | ElementBc | ElementCa | ElementCopyleft | ElementCopyrightCharacter | ElementDblprime | ElementDegree | ElementEg | ElementEllipsis | ElementEtal | ElementEtc | ElementFillInText | ElementIcon | ElementIe | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMdash | ElementMidpoint | ElementMinus | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSwungdash | ElementTex | ElementTimeofday | ElementTimes | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementCredit extends Omit<XMLElement, "attributes"> {
+export interface ElementCredit extends XMLElement {
   name: "credit";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAuthor | ElementTitle)[];
 }
 
 export interface ElementAuthor extends XMLElement {
   name: "author";
   attributes: {
+    [key: string]: string | null | undefined;
     corresponding?: "yes" | "no";
     "xml:id"?: string;
   };
   children: (ElementAffiliation | ElementBiography | ElementDepartment | ElementEmail | ElementInstitution | ElementLocation | ElementPersonName | ElementSupport)[];
 }
 
-export interface ElementCopyright extends Omit<XMLElement, "attributes"> {
+export interface ElementCopyright extends XMLElement {
   name: "copyright";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementHolder | ElementMinilicense | ElementShortLicense_X | ElementShortlicense | ElementYear)[];
 }
 
-export interface ElementYear extends Omit<XMLElement, "attributes"> {
+export interface ElementYear extends XMLElement {
   name: "year";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementShortlicense extends Omit<XMLElement, "attributes"> {
+export interface ElementShortlicense extends XMLElement {
   name: "shortlicense";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementShortLicense_X extends Omit<XMLElement, "attributes"> {
+export interface ElementShortLicense_X extends XMLElement {
   name: "shortlicense";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementFootnote | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
-export interface ElementMinilicense extends Omit<XMLElement, "attributes"> {
+export interface ElementMinilicense extends XMLElement {
   name: "minilicense";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementHolder extends Omit<XMLElement, "attributes"> {
+export interface ElementHolder extends XMLElement {
   name: "holder";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: XMLText[];
 }
 
-export interface ElementColophonCredit extends Omit<XMLElement, "attributes"> {
+export interface ElementColophonCredit extends XMLElement {
   name: "credit";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementEntity | ElementRole)[];
 }
 
-export interface ElementRole extends Omit<XMLElement, "attributes"> {
+export interface ElementRole extends XMLElement {
   name: "role";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementViz | ElementVs | ElementWebwork | ElementXelatex | ElementXetex | XMLText)[];
 }
 
-export interface ElementEntity extends Omit<XMLElement, "attributes"> {
+export interface ElementEntity extends XMLElement {
   name: "entity";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: (ElementAbbr | ElementAcro | ElementAd | ElementAlert | ElementAm | ElementAngles | ElementArticletitle | ElementAttr | ElementBc | ElementC | ElementCa | ElementChord | ElementCopyleft | ElementCopyrightCharacter | ElementDblbrackets | ElementDblprime | ElementDegree | ElementDelete | ElementDoubleflat | ElementDoublesharp | ElementEg | ElementEllipsis | ElementEm | ElementEmail | ElementEtal | ElementEtc | ElementFillInText | ElementForeign | ElementIcon | ElementIe | ElementInit | ElementInsert | ElementKbd | ElementLangle | ElementLatex | ElementLdblbracket | ElementLq | ElementLsq | ElementMathInline | ElementMdash | ElementMidpoint | ElementMinus | ElementMusicFlat | ElementMusicSharp | ElementN | ElementNatural | ElementNb | ElementNbsp | ElementNdash | ElementObelus | ElementPermille | ElementPf | ElementPhonomark | ElementPilcrow | ElementPlusminus | ElementPm | ElementPrefigure | ElementPretext | ElementPrime | ElementPs | ElementPubtitle | ElementQ | ElementQuantity | ElementRangle | ElementRdblbracket | ElementRegistered | ElementRq | ElementRsq | ElementScaledeg | ElementSectionMark | ElementServicemark | ElementSolidus | ElementSq | ElementStale | ElementSwungdash | ElementTag | ElementTage | ElementTaxon | ElementTerm | ElementTex | ElementTimeofday | ElementTimes | ElementTimesignature | ElementToday | ElementTrademark | ElementUrl | ElementViz | ElementVs | ElementWWVariable | ElementWebwork | ElementXelatex | ElementXetex | ElementXref | XMLText)[];
 }
 
 export interface ElementAcknowledgement extends XMLElement {
   name: "acknowledgement";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3280,6 +3880,7 @@ export interface ElementAcknowledgement extends XMLElement {
 export interface ElementBookBackMatter extends XMLElement {
   name: "backmatter";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3292,6 +3893,7 @@ export interface ElementBookBackMatter extends XMLElement {
 export interface ElementIndexDivision extends XMLElement {
   name: "index";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3301,14 +3903,17 @@ export interface ElementIndexDivision extends XMLElement {
   children: (ElementIndex | ElementIndexList | ElementPlainTitle | ElementShortTitle | ElementTitle)[];
 }
 
-export interface ElementIndexList extends Omit<XMLElement, "attributes"> {
+export interface ElementIndexList extends XMLElement {
   name: "index-list";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementColophonBack extends XMLElement {
   name: "colophon";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3319,6 +3924,7 @@ export interface ElementColophonBack extends XMLElement {
 export interface ElementBookAppendix extends XMLElement {
   name: "appendix";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3328,14 +3934,17 @@ export interface ElementBookAppendix extends XMLElement {
   children: (ElementActivity | ElementAlgorithm | ElementArgument | ElementAside | ElementAssemblage | ElementAssumption | ElementAuthorByline | ElementAxiom | ElementBiographical | ElementBlockQuote | ElementClaim | ElementComputation | ElementConclusionDivision | ElementConjecture | ElementConsole | ElementConvention | ElementCorollary | ElementData | ElementDefinition | ElementExample | ElementExercise | ElementExercise1 | ElementExercises | ElementExercises1 | ElementExplanation | ElementExploration | ElementFact | ElementFigure | ElementFigure1 | ElementFigure2 | ElementFragment | ElementGlossary | ElementHandout | ElementHeuristic | ElementHistorical | ElementHypothesis | ElementIdentity | ElementImageCode | ElementImageRaster | ElementIndex | ElementInsight | ElementInteractive | ElementIntroductionDivision | ElementInvestigation | ElementJustification | ElementLemma | ElementList | ElementListGenerator | ElementListing | ElementNotationList | ElementNote | ElementObjectives | ElementObservation | ElementOutcomes | ElementParagraph | ElementParagraphs | ElementPlainTitle | ElementPoem | ElementPreformatted | ElementPrinciple | ElementProblem | ElementProgram | ElementProject | ElementProof | ElementProof1 | ElementProposition | ElementQuestion | ElementReadingQuestions | ElementReasoning | ElementReferences | ElementRemark | ElementSage | ElementSection | ElementShortTitle | ElementSideBySideGroup | ElementSidebyside | ElementSidebyside1 | ElementSolutions | ElementSolutions1 | ElementTable | ElementTabular | ElementTechnology | ElementTheorem | ElementTitle | ElementVideo | ElementWarning | ElementWorksheet)[];
 }
 
-export interface ElementNotationList extends Omit<XMLElement, "attributes"> {
+export interface ElementNotationList extends XMLElement {
   name: "notation-list";
+  attributes: {
+    [key: string]: string | null | undefined;};
   children: never[];
 }
 
 export interface ElementArticle extends XMLElement {
   name: "article";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3348,6 +3957,7 @@ export interface ElementArticle extends XMLElement {
 export interface ElementArticleFrontMatter extends XMLElement {
   name: "frontmatter";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3360,6 +3970,7 @@ export interface ElementArticleFrontMatter extends XMLElement {
 export interface ElementAbstract extends XMLElement {
   name: "abstract";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3370,6 +3981,7 @@ export interface ElementAbstract extends XMLElement {
 export interface ElementArticleBackMatter extends XMLElement {
   name: "backmatter";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;
@@ -3382,6 +3994,7 @@ export interface ElementArticleBackMatter extends XMLElement {
 export interface ElementArticleAppendix extends XMLElement {
   name: "appendix";
   attributes: {
+    [key: string]: string | null | undefined;
     "xml:id"?: string;
     label?: string;
     component?: string;

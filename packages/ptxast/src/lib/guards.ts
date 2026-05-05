@@ -109,7 +109,7 @@ export const isArticle = hasName<'article'>('article') as (node: unknown) => nod
 
 export const isFrontmatter = hasName<'frontmatter'>('frontmatter') as (node: unknown) => node is Frontmatter;
 export const isBackmatter = hasName<'backmatter'>('backmatter') as (node: unknown) => node is Backmatter;
-export const isTitlepage = hasName<'titlepage'>('titlepage') as (node: unknown) => node is Titlepage;
+export const isTitlepage = hasName<'titlepage'>('titlepage') as unknown as (node: unknown) => node is Titlepage;
 export const isAuthor = hasName<'author'>('author') as (node: unknown) => node is Author;
 
 // ---------------------------------------------------------------------------

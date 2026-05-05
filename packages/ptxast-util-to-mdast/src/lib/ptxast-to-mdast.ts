@@ -128,7 +128,7 @@ const HAS_STATEMENT_WRAPPER = new Set(['theorem-like', 'definition-like']);
 export function ptxastToMdast(root: Root): MdastRoot {
   return {
     type: 'root',
-    children: flattenChildren(root.children, 2),
+    children: flattenChildren(root.children as ElementContent[], 2),
   };
 }
 

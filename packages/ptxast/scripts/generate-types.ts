@@ -85,7 +85,26 @@ async function main() {
 // (or run: npm run refresh:schemas)
 `;
 
-  const output = header + grammarTypes.typescriptStr;
+  // Post-process 1: Replace `extends Omit<XMLElement, "attributes"> {` with
+  // `extends XMLElement {` and inject an empty attributes declaration. This
+  // ensures all generated element interfaces are proper subtypes of Element.
+  // Step 2 below will add the required index signature to this block.
+  const step1 = grammarTypes.typescriptStr.replace(
+    /extends Omit<XMLElement, "attributes"> \{\n([ \t]+)(name: [^\n]+;\n)/g,
+    (_, indent, nameDecl) =>
+      `extends XMLElement {\n${indent}${nameDecl}${indent}attributes: {};\n`,
+  );
+
+  // Post-process 2: inject the required index signature into every attributes
+  // object so generated interfaces are compatible with @types/xast's Attributes
+  // type (which requires `{ [key: string]: string | null | undefined }`).
+  const processedTypes = step1.replace(
+    /^([ \t]+)(attributes\??:\s*\{)/gm,
+    (_, indent, rest) =>
+      `${indent}${rest}\n${indent}  [key: string]: string | null | undefined;`,
+  );
+
+  const output = header + processedTypes;
   await fs.writeFile(outPath, output, 'utf-8');
   console.log(`Wrote xast interfaces to: ${outPath}`);
 }
