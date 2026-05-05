@@ -36,7 +36,8 @@
   ],
   "scripts": {
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate-types": "tsx scripts/generate-types.ts"
   },
   "dependencies": {
     "@types/unist": "^3.0.0",
@@ -44,5 +45,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "relax-ng-to-typescript": "github:siefkenj/relax-ng-to-typescript"
   }
 }
