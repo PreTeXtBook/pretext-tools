@@ -172,7 +172,7 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
       children:
         wrapperElement && "children" in wrapperElement
           ? (wrapperElement as PtxRoot).children
-          : wrapped.children as PtxRoot["children"],
+          : (wrapped.children as PtxRoot["children"]),
     };
     const violations = collectPtxSchemaViolations(fragmentRoot);
     if (violations.length === 0) {

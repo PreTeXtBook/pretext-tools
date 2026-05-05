@@ -9,7 +9,11 @@ function countNodeTypes(root: Root): Map<string, number> {
   const stack: unknown[] = [root];
 
   while (stack.length > 0) {
-    const current = stack.pop() as { type?: unknown; name?: unknown; children?: unknown };
+    const current = stack.pop() as {
+      type?: unknown;
+      name?: unknown;
+      children?: unknown;
+    };
     if (!current || typeof current !== "object") continue;
 
     // Count element nodes by their name, other nodes by their type
@@ -43,7 +47,9 @@ function normalizeLatexXmlForParsing(xml: string): string {
 
 describe("latexToPretext", () => {
   it("converts inline math to PreTeXt m tags", () => {
-    const out = String((latexToPretext("Let $x^2+1$.") as { value: string }).value);
+    const out = String(
+      (latexToPretext("Let $x^2+1$.") as { value: string }).value,
+    );
     expect(out).toContain("<m>");
     expect(out).toContain("</m>");
     expect(out).toContain("x^{2}+1");
@@ -51,7 +57,11 @@ describe("latexToPretext", () => {
 
   it("converts theorem environments to theorem/statement structure", () => {
     const out = String(
-      (latexToPretext("\\begin{theorem}A thing.\\end{theorem}") as { value: string }).value,
+      (
+        latexToPretext("\\begin{theorem}A thing.\\end{theorem}") as {
+          value: string;
+        }
+      ).value,
     );
 
     expect(out).toContain("<theorem>");
@@ -62,7 +72,10 @@ describe("latexToPretext", () => {
   });
 
   it("converts section headings to section/title structure", () => {
-    const out = String((latexToPretext("\\section{Intro} Body text.") as { value: string }).value);
+    const out = String(
+      (latexToPretext("\\section{Intro} Body text.") as { value: string })
+        .value,
+    );
 
     expect(out).toContain("<section>");
     expect(out).toContain("<title>Intro</title>");
@@ -104,7 +117,9 @@ describe("latexToPretext", () => {
     ];
 
     for (const fixture of fixtures) {
-      const xml = String((latexToPretext(fixture.latex) as { value: string }).value);
+      const xml = String(
+        (latexToPretext(fixture.latex) as { value: string }).value,
+      );
       const normalized = normalizeLatexXmlForParsing(xml);
       const parsed = fromXml(normalized);
       const counts = countNodeTypes(parsed);
