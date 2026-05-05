@@ -274,7 +274,7 @@ function convertDisplayMath(el: Element): MdastMath {
   const children = el.children;
   // Single-line: first child is a Text node
   if (children.length > 0 && children[0].type === 'text') {
-    return { type: 'math', value: (children[0] as { value: string }).value ?? '' };
+    return { type: 'math', value: getPtxTextContent(el) };
   }
   // Multi-line: mrow elements
   const value = children
