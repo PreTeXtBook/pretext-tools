@@ -28,6 +28,8 @@ import type {
   ElementPart,
   ElementChapter,
   ElementSection,
+  ElementSubsection,
+  ElementSubsubsection,
   ElementParagraphs,
   ElementParagraphsNoNumber,
   ElementBookAppendix,
@@ -200,9 +202,8 @@ export type Section = ElementSection;
 export type Paragraphs = ElementParagraphs | ElementParagraphsNoNumber;
 export type Appendix = ElementBookAppendix | ElementArticleAppendix;
 
-// No Subsection/Subsubsection in generated schema — define as Element
-export type Subsection = Element & { name: 'subsection' };
-export type Subsubsection = Element & { name: 'subsubsection' };
+export type Subsection = ElementSubsection;
+export type Subsubsection = ElementSubsubsection;
 
 // ---------------------------------------------------------------------------
 // Title / Subtitle

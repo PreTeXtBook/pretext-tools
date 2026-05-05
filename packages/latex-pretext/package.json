@@ -42,11 +42,13 @@
     "playground:build": "npm run dev:build"
   },
   "dependencies": {
-    "@pretextbook/ptxast": "*",
     "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#release/unified-latex-to-pretext",
     "@unified-latex/unified-latex-util-parse": "github:pretextplus/unified-latex#release/unified-latex-util-parse",
     "@unified-latex/unified-latex-types": "github:pretextplus/unified-latex#release/unified-latex-types",
-    "tslib": "^2.3.0",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "@pretextbook/ptxast": "*",
     "xast-util-from-xml": "^4.0.0"
   },
   "publishConfig": {

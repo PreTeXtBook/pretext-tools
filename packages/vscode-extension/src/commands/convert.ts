@@ -16,6 +16,7 @@ import { latexToPretext } from "@pretextbook/latex-pretext";
 import { remarkPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
+import type { Element } from "xast";
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -166,13 +167,14 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
     // The resulting PtxRoot has one child — the wrapper <root> element —
     // whose children are the actual fragment nodes.
     const wrapped = fromXml(`<root>${xml}</root>`);
-    const wrapperElement = wrapped.children.find((c) => c.type === "element");
+    const wrapperElement = wrapped.children.find(
+      (c): c is Element => c.type === "element",
+    );
     const fragmentRoot: PtxRoot = {
       type: "root",
-      children:
-        wrapperElement && "children" in wrapperElement
-          ? (wrapperElement as PtxRoot).children
-          : (wrapped.children as PtxRoot["children"]),
+      children: wrapperElement
+        ? wrapperElement.children
+        : (wrapped.children as PtxRoot["children"]),
     };
     const violations = collectPtxSchemaViolations(fragmentRoot);
     if (violations.length === 0) {
