@@ -13,12 +13,12 @@
   "dependencies": {
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
-    "@pretextbook/ptxast-util-to-xml": "*",
-    "@pretextbook/ptxast-util-from-xml": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",
     "remark-directive": "^4.0.0",
     "remark-parse": "^11.0.0",
-    "unified": "^11.0.0"
+    "unified": "^11.0.0",
+    "xast-util-from-xml": "^4.0.0",
+    "xast-util-to-xml": "^4.0.0"
   },
   "devDependencies": {
     "vite": "*",

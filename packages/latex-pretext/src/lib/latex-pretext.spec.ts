@@ -1,19 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { latexToPretext } from "./latex-pretext";
-import { ptxastFromXml } from "@pretextbook/ptxast-util-from-xml";
+import { fromXml } from "xast-util-from-xml";
+import type { Root } from "xast";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 
-function countNodeTypes(root: ReturnType<typeof ptxastFromXml>) {
+function countNodeTypes(root: Root): Map<string, number> {
   const counts = new Map<string, number>();
   const stack: unknown[] = [root];
 
   while (stack.length > 0) {
-    const current = stack.pop() as { type?: unknown; children?: unknown };
+    const current = stack.pop() as { type?: unknown; name?: unknown; children?: unknown };
     if (!current || typeof current !== "object") continue;
 
-    if (typeof current.type === "string") {
-      counts.set(current.type, (counts.get(current.type) ?? 0) + 1);
-    }
+    // Count element nodes by their name, other nodes by their type
+    const key =
+      current.type === "element" && typeof current.name === "string"
+        ? (current.name as string)
+        : typeof current.type === "string"
+          ? (current.type as string)
+          : null;
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
 
     if (Array.isArray(current.children)) {
       for (let i = current.children.length - 1; i >= 0; i -= 1) {
@@ -100,7 +106,7 @@ describe("latexToPretext", () => {
     for (const fixture of fixtures) {
       const xml = String((latexToPretext(fixture.latex) as { value: string }).value);
       const normalized = normalizeLatexXmlForParsing(xml);
-      const parsed = ptxastFromXml(normalized);
+      const parsed = fromXml(normalized);
       const counts = countNodeTypes(parsed);
 
       for (const [nodeType, expectedCount] of fixture.expected) {

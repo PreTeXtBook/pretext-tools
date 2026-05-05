@@ -22,12 +22,6 @@
   ],
   "references": [
     {
-      "path": "../ptxast-util-from-xml/tsconfig.lib.json"
-    },
-    {
-      "path": "../ptxast-util-to-xml/tsconfig.lib.json"
-    },
-    {
       "path": "../ptxast/tsconfig.lib.json"
     }
   ]

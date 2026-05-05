@@ -2,8 +2,8 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
 import { remarkPretext } from '@pretextbook/remark-pretext';
-import { ptxastRootToXml } from '@pretextbook/ptxast-util-to-xml';
-import { ptxastFromXml } from '@pretextbook/ptxast-util-from-xml';
+import { toXml } from 'xast-util-to-xml';
+import { fromXml } from 'xast-util-from-xml';
 import { ptxastToMarkdown } from '@pretextbook/ptxast-util-to-mdast';
 import type { Root as MdastRoot } from 'mdast';
 import type { PtxRoot } from '@pretextbook/ptxast';
@@ -96,14 +96,14 @@ function convertMarkdown(md: string): ConversionResult {
     .use(remarkPretext);
   const mdast = processor.parse(md) as MdastRoot;
   const ptxast = processor.runSync(mdast, { value: md }) as PtxRoot;
-  const xml = ptxastRootToXml(ptxast);
+  const xml = toXml(ptxast.children);
   const markdownOut = ptxastToMarkdown(ptxast);
   return { xml, ptxast, mdast, markdownOut };
 }
 
 function convertPretextXml(xml: string): ConversionResult {
-  const ptxast = ptxastFromXml(xml);
-  const rexml = ptxastRootToXml(ptxast);
+  const ptxast = fromXml(xml);
+  const rexml = toXml(ptxast.children);
   const markdownOut = ptxastToMarkdown(ptxast);
   return { xml: rexml, ptxast, markdownOut };
 }
