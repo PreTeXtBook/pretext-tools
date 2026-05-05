@@ -33,7 +33,7 @@
     "*.d.cts"
   ],
   "scripts": {
-    "build": "vite build --outDir ../../../dist/packages/format",
+    "build": "vite build",
     "test": "vitest run"
   },
   "dependencies": {},

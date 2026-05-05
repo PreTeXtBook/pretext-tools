@@ -35,7 +35,7 @@
     "lib"
   ],
   "scripts": {
-    "build": "vite build --outDir ../../../dist/packages/ptxast-util-to-mdast",
+    "build": "vite build",
     "test": "vitest run"
   },
   "dependencies": {
