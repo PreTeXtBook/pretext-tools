@@ -1,12 +1,9 @@
 /**
- * Builder functions for ptxast nodes.
+ * Builder functions for xast-style PreTeXt nodes.
  *
- * These are convenience factories — analogous to `xastscript` but
- * PreTeXt-aware. Each function returns a fully typed ptxast node.
- *
- * Only the most commonly-needed builders are provided here. Create nodes
- * directly when these don't suffice (the types are all exported from
- * `@pretextbook/ptxast`).
+ * Each function produces an xast Element with `type: 'element'` and the
+ * correct `name`. Value elements (math, code) encode their content as a
+ * single Text child.
  *
  * @example
  * ```ts
@@ -19,6 +16,7 @@
  * ```
  */
 
+import type { Element } from 'xast';
 import type {
   PtxText,
   Title,
@@ -58,15 +56,36 @@ import type {
   Li,
   PtxBlockContent,
   PtxInlineContent,
-} from '../types/index.js';
+} from '../types/curated.js';
 
 // ---------------------------------------------------------------------------
-// Text node
+// Shared helpers
 // ---------------------------------------------------------------------------
 
-/** Create a plain text node. */
+/** Create a plain xast Text node. */
 export function text(value: string): PtxText {
   return { type: 'text', value };
+}
+
+function el<N extends string>(
+  name: N,
+  children: Element['children'],
+  attributes?: Record<string, string>,
+): Element & { name: N } {
+  return {
+    type: 'element',
+    name,
+    attributes: attributes ?? {},
+    children,
+  };
+}
+
+function valueEl<N extends string>(
+  name: N,
+  value: string,
+  attributes?: Record<string, string>,
+): Element & { name: N } {
+  return el(name, [text(value)], attributes);
 }
 
 // ---------------------------------------------------------------------------
@@ -74,59 +93,51 @@ export function text(value: string): PtxText {
 // ---------------------------------------------------------------------------
 
 export function title(children: PtxInlineContent[]): Title {
-  return { type: 'title', children };
+  return el('title', children as Element['children']) as unknown as Title;
 }
 
 export function em(children: PtxInlineContent[]): Em {
-  return { type: 'em', children };
+  return el('em', children as Element['children']) as unknown as Em;
 }
 
 export function alert(children: PtxInlineContent[]): Alert {
-  return { type: 'alert', children };
+  return el('alert', children as Element['children']) as unknown as Alert;
 }
 
 export function term(children: PtxInlineContent[]): Term {
-  return { type: 'term', children };
+  return el('term', children as Element['children']) as unknown as Term;
 }
 
 export function c(value: string): C {
-  return { type: 'c', value };
+  return valueEl('c', value) as unknown as C;
 }
 
 export function q(children: PtxInlineContent[]): Q {
-  return { type: 'q', children };
+  return el('q', children as Element['children']) as unknown as Q;
 }
 
-/** Inline math. */
 export function m(value: string): M {
-  return { type: 'm', value };
+  return valueEl('m', value) as unknown as M;
 }
 
-/** Display math (unnumbered). */
 export function me(value: string): Me {
-  return { type: 'me', value };
+  return valueEl('me', value) as unknown as Me;
 }
 
-/** Display math (numbered). */
-export function men(value: string, attrs?: Men['attributes']): Men {
-  const node: Men = { type: 'men', value };
-  if (attrs) node.attributes = attrs;
-  return node;
+export function men(value: string, attrs?: Record<string, string>): Men {
+  return valueEl('men', value, attrs) as unknown as Men;
 }
 
-/** Cross-reference. `ref` is always set last so it cannot be overridden by `extraAttrs`. */
-export function xref(ref: string, extraAttrs?: Omit<Record<string, string | undefined>, 'ref'>): Xref {
-  return { type: 'xref', attributes: { ...extraAttrs, ref } };
+export function xref(ref: string, extraAttrs?: Omit<Record<string, string>, 'ref'>): Xref {
+  return el('xref', [], { ...extraAttrs, ref }) as unknown as Xref;
 }
 
-/** External URL. */
 export function url(href: string, visual?: string): Url {
-  return { type: 'url', attributes: { href, ...(visual ? { visual } : {}) } };
+  return el('url', [], { href, ...(visual ? { visual } : {}) }) as unknown as Url;
 }
 
-/** Footnote. */
 export function fn(children: P[]): Fn {
-  return { type: 'fn', children };
+  return el('fn', children as Element['children']) as unknown as Fn;
 }
 
 // ---------------------------------------------------------------------------
@@ -135,11 +146,9 @@ export function fn(children: P[]): Fn {
 
 export function p(
   children: PtxInlineContent[],
-  attrs?: P['attributes'],
+  attrs?: Record<string, string>,
 ): P {
-  const node: P = { type: 'p', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('p', children as Element['children'], attrs) as unknown as P;
 }
 
 // ---------------------------------------------------------------------------
@@ -147,19 +156,15 @@ export function p(
 // ---------------------------------------------------------------------------
 
 export function li(children: PtxBlockContent[]): Li {
-  return { type: 'li', children };
+  return el('li', children as Element['children']) as unknown as Li;
 }
 
-export function ol(items: Li[], attrs?: Ol['attributes']): Ol {
-  const node: Ol = { type: 'ol', children: items };
-  if (attrs) node.attributes = attrs;
-  return node;
+export function ol(items: Li[], attrs?: Record<string, string>): Ol {
+  return el('ol', items as Element['children'], attrs) as unknown as Ol;
 }
 
-export function ul(items: Li[], attrs?: Ul['attributes']): Ul {
-  const node: Ul = { type: 'ul', children: items };
-  if (attrs) node.attributes = attrs;
-  return node;
+export function ul(items: Li[], attrs?: Record<string, string>): Ul {
+  return el('ul', items as Element['children'], attrs) as unknown as Ul;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,29 +173,23 @@ export function ul(items: Li[], attrs?: Ul['attributes']): Ul {
 
 export function chapter(
   children: Chapter['children'],
-  attrs?: Chapter['attributes'],
+  attrs?: Record<string, string>,
 ): Chapter {
-  const node: Chapter = { type: 'chapter', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('chapter', children as Element['children'], attrs) as unknown as Chapter;
 }
 
 export function section(
   children: Section['children'],
-  attrs?: Section['attributes'],
+  attrs?: Record<string, string>,
 ): Section {
-  const node: Section = { type: 'section', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('section', children as Element['children'], attrs) as unknown as Section;
 }
 
 export function subsection(
   children: Subsection['children'],
-  attrs?: Subsection['attributes'],
+  attrs?: Record<string, string>,
 ): Subsection {
-  const node: Subsection = { type: 'subsection', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('subsection', children as Element['children'], attrs) as unknown as Subsection;
 }
 
 // ---------------------------------------------------------------------------
@@ -198,140 +197,110 @@ export function subsection(
 // ---------------------------------------------------------------------------
 
 export function statement(children: PtxBlockContent[]): Statement {
-  return { type: 'statement', children };
+  return el('statement', children as Element['children']) as unknown as Statement;
 }
 
 export function proof(
   children: (Title | PtxBlockContent)[],
-  attrs?: Proof['attributes'],
+  attrs?: Record<string, string>,
 ): Proof {
-  const node: Proof = { type: 'proof', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('proof', children as Element['children'], attrs) as unknown as Proof;
 }
 
 export function solution(
   children: (Title | PtxBlockContent)[],
-  attrs?: Solution['attributes'],
+  attrs?: Record<string, string>,
 ): Solution {
-  const node: Solution = { type: 'solution', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('solution', children as Element['children'], attrs) as unknown as Solution;
 }
 
 export function hint(
   children: (Title | PtxBlockContent)[],
-  attrs?: Hint['attributes'],
+  attrs?: Record<string, string>,
 ): Hint {
-  const node: Hint = { type: 'hint', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('hint', children as Element['children'], attrs) as unknown as Hint;
 }
 
 export function answer(
   children: (Title | PtxBlockContent)[],
-  attrs?: Answer['attributes'],
+  attrs?: Record<string, string>,
 ): Answer {
-  const node: Answer = { type: 'answer', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('answer', children as Element['children'], attrs) as unknown as Answer;
 }
 
 export function theorem(
   children: Theorem['children'],
-  attrs?: Theorem['attributes'],
+  attrs?: Record<string, string>,
 ): Theorem {
-  const node: Theorem = { type: 'theorem', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('theorem', children as Element['children'], attrs) as unknown as Theorem;
 }
 
 export function lemma(
   children: Lemma['children'],
-  attrs?: Lemma['attributes'],
+  attrs?: Record<string, string>,
 ): Lemma {
-  const node: Lemma = { type: 'lemma', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('lemma', children as Element['children'], attrs) as unknown as Lemma;
 }
 
 export function corollary(
   children: Corollary['children'],
-  attrs?: Corollary['attributes'],
+  attrs?: Record<string, string>,
 ): Corollary {
-  const node: Corollary = { type: 'corollary', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('corollary', children as Element['children'], attrs) as unknown as Corollary;
 }
 
 export function proposition(
   children: Proposition['children'],
-  attrs?: Proposition['attributes'],
+  attrs?: Record<string, string>,
 ): Proposition {
-  const node: Proposition = { type: 'proposition', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('proposition', children as Element['children'], attrs) as unknown as Proposition;
 }
 
 export function definition(
   children: Definition['children'],
-  attrs?: Definition['attributes'],
+  attrs?: Record<string, string>,
 ): Definition {
-  const node: Definition = { type: 'definition', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('definition', children as Element['children'], attrs) as unknown as Definition;
 }
 
 export function remark(
   children: Remark['children'],
-  attrs?: Remark['attributes'],
+  attrs?: Record<string, string>,
 ): Remark {
-  const node: Remark = { type: 'remark', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('remark', children as Element['children'], attrs) as unknown as Remark;
 }
 
 export function note(
   children: Note['children'],
-  attrs?: Note['attributes'],
+  attrs?: Record<string, string>,
 ): Note {
-  const node: Note = { type: 'note', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('note', children as Element['children'], attrs) as unknown as Note;
 }
 
 export function warning(
   children: Warning['children'],
-  attrs?: Warning['attributes'],
+  attrs?: Record<string, string>,
 ): Warning {
-  const node: Warning = { type: 'warning', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('warning', children as Element['children'], attrs) as unknown as Warning;
 }
 
 export function example(
   children: Example['children'],
-  attrs?: Example['attributes'],
+  attrs?: Record<string, string>,
 ): Example {
-  const node: Example = { type: 'example', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('example', children as Element['children'], attrs) as unknown as Example;
 }
 
 export function exercise(
   children: Exercise['children'],
-  attrs?: Exercise['attributes'],
+  attrs?: Record<string, string>,
 ): Exercise {
-  const node: Exercise = { type: 'exercise', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('exercise', children as Element['children'], attrs) as unknown as Exercise;
 }
 
 export function assemblage(
   children: Assemblage['children'],
-  attrs?: Assemblage['attributes'],
+  attrs?: Record<string, string>,
 ): Assemblage {
-  const node: Assemblage = { type: 'assemblage', children };
-  if (attrs) node.attributes = attrs;
-  return node;
+  return el('assemblage', children as Element['children'], attrs) as unknown as Assemblage;
 }
