@@ -27,12 +27,6 @@
       "path": "./packages/remark-pretext"
     },
     {
-      "path": "./packages/ptxast-util-to-xml"
-    },
-    {
-      "path": "./packages/ptxast-util-from-xml"
-    },
-    {
       "path": "./packages/ptxast-util-to-mdast"
     }
   ]

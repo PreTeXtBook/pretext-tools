@@ -8,7 +8,7 @@ import { toMarkdown } from 'mdast-util-to-markdown';
 import { directiveToMarkdown } from 'mdast-util-directive';
 import { mathToMarkdown } from 'mdast-util-math';
 import type { Root as MdastRoot } from 'mdast';
-import type { Root } from 'xast';
+import type { Root } from '@pretextbook/ptxast';
 import { ptxastToMdast } from './ptxast-to-mdast.js';
 
 export { ptxastToMdast } from './ptxast-to-mdast.js';

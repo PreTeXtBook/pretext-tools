@@ -23,6 +23,10 @@
 export type {
   // Document-level
   PtxRoot,
+  Root,
+  Element,
+  Text as XastText,
+  ElementContent,
   Pretext,
   Book,
   Article,

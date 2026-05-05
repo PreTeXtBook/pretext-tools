@@ -28,7 +28,7 @@ import type {
 } from 'mdast';
 import type { ContainerDirective } from 'mdast-util-directive';
 import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
-import type { Root, Element, ElementContent } from 'xast';
+import type { Root, Element, ElementContent } from '@pretextbook/ptxast';
 import { getPtxTextContent } from '@pretextbook/ptxast';
 
 // ---------------------------------------------------------------------------
@@ -299,11 +299,11 @@ function convertDirective(
   if (attrs['xml:id']) directiveAttrs['id'] = attrs['xml:id'];
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'xml:id' || v == null) continue;
-    directiveAttrs[k] = v;
+    directiveAttrs[k] = v as string;
   }
 
   const titleNode = children.find(
-    (c) => c.type === 'element' && (c as Element).name === 'title',
+    (c: ElementContent) => c.type === 'element' && (c as Element).name === 'title',
   ) as Element | undefined;
 
   const directiveChildren: (BlockContent | DefinitionContent)[] = [];

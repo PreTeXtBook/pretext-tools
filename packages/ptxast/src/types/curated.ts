@@ -11,7 +11,7 @@
  *   { type: 'element', name: 'section', attributes: {...}, children: [...] }
  */
 
-import type { Root, Element, Text } from 'xast';
+import type { Root, Element, Text, ElementContent } from 'xast';
 import type {
   // Document level
   ElementPretextRoot,
@@ -170,6 +170,8 @@ import type {
 
 /** Document root — use xast Root directly. */
 export type PtxRoot = Root;
+// Re-export core xast types so consumers don't need to import the xast package directly
+export type { Root, Element, Text, ElementContent };
 
 // ---------------------------------------------------------------------------
 // Document-level aliases
