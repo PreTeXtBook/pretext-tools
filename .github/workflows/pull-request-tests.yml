@@ -24,5 +24,8 @@ jobs:
       - name: Check schema generated artifacts
         run: npm run check:schema-generated
 
+      - name: Build utility packages
+        run: npm run build:utils
+
       - name: Run conversion reliability matrix
         run: npm run test:reliability
