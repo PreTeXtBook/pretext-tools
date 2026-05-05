@@ -1,15 +1,16 @@
 /**
- * mdast-to-ptxast: transforms an mdast Root into a ptxast PtxRoot.
+ * mdast-to-xast: transforms an mdast Root into an xast Root containing
+ * PreTeXt element nodes.
  *
  * Handles:
- *   - Headings → chapter/section/subsection/subsubsection/paragraphs nodes
+ *   - Headings  chapter/section/subsection/subsubsection/paragraphs elements
  *     (via recursive section nesting)
- *   - Paragraphs → p nodes
- *   - Blockquotes → blockquote nodes
- *   - Lists → ol/ul nodes with li children
- *   - Fenced code → program nodes
- *   - Display math (custom parser or mdast `math` nodes) → md nodes
- *   - Container directives (remark-directive) → theorem/proof/example/... nodes
+ *   - Paragraphs  p elements
+ *   - Blockquotes  blockquote elements
+ *   - Lists  ol/ul elements with li children
+ *   - Fenced code  program elements
+ *   - Display math (custom parser or mdast `math` nodes)  md elements
+ *   - Container directives (remark-directive)  theorem/proof/example/... elements
  *   - Inline: text, emphasis, strong, inlineCode, custom `math` nodes
  */
 
@@ -32,44 +33,52 @@ import type {
 } from 'mdast';
 import type { ContainerDirective } from 'mdast-util-directive';
 import type { Math as CustomMath } from './math-parser.js';
-import type {
-  PtxRoot,
-  PtxContent,
-  PtxBlockContent,
-  PtxInlineContent,
-  Chapter,
-  Section,
-  Subsection,
-  Subsubsection,
-  Paragraphs,
-  Title,
-  P,
-  PtxText,
-  Em,
-  Alert,
-  C,
-  M,
-  Ol,
-  Ul,
-  Li,
-  Blockquote,
-  Program,
-  Statement,
-  Md,
-  Mrow,
-} from '@pretextbook/ptxast';
+import type { Root } from 'xast';
+import type { Element } from 'xast';
 import { DIRECTIVE_MAP, PROOF_SOLUTION_NAMES } from './directive-map.js';
+
+// ---------------------------------------------------------------------------
+// Xast node builders (local helpers for this module)
+// ---------------------------------------------------------------------------
+
+type XastText = { type: 'text'; value: string };
+type XastChild = Element | XastText;
+
+function text(value: string): XastText {
+  return { type: 'text', value };
+}
+
+function el(
+  name: string,
+  children: XastChild[],
+  attributes?: Record<string, string>,
+): Element {
+  return {
+    type: 'element',
+    name,
+    attributes: attributes ?? {},
+    children: children as Element['children'],
+  };
+}
+
+/** Create a value element: single text child holds the raw string content. */
+function valueEl(name: string, value: string, attributes?: Record<string, string>): Element {
+  return el(name, [text(value)], attributes);
+}
 
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
-/** Transform an mdast Root node into a ptxast PtxRoot node. */
-export function mdastToPtxast(tree: MdastRoot): PtxRoot {
+/** Transform an mdast Root node into an xast Root node. */
+export function mdastToPtxast(tree: MdastRoot): Root {
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
   const children = nestSections(nodes);
-  return { type: 'root', children };
+  return { type: 'root', children: children as Root['children'] };
 }
+
+// keep legacy export name for backwards compatibility
+export { mdastToPtxast as mdastToXast };
 
 // ---------------------------------------------------------------------------
 // Section nesting
@@ -87,18 +96,16 @@ function depthToType(depth: number): DivType {
  * Partition a flat list of mdast nodes by headings at the minimum heading depth
  * present, recursively nesting deeper headings inside each section.
  */
-function nestSections(nodes: Array<BlockContent | DefinitionContent>): PtxContent[] {
-  // Find the minimum heading depth present in the current nodes
+function nestSections(nodes: Array<BlockContent | DefinitionContent>): Element[] {
   let minDepth = 7;
   for (const node of nodes) {
     if (node.type === 'heading') minDepth = Math.min(minDepth, (node as Heading).depth);
   }
-  // No headings — convert all blocks directly
   if (minDepth === 7) {
     return convertBlockSequence(nodes);
   }
 
-  const result: PtxContent[] = [];
+  const result: Element[] = [];
   let currentHeading: Heading | null = null;
   let preHeadingNodes: Array<BlockContent | DefinitionContent> = [];
   let currentBody: Array<BlockContent | DefinitionContent> = [];
@@ -122,7 +129,6 @@ function nestSections(nodes: Array<BlockContent | DefinitionContent>): PtxConten
     } else if (currentHeading) {
       currentBody.push(node);
     } else {
-      // Content before any heading — keep sequence context for math/paragraph merging
       preHeadingNodes.push(node);
     }
   }
@@ -133,8 +139,8 @@ function nestSections(nodes: Array<BlockContent | DefinitionContent>): PtxConten
   return result;
 }
 
-function convertBlockSequence(nodes: Array<BlockContent | DefinitionContent>): PtxBlockContent[] {
-  const result: PtxBlockContent[] = [];
+function convertBlockSequence(nodes: Array<BlockContent | DefinitionContent>): Element[] {
+  const result: Element[] = [];
 
   for (let i = 0; i < nodes.length; i += 1) {
     const node = nodes[i];
@@ -142,31 +148,30 @@ function convertBlockSequence(nodes: Array<BlockContent | DefinitionContent>): P
     const converted = convertBlock(node);
     if (converted === null) continue;
 
-    // Fold display-math-only paragraphs into paragraph flow instead of creating
-    // standalone paragraphs for display math blocks.
+    // Fold display-math-only paragraphs into paragraph flow.
     if (
-      converted.type === 'p'
-      && converted.children.length === 1
-      && converted.children[0].type === 'md'
+      converted.name === 'p' &&
+      converted.children.length === 1 &&
+      (converted.children[0] as Element).name === 'md'
     ) {
-      const md = converted.children[0] as Md;
+      const md = converted.children[0] as Element;
       const prev = result[result.length - 1];
       const nextConverted = i + 1 < nodes.length ? convertBlock(nodes[i + 1]) : null;
-      const nextParagraphChildren = nextConverted?.type === 'p' ? nextConverted.children : null;
+      const nextParagraphChildren = nextConverted?.name === 'p' ? nextConverted.children : null;
 
-      if (prev?.type === 'p') {
-        prev.children.push(md as unknown as PtxInlineContent);
+      if (prev?.name === 'p') {
+        (prev.children as XastChild[]).push(md);
         if (nextParagraphChildren) {
-          prev.children.push(...nextParagraphChildren);
+          (prev.children as XastChild[]).push(...(nextParagraphChildren as XastChild[]));
           i += 1;
         }
       } else {
-        const children: PtxInlineContent[] = [md as unknown as PtxInlineContent];
+        const children: XastChild[] = [md];
         if (nextParagraphChildren) {
-          children.push(...nextParagraphChildren);
+          children.push(...(nextParagraphChildren as XastChild[]));
           i += 1;
         }
-        result.push({ type: 'p', children });
+        result.push(el('p', children));
       }
 
       continue;
@@ -181,24 +186,13 @@ function convertBlockSequence(nodes: Array<BlockContent | DefinitionContent>): P
 function buildDivision(
   heading: Heading,
   body: Array<BlockContent | DefinitionContent>
-): PtxContent {
+): Element {
   const divType = depthToType(heading.depth);
-  const titleNode: Title = { type: 'title', children: convertInlineNodes(heading.children) };
+  const titleEl = el('title', convertInlineNodes(heading.children));
   const attrs = getHeadingAttrs(heading);
   const innerChildren = nestSections(body);
 
-  const base = {
-    ...(attrs ? { attributes: attrs } : {}),
-    children: [titleNode, ...innerChildren],
-  };
-
-  switch (divType) {
-    case 'chapter':       return { type: 'chapter',       ...base } as Chapter;
-    case 'section':       return { type: 'section',       ...base } as Section;
-    case 'subsection':    return { type: 'subsection',    ...base } as Subsection;
-    case 'subsubsection': return { type: 'subsubsection', ...base } as Subsubsection;
-    default:              return { type: 'paragraphs',    ...base } as Paragraphs;
-  }
+  return el(divType, [titleEl, ...innerChildren], attrs);
 }
 
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {
@@ -210,7 +204,7 @@ function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {
 // Block converters
 // ---------------------------------------------------------------------------
 
-function convertBlock(node: BlockContent | DefinitionContent): PtxBlockContent | null {
+function convertBlock(node: BlockContent | DefinitionContent): Element | null {
   switch (node.type) {
     case 'paragraph':          return convertParagraph(node as Paragraph);
     case 'blockquote':         return convertBlockquote(node as MdastBlockquote);
@@ -221,59 +215,47 @@ function convertBlock(node: BlockContent | DefinitionContent): PtxBlockContent |
   }
 }
 
-function convertParagraph(node: Paragraph): P {
-  return { type: 'p', children: convertInlineNodes(node.children) };
+function convertParagraph(node: Paragraph): Element {
+  return el('p', convertInlineNodes(node.children));
 }
 
-function convertBlockquote(node: MdastBlockquote): Blockquote {
+function convertBlockquote(node: MdastBlockquote): Element {
   const paragraphs = (node.children as Array<BlockContent | DefinitionContent>)
     .filter((n): n is Paragraph => n.type === 'paragraph')
     .map(convertParagraph);
-  return { type: 'blockquote', children: paragraphs };
+  return el('blockquote', paragraphs);
 }
 
-function convertList(node: List): Ol | Ul {
+function convertList(node: List): Element {
   const items = node.children.map(convertListItem);
-  return node.ordered
-    ? { type: 'ol', children: items }
-    : { type: 'ul', children: items };
+  return el(node.ordered ? 'ol' : 'ul', items);
 }
 
-function convertListItem(node: ListItem): Li {
+function convertListItem(node: ListItem): Element {
   const children = convertBlockSequence(node.children as Array<BlockContent | DefinitionContent>);
-  return { type: 'li', children };
+  return el('li', children);
 }
 
-function convertCode(node: Code): Program {
-  return {
-    type: 'program',
-    value: node.value,
-    ...(node.lang ? { attributes: { language: node.lang } } : {}),
-  };
+function convertCode(node: Code): Element {
+  return valueEl('program', node.value, node.lang ? { language: node.lang } : undefined);
 }
 
-function convertDisplayMath(node: CustomMath): Md {
-  // Split on both literal newlines (from markdown) and escaped backslashes (\\) from LaTeX
+function convertDisplayMath(node: CustomMath): Element {
   const rows = node.value
     .split(/\\\\|[\r\n]+/)
     .map(line => line.trim())
     .filter(line => line.length > 0);
 
   if (rows.length > 1) {
-    // Multi-row display math: wrap each row in an mrow
-    return { type: 'md', children: rows.map(line => ({ type: 'mrow', value: line })) };
+    return el('md', rows.map(line => valueEl('mrow', line)));
   }
-  // Single-expression math (or empty): no mrows, just the content in the value
-  return { type: 'md', value: rows[0] ?? '' };
+  return valueEl('md', rows[0] ?? '');
 }
 
-/** Handle both display and inline math nodes from custom math parser. */
-function convertMathNode(node: CustomMath): M | Md | null {
+function convertMathNode(node: CustomMath): Element | null {
   if (node.meta === 'inline') {
-    // Inline math: $...$ or \(...\)
-    return { type: 'm', value: node.value };
+    return valueEl('m', node.value);
   }
-  // Display math: $$...$$ or \[...\]
   return convertDisplayMath(node);
 }
 
@@ -281,33 +263,29 @@ function convertMathNode(node: CustomMath): M | Md | null {
 // Container directive converters
 // ---------------------------------------------------------------------------
 
-function convertContainerDirective(node: ContainerDirective): PtxBlockContent | null {
+function convertContainerDirective(node: ContainerDirective): Element | null {
   const info = DIRECTIVE_MAP[node.name];
   if (!info) return null;
 
   const attrs = buildDirectiveAttrs(node);
   const directiveChildren = node.children as Array<BlockContent | DefinitionContent>;
-  const { title, body } = extractDirectiveLabel(directiveChildren);
+  const { title: titleEl, body } = extractDirectiveLabel(directiveChildren);
 
   switch (info.category) {
     case 'theorem-like':
     case 'definition-like':
-      return buildTheoremLike(info.type, attrs, title, body);
+      return buildTheoremLike(info.type, attrs, titleEl, body);
     case 'remark-like':
     case 'proof-like':
     case 'solution-like':
-      return buildContentBlock(info.type, attrs, title, body);
+      return buildContentBlock(info.type, attrs, titleEl, body);
     case 'example-like':
-      return buildExampleLike(info.type, attrs, title, body);
+      return buildExampleLike(info.type, attrs, titleEl, body);
   }
 }
 
-/**
- * Extract the directive label from children.
- * The label paragraph has `data.directiveLabel === true` and is always first.
- */
 function extractDirectiveLabel(children: Array<BlockContent | DefinitionContent>): {
-  title: Title | null;
+  title: Element | null;
   body: Array<BlockContent | DefinitionContent>;
 } {
   const first = children[0];
@@ -316,7 +294,7 @@ function extractDirectiveLabel(children: Array<BlockContent | DefinitionContent>
     (first as Paragraph & { data?: { directiveLabel?: boolean } }).data?.directiveLabel === true
   ) {
     return {
-      title: { type: 'title', children: convertInlineNodes((first as Paragraph).children) },
+      title: el('title', convertInlineNodes((first as Paragraph).children)),
       body: children.slice(1),
     };
   }
@@ -333,18 +311,12 @@ function buildDirectiveAttrs(node: ContainerDirective): Record<string, string> |
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-/**
- * Build a theorem-like / definition-like node:
- * - Separate proof/solution-like children from the main body
- * - Wrap main body in a `<statement>` node
- * - Append proof/solution-like nodes after the statement
- */
 function buildTheoremLike(
   type: string,
   attrs: Record<string, string> | undefined,
-  title: Title | null,
+  titleEl: Element | null,
   children: Array<BlockContent | DefinitionContent>
-): PtxBlockContent {
+): Element {
   const bodyNodes: Array<BlockContent | DefinitionContent> = [];
   const proofNodes: ContainerDirective[] = [];
 
@@ -361,62 +333,54 @@ function buildTheoremLike(
 
   const statementChildren = convertBlockSequence(bodyNodes);
 
-  const result: PtxContent[] = [];
-  if (title) result.push(title);
+  const result: Element[] = [];
+  if (titleEl) result.push(titleEl);
   if (statementChildren.length > 0) {
-    result.push({ type: 'statement', children: statementChildren } as Statement);
+    result.push(el('statement', statementChildren));
   }
   for (const pd of proofNodes) {
     const converted = convertContainerDirective(pd);
     if (converted) result.push(converted);
   }
 
-  return { type, ...(attrs ? { attributes: attrs } : {}), children: result } as unknown as PtxBlockContent;
+  return el(type, result, attrs);
 }
 
-/**
- * Build a remark-like, proof-like, or solution-like node:
- * title + direct block children (no statement wrapper).
- */
 function buildContentBlock(
   type: string,
   attrs: Record<string, string> | undefined,
-  title: Title | null,
+  titleEl: Element | null,
   children: Array<BlockContent | DefinitionContent>
-): PtxBlockContent {
-  const converted: PtxContent[] = [];
-  if (title) converted.push(title);
+): Element {
+  const converted: Element[] = [];
+  if (titleEl) converted.push(titleEl);
   converted.push(...convertBlockSequence(children));
-  return { type, ...(attrs ? { attributes: attrs } : {}), children: converted } as unknown as PtxBlockContent;
+  return el(type, converted, attrs);
 }
 
-/**
- * Build an example-like node: title + direct block content.
- * (Same structure as remark-like; kept separate for future specialization.)
- */
 function buildExampleLike(
   type: string,
   attrs: Record<string, string> | undefined,
-  title: Title | null,
+  titleEl: Element | null,
   children: Array<BlockContent | DefinitionContent>
-): PtxBlockContent {
-  return buildContentBlock(type, attrs, title, children);
+): Element {
+  return buildContentBlock(type, attrs, titleEl, children);
 }
 
 // ---------------------------------------------------------------------------
 // Inline converters
 // ---------------------------------------------------------------------------
 
-function convertInlineNodes(nodes: PhrasingContent[]): PtxInlineContent[] {
-  return nodes.flatMap(convertInline).filter((n): n is PtxInlineContent => n !== null);
+function convertInlineNodes(nodes: PhrasingContent[]): XastChild[] {
+  return nodes.flatMap(convertInline).filter((n): n is XastChild => n !== null);
 }
 
-function convertInline(node: PhrasingContent): PtxInlineContent | null {
+function convertInline(node: PhrasingContent): XastChild | null {
   switch (node.type) {
-    case 'text':       return { type: 'text',  value: (node as Text).value } as PtxText;
-    case 'emphasis':   return { type: 'em',    children: convertInlineNodes((node as Emphasis).children) } as Em;
-    case 'strong':     return { type: 'alert', children: convertInlineNodes((node as Strong).children) } as Alert;
-    case 'inlineCode': return { type: 'c',     value: (node as InlineCode).value } as C;
+    case 'text':       return text((node as Text).value);
+    case 'emphasis':   return el('em', convertInlineNodes((node as Emphasis).children));
+    case 'strong':     return el('alert', convertInlineNodes((node as Strong).children));
+    case 'inlineCode': return valueEl('c', (node as InlineCode).value);
     case 'math':       return convertMathNode(node as unknown as CustomMath);
     default:           return null;
   }
