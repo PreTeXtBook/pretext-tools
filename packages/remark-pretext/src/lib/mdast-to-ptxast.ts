@@ -108,8 +108,8 @@ export interface ConversionResult {
 }
 
 /** Transform an mdast Root node into an xast Root node (backwards compatible). */
-export function mdastToPtxast(tree: MdastRoot): Root {
-  const result = mdastToPtxastWithDiagnostics(tree);
+export function mdastToPtxast(tree: MdastRoot, source?: string): Root {
+  const result = mdastToPtxastWithDiagnostics(tree, source);
   return result.tree;
 }
 
@@ -117,9 +117,9 @@ export function mdastToPtxast(tree: MdastRoot): Root {
 export { mdastToPtxast as mdastToXast };
 
 /** Transform an mdast Root node, returning tree + diagnostic messages. */
-export function mdastToPtxastWithDiagnostics(tree: MdastRoot): ConversionResult {
+export function mdastToPtxastWithDiagnostics(tree: MdastRoot, source?: string): ConversionResult {
   const messages: ConversionMessage[] = [];
-  const ctx: VisitContext = { ancestors: [], depth: 0, messages };
+  const ctx: VisitContext = { ancestors: [], depth: 0, messages, source };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
   const children = nestSections(nodes, ctx);
   return {
@@ -429,13 +429,30 @@ function buildDirectiveAttrs(node: ContainerDirective): Record<string, string> |
 // Inline converters (using handler dictionary pattern)
 // ---------------------------------------------------------------------------
 
+/**
+ * Determine if an emphasis node uses underscore (_) or asterisk (*) delimiter.
+ * Returns 'underscore' or 'asterisk' based on the source text at the node's position.
+ * If source is unavailable, defaults to 'asterisk' for backwards compatibility.
+ */
+function getEmphasisDelimiter(node: Emphasis, source?: string): 'underscore' | 'asterisk' {
+  if (!source || node.position?.start?.offset === null || node.position?.start?.offset === undefined) {
+    return 'asterisk'; // default
+  }
+  const delimiter = source.charAt(node.position.start.offset);
+  return delimiter === '_' ? 'underscore' : 'asterisk';
+}
+
 /** Dictionary of inline handlers. Maps node type → handler function. */
 const inlineHandlers: Record<
   string,
   (node: PhrasingContent, ctx: VisitContext) => XastChild | null
 > = {
   text: (node, ctx) => text((node as Text).value),
-  emphasis: (node, ctx) => el('em', convertInlineNodes((node as Emphasis).children, ctx)),
+  emphasis: (node, ctx) => {
+    const delim = getEmphasisDelimiter(node as Emphasis, ctx.source);
+    const tag = delim === 'underscore' ? 'term' : 'em';
+    return el(tag, convertInlineNodes((node as Emphasis).children, ctx));
+  },
   strong: (node, ctx) => el('alert', convertInlineNodes((node as Strong).children, ctx)),
   inlineCode: (node, ctx) => valueEl('c', (node as InlineCode).value),
   math: (node, ctx) => convertMathNode(node as unknown as CustomMath, ctx),

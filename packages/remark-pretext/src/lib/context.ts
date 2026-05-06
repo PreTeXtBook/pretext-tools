@@ -16,6 +16,8 @@ export interface VisitContext {
   depth: number;
   /** Accumulated error/warning messages. */
   messages?: ConversionMessage[];
+  /** Raw source markdown (optional, used for delimiter detection). */
+  source?: string;
 }
 
 export interface ConversionMessage {

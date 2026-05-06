@@ -48,7 +48,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
       const parser = unified().use(remarkParse).use(remarkDirective);
       const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
       applyMathTokens(reparsed, tokenized.tokens);
-      return mdastToPtxast(reparsed);
+      return mdastToPtxast(reparsed, tokenized.markdown); // pass tokenized source for delimiter detection
     }
 
     // Fallback for parse+runSync(tree) usage where raw source text is unavailable.

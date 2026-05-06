@@ -86,6 +86,31 @@ describe('inline element conversion', () => {
     expect(textValue(em.children[0])).toBe('italic');
   });
 
+  it('underline emphasis  term', () => {
+    const tree = parse('_underlined_');
+    const p = tree.children[0] as Element;
+    const term = p.children[0] as Element;
+    expect(elName(term)).toBe('term');
+    expect(textValue(term.children[0])).toBe('underlined');
+  });
+
+  it('mixed emphasis in single paragraph', () => {
+    const tree = parse('Here is *italic* and _term_ and **bold**.');
+    const p = tree.children[0] as Element;
+    const elements = p.children.filter(n => typeof n === 'object' && n.type === 'element') as Element[];
+    
+    const em = elements.find(e => e.name === 'em');
+    const term = elements.find(e => e.name === 'term');
+    const alert = elements.find(e => e.name === 'alert');
+    
+    expect(em).toBeDefined();
+    expect(textValue(em!.children[0])).toBe('italic');
+    expect(term).toBeDefined();
+    expect(textValue(term!.children[0])).toBe('term');
+    expect(alert).toBeDefined();
+    expect(textValue(alert!.children[0])).toBe('bold');
+  });
+
   it('strong  alert', () => {
     const tree = parse('**bold**');
     const p = tree.children[0] as Element;
