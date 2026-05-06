@@ -209,6 +209,16 @@ function convertBlockSequence(
       continue;
     }
 
+    // Nest lists inside preceding paragraphs (PreTeXt spec requires lists in <p> tags)
+    if ((converted.name === 'ul' || converted.name === 'ol') && result.length > 0) {
+      const prev = result[result.length - 1];
+      if (prev?.name === 'p') {
+        // Append list to preceding paragraph
+        (prev.children as XastChild[]).push(converted);
+        continue;
+      }
+    }
+
     result.push(converted);
   }
 

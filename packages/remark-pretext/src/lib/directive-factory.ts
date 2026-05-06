@@ -43,6 +43,30 @@ function isTaskNode(node: BlockContent | DefinitionContent): boolean {
 }
 
 /**
+ * Nest lists inside preceding paragraphs (PreTeXt spec requires lists in <p> tags).
+ * Applies the same logic as convertBlockSequence to maintain consistency.
+ */
+function nestListsInParagraphs(elements: Element[]): Element[] {
+  const result: Element[] = [];
+
+  for (const el of elements) {
+    // Nest lists inside preceding paragraphs
+    if ((el.name === 'ul' || el.name === 'ol') && result.length > 0) {
+      const prev = result[result.length - 1];
+      if (prev?.name === 'p') {
+        // Append list to preceding paragraph
+        (prev.children as XastChild[]).push(el);
+        continue;
+      }
+    }
+
+    result.push(el);
+  }
+
+  return result;
+}
+
+/**
  * Generic factory function: applies semantic rules from spec.
  * 
  * Handles:
@@ -91,9 +115,11 @@ export function buildDirectiveWithSpec(
 
       // Add introduction wrapper if intro content exists
       if (introContent.length > 0) {
-        const introChildren = introContent
-          .map((child) => convertBlock(child, ctx))
-          .filter((n): n is Element => n !== null);
+        const introChildren = nestListsInParagraphs(
+          introContent
+            .map((child) => convertBlock(child, ctx))
+            .filter((n): n is Element => n !== null)
+        );
         if (introChildren.length > 0) {
           result.push(el('introduction', introChildren));
         }
@@ -155,9 +181,11 @@ function handleContentWithoutTasks(
 
     // Wrap body in <statement> (if body is non-empty)
     if (bodyContent.length > 0) {
-      const statementChildren = bodyContent
-        .map((child) => convertBlock(child, ctx))
-        .filter((n): n is Element => n !== null);
+      const statementChildren = nestListsInParagraphs(
+        bodyContent
+          .map((child) => convertBlock(child, ctx))
+          .filter((n): n is Element => n !== null)
+      );
       if (statementChildren.length > 0) {
         result.push(el('statement', statementChildren));
       }
@@ -167,9 +195,11 @@ function handleContentWithoutTasks(
     result.push(...siblings);
   } else {
     // Rule 2B: No statement wrapping: convert all children directly
-    const converted = children
-      .map((child) => convertBlock(child, ctx))
-      .filter((n): n is Element => n !== null);
+    const converted = nestListsInParagraphs(
+      children
+        .map((child) => convertBlock(child, ctx))
+        .filter((n): n is Element => n !== null)
+    );
     result.push(...converted);
   }
 }

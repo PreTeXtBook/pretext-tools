@@ -779,13 +779,18 @@ Using colons.
       const statement = exercise.children.find((child: any) => elName(child) === 'statement') as Element;
       expect(statement).toBeDefined();
       
-      // Find the ul (unordered list) inside statement
-      const ul = statement?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      // Find the p element inside statement (text is now wrapped in paragraph)
+      const p = statement?.children?.find((c: any) => elName(c) === 'p') as Element;
+      expect(p).toBeDefined();
+      
+      // Find the ul inside the paragraph (list is nested inside paragraph)
+      const ul = p?.children?.find((c: any) => elName(c) === 'ul') as Element;
       expect(ul).toBeDefined();
       
-      // First li should have nested ul
+      // First li should have p element containing nested ul
       const firstLi = ul?.children?.[0] as Element;
-      const nestedUl = firstLi?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      const firstLiP = firstLi?.children?.find((c: any) => elName(c) === 'p') as Element;
+      const nestedUl = firstLiP?.children?.find((c: any) => elName(c) === 'ul') as Element;
       
       expect(nestedUl).toBeDefined();
       expect(nestedUl?.children?.length).toBe(2); // Sub-item 1a and 1b
@@ -808,17 +813,23 @@ Using colons.
       const statement = theorem.children.find((child: any) => elName(child) === 'statement') as Element;
       expect(statement).toBeDefined();
       
-      // Find the ul inside statement
-      const ul = statement?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      // Find the p element inside statement (text is wrapped in paragraph)
+      const p = statement?.children?.find((c: any) => elName(c) === 'p') as Element;
+      expect(p).toBeDefined();
+      
+      // Find the ul inside the paragraph (list is nested inside paragraph)
+      const ul = p?.children?.find((c: any) => elName(c) === 'ul') as Element;
       expect(ul).toBeDefined();
       
       // Verify structure is preserved (not flattened) with 3 levels of nesting
       const level1Li = ul?.children?.[0] as Element;
-      const level2Ul = level1Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      const level1P = level1Li?.children?.find((c: any) => elName(c) === 'p') as Element;
+      const level2Ul = level1P?.children?.find((c: any) => elName(c) === 'ul') as Element;
       
       expect(level2Ul).toBeDefined();
       const level2Li = level2Ul?.children?.[0] as Element;
-      const level3Ul = level2Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      const level2P = level2Li?.children?.find((c: any) => elName(c) === 'p') as Element;
+      const level3Ul = level2P?.children?.find((c: any) => elName(c) === 'ul') as Element;
       
       expect(level3Ul).toBeDefined();
       expect(level3Ul?.children?.length).toBe(2); // Level 3a and 3b
@@ -839,14 +850,23 @@ Using colons.
       expect(elName(solution)).toBe('solution');
       
       // Solution doesn't wrap content in a statement, so look directly in solution
-      const ul = solution.children?.find((c: any) => elName(c) === 'ul') as Element;
+      // Find the p element that contains "Key steps:" (second p element)
+      const pWithList = solution.children?.find((c: any) => {
+        if (elName(c) !== 'p') return false;
+        return c.children?.some((child: any) => child.value === 'Key steps:');
+      }) as Element;
+      expect(pWithList).toBeDefined();
+      
+      // Find the ul inside that paragraph
+      const ul = pWithList?.children?.find((c: any) => elName(c) === 'ul') as Element;
       expect(ul).toBeDefined();
       
       const listItems = ul?.children;
       expect(listItems?.length).toBe(2); // Step 1 and Step 2
       
       const step1Li = listItems?.[0] as Element;
-      const step1NestedUl = step1Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      const step1P = step1Li?.children?.find((c: any) => elName(c) === 'p') as Element;
+      const step1NestedUl = step1P?.children?.find((c: any) => elName(c) === 'ul') as Element;
       expect(step1NestedUl).toBeDefined();
     });
   });
