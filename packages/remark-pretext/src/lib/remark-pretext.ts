@@ -30,6 +30,7 @@ import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
 import { mdastToPtxast } from './mdast-to-ptxast.js';
 import { applyMathDelimiters, applyMathTokens, tokenizeMathInMarkdown } from './math-parser.js';
+import { normalizeDirectiveColons } from './directive-normalizer.js';
 
 /** Options for the remark-pretext plugin (currently none, reserved for future use). */
 export interface RemarkPretextOptions {}
@@ -39,7 +40,8 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
     // Preferred path: tokenize raw markdown first so LaTeX delimiters are parsed
     // from source text (no heuristic inference from parsed text nodes).
     if (typeof file?.value === 'string') {
-      const tokenized = tokenizeMathInMarkdown(file.value);
+      const normalized = normalizeDirectiveColons(file.value);
+      const tokenized = tokenizeMathInMarkdown(normalized);
       const parser = unified().use(remarkParse).use(remarkDirective);
       const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
       applyMathTokens(reparsed, tokenized.tokens);

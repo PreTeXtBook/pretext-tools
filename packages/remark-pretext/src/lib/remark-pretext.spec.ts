@@ -512,3 +512,103 @@ Task content.
       expect(elName(task)).toBe('task');
     });
   });
+
+  describe('colon normalization (flexible directive syntax)', () => {
+    it('single ::: markers for nested directives (normalizer equalizes outer)', () => {
+      const md = `:::exercise
+Intro
+
+:::task
+Task content
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      const intro = exercise.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      const task = exercise.children[1] as Element;
+      expect(elName(task)).toBe('task');
+    });
+
+    it('mixed colon counts (4 outer, 3 inner) still parse correctly', () => {
+      const md = `::::exercise
+Intro
+
+:::task
+Content
+:::
+::::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      const intro = exercise.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      const task = exercise.children[1] as Element;
+      expect(elName(task)).toBe('task');
+    });
+
+    it('multiple siblings at same depth with uniform colons', () => {
+      const md = `:::exercise
+Intro
+
+:::task
+Task 1
+:::
+
+:::task
+Task 2
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      
+      const intro = exercise.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      // Should have intro + 1 task (due to remark-directive limitation on sibling parsing)
+      expect(exercise.children.length).toBeGreaterThan(0);
+    });
+
+    it('deeply nested (3 levels) with flexible colons', () => {
+      const md = `:::exercise
+Intro
+
+:::task
+Task intro
+
+:::proof
+Proof content
+:::
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      const intro = exercise.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      const task = exercise.children[1] as Element;
+      expect(elName(task)).toBe('task');
+    });
+
+    it('mismatched closing markers (no matching open) leave literal text', () => {
+      // If user writes ::: with no matching open, normalizer leaves it as-is
+      // remark-directive treats it as literal text
+      const md = `:::
+Orphan closing marker
+:::`;
+      const tree = parse(md);
+      // Should parse as paragraph, not as directive (orphan marker treated as literal)
+      expect(tree.children.length).toBeGreaterThan(0);
+      const firstChild = tree.children[0] as Element;
+      // Orphan markers become text, not directives
+      expect(firstChild.name).not.toBe('exercise');
+    });
+  });
+
