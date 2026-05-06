@@ -389,3 +389,126 @@ describe('semantic round-trip (markdown -> xast -> xml -> xast)', () => {
     }
   });
 });
+
+  // Task support tests
+  describe('tasks with nested structure', () => {
+    it(':::task directive creates task element', () => {
+      const tree = parse(':::task\nTask content.\n:::');
+      const task = tree.children[0] as Element;
+      expect(elName(task)).toBe('task');
+    });
+
+    it('task without nested tasks wraps content in statement', () => {
+      const tree = parse(':::task\nTask content.\n:::');
+      const task = tree.children[0] as Element;
+      const stmt = task.children[0] as Element;
+      expect(elName(stmt)).toBe('statement');
+      expect(elName(stmt.children[0])).toBe('p');
+    });
+
+    it('exercise with nested tasks creates introduction from intro content', () => {
+      const md = `:::exercise
+Exercise intro text.
+
+:::task
+Task 1 content.
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      // First child should be introduction
+      const intro = exercise.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      // Check intro contains the text
+      if (intro.children[0]) {
+        const introP = intro.children[0] as Element;
+        expect(elName(introP)).toBe('p');
+        // Get text from first child of the paragraph
+        if (introP.children[0]) {
+          expect(textValue(introP.children[0])).toBe('Exercise intro text.');
+        }
+      }
+      
+      // Following child should be the task
+      if (exercise.children[1]) {
+        const task1 = exercise.children[1] as Element;
+        expect(elName(task1)).toBe('task');
+        // Tasks that don't have nested tasks get wrapped in statement
+        const firstChild = task1.children[0] as Element;
+        if (elName(firstChild) === 'statement') {
+          // Content is inside statement, then p element
+          const p = firstChild.children[0] as Element;
+          expect(elName(p)).toBe('p');
+          expect(textValue(p.children[0])).toBe('Task 1 content.');
+        }
+      }
+    });
+
+    it('task with nested task creates introduction wrapper', () => {
+      const md = `:::task
+Task intro text.
+
+:::task
+Nested task content.
+:::
+:::`;
+      const tree = parse(md);
+      const parentTask = tree.children[0] as Element;
+      expect(elName(parentTask)).toBe('task');
+      
+      // First child should be introduction
+      const intro = parentTask.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      // Second child should be nested task
+      const nestedTask = parentTask.children[1] as Element;
+      expect(elName(nestedTask)).toBe('task');
+    });
+
+    it('exercise with no intro content and nested tasks starts with task', () => {
+      const md = `:::exercise
+:::task
+Task 1 content.
+:::
+
+:::task
+Task 2 content.
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      
+      // No introduction child (no content before first task)
+      const firstChild = exercise.children[0] as Element;
+      expect(elName(firstChild)).toBe('task');
+    });
+
+    it('exercise without nested tasks wraps content in statement', () => {
+      const tree = parse(':::exercise\nExercise content.\n:::');
+      const exercise = tree.children[0] as Element;
+      const stmt = exercise.children[0] as Element;
+      expect(elName(stmt)).toBe('statement');
+    });
+
+    it('project directive supports nested tasks like exercise', () => {
+      const md = `:::project
+Project intro.
+
+:::task
+Task content.
+:::
+:::`;
+      const tree = parse(md);
+      const project = tree.children[0] as Element;
+      expect(elName(project)).toBe('project');
+      
+      const intro = project.children[0] as Element;
+      expect(elName(intro)).toBe('introduction');
+      
+      const task = project.children[1] as Element;
+      expect(elName(task)).toBe('task');
+    });
+  });

@@ -32,7 +32,23 @@ function el(
 }
 
 /**
+ * Detect if a node is a task directive.
+ * Tasks are only found inside exercise/project/task directives.
+ */
+function isTaskNode(node: BlockContent | DefinitionContent): boolean {
+  return (
+    node.type === 'containerDirective' &&
+    (node as ContainerDirective).name === 'task'
+  );
+}
+
+/**
  * Generic factory function: applies semantic rules from spec.
+ * 
+ * Handles:
+ * - Statement wrapping for theorem-like elements
+ * - Task nesting with introduction wrapping (exercise/project/task)
+ * - Proof/solution sibling extraction
  * 
  * @param spec Semantic specification for this directive type
  * @param attrs HTML/XML attributes for the element
@@ -60,7 +76,66 @@ export function buildDirectiveWithSpec(
     result.push(titleEl);
   }
 
-  // Rule 2: Apply requiresStatement rule
+  // Rule 2: Handle nested tasks (if spec supports them)
+  if (spec.hasNestedTasks) {
+    // Find first task node
+    const firstTaskIndex = children.findIndex(isTaskNode);
+    
+    if (firstTaskIndex !== -1) {
+      // Tasks exist: separate intro content from task nodes
+      const introContent = children.slice(0, firstTaskIndex);
+      const taskNodes = children.slice(firstTaskIndex).filter(isTaskNode);
+      const proofNodes = children.slice(firstTaskIndex).filter(
+        (node) => node.type === 'containerDirective' && PROOF_SOLUTION_NAMES.has((node as ContainerDirective).name)
+      );
+
+      // Add introduction wrapper if intro content exists
+      if (introContent.length > 0) {
+        const introChildren = introContent
+          .map((child) => convertBlock(child, ctx))
+          .filter((n): n is Element => n !== null);
+        if (introChildren.length > 0) {
+          result.push(el('introduction', introChildren));
+        }
+      }
+
+      // Add task elements
+      for (const taskNode of taskNodes) {
+        const converted = convertDirective(taskNode as ContainerDirective, ctx);
+        if (converted) result.push(converted);
+      }
+
+      // Add proof/solution siblings (not inside tasks)
+      for (const proofNode of proofNodes) {
+        const converted = convertDirective(proofNode as ContainerDirective, ctx);
+        if (converted) result.push(converted);
+      }
+    } else {
+      // No tasks found: fall back to statement/direct content logic
+      // (will be handled in next rule)
+      handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+    }
+  } else {
+    // No nested task support: handle normally
+    handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+  }
+
+  return el(spec.type, result, attrs);
+}
+
+/**
+ * Handle content for directives that don't have nested tasks.
+ * Applies statement wrapping and proof/solution separation rules.
+ */
+function handleContentWithoutTasks(
+  result: Element[],
+  spec: DirectiveSpec,
+  children: Array<BlockContent | DefinitionContent>,
+  ctx: VisitContext,
+  convertBlock: (child: BlockContent | DefinitionContent, ctx: VisitContext) => Element | null,
+  convertDirective: (node: ContainerDirective, ctx: VisitContext) => Element | null,
+): void {
+  // Rule 2A: Apply requiresStatement rule
   if (spec.requiresStatement) {
     // Separate body content from proof/solution siblings
     const bodyContent: Array<BlockContent | DefinitionContent> = [];
@@ -91,12 +166,10 @@ export function buildDirectiveWithSpec(
     // Append proof/solution siblings (not inside statement)
     result.push(...siblings);
   } else {
-    // No statement wrapping: convert all children directly
+    // Rule 2B: No statement wrapping: convert all children directly
     const converted = children
       .map((child) => convertBlock(child, ctx))
       .filter((n): n is Element => n !== null);
     result.push(...converted);
   }
-
-  return el(spec.type, result, attrs);
 }

@@ -37,6 +37,16 @@ export interface DirectiveSpec {
    * If false, content is added directly without statement wrapping.
    */
   requiresStatement: boolean;
+  /**
+   * If true, this directive can have nested task children.
+   * Content before the first task becomes an <introduction> wrapper.
+   * Example:
+   *   <exercise><introduction>...</introduction><task>...</task><task>...</task></exercise>
+   * 
+   * Only applies if nested tasks are actually present in the body.
+   * If no tasks are found, requiresStatement still applies.
+   */
+  hasNestedTasks?: boolean;
 }
 
 /**
@@ -81,15 +91,18 @@ export const DIRECTIVE_SPEC_TABLE: Readonly<Record<string, DirectiveSpec>> = {
   insight:       { type: 'insight',       category: 'remark-like',   requiresStatement: false },
   assemblage:    { type: 'assemblage',    category: 'remark-like',   requiresStatement: false },
   
-  // example-like (no statement wrapping)
+  // example-like (exercise/project/task support nested tasks; require statement if no nested tasks)
   example:       { type: 'example',       category: 'example-like',  requiresStatement: false },
   question:      { type: 'question',      category: 'example-like',  requiresStatement: false },
   problem:       { type: 'problem',       category: 'example-like',  requiresStatement: false },
-  exercise:      { type: 'exercise',      category: 'example-like',  requiresStatement: false },
+  exercise:      { type: 'exercise',      category: 'example-like',  requiresStatement: true, hasNestedTasks: true },
   activity:      { type: 'activity',      category: 'example-like',  requiresStatement: false },
   exploration:   { type: 'exploration',   category: 'example-like',  requiresStatement: false },
   investigation: { type: 'investigation', category: 'example-like',  requiresStatement: false },
-  project:       { type: 'project',       category: 'example-like',  requiresStatement: false },
+  project:       { type: 'project',       category: 'example-like',  requiresStatement: true, hasNestedTasks: true },
+  
+  // task (can have nested tasks, requires statement if no nested tasks)
+  task:          { type: 'task',          category: 'example-like',  requiresStatement: true, hasNestedTasks: true },
   
   // proof-like (no statement wrapping)
   proof:         { type: 'proof',         category: 'proof-like',    requiresStatement: false },
