@@ -73,6 +73,30 @@ function valueEl(name: string, value: string, attributes?: Record<string, string
   return el(name, [text(value)], attributes);
 }
 
+/**
+ * Wrap orphaned lists (ul/ol) that don't follow paragraphs in <p> elements.
+ * This ensures PreTeXt schema compliance: lists must be inside <p> tags.
+ */
+function nestListsInParagraphs(elements: Element[]): Element[] {
+  const result: Element[] = [];
+
+  for (const elem of elements) {
+    if (elem.name === 'ul' || elem.name === 'ol') {
+      if (result.length > 0 && result[result.length - 1]?.name === 'p') {
+        // Append list to preceding paragraph
+        (result[result.length - 1].children as XastChild[]).push(elem);
+      } else {
+        // Wrap orphaned list in new <p>
+        result.push(el('p', [elem]));
+      }
+    } else {
+      result.push(elem);
+    }
+  }
+
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
@@ -119,17 +143,19 @@ function depthToType(depth: number): DivType {
 /**
  * Partition a flat list of mdast nodes by headings at the minimum heading depth
  * present, recursively nesting deeper headings inside each section.
+ * @param wrapOrphanedLists If true, wrap orphaned lists in <p> elements (for division content)
  */
 function nestSections(
   nodes: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
+  ctx: VisitContext,
+  wrapOrphanedLists = false
 ): Element[] {
   let minDepth = 7;
   for (const node of nodes) {
     if (node.type === 'heading') minDepth = Math.min(minDepth, (node as Heading).depth);
   }
   if (minDepth === 7) {
-    return convertBlockSequence(nodes, ctx);
+    return convertBlockSequence(nodes, ctx, wrapOrphanedLists);
   }
 
   const result: Element[] = [];
@@ -147,7 +173,7 @@ function nestSections(
   for (const node of nodes) {
     if (node.type === 'heading' && (node as Heading).depth === minDepth) {
       if (!currentHeading && preHeadingNodes.length > 0) {
-        result.push(...convertBlockSequence(preHeadingNodes, ctx));
+        result.push(...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists));
         preHeadingNodes = [];
       }
       flushSection();
@@ -160,7 +186,7 @@ function nestSections(
     }
   }
   if (!currentHeading && preHeadingNodes.length > 0) {
-    result.push(...convertBlockSequence(preHeadingNodes, ctx));
+    result.push(...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists));
   }
   flushSection();
   return result;
@@ -168,7 +194,8 @@ function nestSections(
 
 function convertBlockSequence(
   nodes: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
+  ctx: VisitContext,
+  wrapOrphanedLists = false
 ): Element[] {
   const result: Element[] = [];
 
@@ -222,7 +249,8 @@ function convertBlockSequence(
     result.push(converted);
   }
 
-  return result;
+  // Wrap any remaining orphaned lists only if requested (inside divisions/directives)
+  return wrapOrphanedLists ? nestListsInParagraphs(result) : result;
 }
 
 function buildDivision(
@@ -233,9 +261,13 @@ function buildDivision(
   const divType = depthToType(heading.depth);
   const titleEl = el('title', convertInlineNodes(heading.children, ctx));
   const attrs = getHeadingAttrs(heading);
-  const innerChildren = nestSections(body, { ...ctx, depth: ctx.depth + 1 });
+  // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)
+  const innerChildren = nestSections(body, { ...ctx, depth: ctx.depth + 1 }, true);
+  
+  // Also wrap orphaned lists that directly follow the title
+  const wrappedChildren = nestListsInParagraphs(innerChildren);
 
-  return el(divType, [titleEl, ...innerChildren], attrs);
+  return el(divType, [titleEl, ...wrappedChildren], attrs);
 }
 
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {

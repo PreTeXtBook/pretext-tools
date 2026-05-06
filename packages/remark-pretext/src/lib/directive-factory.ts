@@ -43,24 +43,26 @@ function isTaskNode(node: BlockContent | DefinitionContent): boolean {
 }
 
 /**
- * Nest lists inside preceding paragraphs (PreTeXt spec requires lists in <p> tags).
- * Applies the same logic as convertBlockSequence to maintain consistency.
+ * Nest lists inside paragraphs (PreTeXt spec requires lists in <p> tags).
+ * Two strategies:
+ * 1. If list follows a paragraph, append to that paragraph
+ * 2. If list doesn't follow a paragraph (or is first), wrap it in a new <p>
  */
 function nestListsInParagraphs(elements: Element[]): Element[] {
   const result: Element[] = [];
 
-  for (const el of elements) {
-    // Nest lists inside preceding paragraphs
-    if ((el.name === 'ul' || el.name === 'ol') && result.length > 0) {
-      const prev = result[result.length - 1];
-      if (prev?.name === 'p') {
-        // Append list to preceding paragraph
-        (prev.children as XastChild[]).push(el);
-        continue;
+  for (const elem of elements) {
+    if (elem.name === 'ul' || elem.name === 'ol') {
+      if (result.length > 0 && result[result.length - 1]?.name === 'p') {
+        // Strategy 1: Append list to preceding paragraph
+        (result[result.length - 1].children as XastChild[]).push(elem);
+      } else {
+        // Strategy 2: Wrap orphaned list in new <p>
+        result.push(el('p', [elem]));
       }
+    } else {
+      result.push(elem);
     }
-
-    result.push(el);
   }
 
   return result;
