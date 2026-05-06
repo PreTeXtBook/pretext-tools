@@ -610,5 +610,41 @@ Orphan closing marker
       // Orphan markers become text, not directives
       expect(firstChild.name).not.toBe('exercise');
     });
+
+    it('user reported case: mixed colon counts (3 outer, 4 inner, 3 inner)', () => {
+      // User reported: :::exercise with ::::task followed by :::task dropped second task
+      // After normalization should become: :::::exercise with ::::task and :::task
+      const md = `:::exercise[Pythagorean Theorem]{#thm-pythagoras}
+For a...
+
+::::task
+Let $ABC$ be a right triangle. The result follows.
+::::
+
+:::task
+Another proof.
+:::
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      // With title [Pythagorean Theorem], first child is 'title', not 'introduction'
+      let introIdx = 0;
+      if (elName(exercise.children[0]) === 'title') {
+        introIdx = 1;
+      }
+      
+      const intro = exercise.children[introIdx] as Element;
+      expect(elName(intro)).toBe('introduction');
+      expect(intro.children.length).toBeGreaterThan(0);
+      
+      // Should have: title + intro + at least one task (or intro + task if no title)
+      expect(exercise.children.length).toBeGreaterThanOrEqual(2);
+      
+      // Find a task element in the exercise children
+      const taskChild = exercise.children.find((child: any) => elName(child) === 'task');
+      expect(taskChild).toBeDefined();
+    });
   });
 

@@ -1,5 +1,5 @@
 /**
- * Directive Normalizer
+ * Directive Normalizer (Two-Pass Algorithm)
  *
  * Transforms user-friendly flexible colon syntax into standard remark-directive format.
  *
@@ -9,6 +9,9 @@
  *   :::task
  *   Content
  *   :::
+ *   :::task
+ *   More
+ *   :::
  *   :::
  *
  * OUTPUT (normalized for remark-directive):
@@ -17,82 +20,182 @@
  *   :::task
  *   Content
  *   :::
+ *   :::task
+ *   More
+ *   :::
  *   ::::
  *
- * Rules:
- * 1. Track nesting depth per colon count
- * 2. When closing marker seen (colons + newline/EOF), match to innermost open at that depth
- * 3. Emit additional colons to outer directives so remark-directive sees proper nesting
- * 4. If closing marker has no matching open, leave unchanged (let remark-directive handle error)
+ * Algorithm (Two-Pass):
+ * - Pass 1: Parse markers, build nesting tree with parent references
+ * - Pass 2: Traverse tree bottom-up, compute final colon counts
+ *   (each parent = max(children) + 1, ensuring proper nesting)
+ * - Pass 3: Re-emit with adjusted markers
  */
 
 interface DirectiveMarker {
   colons: number;
   label: string | null;
   lineIndex: number;
-  isOpen: boolean; // true if has label, false if just colons
+  isOpen: boolean;
+}
+
+interface TreeNode {
+  colons: number; // Original opening colon count
+  finalColons: number; // Computed final colon count
+  label: string | null;
+  openLineIndex: number;
+  closeLineIndex: number | null;
+  children: TreeNode[];
+  parent: TreeNode | null;
 }
 
 /**
- * Parse a line to check if it's a directive marker (colons + optional label + optional braces)
- * Returns: { colons, label } or null if not a directive
- *
- * Valid markers:
- *   :::
- *   :::exercise
- *   :::exercise[Title]
- *   :::exercise{#id}
+ * Parse a line to check if it's a directive marker
  */
 function parseDirectiveMarker(line: string): DirectiveMarker | null {
   const trimmed = line.trim();
   if (!trimmed.startsWith(':')) return null;
 
-  // Count leading colons
   let colonCount = 0;
   for (let i = 0; i < trimmed.length; i++) {
     if (trimmed[i] === ':') colonCount++;
     else break;
   }
 
-  // Minimum 3 colons
   if (colonCount < 3) return null;
 
-  // After colons, either nothing or a label (word characters, brackets, braces)
   const afterColons = trimmed.slice(colonCount).trim();
   const labelMatch = afterColons.match(/^([a-zA-Z0-9_-]+)(\[.*?\])?(\{.*?\})?$/);
 
   if (afterColons === '') {
-    // Closing marker: just colons
     return { colons: colonCount, label: null, lineIndex: -1, isOpen: false };
   } else if (labelMatch) {
-    // Opening marker: colons + label
     return { colons: colonCount, label: labelMatch[0], lineIndex: -1, isOpen: true };
   }
 
-  // Invalid marker, ignore
   return null;
 }
 
 /**
- * Normalize markdown by adjusting colon counts for proper resting-directive nesting.
- *
- * Algorithm:
- * 1. Scan all lines for directive markers (open/close)
- * 2. Track a stack of open directives: { colons, lineIndex }
- * 3. When closing marker seen:
- *    - Find deepest open directive with same colon count
- *    - If not found, it's an error or unrelated marker (leave as-is)
- *    - If found, check if we need to emit extra colons (to satisfy outer nesting)
- * 4. Emit normalized markdown
- *
- * Key insight: remark-directive requires outer to have MORE colons than inner.
- * So if user writes both at :::, we increment outer to ::::
+ * Pass 1: Parse markers and build tree with proper parent-child relationships
+ */
+function buildTree(markers: Array<DirectiveMarker & { lineIndex: number }>): TreeNode[] {
+  const stack: TreeNode[] = []; // Stack of currently-open directives
+  const roots: TreeNode[] = [];
+
+  for (const marker of markers) {
+    if (marker.isOpen) {
+      // Create new node
+      const node: TreeNode = {
+        colons: marker.colons,
+        finalColons: marker.colons,
+        label: marker.label,
+        openLineIndex: marker.lineIndex,
+        closeLineIndex: null,
+        children: [],
+        parent: null,
+      };
+
+      // Attach to parent if exists
+      if (stack.length > 0) {
+        const parent = stack[stack.length - 1];
+        node.parent = parent;
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+
+      stack.push(node);
+    } else {
+      // Closing marker: find matching open
+      const matchIndex = findMatchingOpenInStack(stack, marker.colons);
+      if (matchIndex !== -1) {
+        const node = stack[matchIndex];
+        node.closeLineIndex = marker.lineIndex;
+        // Remove from stack (pop everything after this node first)
+        stack.splice(matchIndex, 1);
+      }
+      // If no match, it's an orphan closing marker—leave as literal
+    }
+  }
+
+  return roots;
+}
+
+/**
+ * Find matching open in stack (search from most recent downward)
+ */
+function findMatchingOpenInStack(stack: TreeNode[], colonCount: number): number {
+  for (let i = stack.length - 1; i >= 0; i--) {
+    if (stack[i].colons === colonCount) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Pass 2: Traverse tree bottom-up, compute final colon counts
+ * Each parent must have more colons than all its children
+ */
+function computeFinalColons(node: TreeNode): number {
+  if (node.children.length === 0) {
+    // Leaf: keep original colon count
+    node.finalColons = node.colons;
+  } else {
+    // Interior: must be greater than all children
+    const maxChildColons = Math.max(...node.children.map(computeFinalColons));
+    node.finalColons = Math.max(node.colons, maxChildColons + 1);
+  }
+  return node.finalColons;
+}
+
+/**
+ * Pass 3: Rebuild markdown with adjusted colon counts
+ */
+function rebuildMarkdown(
+  lines: string[],
+  roots: TreeNode[],
+  _allMarkers: Array<DirectiveMarker & { lineIndex: number }>
+): string[] {
+  const output = lines.slice();
+
+  // Collect all nodes (breadth-first traversal for easier processing)
+  const allNodes: TreeNode[] = [];
+  const queue: TreeNode[] = roots.slice();
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    allNodes.push(node);
+    queue.push(...node.children);
+  }
+
+  // Update opening and closing markers with final colon counts
+  for (const node of allNodes) {
+    if (node.openLineIndex >= 0) {
+      const oldMarkerLine = output[node.openLineIndex];
+      // Count leading colons to preserve the rest of the line
+      const colonCount = oldMarkerLine.match(/^:+/)?.[0].length || 3;
+      const rest = oldMarkerLine.slice(colonCount);
+      output[node.openLineIndex] = ':'.repeat(node.finalColons) + rest;
+    }
+
+    if (node.closeLineIndex !== null && node.closeLineIndex >= 0) {
+      output[node.closeLineIndex] = ':'.repeat(node.finalColons);
+    }
+  }
+
+  // For orphaned closing markers (no matching open), leave as-is
+  return output;
+}
+
+/**
+ * Main normalization function
  */
 export function normalizeDirectiveColons(markdown: string): string {
   const lines = markdown.split('\n');
   const markers: Array<DirectiveMarker & { lineIndex: number }> = [];
 
-  // Step 1: Identify all directive markers
+  // Pass 1a: Identify all markers
   for (let i = 0; i < lines.length; i++) {
     const parsed = parseDirectiveMarker(lines[i]);
     if (parsed) {
@@ -101,79 +204,19 @@ export function normalizeDirectiveColons(markdown: string): string {
   }
 
   if (markers.length === 0) {
-    // No directives, return unchanged
     return markdown;
   }
 
-  // Step 2: Build a stack-based nesting structure
-  // For each closing marker, find its matching opening marker and adjust outer colons
-  const stack: Array<{ colons: number; lineIndex: number; label: string | null }> = [];
-  const outputLines = lines.slice(); // Will be mutated
+  // Pass 1b: Build tree
+  const roots = buildTree(markers);
 
-  for (const marker of markers) {
-    if (marker.isOpen) {
-      // Opening marker: push onto stack
-      stack.push({ colons: marker.colons, lineIndex: marker.lineIndex, label: marker.label });
-    } else {
-      // Closing marker: find matching open directive
-      // Strategy: search stack from top (most recent) downward for matching colon count
-      const matchIndex = findMatchingOpen(stack, marker.colons);
-
-      if (matchIndex !== -1) {
-        const matched = stack[matchIndex];
-
-        // Check if we need to adjust colons for remark-directive nesting
-        // If there are any directives deeper than this one, we need outer to have more colons
-        if (matchIndex < stack.length - 1) {
-          // There are deeper directives. Increment outer to ensure remark-directive sees it as parent.
-          const innerMaxColons = Math.max(...stack.slice(matchIndex + 1).map((d) => d.colons));
-          if (matched.colons <= innerMaxColons) {
-            const newColons = innerMaxColons + 1;
-            const oldMarkerLine = outputLines[matched.lineIndex];
-            const newMarkerLine = ':'.repeat(newColons) + oldMarkerLine.slice(matched.colons);
-            outputLines[matched.lineIndex] = newMarkerLine;
-
-            // Also emit closing with new colon count
-            outputLines[marker.lineIndex] = ':'.repeat(newColons);
-          } else {
-            // Outer already has enough colons
-            outputLines[marker.lineIndex] = ':'.repeat(matched.colons);
-          }
-        } else {
-          // No deeper directives, emit closing with same colon count
-          outputLines[marker.lineIndex] = ':'.repeat(matched.colons);
-        }
-
-        // Remove matched directive from stack
-        // IMPORTANT: Use splice(matchIndex, 1) not pop() to handle out-of-order closing markers.
-        // For valid markdown (LIFO closing order), matchIndex will be stack.length - 1.
-        // For malformed markdown with out-of-order markers, splice ensures we remove the correct one.
-        stack.splice(matchIndex, 1);
-      } else {
-        // No matching open found. Leave the closing marker as-is.
-        // remark-directive will handle the error or treat as literal text.
-        outputLines[marker.lineIndex] = lines[marker.lineIndex];
-      }
-    }
+  // Pass 2: Compute final colon counts
+  for (const root of roots) {
+    computeFinalColons(root);
   }
 
-  return outputLines.join('\n');
-}
+  // Pass 3: Rebuild with new counts
+  const output = rebuildMarkdown(lines, roots, markers);
 
-/**
- * Find matching opening marker for a closing marker with given colon count.
- * Search from top of stack (most recent) downward.
- *
- * Returns index in stack, or -1 if not found.
- */
-function findMatchingOpen(
-  stack: Array<{ colons: number; lineIndex: number; label: string }>,
-  colonCount: number
-): number {
-  for (let i = stack.length - 1; i >= 0; i--) {
-    if (stack[i].colons === colonCount) {
-      return i;
-    }
-  }
-  return -1;
+  return output.join('\n');
 }
