@@ -40,7 +40,8 @@ import type { ContainerDirective } from 'mdast-util-directive';
 import type { Math as CustomMath } from './math-parser.js';
 import type { Root } from 'xast';
 import type { Element } from 'xast';
-import { DIRECTIVE_MAP, PROOF_SOLUTION_NAMES } from './directive-map.js';
+import { getDirectiveSpec, DIRECTIVE_MAP } from './directive-map.js';
+import { buildDirectiveWithSpec } from './directive-factory.js';
 import type { VisitContext, ConversionMessage } from './context.js';
 
 // ---------------------------------------------------------------------------
@@ -321,9 +322,9 @@ function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
 // ---------------------------------------------------------------------------
 
 function convertContainerDirective(node: ContainerDirective, ctx: VisitContext): Element | null {
-  const info = DIRECTIVE_MAP[node.name];
+  const spec = getDirectiveSpec(node.name);
 
-  if (!info) {
+  if (!spec) {
     if (ctx.messages) {
       ctx.messages.push({
         type: 'warning',
@@ -340,17 +341,16 @@ function convertContainerDirective(node: ContainerDirective, ctx: VisitContext):
 
   const childCtx = { ...ctx, ancestors: [...ctx.ancestors, node], depth: ctx.depth + 1 };
 
-  switch (info.category) {
-    case 'theorem-like':
-    case 'definition-like':
-      return buildTheoremLike(info.type, attrs, titleEl, body, childCtx);
-    case 'remark-like':
-    case 'proof-like':
-    case 'solution-like':
-      return buildContentBlock(info.type, attrs, titleEl, body, childCtx);
-    case 'example-like':
-      return buildExampleLike(info.type, attrs, titleEl, body, childCtx);
-  }
+  // Phase 2: Use factory pattern - single function applies semantic rules from spec
+  return buildDirectiveWithSpec(
+    spec,
+    attrs,
+    titleEl,
+    body,
+    childCtx,
+    (child, ctx) => convertBlock(child, ctx),
+    (directive, ctx) => convertContainerDirective(directive, ctx)
+  );
 }
 
 function extractDirectiveLabel(
@@ -381,65 +381,6 @@ function buildDirectiveAttrs(node: ContainerDirective): Record<string, string> |
     result[k === 'id' ? 'xml:id' : k] = v;
   }
   return Object.keys(result).length > 0 ? result : undefined;
-}
-
-function buildTheoremLike(
-  type: string,
-  attrs: Record<string, string> | undefined,
-  titleEl: Element | null,
-  children: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
-): Element {
-  const bodyNodes: Array<BlockContent | DefinitionContent> = [];
-  const proofNodes: ContainerDirective[] = [];
-
-  for (const child of children) {
-    if (
-      child.type === 'containerDirective' &&
-      PROOF_SOLUTION_NAMES.has((child as ContainerDirective).name)
-    ) {
-      proofNodes.push(child as ContainerDirective);
-    } else {
-      bodyNodes.push(child);
-    }
-  }
-
-  const statementChildren = convertBlockSequence(bodyNodes, ctx);
-
-  const result: Element[] = [];
-  if (titleEl) result.push(titleEl);
-  if (statementChildren.length > 0) {
-    result.push(el('statement', statementChildren));
-  }
-  for (const pd of proofNodes) {
-    const converted = convertContainerDirective(pd, ctx);
-    if (converted) result.push(converted);
-  }
-
-  return el(type, result, attrs);
-}
-
-function buildContentBlock(
-  type: string,
-  attrs: Record<string, string> | undefined,
-  titleEl: Element | null,
-  children: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
-): Element {
-  const converted: Element[] = [];
-  if (titleEl) converted.push(titleEl);
-  converted.push(...convertBlockSequence(children, ctx));
-  return el(type, converted, attrs);
-}
-
-function buildExampleLike(
-  type: string,
-  attrs: Record<string, string> | undefined,
-  titleEl: Element | null,
-  children: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
-): Element {
-  return buildContentBlock(type, attrs, titleEl, children, ctx);
 }
 
 // ---------------------------------------------------------------------------
