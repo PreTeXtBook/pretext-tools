@@ -648,3 +648,205 @@ Another proof.
     });
   });
 
+  describe('indentation-based directive syntax', () => {
+    it('basic single directive with indented content', () => {
+      const md = `Theorem[Pythagorean]{#thm}:
+  The statement goes here.
+  
+  More content.
+
+Plain text.`;
+      const tree = parse(md);
+      const theorem = tree.children[0] as Element;
+      expect(elName(theorem)).toBe('theorem');
+      
+      // Should have title + statement
+      const statement = theorem.children.find((child: any) => elName(child) === 'statement');
+      expect(statement).toBeDefined();
+    });
+
+    it('nested directives with indentation', () => {
+      const md = `Exercise[Basic]{#ex1}:
+  Solve this problem.
+  
+  Proof:
+    This is the solution.
+
+More text.`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      // Should have statement (since no nested tasks)
+      const statement = exercise.children.find((child: any) => elName(child) === 'statement');
+      expect(statement).toBeDefined();
+      
+      // Should have a proof directive nested inside
+      const proof = exercise.children.find((child: any) => elName(child) === 'proof');
+      expect(proof).toBeDefined();
+    });
+
+    it('deeply nested (3 levels) with indentation', () => {
+      const md = `Exercise:
+  An exercise.
+  
+  Task:
+    A task intro.
+    
+    Proof:
+      The proof.
+
+Outside.`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      const intro = exercise.children.find((child: any) => elName(child) === 'introduction');
+      expect(intro).toBeDefined();
+      
+      const task = exercise.children.find((child: any) => elName(child) === 'task');
+      expect(task).toBeDefined();
+      
+      if (task) {
+        const proof = task.children.find((child: any) => elName(child) === 'proof');
+        expect(proof).toBeDefined();
+      }
+    });
+
+    it('case-insensitive directive keywords', () => {
+      const md = `theorem:
+  Statement here.
+
+PROOF:
+  Proof here.`;
+      const tree = parse(md);
+      const theorem = tree.children[0] as Element;
+      expect(elName(theorem)).toBe('theorem');
+      
+      // The PROOF should be nested if it's indented, or a sibling if not
+      // In this case it's not indented, so it's a sibling
+      const proof = tree.children[1] as Element;
+      expect(elName(proof)).toBe('proof');
+    });
+
+    it('mixed indentation and colon syntax in same document', () => {
+      const md = `Exercise[First]:
+  Using indentation.
+
+:::theorem
+Using colons.
+:::`;
+      const tree = parse(md);
+      
+      // Should have exercise and theorem as siblings
+      const exercise = tree.children.find((child: any) => elName(child) === 'exercise');
+      const theorem = tree.children.find((child: any) => elName(child) === 'theorem');
+      
+      expect(exercise).toBeDefined();
+      expect(theorem).toBeDefined();
+    });
+
+    it('code and math blocks not treated as directives', () => {
+      const md = `Example:
+  Consider this code block:
+  
+  \`\`\`
+  Proof: This is code, not a directive
+  \`\`\`
+  
+  And $Theorem: x = y$ is inline math.`;
+      const tree = parse(md);
+      const example = tree.children[0] as Element;
+      expect(elName(example)).toBe('example');
+      
+      // The example should successfully parse without treating code/math as directives
+      expect(example.children.length).toBeGreaterThan(0);
+    });
+
+    it('preserves relative indentation of nested lists', () => {
+      const md = `Exercise:
+  Solve the following:
+  
+  - Item 1
+    - Sub-item 1a
+    - Sub-item 1b
+  - Item 2`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      expect(elName(exercise)).toBe('exercise');
+      
+      // Find the statement inside exercise (where content is wrapped)
+      const statement = exercise.children.find((child: any) => elName(child) === 'statement') as Element;
+      expect(statement).toBeDefined();
+      
+      // Find the ul (unordered list) inside statement
+      const ul = statement?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      expect(ul).toBeDefined();
+      
+      // First li should have nested ul
+      const firstLi = ul?.children?.[0] as Element;
+      const nestedUl = firstLi?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      
+      expect(nestedUl).toBeDefined();
+      expect(nestedUl?.children?.length).toBe(2); // Sub-item 1a and 1b
+    });
+
+    it('deeply nested lists (3 levels)', () => {
+      const md = `Theorem:
+  Main statement.
+  
+  - Level 1
+    - Level 2
+      - Level 3a
+      - Level 3b
+    - Level 2b`;
+      const tree = parse(md);
+      const theorem = tree.children[0] as Element;
+      expect(elName(theorem)).toBe('theorem');
+      
+      // Find statement inside theorem
+      const statement = theorem.children.find((child: any) => elName(child) === 'statement') as Element;
+      expect(statement).toBeDefined();
+      
+      // Find the ul inside statement
+      const ul = statement?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      expect(ul).toBeDefined();
+      
+      // Verify structure is preserved (not flattened) with 3 levels of nesting
+      const level1Li = ul?.children?.[0] as Element;
+      const level2Ul = level1Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      
+      expect(level2Ul).toBeDefined();
+      const level2Li = level2Ul?.children?.[0] as Element;
+      const level3Ul = level2Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      
+      expect(level3Ul).toBeDefined();
+      expect(level3Ul?.children?.length).toBe(2); // Level 3a and 3b
+    });
+
+    it('nested list with surrounding text', () => {
+      const md = `Solution:
+  First part of solution.
+  
+  Key steps:
+  - Step 1
+    - Details of step 1
+  - Step 2
+  
+  Conclusion here.`;
+      const tree = parse(md);
+      const solution = tree.children[0] as Element;
+      expect(elName(solution)).toBe('solution');
+      
+      // Solution doesn't wrap content in a statement, so look directly in solution
+      const ul = solution.children?.find((c: any) => elName(c) === 'ul') as Element;
+      expect(ul).toBeDefined();
+      
+      const listItems = ul?.children;
+      expect(listItems?.length).toBe(2); // Step 1 and Step 2
+      
+      const step1Li = listItems?.[0] as Element;
+      const step1NestedUl = step1Li?.children?.find((c: any) => elName(c) === 'ul') as Element;
+      expect(step1NestedUl).toBeDefined();
+    });
+  });
