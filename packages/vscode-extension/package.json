@@ -511,15 +511,15 @@
     "@pretextbook/format": "^0.0.5",
     "@pretextbook/latex-pretext": "^0.0.7",
     "@pretextbook/ptxast": "^0.0.1",
-    "@pretextbook/ptxast-util-from-xml": "^0.0.1",
-    "@pretextbook/ptxast-util-to-xml": "^0.0.1",
     "@pretextbook/remark-pretext": "^0.0.1",
     "@pretextbook/visual-editor": "^0.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "remark-directive": "^4.0.0",
     "remark-parse": "^11.0.0",
-    "unified": "^11.0.5"
+    "unified": "^11.0.5",
+    "xast-util-from-xml": "^4.0.0",
+    "xast-util-to-xml": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",

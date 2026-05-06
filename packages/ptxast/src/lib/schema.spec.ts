@@ -42,7 +42,8 @@ describe('schema helpers', () => {
       type: 'root' as const,
       children: [
         {
-          type: 'section' as const,
+          type: 'element' as const,
+          name: 'section',
           attributes: { bogus: '1' },
           children: [xref('sec-target')],
         },

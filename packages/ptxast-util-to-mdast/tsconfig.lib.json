@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
     "declaration": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client", "xast"]
   },
   "include": ["src/**/*.ts"],
   "exclude": [
@@ -23,9 +23,6 @@
   "references": [
     {
       "path": "../remark-pretext/tsconfig.lib.json"
-    },
-    {
-      "path": "../ptxast-util-from-xml/tsconfig.lib.json"
     },
     {
       "path": "../ptxast/tsconfig.lib.json"

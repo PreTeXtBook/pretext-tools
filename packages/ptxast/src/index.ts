@@ -1,42 +1,32 @@
 /**
  * @pretextbook/ptxast
  *
- * TypeScript type definitions for the PreTeXt Abstract Syntax Tree (ptxast).
+ * Typed xast (XML AST) definitions for PreTeXt documents.
  *
- * ptxast is a strongly-typed representation of PreTeXt documents, extending
- * the unist/xast ecosystem patterns. Each significant PreTeXt element gets
- * its own node type with typed children and attributes, rather than using a
- * generic Element with a string `name`.
+ * Exports two layers:
+ * 1. **Generated interfaces** (`generated-interfaces.ts`)  auto-generated from the official
+ *    PreTeXt RNG schema via `relax-ng-to-typescript`. Regenerate with `npm run generate-types`.
+ * 2. **Curated layer** (`curated.ts`)  handwritten type aliases, semantic union types,
+ *    value-element helpers, and backwards-compat aliases.
  *
- * ## Node type naming
- * Every ptxast node has a `type` field using the PreTeXt element name as-is
- * (e.g., `"theorem"`, `"section"`, `"p"`). This matches the XML tag names
- * used in PreTeXt source.
- *
- * ## Content model
- * - `PtxContent` — anything that can appear in a ptxast tree
- * - `PtxBlockContent` — block-level nodes (environments, paragraphs, lists)
- * - `PtxDivisionContent` — division-level nodes (sections, chapters, blocks)
- * - `PtxInlineContent` — inline nodes (text, math, emphasis, cross-refs)
- * - `PtxRoot` — the document root (wraps `<pretext>`)
+ * All nodes follow the xast convention:
+ *   `{ type: 'element', name: 'section', attributes: {...}, children: [...] }`
  *
  * @example
  * ```ts
- * import type { PtxRoot, Section, Theorem } from '@pretextbook/ptxast';
+ * import type { Root } from 'xast';
+ * import type { Section, Theorem, PtxBlockContent } from '@pretextbook/ptxast';
+ * import { section, theorem, p, text } from '@pretextbook/ptxast';
  * ```
  */
 
 export type {
-  // Base
-  PtxNode,
-  PtxData,
-
-  // Shared mixins
-  Titled,
-  Labeled,
-
   // Document-level
   PtxRoot,
+  Root,
+  Element,
+  Text as XastText,
+  ElementContent,
   Pretext,
   Book,
   Article,
@@ -177,9 +167,16 @@ export type {
   PtxContent,
   PtxBlockContent,
   PtxDivisionContent,
+  PtxDivisionElement,
   PtxInlineContent,
+  PtxInlineElement,
+  PtxBlockElement,
   PtxMathContent,
+  PtxTheoremLikeElement,
+  PtxAllElement,
 } from './types/index.js';
+
+export { getPtxTextContent, PTX_VALUE_ELEMENT_NAMES } from './types/curated.js';
 
 export { ptxSchemaElementChildren } from './types/generated.js';
 

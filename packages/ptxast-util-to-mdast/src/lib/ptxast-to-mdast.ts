@@ -1,5 +1,5 @@
 /**
- * ptxast-to-mdast: converts a ptxast PtxRoot into an mdast Root.
+ * ptxast-to-mdast: converts an xast Root (PreTeXt document) into an mdast Root.
  *
  * Division nodes (section/subsection/etc.) are flattened back to headings.
  * PreTeXt block environments (theorem/proof/definition/etc.) become
@@ -28,11 +28,8 @@ import type {
 } from 'mdast';
 import type { ContainerDirective } from 'mdast-util-directive';
 import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
-import type {
-  PtxRoot,
-  PtxContent,
-  Title,
-} from '@pretextbook/ptxast';
+import type { Root, Element, ElementContent } from '@pretextbook/ptxast';
+import { getPtxTextContent } from '@pretextbook/ptxast';
 
 // ---------------------------------------------------------------------------
 // Division metadata
@@ -127,11 +124,11 @@ const HAS_STATEMENT_WRAPPER = new Set(['theorem-like', 'definition-like']);
 // Public entry point
 // ---------------------------------------------------------------------------
 
-/** Convert a ptxast PtxRoot to an mdast Root. */
-export function ptxastToMdast(root: PtxRoot): MdastRoot {
+/** Convert an xast Root (PreTeXt document) to an mdast Root. */
+export function ptxastToMdast(root: Root): MdastRoot {
   return {
     type: 'root',
-    children: flattenChildren(root.children, 2),
+    children: flattenChildren(root.children as ElementContent[], 2),
   };
 }
 
@@ -140,23 +137,21 @@ export function ptxastToMdast(root: PtxRoot): MdastRoot {
 // ---------------------------------------------------------------------------
 
 /**
- * Convert an array of ptxast nodes to mdast, using `baseDepth` for any
- * divisions encountered at this level.  Divisions are flattened: a section
- * at depth 2 emits a `## heading` followed by its own children.
+ * Convert an array of xast ElementContent nodes to mdast, using `baseDepth`
+ * for any divisions encountered at this level.
  */
-function flattenChildren(nodes: PtxContent[], baseDepth: number): MdastContent[] {
+function flattenChildren(nodes: ElementContent[], baseDepth: number): MdastContent[] {
   const result: MdastContent[] = [];
   for (const node of nodes) {
-    if (TRANSPARENT_TYPES.has(node.type)) {
-      // Recurse into structural containers (pretext/book/article/etc.) without a heading
-      const obj = node as unknown as Record<string, unknown>;
-      const children = (obj['children'] as PtxContent[]) ?? [];
-      result.push(...flattenChildren(children, baseDepth));
-    } else if (DIVISION_TYPES.has(node.type)) {
-      const depth = (DIV_DEPTH[node.type] ?? baseDepth) as 1 | 2 | 3 | 4 | 5 | 6;
-      result.push(...flattenDivision(node, depth));
+    if (node.type !== 'element') continue;
+    const el = node as Element;
+    if (TRANSPARENT_TYPES.has(el.name)) {
+      result.push(...flattenChildren(el.children, baseDepth));
+    } else if (DIVISION_TYPES.has(el.name)) {
+      const depth = (DIV_DEPTH[el.name] ?? baseDepth) as 1 | 2 | 3 | 4 | 5 | 6;
+      result.push(...flattenDivision(el, depth));
     } else {
-      const converted = convertBlock(node);
+      const converted = convertBlock(el);
       if (converted !== null) result.push(converted);
     }
   }
@@ -164,29 +159,30 @@ function flattenChildren(nodes: PtxContent[], baseDepth: number): MdastContent[]
 }
 
 function flattenDivision(
-  node: PtxContent,
+  el: Element,
   depth: 1 | 2 | 3 | 4 | 5 | 6,
 ): MdastContent[] {
   const result: MdastContent[] = [];
-  const obj = node as unknown as Record<string, unknown>;
-  const attrs = obj['attributes'] as Record<string, string | undefined> | undefined;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+  const attrs = el.attributes ?? {};
+  const children = el.children;
 
-  // Extract title child
-  const titleNode = children.find((c) => c.type === 'title') as Title | undefined;
-  const restChildren = children.filter((c) => c.type !== 'title');
+  const titleNode = children.find(
+    (c) => c.type === 'element' && (c as Element).name === 'title',
+  ) as Element | undefined;
+  const restChildren = children.filter(
+    (c) => !(c.type === 'element' && (c as Element).name === 'title'),
+  );
 
   const heading: Heading = {
     type: 'heading',
     depth,
     children: titleNode ? titleNode.children.map(convertInlineNode).filter(notNull) : [],
-    ...(attrs?.['xml:id']
+    ...(attrs['xml:id']
       ? { data: { id: attrs['xml:id'], hProperties: { id: attrs['xml:id'] } } }
       : {}),
   };
   result.push(heading);
 
-  // Recurse: deeper divisions get depth + 1 (capped at 6)
   const childDepth = Math.min(depth + 1, 6) as 1 | 2 | 3 | 4 | 5 | 6;
   result.push(...flattenChildren(restChildren, childDepth));
 
@@ -197,20 +193,20 @@ function flattenDivision(
 // Block converters
 // ---------------------------------------------------------------------------
 
-function convertBlock(node: PtxContent): BlockContent | DefinitionContent | null {
-  switch (node.type) {
-    case 'p':          return convertP(node);
-    case 'blockquote': return convertBlockquote(node);
-    case 'ol':         return convertList(node, true);
-    case 'ul':         return convertList(node, false);
-    case 'program':    return convertProgram(node);
+function convertBlock(el: Element): BlockContent | DefinitionContent | null {
+  switch (el.name) {
+    case 'p':          return convertP(el);
+    case 'blockquote': return convertBlockquote(el);
+    case 'ol':         return convertList(el, true);
+    case 'ul':         return convertList(el, false);
+    case 'program':    return convertProgram(el);
     case 'me':
     case 'men':
     case 'md':
-    case 'mdn':        return convertDisplayMath(node);
+    case 'mdn':        return convertDisplayMath(el);
     default: {
-      const directive = TYPE_TO_DIRECTIVE.get(node.type);
-      if (directive) return convertDirective(node, directive);
+      const directive = TYPE_TO_DIRECTIVE.get(el.name);
+      if (directive) return convertDirective(el, directive);
       return null;
     }
   }
@@ -218,77 +214,74 @@ function convertBlock(node: PtxContent): BlockContent | DefinitionContent | null
 
 // ── Paragraph ───────────────────────────────────────────────────────────────
 
-function convertP(node: PtxContent): Paragraph {
-  const obj = node as unknown as Record<string, unknown>;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+function convertP(el: Element): Paragraph {
   return {
     type: 'paragraph',
-    children: children.map(convertInlineNode).filter(notNull),
+    children: el.children.map(convertInlineNode).filter(notNull),
   };
 }
 
 // ── Blockquote ───────────────────────────────────────────────────────────────
 
-function convertBlockquote(node: PtxContent): MdastBlockquote {
-  const obj = node as unknown as Record<string, unknown>;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+function convertBlockquote(el: Element): MdastBlockquote {
   return {
     type: 'blockquote',
-    children: children.map(convertBlock).filter(notNull) as BlockContent[],
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertBlock(c as Element))
+      .filter(notNull) as BlockContent[],
   };
 }
 
 // ── Lists ─────────────────────────────────────────────────────────────────────
 
-function convertList(node: PtxContent, ordered: boolean): List {
-  const obj = node as unknown as Record<string, unknown>;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+function convertList(el: Element, ordered: boolean): List {
   return {
     type: 'list',
     ordered,
     spread: false,
-    children: children.map(convertListItem),
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertListItem(c as Element)),
   };
 }
 
-function convertListItem(node: PtxContent): ListItem {
-  const obj = node as unknown as Record<string, unknown>;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+function convertListItem(el: Element): ListItem {
   return {
     type: 'listItem',
     spread: false,
-    children: children.map(convertBlock).filter(notNull) as BlockContent[],
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertBlock(c as Element))
+      .filter(notNull) as BlockContent[],
   };
 }
 
 // ── Code / program ───────────────────────────────────────────────────────────
 
-function convertProgram(node: PtxContent): Code {
-  const obj = node as unknown as Record<string, unknown>;
-  const attrs = obj['attributes'] as Record<string, string | undefined> | undefined;
+function convertProgram(el: Element): Code {
+  const attrs = el.attributes ?? {};
   return {
     type: 'code',
-    lang: attrs?.['language'] ?? null,
-    value: (obj['value'] as string) ?? '',
+    lang: attrs['language'] ?? null,
+    value: getPtxTextContent(el),
   };
 }
 
 // ── Display math ─────────────────────────────────────────────────────────────
 
-function convertDisplayMath(node: PtxContent): MdastMath {
-  const obj = node as unknown as Record<string, unknown>;
-  const children = (obj['children'] as Array<Record<string, unknown>>) ?? [];
-  const value = typeof obj['value'] === 'string'
-    ? (obj['value'] as string)
-    : children
-      .filter((child) => child['type'] === 'mrow' && typeof child['value'] === 'string')
-      .map((child) => child['value'] as string)
-      .join(' \\\\\n');
-
-  return {
-    type: 'math',
-    value,
-  };
+function convertDisplayMath(el: Element): MdastMath {
+  const children = el.children;
+  // Single-line: first child is a Text node
+  if (children.length > 0 && children[0].type === 'text') {
+    return { type: 'math', value: getPtxTextContent(el) };
+  }
+  // Multi-line: mrow elements
+  const value = children
+    .filter((child) => child.type === 'element' && (child as Element).name === 'mrow')
+    .map((child) => getPtxTextContent(child as Element))
+    .join(' \\\\\n');
+  return { type: 'math', value };
 }
 
 // ---------------------------------------------------------------------------
@@ -296,30 +289,25 @@ function convertDisplayMath(node: PtxContent): MdastMath {
 // ---------------------------------------------------------------------------
 
 function convertDirective(
-  node: PtxContent,
+  el: Element,
   meta: DirectiveMeta,
 ): ContainerDirective {
-  const obj = node as unknown as Record<string, unknown>;
-  const attrs = obj['attributes'] as Record<string, string | undefined> | undefined;
-  const children = (obj['children'] as PtxContent[]) ?? [];
+  const attrs = el.attributes ?? {};
+  const children = el.children;
 
-  // Build directive attributes (xml:id → id)
   const directiveAttrs: Record<string, string> = {};
-  if (attrs?.['xml:id']) directiveAttrs['id'] = attrs['xml:id'];
-  for (const [k, v] of Object.entries(attrs ?? {})) {
+  if (attrs['xml:id']) directiveAttrs['id'] = attrs['xml:id'];
+  for (const [k, v] of Object.entries(attrs)) {
     if (k === 'xml:id' || v == null) continue;
-    directiveAttrs[k] = v;
+    directiveAttrs[k] = v as string;
   }
 
-  // Extract <title> child for the directive label
-  const titleNode = children.find((c) => c.type === 'title') as
-    | { type: 'title'; children: PtxContent[] }
-    | undefined;
+  const titleNode = children.find(
+    (c: ElementContent) => c.type === 'element' && (c as Element).name === 'title',
+  ) as Element | undefined;
 
-  // Build directive children list
   const directiveChildren: (BlockContent | DefinitionContent)[] = [];
 
-  // Add label paragraph from title
   if (titleNode) {
     const labelPara: Paragraph & { data: { directiveLabel: boolean } } = {
       type: 'paragraph',
@@ -330,27 +318,27 @@ function convertDirective(
   }
 
   if (HAS_STATEMENT_WRAPPER.has(meta.category)) {
-    // theorem-like / definition-like: unwrap <statement>, then add proof children
     for (const child of children) {
-      if (child.type === 'title') continue;
-      if (child.type === 'statement') {
-        const stmtObj = child as unknown as Record<string, unknown>;
-        const stmtChildren = (stmtObj['children'] as PtxContent[]) ?? [];
-        for (const sc of stmtChildren) {
-          const c = convertBlock(sc);
+      if (child.type !== 'element') continue;
+      const childEl = child as Element;
+      if (childEl.name === 'title') continue;
+      if (childEl.name === 'statement') {
+        for (const sc of childEl.children) {
+          if (sc.type !== 'element') continue;
+          const c = convertBlock(sc as Element);
           if (c) directiveChildren.push(c);
         }
       } else {
-        // proof/solution nested directives after the statement
-        const c = convertBlock(child);
+        const c = convertBlock(childEl);
         if (c) directiveChildren.push(c);
       }
     }
   } else {
-    // remark-like / example-like / proof-like / solution-like: direct children
     for (const child of children) {
-      if (child.type === 'title') continue;
-      const c = convertBlock(child);
+      if (child.type !== 'element') continue;
+      const childEl = child as Element;
+      if (childEl.name === 'title') continue;
+      const c = convertBlock(childEl);
       if (c) directiveChildren.push(c);
     }
   }
@@ -367,36 +355,27 @@ function convertDirective(
 // Inline converters
 // ---------------------------------------------------------------------------
 
-function convertInlineNode(node: PtxContent): PhrasingContent | null {
-  switch (node.type) {
-    case 'text': {
-      const obj = node as unknown as Record<string, unknown>;
-      return { type: 'text', value: (obj['value'] as string) ?? '' } as Text;
-    }
-    case 'em': {
-      const obj = node as unknown as Record<string, unknown>;
-      const children = (obj['children'] as PtxContent[]) ?? [];
+function convertInlineNode(node: ElementContent): PhrasingContent | null {
+  if (node.type === 'text') {
+    return { type: 'text', value: (node as { value: string }).value ?? '' } as Text;
+  }
+  if (node.type !== 'element') return null;
+  const el = node as Element;
+  switch (el.name) {
+    case 'em':
       return {
         type: 'emphasis',
-        children: children.map(convertInlineNode).filter(notNull),
+        children: el.children.map(convertInlineNode).filter(notNull),
       } as Emphasis;
-    }
-    case 'alert': {
-      const obj = node as unknown as Record<string, unknown>;
-      const children = (obj['children'] as PtxContent[]) ?? [];
+    case 'alert':
       return {
         type: 'strong',
-        children: children.map(convertInlineNode).filter(notNull),
+        children: el.children.map(convertInlineNode).filter(notNull),
       } as Strong;
-    }
-    case 'c': {
-      const obj = node as unknown as Record<string, unknown>;
-      return { type: 'inlineCode', value: (obj['value'] as string) ?? '' } as InlineCode;
-    }
-    case 'm': {
-      const obj = node as unknown as Record<string, unknown>;
-      return { type: 'inlineMath', value: (obj['value'] as string) ?? '' } as InlineMath;
-    }
+    case 'c':
+      return { type: 'inlineCode', value: getPtxTextContent(el) } as InlineCode;
+    case 'm':
+      return { type: 'inlineMath', value: getPtxTextContent(el) } as InlineMath;
     default:
       return null;
   }

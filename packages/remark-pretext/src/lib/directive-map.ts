@@ -1,9 +1,8 @@
 /**
  * Maps directive names (from remark-directive's `:::name`) to their
- * corresponding ptxast node types and categories.
+ * corresponding xast element names and categories.
  *
- * The `type` value matches the ptxast node `type` discriminant exactly
- * (which in turn matches the PreTeXt XML element name).
+ * The `type` value is the PreTeXt XML element name (xast `name` field).
  */
 
 export type DirectiveCategory =
@@ -15,7 +14,7 @@ export type DirectiveCategory =
   | 'solution-like';
 
 export interface DirectiveInfo {
-  /** The ptxast node `type` string (= PreTeXt XML tag name). */
+  /** The PreTeXt XML element name (= xast `name` field). */
   type: string;
   category: DirectiveCategory;
 }

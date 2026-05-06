@@ -14,10 +14,9 @@ import { SKIP, visit } from "unist-util-visit";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { latexToPretext } from "@pretextbook/latex-pretext";
 import { remarkPretext } from "@pretextbook/remark-pretext";
-import { ptxastRootToXml } from "@pretextbook/ptxast-util-to-xml";
-import { ptxastFromXml } from "@pretextbook/ptxast-util-from-xml";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
-import type { PtxRoot, PtxContent } from "@pretextbook/ptxast";
+import type { PtxRoot } from "@pretextbook/ptxast";
+import type { Element } from "xast";
 
 export function cmdConvertFile() {
   pretextOutputChannel.append("Converting selected file to PreTeXt");
@@ -142,7 +141,7 @@ async function cmdConvertPMDToPretextExperimental(initialText: string) {
     .use(remarkPretext);
   const mdast = processor.parse(initialText);
   const ptxast = processor.runSync(mdast, { value: initialText }) as PtxRoot;
-  const newText = ptxastRootToXml(ptxast);
+  const newText = toXml(ptxast.children);
   return validateAndFormatConvertedPretext(
     "PreTeXt Markdown (Experimental ptxast)",
     newText,
@@ -167,14 +166,15 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
     // are parsed safely (xast-util-from-xml requires a single XML root).
     // The resulting PtxRoot has one child — the wrapper <root> element —
     // whose children are the actual fragment nodes.
-    const wrapped = ptxastFromXml(`<root>${xml}</root>`);
-    const wrapperElement = wrapped.children[0];
+    const wrapped = fromXml(`<root>${xml}</root>`);
+    const wrapperElement = wrapped.children.find(
+      (c): c is Element => c.type === "element",
+    );
     const fragmentRoot: PtxRoot = {
       type: "root",
-      children:
-        wrapperElement !== undefined && "children" in wrapperElement
-          ? (wrapperElement as { children: PtxContent[] }).children
-          : wrapped.children,
+      children: wrapperElement
+        ? wrapperElement.children
+        : (wrapped.children as PtxRoot["children"]),
     };
     const violations = collectPtxSchemaViolations(fragmentRoot);
     if (violations.length === 0) {
@@ -198,7 +198,7 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     pretextOutputChannel.appendLine(
-      `${sourceLabel} conversion could not be parsed back into ptxast: ${message}`,
+      `${sourceLabel} conversion could not be parsed back into xast: ${message}`,
     );
   }
 }

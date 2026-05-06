@@ -47,6 +47,10 @@
     "@unified-latex/unified-latex-types": "github:pretextplus/unified-latex#release/unified-latex-types",
     "tslib": "^2.3.0"
   },
+  "devDependencies": {
+    "@pretextbook/ptxast": "*",
+    "xast-util-from-xml": "^4.0.0"
+  },
   "publishConfig": {
     "access": "public"
   }
