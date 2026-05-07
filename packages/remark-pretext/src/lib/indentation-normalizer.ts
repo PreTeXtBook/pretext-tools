@@ -75,7 +75,7 @@ function parseIndentationDirective(line: string): string | null {
   
   // Validate attributes: must be empty or contain only bracket/brace syntax
   // Reject lines like "Proof by contradiction:" where there's arbitrary text after the directive name
-  if (attributes && !/^(\[.*?\]|\{.*?\})*$/.test(attributes)) {
+  if (attributes && !/^(\[[^\]]*\]|\{[^}]*\})*$/.test(attributes)) {
     // There's trailing text that isn't [...]/{...} syntax
     return null;
   }

@@ -201,10 +201,8 @@ function convertBlockSequence(
 
   for (let i = 0; i < nodes.length; i += 1) {
     const node = nodes[i];
-    // Pass the same parent context; only extend ancestors with this node
-    const childCtx = { ...ctx, ancestors: [...ctx.ancestors, node], depth: ctx.depth + 1 };
 
-    const converted = convertBlock(node, childCtx);
+    const converted = convertBlock(node, ctx);
     if (converted === null) continue;
 
     // Fold display-math-only paragraphs into paragraph flow.

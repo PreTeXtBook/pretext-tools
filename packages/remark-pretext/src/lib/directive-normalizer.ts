@@ -65,7 +65,7 @@ function parseDirectiveMarker(line: string): DirectiveMarker | null {
   if (colonCount < 3) return null;
 
   const afterColons = trimmed.slice(colonCount).trim();
-  const labelMatch = afterColons.match(/^([a-zA-Z0-9_-]+)(\[.*?\])?(\{.*?\})?$/);
+  const labelMatch = afterColons.match(/^([a-zA-Z0-9_-]+)(\[[^\]]*\])?(\{[^}]*\})?$/);
 
   if (afterColons === '') {
     return { colons: colonCount, label: null, lineIndex: -1, isOpen: false };
