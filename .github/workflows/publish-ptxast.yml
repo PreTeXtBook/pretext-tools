@@ -105,15 +105,15 @@ jobs:
 
       - name: Publish ptxast
         run: npm publish --provenance
-        working-directory: dist/packages/ptxast
+        working-directory: packages/ptxast
 
       - name: Publish remark-pretext
         run: npm publish --provenance
-        working-directory: dist/packages/remark-pretext
+        working-directory: packages/remark-pretext
 
       - name: Publish ptxast-util-to-mdast
         run: npm publish --provenance
-        working-directory: dist/packages/ptxast-util-to-mdast
+        working-directory: packages/ptxast-util-to-mdast
 
       # ── Commit bumped versions and create releases ────────────────────────
 
