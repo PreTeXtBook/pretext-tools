@@ -39,7 +39,7 @@ jobs:
       - name: Bump Version
         run: |
           cd packages/completions
-          npm version ${{ inputs.level }}
+          npm version ${{ inputs.level }} --no-git-tag-version
           cd ../..
 
       - name: Get Version
