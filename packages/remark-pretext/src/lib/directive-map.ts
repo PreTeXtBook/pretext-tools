@@ -122,7 +122,7 @@ export const DIRECTIVE_MAP: Readonly<Record<string, DirectiveInfo>> = DIRECTIVE_
 
 /** Get directive spec, or undefined if not found. */
 export function getDirectiveSpec(name: string): DirectiveSpec | undefined {
-  return DIRECTIVE_SPEC_TABLE[name];
+  return DIRECTIVE_SPEC_TABLE[name.toLowerCase()];
 }
 
 /** Set of directive names that are proof/solution-like (used when separating statement siblings). */

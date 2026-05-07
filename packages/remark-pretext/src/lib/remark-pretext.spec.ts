@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { remarkPretext, mdastToPtxast } from '../index.js';
 import remarkMath from './math-parser.js';
 import { mdastToPtxastWithDiagnostics } from './mdast-to-ptxast.js';
+import { normalizeDirectiveColons } from './directive-normalizer.js';
 import type { Element, Root, Text as XastText } from 'xast';
 import { toXml } from 'xast-util-to-xml';
 import { fromXml } from 'xast-util-from-xml';
@@ -739,6 +740,27 @@ Another proof.
 
       expect(elName(program)).toBe('program');
       expect(getPtxTextContent(program)).toBe(':::exercise\n:::task\n:::\n:::');
+    });
+
+    it('does not keep malformed non-top stack matches open', () => {
+      const md = `::::exercise
+:::task
+::::
+:::example
+:::
+::::`;
+      const normalized = normalizeDirectiveColons(md);
+      const lines = normalized.split('\n');
+
+      expect(lines[2]).toBe('::::');
+      expect(lines[3]).toBe(':::example');
+      expect(lines[4]).toBe(':::');
+    });
+
+    it('accepts mixed-case directive names', () => {
+      const tree = parse(':::Theorem\nContent.\n:::');
+      const theorem = tree.children[0] as Element;
+      expect(elName(theorem)).toBe('theorem');
     });
   });
 

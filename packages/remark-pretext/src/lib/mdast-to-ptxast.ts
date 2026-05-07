@@ -215,7 +215,7 @@ function convertBlockSequence(
     ) {
       const md = converted.children[0] as Element;
       const prev = result[result.length - 1];
-      const nextConverted = i + 1 < nodes.length ? convertBlock(nodes[i + 1], childCtx) : null;
+      const nextConverted = i + 1 < nodes.length ? convertBlock(nodes[i + 1], ctx) : null;
       const nextParagraphChildren = nextConverted?.name === 'p' ? nextConverted.children : null;
 
       if (prev?.name === 'p') {

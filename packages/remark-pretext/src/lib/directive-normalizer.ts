@@ -107,31 +107,18 @@ function buildTree(markers: Array<DirectiveMarker & { lineIndex: number }>): Tre
 
       stack.push(node);
     } else {
-      // Closing marker: find matching open
-      const matchIndex = findMatchingOpenInStack(stack, marker.colons);
-      if (matchIndex !== -1) {
-        const node = stack[matchIndex];
+      // Closing marker: only close the most recently-open directive.
+      // Non-top matches are treated as orphan closing markers.
+      const node = stack[stack.length - 1];
+      if (node && node.colons === marker.colons) {
         node.closeLineIndex = marker.lineIndex;
-        // Remove from stack (pop everything after this node first)
-        stack.splice(matchIndex, 1);
+        stack.pop();
       }
       // If no match, it's an orphan closing marker—leave as literal
     }
   }
 
   return roots;
-}
-
-/**
- * Find matching open in stack (search from most recent downward)
- */
-function findMatchingOpenInStack(stack: TreeNode[], colonCount: number): number {
-  for (let i = stack.length - 1; i >= 0; i--) {
-    if (stack[i].colons === colonCount) {
-      return i;
-    }
-  }
-  return -1;
 }
 
 /**
