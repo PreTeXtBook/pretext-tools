@@ -27,9 +27,8 @@
  * 1. Track fenced code blocks (``` and ~~~) and skip directive detection inside them
  * 2. Parse each line to detect directive markers (Keyword[...]{...}:)
  * 3. Track indentation stack: when indent increases, open a block; when decreases, close block(s)
- * 4. Remove relative indentation from content lines inside directives
- * 5. Convert to colon syntax with proper nesting depth (validated against DIRECTIVE_SPEC_TABLE)
- * 6. Preserve all non-directive content and indentation outside directives and code fences
+ * 4. Convert to colon syntax with proper nesting depth (validated against DIRECTIVE_SPEC_TABLE)
+ * 5. Preserve all non-directive content and indentation outside directives and code fences
  */
 
 import { DIRECTIVE_SPEC_TABLE } from './directive-map.js';
@@ -44,7 +43,6 @@ interface IndentationState {
 interface DirectiveOpen {
   label: string; // The directive name with attributes (e.g., "theorem[Pythagorean]{#thm}")
   indentLevel: number; // Indentation level where this directive opened
-  baselineIndent: number; // Baseline: amount of indentation to remove from content (the marker's own indent)
   colonCount: number; // Colon count to use (computed based on nesting)
 }
 
@@ -125,29 +123,6 @@ function hasIndentedBody(lines: string[], currentIndex: number): boolean {
   
   // No indented body found
   return false;
-}
-
-/**
- * Remove leading indentation from a line by a fixed amount
- */
-function removeIndentAmount(line: string, amountToRemove: number): string {
-  let removed = 0;
-  let i = 0;
-  
-  // Remove up to amountToRemove spaces/tabs
-  while (i < line.length && removed < amountToRemove) {
-    if (line[i] === ' ') {
-      removed += 1;
-      i += 1;
-    } else if (line[i] === '\t') {
-      removed += 4;
-      i += 1;
-    } else {
-      break;
-    }
-  }
-  
-  return line.slice(i);
 }
 
 /**
@@ -241,7 +216,6 @@ export function normalizeIndentationDirectives(markdown: string): string {
       stack.openDirectives.push({
         label: lowercaseLabel,
         indentLevel,
-        baselineIndent: indentLevel, // Track the directive marker's indentation
         colonCount,
       });
       stack.level = indentLevel;

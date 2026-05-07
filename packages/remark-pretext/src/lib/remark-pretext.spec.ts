@@ -4,6 +4,7 @@ import remarkDirective from 'remark-directive';
 import { describe, it, expect } from 'vitest';
 import { remarkPretext, mdastToPtxast } from '../index.js';
 import remarkMath from './math-parser.js';
+import { mdastToPtxastWithDiagnostics } from './mdast-to-ptxast.js';
 import type { Element, Root, Text as XastText } from 'xast';
 import { toXml } from 'xast-util-to-xml';
 import { fromXml } from 'xast-util-from-xml';
@@ -18,6 +19,12 @@ function parse(md: string): Root {
     .use(remarkPretext);
   const mdast = processor.parse(md);
   return processor.runSync(mdast, { value: md }) as unknown as Root;
+}
+
+function parseWithDiagnostics(md: string) {
+  const parser = unified().use(remarkParse).use(remarkDirective);
+  const mdast = parser.parse(md) as MdastRoot;
+  return mdastToPtxastWithDiagnostics(mdast, md);
 }
 
 function elName(node: unknown): string {
@@ -536,6 +543,54 @@ Task content.
       const task = project.children[1] as Element;
       expect(elName(task)).toBe('task');
     });
+
+    it('drops interstitial non-task content and wraps trailing content in conclusion', () => {
+      const md = `:::exercise
+Intro text.
+
+:::task
+Task 1.
+:::
+
+Dropped between tasks.
+
+:::task
+Task 2.
+:::
+
+Concluding text.
+:::`;
+      const tree = parse(md);
+      const exercise = tree.children[0] as Element;
+      const xml = toXml(tree);
+
+      expect(elName(exercise.children[0])).toBe('introduction');
+      expect(elName(exercise.children[1])).toBe('task');
+      expect(elName(exercise.children[2])).toBe('task');
+      expect(elName(exercise.children[3])).toBe('conclusion');
+      expect(xml).not.toContain('Dropped between tasks.');
+      expect(xml).toContain('Concluding text.');
+    });
+
+    it('records warning when dropping content between tasks', () => {
+      const md = `::::exercise
+:::task
+Task 1.
+:::
+
+Dropped between tasks.
+
+:::task
+Task 2.
+:::
+::::`;
+      const result = parseWithDiagnostics(md);
+      const warning = result.messages.find(
+        (message) => message.category === 'dropped-content-between-tasks'
+      );
+
+      expect(warning).toBeDefined();
+    });
   });
 
   describe('colon normalization (flexible directive syntax)', () => {
@@ -670,6 +725,20 @@ Another proof.
       // Find a task element in the exercise children
       const taskChild = exercise.children.find((child: any) => elName(child) === 'task');
       expect(taskChild).toBeDefined();
+    });
+
+    it('does not rewrite ::: markers inside fenced code blocks', () => {
+      const md = `\`\`\`md
+:::exercise
+:::task
+:::
+:::
+\`\`\``;
+      const tree = parse(md);
+      const program = tree.children[0] as Element;
+
+      expect(elName(program)).toBe('program');
+      expect(getPtxTextContent(program)).toBe(':::exercise\n:::task\n:::\n:::');
     });
   });
 

@@ -42,6 +42,13 @@ function isTaskNode(node: BlockContent | DefinitionContent): boolean {
   );
 }
 
+function isProofSolutionNode(node: BlockContent | DefinitionContent): boolean {
+  return (
+    node.type === 'containerDirective' &&
+    PROOF_SOLUTION_NAMES.has((node as ContainerDirective).name)
+  );
+}
+
 /**
  * Nest lists inside paragraphs (PreTeXt spec requires lists in <p> tags).
  * Two strategies:
@@ -108,12 +115,42 @@ export function buildDirectiveWithSpec(
     const firstTaskIndex = children.findIndex(isTaskNode);
     
     if (firstTaskIndex !== -1) {
-      // Tasks exist: separate intro content from task nodes
+      // Tasks exist: separate intro content, task nodes, and post-task content
+      const taskIndexes = children
+        .map((child, index) => (isTaskNode(child) ? index : -1))
+        .filter((index) => index >= 0);
+      const lastTaskIndex = taskIndexes[taskIndexes.length - 1];
       const introContent = children.slice(0, firstTaskIndex);
       const taskNodes = children.slice(firstTaskIndex).filter(isTaskNode);
-      const proofNodes = children.slice(firstTaskIndex).filter(
-        (node) => node.type === 'containerDirective' && PROOF_SOLUTION_NAMES.has((node as ContainerDirective).name)
-      );
+      const droppedBetweenTasks: Array<BlockContent | DefinitionContent> = [];
+      const conclusionNodes: Array<BlockContent | DefinitionContent> = [];
+      const proofNodes: ContainerDirective[] = [];
+
+      for (let i = firstTaskIndex; i < children.length; i += 1) {
+        const node = children[i];
+        if (isTaskNode(node)) continue;
+
+        if (i < lastTaskIndex) {
+          droppedBetweenTasks.push(node);
+          continue;
+        }
+
+        if (isProofSolutionNode(node)) {
+          proofNodes.push(node as ContainerDirective);
+          continue;
+        }
+
+        conclusionNodes.push(node);
+      }
+
+      if (droppedBetweenTasks.length > 0 && ctx.messages) {
+        ctx.messages.push({
+          type: 'warning',
+          reason: `Dropped ${droppedBetweenTasks.length} non-task node(s) between task directives in ${spec.type}.`,
+          category: 'dropped-content-between-tasks',
+          position: droppedBetweenTasks[0].position?.start,
+        });
+      }
 
       // Add introduction wrapper if intro content exists
       if (introContent.length > 0) {
@@ -133,9 +170,20 @@ export function buildDirectiveWithSpec(
         if (converted) result.push(converted);
       }
 
+      if (conclusionNodes.length > 0) {
+        const conclusionChildren = nestListsInParagraphs(
+          conclusionNodes
+            .map((child) => convertBlock(child, ctx))
+            .filter((n): n is Element => n !== null)
+        );
+        if (conclusionChildren.length > 0) {
+          result.push(el('conclusion', conclusionChildren));
+        }
+      }
+
       // Add proof/solution siblings (not inside tasks)
       for (const proofNode of proofNodes) {
-        const converted = convertDirective(proofNode as ContainerDirective, ctx);
+        const converted = convertDirective(proofNode, ctx);
         if (converted) result.push(converted);
       }
     } else {

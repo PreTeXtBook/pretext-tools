@@ -194,10 +194,31 @@ function rebuildMarkdown(
 export function normalizeDirectiveColons(markdown: string): string {
   const lines = markdown.split('\n');
   const markers: Array<DirectiveMarker & { lineIndex: number }> = [];
+  let inCodeFence = false;
+  let codeFenceMarker: string | null = null;
 
   // Pass 1a: Identify all markers
   for (let i = 0; i < lines.length; i++) {
-    const parsed = parseDirectiveMarker(lines[i]);
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    const codeFenceMatch = trimmedLine.match(/^(`{3,}|~{3,})/);
+    if (codeFenceMatch) {
+      const marker = codeFenceMatch[1];
+      if (!inCodeFence) {
+        inCodeFence = true;
+        codeFenceMarker = marker;
+      } else if (codeFenceMarker && trimmedLine.startsWith(codeFenceMarker)) {
+        inCodeFence = false;
+        codeFenceMarker = null;
+      }
+      continue;
+    }
+
+    if (inCodeFence) {
+      continue;
+    }
+
+    const parsed = parseDirectiveMarker(line);
     if (parsed) {
       markers.push({ ...parsed, lineIndex: i });
     }
