@@ -116,9 +116,12 @@ export function buildDirectiveWithSpec(
     
     if (firstTaskIndex !== -1) {
       // Tasks exist: separate intro content, task nodes, and post-task content
-      const taskIndexes = children
-        .map((child, index) => (isTaskNode(child) ? index : -1))
-        .filter((index) => index >= 0);
+      const taskIndexes: number[] = [];
+      for (let i = 0; i < children.length; i++) {
+        if (isTaskNode(children[i])) {
+          taskIndexes.push(i);
+        }
+      }
       const lastTaskIndex = taskIndexes[taskIndexes.length - 1];
       const introContent = children.slice(0, firstTaskIndex);
       const taskNodes = children.slice(firstTaskIndex).filter(isTaskNode);
@@ -126,7 +129,7 @@ export function buildDirectiveWithSpec(
       const conclusionNodes: Array<BlockContent | DefinitionContent> = [];
       const proofNodes: ContainerDirective[] = [];
 
-      for (let i = firstTaskIndex; i < children.length; i += 1) {
+      for (let i = firstTaskIndex; i < children.length; i++) {
         const node = children[i];
         if (isTaskNode(node)) continue;
 
@@ -143,8 +146,9 @@ export function buildDirectiveWithSpec(
         conclusionNodes.push(node);
       }
 
-      if (droppedBetweenTasks.length > 0 && ctx.messages) {
-        ctx.messages.push({
+      if (droppedBetweenTasks.length > 0) {
+        const messages = ctx.messages ?? (ctx.messages = []);
+        messages.push({
           type: 'warning',
           reason: `Dropped ${droppedBetweenTasks.length} non-task node(s) between task directives in ${spec.type}.`,
           category: 'dropped-content-between-tasks',

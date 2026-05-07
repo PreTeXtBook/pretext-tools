@@ -207,7 +207,11 @@ export function normalizeDirectiveColons(markdown: string): string {
       if (!inCodeFence) {
         inCodeFence = true;
         codeFenceMarker = marker;
-      } else if (codeFenceMarker && trimmedLine.startsWith(codeFenceMarker)) {
+      } else if (
+        codeFenceMarker &&
+        marker[0] === codeFenceMarker[0] &&
+        marker.length >= codeFenceMarker.length
+      ) {
         inCodeFence = false;
         codeFenceMarker = null;
       }
