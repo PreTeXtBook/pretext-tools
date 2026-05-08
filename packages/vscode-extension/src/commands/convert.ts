@@ -1,8 +1,5 @@
 import { Range, window, workspace } from "vscode";
-import { markdownToPretext } from "md2ptx";
-import { unified } from "unified";
-import remarkDirective from "remark-directive";
-import remarkParse from "remark-parse";
+import { markdownToPretext as md2ptx } from "md2ptx";
 import { pretextOutputChannel } from "../ui";
 import { convertToPretext } from "../importFiles";
 // @ts-expect-error frankenmarkup does not publish types.
@@ -13,7 +10,7 @@ import { toXml } from "xast-util-to-xml";
 import { SKIP, visit } from "unist-util-visit";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { latexToPretext } from "@pretextbook/latex-pretext";
-import { remarkPretext } from "@pretextbook/remark-pretext";
+import { markdownToPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
 import type { Element } from "xast";
@@ -77,7 +74,7 @@ export async function cmdConvertText() {
         case "Classic Markdown":
           convertedText = await validateAndFormatConvertedPretext(
             "Classic Markdown",
-            await markdownToPretext(initialText),
+            await md2ptx(initialText),
           );
           break;
         case "PreTeXt Markdown":
@@ -135,13 +132,7 @@ async function cmdConvertPMDToPretextExperimental(initialText: string) {
   pretextOutputChannel.appendLine(
     "PreTeXt Markdown ptxast conversion is experimental. Use with care.",
   );
-  const processor = unified()
-    .use(remarkParse)
-    .use(remarkDirective)
-    .use(remarkPretext);
-  const mdast = processor.parse(initialText);
-  const ptxast = processor.runSync(mdast, { value: initialText }) as PtxRoot;
-  const newText = toXml(ptxast.children);
+  const newText = markdownToPretext(initialText);
   return validateAndFormatConvertedPretext(
     "PreTeXt Markdown (Experimental ptxast)",
     newText,
