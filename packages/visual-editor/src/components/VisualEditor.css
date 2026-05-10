@@ -37,6 +37,16 @@
   cursor: pointer;
 }
 
+.pretext-plus-editor__visual-editor-hint {
+  position: absolute;
+  right: 0;
+  margin: 0;
+  color: #4b5563;
+  font-size: 0.875rem;
+  text-align: right;
+  max-width: 20rem;
+}
+
 .pretext-plus-editor__visual-editor-content {
   flex: 1;
   overflow-y: auto;

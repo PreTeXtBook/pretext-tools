@@ -26,7 +26,15 @@ const axiomLikeElements = [
   "principle",
 ];
 
-const divisions = ["introduction", "part", "chapter", "section", "subsection", "worksheet"];
+const divisions = [
+  "introduction",
+  "conclusion",
+  "part",
+  "chapter",
+  "section",
+  "subsection",
+  "worksheet",
+];
 
 const exampleLikeElements = ["example", "question", "problem"];
 
