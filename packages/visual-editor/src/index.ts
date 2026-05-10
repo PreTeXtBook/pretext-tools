@@ -1,5 +1,8 @@
 // Main exports for using the visual-editor as a library
 
+// Import the VisualEditor component to ensure CSS is bundled
+import "./components/VisualEditor";
+
 // Export all TipTap extensions
 export { default as AxiomLike } from "./extensions/AxiomLike";
 export { default as Blocks } from "./extensions/Blocks";
