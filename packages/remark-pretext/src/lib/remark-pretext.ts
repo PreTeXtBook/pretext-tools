@@ -45,7 +45,14 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
       const indentNormalized = normalizeIndentationDirectives(file.value);
       const normalized = normalizeDirectiveColons(indentNormalized);
       const tokenized = tokenizeMathInMarkdown(normalized);
-      const parser = unified().use(remarkParse).use(remarkDirective);
+      // Disable indented code blocks: this markdown dialect uses indentation
+      // for Python-style directives, not for code blocks (use fenced ``` instead).
+      // Must use processor.data('micromarkExtensions') — remark-parse v11 ignores
+      // 'extensions' passed directly as plugin options and only reads from data().
+      const parser = unified()
+        .data('micromarkExtensions', [{ disable: { null: ['codeIndented'] } }])
+        .use(remarkParse)
+        .use(remarkDirective);
       const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
       applyMathTokens(reparsed, tokenized.tokens);
       return mdastToPtxast(reparsed, tokenized.markdown); // pass tokenized source for delimiter detection

@@ -44,6 +44,7 @@ interface DirectiveOpen {
   label: string; // The directive name with attributes (e.g., "theorem[Pythagorean]{#thm}")
   indentLevel: number; // Indentation level where this directive opened
   colonCount: number; // Colon count to use (computed based on nesting)
+  bodyBaseIndent: number; // Leading spaces of first body line (-1 = not yet seen)
 }
 
 /**
@@ -133,6 +134,27 @@ function isBlankLine(line: string): boolean {
 }
 
 /**
+ * Strip exactly `count` leading spaces (or tab=4 spaces) from a line.
+ * Stops early if the line has fewer leading spaces than requested.
+ */
+function stripLeadingSpaces(line: string, count: number): string {
+  let stripped = 0;
+  let i = 0;
+  while (i < line.length && stripped < count) {
+    if (line[i] === ' ') {
+      stripped++;
+      i++;
+    } else if (line[i] === '\t') {
+      stripped += 4;
+      i++;
+    } else {
+      break;
+    }
+  }
+  return line.slice(i);
+}
+
+/**
  * Normalize indentation-based syntax to colon-based syntax
  */
 export function normalizeIndentationDirectives(markdown: string): string {
@@ -217,6 +239,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
         label: lowercaseLabel,
         indentLevel,
         colonCount,
+        bodyBaseIndent: -1,
       });
       stack.level = indentLevel;
     } else {
@@ -234,10 +257,15 @@ export function normalizeIndentationDirectives(markdown: string): string {
         }
       }
 
-      // If we're inside a directive, preserve the original line as-is
-      // remark-directive will handle extracting and dedenting the body
+      // If we're inside a directive, strip the body's base indentation so that
+      // content doesn't appear indented to the remark parser (which would
+      // otherwise interpret 4-space lines as indented code blocks).
       if (stack.openDirectives.length > 0) {
-        output.push(line);
+        const topDirective = stack.openDirectives[stack.openDirectives.length - 1];
+        if (topDirective.bodyBaseIndent < 0) {
+          topDirective.bodyBaseIndent = indentLevel;
+        }
+        output.push(stripLeadingSpaces(line, topDirective.bodyBaseIndent));
       } else {
         // Outside any directive, preserve the original line
         output.push(line);

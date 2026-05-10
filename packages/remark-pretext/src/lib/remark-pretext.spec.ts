@@ -985,4 +985,36 @@ Using colons.
       const step1NestedUl = step1P?.children?.find((c: any) => elName(c) === 'ul') as Element;
       expect(step1NestedUl).toBeDefined();
     });
+
+    it('4-space indented body is not parsed as code block', () => {
+      // Regression: body with 4-space indent was previously parsed as a <pre> code block
+      const md = `Theorem:
+    This is the theorem statement.
+
+Plain text after.`;
+      const tree = parse(md);
+      const theorem = tree.children[0] as Element;
+      expect(elName(theorem)).toBe('theorem');
+      const statement = theorem.children.find((c: any) => elName(c) === 'statement') as Element;
+      expect(statement).toBeDefined();
+      // The content must be a paragraph, not a code block
+      const p = statement?.children?.find((c: any) => elName(c) === 'p') as Element;
+      expect(p).toBeDefined();
+      expect(tree.children.some((c: any) => elName(c) === 'pre')).toBe(false);
+    });
+
+    it('4-space indented list inside directive is parsed as a list', () => {
+      const md = `Example:
+    Some intro text.
+
+    - First item
+    - Second item`;
+      const tree = parse(md);
+      const example = tree.children[0] as Element;
+      expect(elName(example)).toBe('example');
+      // The list should be preserved, not turned into a code block
+      const allNames = nodeNameCounts(tree);
+      expect(allNames['ul']).toBeGreaterThanOrEqual(1);
+      expect(allNames['pre']).toBeUndefined();
+    });
   });
