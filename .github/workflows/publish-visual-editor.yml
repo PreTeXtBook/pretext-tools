@@ -12,6 +12,11 @@ on:
           - "patch"
           - "minor"
           - "major"
+      update_internal_deps:
+        description: "Update internal monorepo dependency versions"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -33,8 +38,14 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Update internal monorepo dependency versions
+        if: ${{ inputs.update_internal_deps }}
+        run: node ./scripts/update-internal-deps.mjs
+
       - name: Build Package
-        run: npm run build:lib -w @pretextbook/visual-editor
+        run: |
+          npm run build -w @pretextbook/format
+          npm run build:lib -w @pretextbook/visual-editor
 
       - name: Bump Version
         run: |
@@ -55,7 +66,7 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git add packages/visual-editor/package.json
+          git add packages/*/package.json
           git commit -m "chore(visual-editor): bump to v${{ steps.version.outputs.VERSION }}"
           git push origin main
 

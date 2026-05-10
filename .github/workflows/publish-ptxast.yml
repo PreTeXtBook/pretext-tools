@@ -12,6 +12,11 @@ on:
           - "patch"
           - "minor"
           - "major"
+      update_internal_deps:
+        description: "Update internal monorepo dependency versions"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: publish-ptxast
@@ -36,6 +41,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Update internal monorepo dependency versions
+        if: ${{ inputs.update_internal_deps }}
+        run: node ./scripts/update-internal-deps.mjs
 
       # ── Build all packages in dependency order ────────────────────────────
       # ptxast has no internal deps, must be built first.
@@ -121,10 +130,7 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git add \
-            packages/ptxast/package.json \
-            packages/remark-pretext/package.json \
-            packages/ptxast-util-to-mdast/package.json
+          git add packages/*/package.json
           git commit -m "chore(ptxast): bump packages to v${{ steps.versions.outputs.PTXAST }}"
           git push origin ${{ github.ref_name }}
 

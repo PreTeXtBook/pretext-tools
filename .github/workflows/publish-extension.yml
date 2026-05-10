@@ -12,6 +12,11 @@ on:
           - "patch"
           - "minor"
           - "major"
+      update_internal_deps:
+        description: "Update internal monorepo dependency versions"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -30,6 +35,10 @@ jobs:
 
       - name: Install Dependencies
         run: npm install
+
+      - name: Update internal monorepo dependency versions
+        if: ${{ inputs.update_internal_deps }}
+        run: node ./scripts/update-internal-deps.mjs
 
       - name: Set up git user
         run: |
