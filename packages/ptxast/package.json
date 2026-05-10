@@ -6,12 +6,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pretextbook/pretext-tools.git"
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git"
   },
   "bugs": {
-    "url": "https://github.com/pretextbook/pretext-tools/issues"
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/pretextbook/pretext-tools/packages/ptxast#readme",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/ptxast#readme",
   "private": false,
   "type": "module",
   "main": "./index.cjs",

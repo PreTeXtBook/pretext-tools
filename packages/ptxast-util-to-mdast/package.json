@@ -6,13 +6,13 @@
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pretextbook/pretext-tools.git",
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git",
     "directory": "packages/ptxast-util-to-mdast"
   },
   "bugs": {
-    "url": "https://github.com/pretextbook/pretext-tools/issues"
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/pretextbook/pretext-tools/packages/ptxast-util-to-mdast#readme",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/ptxast-util-to-mdast#readme",
   "private": false,
   "type": "module",
   "main": "./index.cjs",
