@@ -1,1 +1,1 @@
-module.exports = require('../../dist/packages/remark-pretext/index.cjs');
+module.exports = require('./dist/index.cjs');

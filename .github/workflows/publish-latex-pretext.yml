@@ -51,7 +51,7 @@ jobs:
 
       - name: Publish to npm
         run: |
-          cd dist/packages/latex-pretext
+          cd packages/latex-pretext
           npm publish --provenance
 
       - name: Commit and Push

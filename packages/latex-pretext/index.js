@@ -1,1 +1,1 @@
-export * from '../../dist/packages/latex-pretext/index.js';
+export * from './dist/index.js';

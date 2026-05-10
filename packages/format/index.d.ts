@@ -1,1 +1,1 @@
-export * from "../../dist/packages/format/index.d.ts";
+export * from "./dist/index.d.ts";

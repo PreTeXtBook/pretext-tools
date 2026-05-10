@@ -1,1 +1,1 @@
-export * from '../../dist/packages/ptxast/index.js';
+export * from './dist/index.js';

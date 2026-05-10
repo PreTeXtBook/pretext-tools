@@ -1,1 +1,1 @@
-export * from '../../dist/packages/remark-pretext/index.d.ts';
+export * from "./dist/index.d.ts";

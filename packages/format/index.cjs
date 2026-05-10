@@ -1,1 +1,1 @@
-module.exports = require('../../dist/packages/format/index.cjs');
+module.exports = require('./dist/index.cjs');

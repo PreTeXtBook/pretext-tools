@@ -1,1 +1,1 @@
-export * from '../../dist/packages/ptxast-util-to-mdast/index.js';
+export * from './dist/index.js';

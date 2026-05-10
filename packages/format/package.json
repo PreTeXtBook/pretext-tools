@@ -30,7 +30,8 @@
     "*.js",
     "*.cjs",
     "*.d.ts",
-    "*.d.cts"
+    "*.d.cts",
+    "dist"
   ],
   "scripts": {
     "build": "vite build",

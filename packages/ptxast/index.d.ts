@@ -1,1 +1,1 @@
-export * from '../../dist/packages/ptxast/index.d.ts';
+export * from "./dist/index.d.ts";
