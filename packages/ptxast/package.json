@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/ptxast",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "TypeScript type definitions for the PreTeXt AST (ptxast)",
   "author": "Oscar Levin",
   "license": "MIT",
