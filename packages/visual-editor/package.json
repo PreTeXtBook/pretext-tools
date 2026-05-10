@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/visual-editor",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "React-based visual editor components and TipTap extensions for PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
