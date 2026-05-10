@@ -101,7 +101,7 @@ jobs:
           echo "REMARK=$(jq -r '.version' packages/remark-pretext/package.json)" >> $GITHUB_OUTPUT
           echo "TO_MDAST=$(jq -r '.version' packages/ptxast-util-to-mdast/package.json)" >> $GITHUB_OUTPUT
 
-      # ── Publish from the dist directory (actual compiled output) ─────────
+      # ── Publish ─────────
 
       - name: Publish ptxast
         run: npm publish --provenance
