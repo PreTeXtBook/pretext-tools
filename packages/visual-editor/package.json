@@ -30,10 +30,14 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./styles": "./dist/style.css"
+    "./styles": {
+      "types": "./styles.d.ts",
+      "default": "./dist/style.css"
+    }
   },
   "files": [
     "dist",
+    "styles.d.ts",
     "README.md"
   ],
   "scripts": {
