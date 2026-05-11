@@ -27,7 +27,7 @@ export default defineConfig(() => ({
       formats: ["es", "cjs"],
     },
     rollupOptions: {
-      external: [/@unified-latex\/.*/],
+      external: [/@unified-latex\/.*/, "@pretextbook/unified-latex-to-pretext"],
     },
   },
   test: {
