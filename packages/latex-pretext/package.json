@@ -42,9 +42,9 @@
     "playground:build": "npm run dev:build"
   },
   "dependencies": {
-    "@unified-latex/unified-latex-to-pretext": "github:pretextplus/unified-latex#release/unified-latex-to-pretext",
-    "@unified-latex/unified-latex-util-parse": "github:pretextplus/unified-latex#release/unified-latex-util-parse",
-    "@unified-latex/unified-latex-types": "github:pretextplus/unified-latex#release/unified-latex-types",
+    "@pretextbook/unified-latex-to-pretext": "^0.0.2",
+    "@unified-latex/unified-latex-types": "^1.8.4",
+    "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "tslib": "^2.3.0"
   },
   "devDependencies": {

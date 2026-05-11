@@ -43,7 +43,7 @@ jobs:
         run: node ./scripts/update-internal-deps.mjs
 
       - name: Update unified-latex to latest release branch commits
-        run: npm update @unified-latex/unified-latex-to-pretext @unified-latex/unified-latex-util-parse @unified-latex/unified-latex-types
+        run: npm update @pretextbook/unified-latex-to-pretext @unified-latex/unified-latex-util-parse @unified-latex/unified-latex-types
 
       - name: Bump Version
         run: |
