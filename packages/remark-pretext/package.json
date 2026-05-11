@@ -39,7 +39,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pretextbook/ptxast": "^0.0.3",
+    "@pretextbook/ptxast": "*",
     "@types/mdast": "^4.0.0",
     "mdast-util-directive": "^3.0.0",
     "remark-directive": "^4.0.0",

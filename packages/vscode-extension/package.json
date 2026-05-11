@@ -507,12 +507,12 @@
     "package": "npm run esbuild -- --production"
   },
   "dependencies": {
-    "@pretextbook/completions": "^0.0.3",
-    "@pretextbook/format": "^0.0.5",
-    "@pretextbook/latex-pretext": "^0.0.8",
-    "@pretextbook/ptxast": "^0.0.3",
-    "@pretextbook/remark-pretext": "^0.0.3",
-    "@pretextbook/visual-editor": "^0.0.2",
+    "@pretextbook/completions": "*",
+    "@pretextbook/format": "*",
+    "@pretextbook/latex-pretext": "*",
+    "@pretextbook/ptxast": "*",
+    "@pretextbook/remark-pretext": "*",
+    "@pretextbook/visual-editor": "*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "remark-directive": "^4.0.0",

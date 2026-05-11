@@ -41,9 +41,6 @@ jobs:
         if: ${{ inputs.update_internal_deps }}
         run: node ./scripts/update-internal-deps.mjs
 
-      - name: Update unified-latex to latest release branch commits
-        run: npm update @pretextbook/unified-latex-to-pretext @unified-latex/unified-latex-util-parse @unified-latex/unified-latex-types
-
       - name: Bump Version
         run: |
           cd packages/latex-pretext
