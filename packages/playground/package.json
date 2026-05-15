@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "@pretextbook/format": "*",
+    "@pretextbook/project-import": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "remark-directive": "^4.0.0",
     "remark-parse": "^11.0.0",
     "unified": "^11.0.0",
@@ -22,6 +25,8 @@
     "xast-util-to-xml": "^4.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "vite": "*",
     "typescript": "*"
   }
