@@ -10,8 +10,15 @@ export {
   convertSourceToPretext,
   getConversionErrorMessage,
 } from "./lib/convert";
+export { importProjectFromFiles, handleImportUploadFile } from "./lib/upload";
 export type {
   SourceFormat,
   ConversionContext,
   ConvertedPretextResult,
+  UploadStatusType,
+  UploadStatusMessage,
+  UploadSourceType,
+  ImportedProjectResult,
+  ImportedProjectSuccess,
+  ImportedProjectError,
 } from "./lib/types";
