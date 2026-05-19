@@ -17,6 +17,9 @@
   "main": "./index.cjs",
   "module": "./index.js",
   "types": "./index.d.ts",
+  "bin": {
+    "pretext-format": "./cli.cjs"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -31,6 +34,7 @@
     "*.cjs",
     "*.d.ts",
     "*.d.cts",
+    "cli.cjs",
     "dist"
   ],
   "scripts": {
