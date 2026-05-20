@@ -1,24 +1,26 @@
 # PreTeXt Formatter
 
-A utility to format PreTeXt source. To use,
+A utility to format PreTeXt source.
 
-```
+## Install
+
+```sh
 npm install @pretextbook/format
 ```
 
-and then import the formatter in your code:
+## Library usage
 
-```javascript
-import { formatPreTeXt } from "@pretextbook/format";
+```js
+import { formatPretext } from "@pretextbook/format";
 
 const formatted = formatPretext(sourceCode);
 ```
 
-You can pass options as an object to customize the formatting. For example:
+You can pass options to customize formatting:
 
-```javascript
+```js
 const options = {
-  blankLines: "many",
+  breakLines: "many",
   breakSentences: true,
   insertSpaces: true,
   tabSize: 2,
@@ -27,7 +29,59 @@ const options = {
 const formatted = formatPretext(sourceCode, options);
 ```
 
-This allows you to specify the maximum line length and indentation level for the formatted output.
+## CLI usage
+
+The package also exposes a CLI:
+
+```sh
+pretext-format [options] [files...]
+```
+
+Recommended workflow (inside a project):
+
+```sh
+# Install in your project (usually as a dev dependency)
+npm install -D @pretextbook/format
+
+# Run the project-local CLI
+npx pretext-format --write chapter.ptx
+# or
+npm exec -- pretext-format --write chapter.ptx
+```
+
+One-off run without adding a dependency:
+
+```sh
+npm exec --package @pretextbook/format -- pretext-format --check chapter.ptx
+```
+
+More examples:
+
+```sh
+# Print a formatted file to stdout
+npx pretext-format chapter.ptx
+
+# Write formatting changes in-place
+npx pretext-format --write chapter.ptx section.ptx
+
+# Check whether files are already formatted (exit 1 if not)
+npx pretext-format --check chapter.ptx
+
+# Format stdin and print to stdout
+cat chapter.ptx | npx pretext-format --stdin
+```
+
+Options:
+
+- `-w, --write` write formatted output back to files
+- `--check` check formatting only (no writes)
+- `--stdin` read input from stdin
+- `--break-lines <few|some|many>` choose line break density
+- `--break-sentences` break plain-text sentences onto new lines
+- `--tab-size <n>` set spaces per indent level
+- `--use-tabs` indent with tabs instead of spaces
+- `-h, --help` show help
+- `-v, --version` show version
 
 ## Building
 
