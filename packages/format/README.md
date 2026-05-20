@@ -37,20 +37,38 @@ The package also exposes a CLI:
 pretext-format [options] [files...]
 ```
 
-Examples:
+Recommended workflow (inside a project):
+
+```sh
+# Install in your project (usually as a dev dependency)
+npm install -D @pretextbook/format
+
+# Run the project-local CLI
+npx pretext-format --write chapter.ptx
+# or
+npm exec -- pretext-format --write chapter.ptx
+```
+
+One-off run without adding a dependency:
+
+```sh
+npm exec --package @pretextbook/format -- pretext-format --check chapter.ptx
+```
+
+More examples:
 
 ```sh
 # Print a formatted file to stdout
-pretext-format chapter.ptx
+npx pretext-format chapter.ptx
 
 # Write formatting changes in-place
-pretext-format --write chapter.ptx section.ptx
+npx pretext-format --write chapter.ptx section.ptx
 
 # Check whether files are already formatted (exit 1 if not)
-pretext-format --check chapter.ptx
+npx pretext-format --check chapter.ptx
 
 # Format stdin and print to stdout
-cat chapter.ptx | pretext-format --stdin
+cat chapter.ptx | npx pretext-format --stdin
 ```
 
 Options:
