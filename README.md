@@ -1,7 +1,7 @@
 # pretext-tools monorepo
 
-[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/oscarlevin.pretext-tools?color=informational&logo=visualstudiocode&style=for-the-badge&label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/oscarlevin.pretext-tools?logo=visualstudiocode&color=informational&style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
+[![CI](https://github.com/PreTeXtBook/pretext-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/PreTeXtBook/pretext-tools/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/PreTeXtBook/pretext-tools)](LICENSE)
 
 This monorepo contains the [PreTeXt Tools VS Code extension](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools) and its supporting packages. [PreTeXt](https://pretextbook.org) is an XML-based authoring language for scholarly documents.
 
@@ -61,10 +61,10 @@ npm run refresh:schemas
 
 ## Contributing
 
-Like this project? [Star it on GitHub](https://github.com/oscarlevin/pretext-tools/stargazers)!
+Like this project? [Star it on GitHub](https://github.com/PreTeXtBook/pretext-tools/stargazers)!
 
-Have an idea or suggestion? [Open a feature request](https://github.com/oscarlevin/pretext-tools/issues).
+Have an idea or suggestion? [Open a feature request](https://github.com/PreTeXtBook/pretext-tools/issues).
 
-Found something wrong? [File an issue](https://github.com/oscarlevin/pretext-tools/issues).
+Found something wrong? [File an issue](https://github.com/PreTeXtBook/pretext-tools/issues).
 
 Pull requests welcome.

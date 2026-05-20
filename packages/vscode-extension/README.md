@@ -1,7 +1,8 @@
 # PreTeXt-tools
 
-[![Visual Studio Marketplace](https://img.shields.io/visual-studio-marketplace/v/oscarlevin.pretext-tools?color=informational&logo=visualstudiocode&style=for-the-badge&label=VS%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
-[![Installs](https://img.shields.io/visual-studio-marketplace/i/oscarlevin.pretext-tools?logo=visualstudiocode&color=informational&style=for-the-badge)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
+[![VS Marketplace Version](https://vsmarketplacebadges.dev/version-short/oscarlevin.pretext-tools.svg)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
+[![VS Marketplace Installs](https://vsmarketplacebadges.dev/installs-short/oscarlevin.pretext-tools.svg)](https://marketplace.visualstudio.com/items?itemName=oscarlevin.pretext-tools)
+[![Open VSX Version](https://img.shields.io/open-vsx/v/oscarlevin/pretext-tools)](https://open-vsx.org/extension/oscarlevin/pretext-tools)
 
 A Visual Studio Code extension to make writing PreTeXt documents easier.
 
