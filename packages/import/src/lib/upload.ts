@@ -1,12 +1,27 @@
 import JSZip from "jszip";
 import { convertSourceToPretext } from "./convert";
 import { detectSourceFormat } from "./detect-source-format";
+import {
+  expandPretextIncludes,
+  findLikelyMainPretextPath,
+} from "./clean/pretext-includes";
+import {
+  buildPretextProjectFiles,
+  type BuildProjectFilesOptions,
+} from "./layout";
 import type {
   ImportedProjectResult,
   SourceFormat,
   UploadSourceType,
   UploadStatusMessage,
 } from "./types";
+
+export interface ImportProjectOptions extends BuildProjectFilesOptions {
+  /** When true (default), the layout splitter runs and outputFiles is populated. */
+  buildLayout?: boolean;
+  /** Raw binary assets keyed by their source path (e.g. images, PDFs). */
+  assets?: Record<string, Uint8Array>;
+}
 
 const SUPPORTED_UPLOAD_PATTERN =
   /\.(tex|zip|md|markdown|ptx|xml|tar\.gz|tgz)$/i;
@@ -26,6 +41,63 @@ const TRACKED_FILE_TYPES = [
   "ps",
   "bbl",
 ] as const;
+
+const BINARY_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "pdf",
+  "eps",
+  "ps",
+  "bmp",
+  "tiff",
+  "tif",
+  "webp",
+  "ico",
+]);
+
+const IMAGE_EXTENSIONS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "bmp",
+  "tiff",
+  "tif",
+  "webp",
+  "ico",
+  "pdf",
+  "eps",
+  "ps",
+]);
+
+function isBinaryExtension(ext: string): boolean {
+  return BINARY_EXTENSIONS.has(ext.toLowerCase());
+}
+
+function basenameOf(pathName: string): string {
+  return pathName.split("/").pop() ?? pathName;
+}
+
+function routeAssetPath(originalPath: string): string | null {
+  const base = basenameOf(originalPath);
+  const ext = extension(base);
+  if (IMAGE_EXTENSIONS.has(ext)) {
+    return `source/assets/${base}`;
+  }
+  return null;
+}
+
+function routeTextAuxiliaryPath(originalPath: string): string | null {
+  const base = basenameOf(originalPath);
+  const ext = extension(base);
+  if (ext === "bib") {
+    return `source/${base}`;
+  }
+  return null;
+}
 
 function normalizeText(value: string): string {
   return value.replace(/\r\n?/g, "\n").replace(/(\n *){3,}/g, "\n\n");
@@ -108,8 +180,15 @@ async function decompressGzip(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   return result.buffer;
 }
 
-function parseTar(data: Uint8Array): Record<string, string> {
+interface ExtractedUpload {
+  files: Record<string, string>;
+  assets: Record<string, Uint8Array>;
+}
+
+// Why this?
+function parseTar(data: Uint8Array): ExtractedUpload {
   const files: Record<string, string> = {};
+  const assets: Record<string, Uint8Array> = {};
   let offset = 0;
 
   while (offset < data.length) {
@@ -129,19 +208,22 @@ function parseTar(data: Uint8Array): Record<string, string> {
     const paddedSize = Math.ceil(fileSize / 512) * 512;
     if (header.type === "0" || header.type === "") {
       const fileData = data.slice(offset, offset + fileSize);
-      const content = new TextDecoder().decode(fileData);
-      files[normalizePath(header.name)] = normalizeText(content);
+      const normalizedPath = normalizePath(header.name);
+      if (isBinaryExtension(extension(normalizedPath))) {
+        assets[normalizedPath] = fileData;
+      } else {
+        const content = new TextDecoder().decode(fileData);
+        files[normalizedPath] = normalizeText(content);
+      }
     }
 
     offset += paddedSize;
   }
 
-  return files;
+  return { files, assets };
 }
 
-async function extractFilesFromUpload(
-  file: File,
-): Promise<Record<string, string>> {
+async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
   const sourceType = getUploadSourceType(file.name);
 
   if (!sourceType) {
@@ -156,25 +238,35 @@ async function extractFilesFromUpload(
     sourceType === "pretext"
   ) {
     const content = await file.text();
-    return { [normalizePath(file.name)]: normalizeText(content) };
+    return {
+      files: { [normalizePath(file.name)]: normalizeText(content) },
+      assets: {},
+    };
   }
 
   if (sourceType === "zip") {
     const zip = new JSZip();
     const contents = await zip.loadAsync(file);
     const files: Record<string, string> = {};
+    const assets: Record<string, Uint8Array> = {};
 
     for (const [entryPath, zipEntry] of Object.entries(contents.files)) {
       if (zipEntry.dir) {
         continue;
       }
-      const content = await zipEntry.async("string");
-      files[normalizePath(entryPath)] = normalizeText(content);
+      const normalizedPath = normalizePath(entryPath);
+      if (isBinaryExtension(extension(normalizedPath))) {
+        assets[normalizedPath] = await zipEntry.async("uint8array");
+      } else {
+        const content = await zipEntry.async("string");
+        files[normalizedPath] = normalizeText(content);
+      }
     }
 
-    return files;
+    return { files, assets };
   }
 
+  // If not individual file or zip, assume tar.gz
   const buffer = await file.arrayBuffer();
   const decompressed = await decompressGzip(buffer);
   return parseTar(new Uint8Array(decompressed));
@@ -270,6 +362,7 @@ function expandTexInputs(
   return { expandedText: normalizeText(current), expandedCount, missingInputs };
 }
 
+// Shouldn't we already know the source type at this point?
 function pickPrimarySourcePath(files: Record<string, string>): {
   sourcePath: string;
   sourceType: UploadSourceType;
@@ -288,10 +381,7 @@ function pickPrimarySourcePath(files: Record<string, string>): {
     return { sourcePath: markdownPath, sourceType: "markdown" };
   }
 
-  const pretextPath = sortedPaths.find((pathName) => {
-    const ext = extension(pathName);
-    return ext === "ptx" || ext === "xml";
-  });
+  const pretextPath = findLikelyMainPretextPath(files);
   if (pretextPath) {
     return { sourcePath: pretextPath, sourceType: "pretext" };
   }
@@ -355,9 +445,11 @@ function toConversionSourceFormat(sourceType: UploadSourceType): SourceFormat {
 
 export function importProjectFromFiles(
   files: Record<string, string>,
+  options: ImportProjectOptions = {},
 ): ImportedProjectResult {
   const statusMessages: UploadStatusMessage[] = [];
   try {
+    // Haven't these been normalized already?
     const normalizedFiles = Object.fromEntries(
       Object.entries(files).map(([pathName, content]) => [
         normalizePath(pathName),
@@ -401,6 +493,29 @@ export function importProjectFromFiles(
           message: `Missing input/include files: ${missingInputs.join(", ")}.`,
         });
       }
+    } else if (sourceType === "pretext") {
+      const ptxFiles = Object.fromEntries(
+        Object.entries(normalizedFiles).filter(([pathName]) => {
+          const ext = extension(pathName);
+          return ext === "ptx" || ext === "xml";
+        }),
+      );
+      const { expandedText, expandedCount, missingIncludes } =
+        expandPretextIncludes(sourceText, sourcePath, ptxFiles);
+      sourceText = expandedText;
+
+      if (expandedCount > 0) {
+        statusMessages.push({
+          type: "success",
+          message: `Expanded ${expandedCount} xi:include reference${expandedCount === 1 ? "" : "s"}.`,
+        });
+      }
+      if (missingIncludes.length > 0) {
+        statusMessages.push({
+          type: "error",
+          message: `Missing xi:include targets: ${missingIncludes.join(", ")}.`,
+        });
+      }
     }
 
     statusMessages.push({
@@ -408,21 +523,88 @@ export function importProjectFromFiles(
       message: `Main source file: ${sourcePath}`,
     });
 
+    // Now do the conversion to conversionFormat
     const conversionFormat = toConversionSourceFormat(sourceType);
     const result = convertSourceToPretext(sourceText, conversionFormat);
     if ("pretextError" in result) {
       return {
         pretextError: result.pretextError,
         statusMessages,
+        warnings: result.warnings,
       };
+    }
+
+    const {
+      buildLayout = true,
+      assets: rawAssets = {},
+      ...layoutOptions
+    } = options;
+    const layout = buildLayout
+      ? buildPretextProjectFiles(result.pretextSource, layoutOptions)
+      : null;
+
+    const outputFiles: Record<string, string> = {
+      ...(layout?.files ?? { "source/main.ptx": result.pretextSource }),
+    };
+    const outputAssets: Record<string, Uint8Array> = {};
+
+    // Route binary assets to source/assets/<filename>
+    for (const [originalPath, bytes] of Object.entries(rawAssets)) {
+      const routed = routeAssetPath(originalPath);
+      if (routed) {
+        outputAssets[routed] = bytes;
+      }
+    }
+
+    // Route text auxiliaries (e.g., .bib) into output as well.
+    for (const [originalPath, content] of Object.entries(normalizedFiles)) {
+      const routed = routeTextAuxiliaryPath(originalPath);
+      if (routed && !(routed in outputFiles)) {
+        outputFiles[routed] = content;
+      }
+    }
+
+    const documentKind =
+      layout?.documentKind ??
+      layoutOptions.documentKind ??
+      "article";
+    const combinedWarnings = layout
+      ? [...result.warnings, ...layout.warnings]
+      : result.warnings;
+
+    let nativeOutputFiles: Record<string, string> | undefined;
+    if (
+      result.cleanedNativeSource !== undefined &&
+      result.cleanedNativeSource.length > 0
+    ) {
+      if (result.sourceFormat === "latex") {
+        nativeOutputFiles = { "source/main.tex": result.cleanedNativeSource };
+      } else if (result.sourceFormat === "markdown") {
+        nativeOutputFiles = { "source/main.md": result.cleanedNativeSource };
+      }
+    }
+
+    if (Object.keys(rawAssets).length > 0) {
+      statusMessages.push({
+        type: "success",
+        message: `Routed ${Object.keys(outputAssets).length} binary asset${
+          Object.keys(outputAssets).length === 1 ? "" : "s"
+        }.`,
+      });
     }
 
     return {
       ...result,
+      warnings: combinedWarnings,
       sourcePath,
       sourceName: sourcePath.split("/").pop() ?? sourcePath,
       sourceType,
       files: normalizedFiles,
+      assets: rawAssets,
+      outputFiles,
+      outputAssets,
+      nativeOutputFiles,
+      documentKind,
       statusMessages,
     };
   } catch (error) {
@@ -431,12 +613,14 @@ export function importProjectFromFiles(
     return {
       pretextError: message,
       statusMessages,
+      warnings: [],
     };
   }
 }
 
 export async function handleImportUploadFile(
   file: File,
+  options: ImportProjectOptions = {},
 ): Promise<ImportedProjectResult> {
   const statusMessages: UploadStatusMessage[] = [];
   const sourceName = normalizePath(file.name);
@@ -451,6 +635,7 @@ export async function handleImportUploadFile(
             "File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.",
         },
       ],
+      warnings: [],
     };
   }
 
@@ -460,8 +645,8 @@ export async function handleImportUploadFile(
   });
 
   try {
-    const files = await extractFilesFromUpload(file);
-    const imported = importProjectFromFiles(files);
+    const { files, assets } = await extractFilesFromUpload(file);
+    const imported = importProjectFromFiles(files, { ...options, assets });
     return {
       ...imported,
       statusMessages: [...statusMessages, ...imported.statusMessages],
@@ -471,6 +656,7 @@ export async function handleImportUploadFile(
     return {
       pretextError: message,
       statusMessages: [...statusMessages, { type: "error", message }],
+      warnings: [],
     };
   }
 }

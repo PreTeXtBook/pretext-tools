@@ -1,6 +1,8 @@
 import { formatPretext } from "@pretextbook/format";
 import { latexToPretext } from "@pretextbook/latex-pretext";
 import { markdownToPretext } from "@pretextbook/remark-pretext";
+import { cleanLatex } from "./clean/clean-latex";
+import type { CleaningWarning } from "./clean/warnings";
 import { detectSourceFormat } from "./detect-source-format";
 import type { ConvertedPretextResult, SourceFormat } from "./types";
 
@@ -34,24 +36,46 @@ export function normalizePretextSource(pretextSource: string): string {
   return formatPretext(trimmedPretext);
 }
 
-export function convertLatexToPretext(latexSource: string): string {
-  const trimmedLatex = latexSource.trim();
-  if (!trimmedLatex) {
-    return "";
-  }
-
-  const converted = asConvertedString(latexToPretext(trimmedLatex)).trim();
-  return converted ? normalizePretextSource(converted) : "";
+export interface LatexConversionResult {
+  pretext: string;
+  cleanedLatex: string;
+  warnings: CleaningWarning[];
 }
 
-export function convertMarkdownToPretext(markdownSource: string): string {
+export function convertLatexToPretext(
+  latexSource: string,
+): LatexConversionResult {
+  const trimmedLatex = latexSource.trim();
+  if (!trimmedLatex) {
+    return { pretext: "", cleanedLatex: "", warnings: [] };
+  }
+
+  const { output: cleanedLatex, warnings } = cleanLatex(trimmedLatex);
+  if (!cleanedLatex.trim()) {
+    return { pretext: "", cleanedLatex, warnings };
+  }
+
+  const converted = asConvertedString(latexToPretext(cleanedLatex)).trim();
+  const pretext = converted ? normalizePretextSource(converted) : "";
+  return { pretext, cleanedLatex, warnings };
+}
+
+export interface MarkdownConversionResult {
+  pretext: string;
+  cleanedMarkdown: string;
+}
+
+export function convertMarkdownToPretext(
+  markdownSource: string,
+): MarkdownConversionResult {
   const trimmedMarkdown = markdownSource.trim();
   if (!trimmedMarkdown) {
-    return "";
+    return { pretext: "", cleanedMarkdown: "" };
   }
 
   const converted = String(markdownToPretext(trimmedMarkdown)).trim();
-  return converted ? normalizePretextSource(converted) : "";
+  const pretext = converted ? normalizePretextSource(converted) : "";
+  return { pretext, cleanedMarkdown: trimmedMarkdown };
 }
 
 export function getConversionErrorMessage(error: unknown): string {
@@ -74,27 +98,35 @@ export function convertSourceToPretext(
         sourceFormat: finalSourceFormat,
         detectedSourceFormat,
         pretextSource: normalizePretextSource(source),
+        warnings: [],
       };
     }
 
     if (finalSourceFormat === "markdown") {
+      const { pretext, cleanedMarkdown } = convertMarkdownToPretext(source);
       return {
         sourceFormat: finalSourceFormat,
         detectedSourceFormat,
-        pretextSource: convertMarkdownToPretext(source),
+        pretextSource: pretext,
+        cleanedNativeSource: cleanedMarkdown,
+        warnings: [],
       };
     }
 
+    const { pretext, cleanedLatex, warnings } = convertLatexToPretext(source);
     return {
       sourceFormat: finalSourceFormat,
       detectedSourceFormat,
-      pretextSource: convertLatexToPretext(source),
+      pretextSource: pretext,
+      cleanedNativeSource: cleanedLatex,
+      warnings,
     };
   } catch (error) {
     return {
       sourceFormat: finalSourceFormat,
       detectedSourceFormat,
       pretextError: getConversionErrorMessage(error),
+      warnings: [],
     };
   }
 }

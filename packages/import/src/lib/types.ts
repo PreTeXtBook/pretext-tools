@@ -1,3 +1,6 @@
+import type { CleaningWarning } from "./clean/warnings";
+import type { DocumentKind } from "./layout/document-kind";
+
 export type SourceFormat = "latex" | "markdown" | "pretext";
 
 export interface ConversionContext {
@@ -7,10 +10,13 @@ export interface ConversionContext {
 
 export interface ConvertedPretextSuccess extends ConversionContext {
   pretextSource: string;
+  warnings: CleaningWarning[];
+  cleanedNativeSource?: string;
 }
 
 export interface ConvertedPretextError extends ConversionContext {
   pretextError: string;
+  warnings: CleaningWarning[];
 }
 
 export type ConvertedPretextResult =
@@ -36,13 +42,20 @@ export interface ImportedProjectSuccess extends ConversionContext {
   sourcePath: string;
   sourceName: string;
   sourceType: UploadSourceType;
+  documentKind: DocumentKind;
   files: Record<string, string>;
+  assets: Record<string, Uint8Array>;
+  outputFiles: Record<string, string>;
+  outputAssets: Record<string, Uint8Array>;
+  nativeOutputFiles?: Record<string, string>;
   statusMessages: UploadStatusMessage[];
+  warnings: CleaningWarning[];
 }
 
 export interface ImportedProjectError {
   pretextError: string;
   statusMessages: UploadStatusMessage[];
+  warnings: CleaningWarning[];
 }
 
 export type ImportedProjectResult =

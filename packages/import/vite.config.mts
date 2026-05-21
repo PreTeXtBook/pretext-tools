@@ -5,7 +5,7 @@ import * as path from "path";
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
-  cacheDir: "../../node_modules/.vite/packages/project-import",
+  cacheDir: "../../node_modules/.vite/packages/import",
   plugins: [
     dts({
       entryRoot: "src",
@@ -25,7 +25,7 @@ export default defineConfig(() => ({
         index: path.resolve(import.meta.dirname, "src/index.ts"),
         react: path.resolve(import.meta.dirname, "src/react/index.ts"),
       },
-      name: "project-import",
+      name: "import",
       fileName: (format, entryName) =>
         `${entryName}.${format === "es" ? "js" : "cjs"}`,
       formats: ["es", "cjs"],
@@ -38,6 +38,18 @@ export default defineConfig(() => ({
         "@pretextbook/latex-pretext",
         "@pretextbook/remark-pretext",
       ],
+    },
+  },
+  test: {
+    name: "import",
+    watch: false,
+    globals: true,
+    environment: "node",
+    include: ["{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    reporters: ["default"],
+    coverage: {
+      reportsDirectory: "../../coverage/packages/import",
+      provider: "v8" as const,
     },
   },
 }));
