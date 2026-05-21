@@ -17,7 +17,7 @@
     "build": "npm run build:deps && npm run build -w pretext-tools",
     "build:deps": "npm run build:utils && npm run build:libs",
     "build:utils": "npm run build -w @pretextbook/ptxast && npm run build -w @pretextbook/remark-pretext && npm run build -w @pretextbook/ptxast-util-to-mdast",
-    "build:libs": "npm run build -w @pretextbook/format && npm run build -w @pretextbook/latex-pretext && npm run build -w @pretextbook/project-import && npm run refresh-schema -w @pretextbook/completions && npm run build -w @pretextbook/completions && npm run build:lib -w @pretextbook/visual-editor",
+    "build:libs": "npm run build -w @pretextbook/format && npm run build -w @pretextbook/latex-pretext && npm run build -w @pretextbook/import && npm run refresh-schema -w @pretextbook/completions && npm run build -w @pretextbook/completions && npm run build:lib -w @pretextbook/visual-editor",
     "build:dev": "npm run build:deps && npm run build:dev -w pretext-tools",
     "build:packages": "npm run build:deps",
     "watch": "npm run watch -w pretext-tools",

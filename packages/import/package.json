@@ -1,5 +1,5 @@
 {
-  "name": "@pretextbook/project-import",
+  "name": "@pretextbook/import",
   "version": "0.0.1",
   "description": "Shared import helpers for converting LaTeX/Markdown/PreTeXt into PreTeXt for VS Code and web apps",
   "author": "Oscar Levin",
@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/project-import",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/import",
   "private": false,
   "type": "module",
   "main": "./index.cjs",
@@ -41,7 +41,8 @@
     "README.md"
   ],
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest run"
   },
   "dependencies": {
     "@pretextbook/format": "*",

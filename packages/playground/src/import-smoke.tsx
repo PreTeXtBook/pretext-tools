@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import { JsonView, collapseAllNested, defaultStyles } from "react-json-view-lite";
+import "react-json-view-lite/dist/index.css";
 import { createRoot } from "react-dom/client";
-import { ImportUploadPanel } from "@pretextbook/project-import/react";
-import type { ImportedProjectResult } from "@pretextbook/project-import";
+import { ImportUploadPanel } from "@pretextbook/import/react";
+import type { ImportedProjectResult } from "@pretextbook/import";
 
 function formatSize(charCount: number): string {
   if (charCount < 1024) {
@@ -15,6 +17,7 @@ function formatSize(charCount: number): string {
 
 function App() {
   const [result, setResult] = useState<ImportedProjectResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   const resultSummary = useMemo(() => {
     if (!result) {
@@ -33,12 +36,22 @@ function App() {
   const pretextSource =
     result && "pretextSource" in result ? result.pretextSource : "";
 
+  const outputFilePaths =
+    result && "outputFiles" in result
+      ? Object.keys(result.outputFiles).sort()
+      : [];
+
+  const visibleOutputFile =
+    result && "outputFiles" in result && selectedFile
+      ? result.outputFiles[selectedFile]
+      : "";
+
   return (
     <main className="smoke-page">
       <header className="smoke-header">
         <h1>PreTeXt Import UI Smoke Test</h1>
         <p>
-          Testing page for <code>@pretextbook/project-import</code> React upload
+          Testing page for <code>@pretextbook/import</code> React upload
           components.
         </p>
         <nav>
@@ -48,7 +61,18 @@ function App() {
 
       <section className="smoke-grid">
         <article className="card upload-card">
-          <ImportUploadPanel onImport={setResult} />
+          <ImportUploadPanel
+            onImport={(r) => {
+              setResult(r);
+              if ("outputFiles" in r) {
+                const keys = Object.keys(r.outputFiles).sort();
+                const preferred = keys.find((k) => k.endsWith("/main.ptx")) ?? keys[0];
+                setSelectedFile(preferred ?? null);
+              } else {
+                setSelectedFile(null);
+              }
+            }}
+          />
         </article>
 
         <article className="card summary-card">
@@ -63,18 +87,55 @@ function App() {
                 <strong>Source type:</strong> {result.sourceType}
               </li>
               <li>
+                <strong>Document kind:</strong> {result.documentKind}
+              </li>
+              <li>
                 <strong>Detected format:</strong> {result.detectedSourceFormat}
               </li>
               <li>
                 <strong>Files extracted:</strong> {Object.keys(result.files).length}
+              </li>
+              <li>
+                <strong>Output files:</strong> {Object.keys(result.outputFiles).length}
+              </li>
+              <li>
+                <strong>Output assets:</strong> {Object.keys(result.outputAssets).length}
+              </li>
+              <li>
+                <strong>Warnings:</strong> {result.warnings.length}
               </li>
             </ul>
           ) : null}
         </article>
       </section>
 
+      {outputFilePaths.length > 0 ? (
+        <section className="card output-card">
+          <h2>Project Files</h2>
+          <label>
+            File:&nbsp;
+            <select
+              value={selectedFile ?? ""}
+              onChange={(e) => setSelectedFile(e.currentTarget.value)}
+            >
+              {outputFilePaths.map((path) => (
+                <option key={path} value={path}>
+                  {path}
+                </option>
+              ))}
+            </select>
+          </label>
+          <textarea
+            className="output"
+            readOnly
+            value={visibleOutputFile}
+            placeholder="Select a file to view its contents."
+          />
+        </section>
+      ) : null}
+
       <section className="card output-card">
-        <h2>Converted PreTeXt</h2>
+        <h2>Converted PreTeXt (main)</h2>
         <textarea
           className="output"
           readOnly
@@ -83,11 +144,40 @@ function App() {
         />
       </section>
 
+      {result && "warnings" in result && result.warnings.length > 0 ? (
+        <section className="card output-card">
+          <h2>Warnings</h2>
+          <ul>
+            {result.warnings.map((w, i) => (
+              <li key={i}>
+                <code>{w.action}</code> {w.kind}/{w.category}{" "}
+                <strong>{w.macro}</strong> ×{w.occurrences}
+                {w.message ? ` — ${w.message}` : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       <section className="card output-card">
         <h2>Raw Result JSON</h2>
-        <pre className="json-output">
-          {result ? JSON.stringify(result, null, 2) : "(no result yet)"}
-        </pre>
+        {result ? (
+          <JsonView
+            data={
+              JSON.parse(
+                JSON.stringify(result, (_key, value) =>
+                  value instanceof Uint8Array
+                    ? `Uint8Array(${value.length} bytes)`
+                    : value,
+                ),
+              )
+            }
+            shouldExpandNode={collapseAllNested}
+            style={defaultStyles}
+          />
+        ) : (
+          <p className="placeholder">No result yet.</p>
+        )}
       </section>
     </main>
   );
