@@ -1,202 +1,483 @@
+import { fromXml } from "xast-util-from-xml";
+import type { Root, Element, ElementContent, RootContent } from "xast";
+import type { Plugin } from "unified";
 import {
   blockTags,
   lineEndTags,
   newlineTags,
+  parTags,
   verbatimTags,
 } from "./docStructure";
 
-// Function to join lines of text, preserving verbatim blocks.
-function joinLines(fullText: string): string {
-  let verbatim = false;
-  let lines = fullText.split(/\r\n|\r|\n/g);
-  // Start by adding the first two lines of the document.
-  let joinedLines = [lines[0].trim()];
-  if (lines.length > 1) {
-    joinedLines.push(lines[1].trim());
-  }
-  // Iterate through lines, joining lines when not in a verbatim block.
-  for (let i = 2; i < lines.length; i++) {
-    // look for tags in a line
-    let openTagMatch = /^<(\w\S*?)(\s.*?|>)$/.exec(lines[i].trim());
-    let closeTagMatch = /^<\/(\w\S*?)(\s.*?|>)(.?)$/.exec(lines[i].trim());
-    if (openTagMatch && verbatimTags.includes(openTagMatch[1])) {
-      // This line starts a verbatim block.  Add it to the array of lines and set verbatim to true.
-      joinedLines.push(lines[i]);
-      verbatim = true;
-      console.log("Found opening verbatim tag: ", openTagMatch[1], " at line ", i, " text: ", lines[i]);
-    } else if (closeTagMatch && verbatimTags.includes(closeTagMatch[1])) {
-      // This line ends a verbatim block.  Add it to the array of lines and set verbatim to false.
-      joinedLines.push(lines[i]);
-      verbatim = false;
-      console.log("Found closing verbatim tag: ", closeTagMatch[1], " at line ", i, " text: ", lines[i]);
-    } else if (verbatim) {
-      // We must be inside a verbatim block.  Add the line to the array of lines.
-      joinedLines.push(lines[i]);
-    } else {
-      // We are not inside a verbatim block.  Concatenate the line to the previous line in joinedLines
-      // Clean up the (non-verbatim) line by adding a space between consecutive tags, and trim it.
-      lines[i] = lines[i].trim();
-      let lastLine = joinedLines.pop();
-      if (lastLine) {
-        joinedLines.push(lastLine.trim() + " " + lines[i]);
-      } else {
-        joinedLines.push(lines[i]);
-      }
-    }
-  }
-  let joinedText = joinedLines.join("\n");
-  console.log("joinedText: ", joinedText);
-  return joinedText;
+export { formatPretextLegacy } from "./format-legacy";
+
+export interface FormatOptions {
+  breakLines?: "few" | "some" | "many";
+  breakSentences?: boolean;
+  insertSpaces?: boolean;
+  tabSize?: number;
+  printWidth?: number;
 }
 
-export function formatPretext(
-  text: string,
-  options?: {
-    breakLines?: "few" | "some" | "many";
-    breakSentences?: boolean;
-    insertSpaces?: boolean;
-    tabSize?: number;
-  },
-): string {
-  // set default options
-  const breakSentences = options?.breakSentences ?? false;
+interface Ctx {
+  ind: string;
+  blankLines: "few" | "some" | "many";
+  breakSentences: boolean;
+  printWidth: number;
+}
+
+function makeCtx(options?: FormatOptions): Ctx {
+  const blankLines = options?.breakLines ?? "some";
   const tabSize = options?.tabSize ?? 2;
   const insertSpaces = options?.insertSpaces ?? true;
-  const blankLines = options?.breakLines ?? "some";
+  const breakSentences = options?.breakSentences ?? false;
+  const printWidth = options?.printWidth ?? 80;
+  const ind = insertSpaces ? " ".repeat(tabSize) : "\t";
+  return { ind, blankLines, breakSentences, printWidth };
+}
 
-  // First clean up document so that each line is a single tag when appropriate.
-  let allText = joinLines(text);
+/** Serialize an already-parsed xast Root tree to formatted PreTeXt XML. */
+export function serializeXast(tree: Root, options?: FormatOptions): string {
+  const ctx = makeCtx(options);
+  const lines: string[] = [];
+  for (const child of tree.children) {
+    appendNode(child, lines, 0, ctx);
+  }
+  const result = applyBlankLines(lines, ctx);
+  while (result.length > 0 && result[result.length - 1] === "") result.pop();
+  return result.join("\n");
+}
 
-  console.log("Getting ready to start formatting.");
-  for (let btag of blockTags) {
-    if (allText.includes("<" + btag)) {
-      // start tag can be <tag>, <tag attr="val">, or <tag xmlns="..."> but shouldn't be self closing (no self closing tag would have xmlns in it)
-      let startTag = new RegExp(
-        "<" + btag + "(>|(\\s[^\\/]*?)>|(.*xmlns.*?)>)",
-        "g",
+/** Unified compiler plugin: formats the xast tree produced by the pipeline. */
+export const pretextFormatPlugin: Plugin<[FormatOptions?], Root, string> =
+  function (options) {
+    this.compiler = (tree) => serializeXast(tree as Root, options);
+  };
+
+export function formatPretext(text: string, options?: FormatOptions): string {
+  let tree: Root;
+  try {
+    tree = fromXml(text);
+  } catch {
+    return text;
+  }
+  return serializeXast(tree, options);
+}
+
+// ─── Node dispatch ────────────────────────────────────────────────────────────
+
+function appendNode(
+  node: RootContent | ElementContent,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  switch (node.type) {
+    case "instruction":
+      out.push(`<?${node.name}${node.value ? " " + node.value : ""}?>`);
+      break;
+    case "doctype":
+      out.push(`<!DOCTYPE ${node.name}>`);
+      break;
+    case "comment":
+      out.push(`${ctx.ind.repeat(depth)}<!--${(node as any).value}-->`);
+      break;
+    case "cdata":
+      out.push(
+        `${ctx.ind.repeat(depth)}<![CDATA[${(node as any).value}]]>`,
       );
-      let endTag = new RegExp("<\\/" + btag + ">([\\s\\S]*?[.,!?;:]?)", "g");
-      allText = allText.replace(startTag, "\n$&\n");
-      allText = allText.replace(endTag, "\n$&\n");
+      break;
+    case "text": {
+      const v = (node as any).value.trim();
+      if (v) out.push(`${ctx.ind.repeat(depth)}${escText(v)}`);
+      break;
     }
+    case "element":
+      appendElement(node as Element, out, depth, ctx);
+      break;
   }
+}
 
-  for (let tag of lineEndTags) {
-    let startTag = new RegExp("<" + tag + "(.*?)>", "g");
-    let endTag = new RegExp("<\\/" + tag + ">([\\s\\S]*?[.,!?;:]?)", "g");
-    let selfCloseTag = new RegExp("<" + tag + "(.*?)\\/>", "g");
-    // Don't insert a newline before the tag if it appears inline (immediately after a `>`)
-    allText = allText.replace(startTag, (match, _p1, offset, str) => {
-      if (offset > 0 && str[offset - 1] === ">") return match;
-      return "\n" + match;
-    });
-    allText = allText.replace(endTag, "$&\n");
-    // Don't insert a newline after a self-closing tag if it appears inline (immediately before a `<`)
-    allText = allText.replace(selfCloseTag, (match, _p1, offset, str) => {
-      if (str[offset + match.length] === "<") return match;
-      return match + "\n";
-    });
+function appendElement(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const name = node.name;
+  if (verbatimTags.includes(name)) {
+    appendVerbatim(node, out, depth, ctx);
+  } else if (lineEndTags.includes(name)) {
+    appendLineEnd(node, out, depth, ctx);
+  } else if (parTags.includes(name) && !hasBlockChildren(node)) {
+    appendPar(node, out, depth, ctx);
+  } else if (parTags.includes(name)) {
+    appendMixedPar(node, out, depth, ctx);
+  } else {
+    appendBlock(node, out, depth, ctx);
   }
+}
 
-  // Set indent character to \t or a number of ss based on editor settings.
-  let indentChar = "\t";
-  if (insertSpaces && typeof tabSize === "number") {
-    indentChar = " ".repeat(tabSize);
+// ─── Verbatim ─────────────────────────────────────────────────────────────────
+
+function appendVerbatim(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  // If the element contains child elements (e.g. <program><input>...</input></program>),
+  // fall back to block formatting — the children will be verbatim-handled individually.
+  if (node.children.some((c) => c.type === "element")) {
+    appendBlock(node, out, depth, ctx);
+    return;
   }
+  const ind = ctx.ind.repeat(depth);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  const raw = extractVerbatimContent(node);
+  // Single-line verbatim stays on one line
+  if (!raw.includes("\n")) {
+    out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
+    return;
+  }
+  out.push(`${ind}${openTag(node)}`);
+  for (const line of raw.split("\n")) out.push(line);
+  out.push(`${ind}</${node.name}>`);
+}
 
-  let level = 0;
-  let verbatim = false;
-  let lines = allText.split(/\r\n|\r|\n/g);
-  let fixedLines = [];
-  console.log("lines: ", lines);
-  for (let line of lines) {
-    let trimmedLine = line.trim();
-    let openTagMatch = /^<(\w\S*?)(\s.*?|>)$/.exec(trimmedLine);
-    let closeTagMatch = /^<\/(\w\S*?)(\s.*?|>)(.?)$/.exec(trimmedLine);
-    // let selfCloseTagMatch = /^<(\w*?)(\s.*?\/>|\/>)$/.exec(trimmedLine);
-    if (trimmedLine.length === 0) {
-      continue;
-    } else if (trimmedLine.startsWith("<?")) {
-      // It's the start line of the file:
-      fixedLines.push(trimmedLine + "\n");
-    } else if (trimmedLine.startsWith("<!--")) {
-      // It's a comment:
-      fixedLines.push(indentChar.repeat(level) + trimmedLine);
-    } else if (closeTagMatch) {
-      if (blockTags.includes(closeTagMatch[1])) {
-        level = Math.max(0, level - 1);
-        fixedLines.push(indentChar.repeat(level) + trimmedLine);
-      } else if (verbatimTags.includes(closeTagMatch[1])) {
-        verbatim = false;
-        fixedLines.push(indentChar.repeat(level) + trimmedLine);
-      } else {
-        fixedLines.push(indentChar.repeat(level) + trimmedLine);
-      }
-    } else if (openTagMatch) {
-      fixedLines.push(indentChar.repeat(level) + trimmedLine);
-      if (blockTags.includes(openTagMatch[1])) {
-        level += 1;
-      } else if (verbatimTags.includes(openTagMatch[1])) {
-        if (!trimmedLine.includes("</" + openTagMatch[1] + ">")) {
-          verbatim = true;
+function extractVerbatimContent(node: Element): string {
+  const raw = node.children
+    .map((c) => {
+      if (c.type === "text") return escText((c as any).value);
+      if (c.type === "cdata") return `<![CDATA[${(c as any).value}]]>`;
+      return "";
+    })
+    .join("");
+  // Strip one leading newline and all trailing blank lines (but preserve content)
+  return raw.replace(/^\n/, "").replace(/(\n\s*)*$/, "");
+}
+
+// ─── Line-end ─────────────────────────────────────────────────────────────────
+
+function appendLineEnd(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  const content = inlineSerialize(node.children);
+  out.push(`${ind}${openTag(node)}${content}</${node.name}>`);
+}
+
+// ─── Pure paragraph (no block children) ──────────────────────────────────────
+
+function appendPar(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  const childInd = ctx.ind.repeat(depth + 1);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  out.push(`${ind}${openTag(node)}`);
+  const tokens = collectTokens(node.children);
+  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+    out.push(`${childInd}${line}`);
+  }
+  out.push(`${ind}</${node.name}>`);
+}
+
+// ─── Mixed paragraph (has block children like <me>, <ul>) ────────────────────
+
+function appendMixedPar(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  const childInd = ctx.ind.repeat(depth + 1);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  out.push(`${ind}${openTag(node)}`);
+
+  const children = meaningfulChildren(node);
+  let i = 0;
+  while (i < children.length) {
+    if (isBlockChild(children[i])) {
+      const child = children[i] as Element;
+      i++;
+
+      // Check for punctuation immediately after this block element
+      let punct = "";
+      if (i < children.length && children[i].type === "text") {
+        const textVal: string = (children[i] as any).value;
+        const m = /^(\s*)([.,;:!?])/.exec(textVal);
+        if (m) {
+          punct = m[2];
+          const remaining = textVal.slice(m[0].length);
+          // Replace this text node's value with what remains after the punct
+          (children[i] as any).value = remaining;
+          if (!remaining.trim()) i++; // skip entirely if nothing left
         }
       }
-    } else if (verbatim) {
-      fixedLines.push(line);
+
+      const blockLines: string[] = [];
+      appendElement(child, blockLines, depth + 1, ctx);
+      if (punct && blockLines.length > 0) {
+        blockLines[blockLines.length - 1] += punct;
+      }
+      out.push(...blockLines);
     } else {
-      if (breakSentences) {
-        trimmedLine = trimmedLine.replace(
-          /\.\s+/g,
-          ".\n" + indentChar.repeat(level),
-        );
+      // Collect contiguous inline run
+      const run: ElementContent[] = [];
+      while (i < children.length && !isBlockChild(children[i])) {
+        run.push(children[i]);
+        i++;
       }
-      fixedLines.push(indentChar.repeat(level) + trimmedLine);
+      const tokens = collectTokens(run);
+      if (tokens.length > 0) {
+        for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+          out.push(`${childInd}${line}`);
+        }
+      }
     }
   }
-  // Second pass: add empty line between appropriate tags depending on blankLines setting.
-  switch (blankLines) {
-    case "few":
-      // do nothing
-      break;
-    case "some":
-      for (let i = 0; i < fixedLines.length - 1; i++) {
-        if (fixedLines[i].trim().startsWith("</")) {
-          for (let tag of newlineTags) {
-            let startTag = new RegExp("<" + tag + "(.*?)>", "g");
-            if (startTag.test(fixedLines[i + 1])) {
-              fixedLines[i] += "\n";
-            }
-          }
-        } else if (fixedLines[i].trim().startsWith("<title>")) {
-          fixedLines[i] += "\n";
-        }
-      }
-      break;
-    case "many":
-      for (let i = 0; i < fixedLines.length - 1; i++) {
-        if (
-          fixedLines[i].trim().startsWith("</") ||
-          (fixedLines[i].trim().startsWith("<") &&
-            fixedLines[i + 1].trim().startsWith("<"))
-        ) {
-          fixedLines[i] += "\n";
-        }
-      }
-      break;
+
+  out.push(`${ind}</${node.name}>`);
+}
+
+// ─── Block ────────────────────────────────────────────────────────────────────
+
+function appendBlock(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
   }
 
-  //// Add document identifier line if missing:
-  //if (!fixedLines[0].trim().startsWith("<?xml")) {
-  //  fixedLines.unshift('<?xml version="1.0" encoding="UTF-8" ?>\n');
-  //}
+  // Special case: webwork containing only lineEndTag children stays on one line.
+  // e.g. <webwork><xi:include href="..."/></webwork>
+  if (node.name === "webwork") {
+    const mc = meaningfulChildren(node);
+    if (
+      mc.length > 0 &&
+      mc.every(
+        (c) =>
+          c.type === "element" &&
+          lineEndTags.includes((c as Element).name),
+      )
+    ) {
+      const inner = mc
+        .map((c) => {
+          const el = c as Element;
+          return isEmptyElement(el)
+            ? selfClose(el)
+            : `${openTag(el)}${inlineSerialize(el.children)}</${el.name}>`;
+        })
+        .join("");
+      out.push(`${ind}${openTag(node)}${inner}</${node.name}>`);
+      return;
+    }
+  }
 
-  allText = fixedLines.join("\n");
+  out.push(`${ind}${openTag(node)}`);
+  for (const child of meaningfulChildren(node)) {
+    appendNode(child, out, depth + 1, ctx);
+  }
+  out.push(`${ind}</${node.name}>`);
+}
 
-  // Preserve the common inline WebWork include form as a single line.
-  allText = allText.replace(
-    /<webwork>\s*<xi:include([^>]*)\/>\s*<\/webwork>/g,
-    "<webwork><xi:include$1/></webwork>",
+// ─── Blank line post-processing ───────────────────────────────────────────────
+
+function applyBlankLines(lines: string[], ctx: Ctx): string[] {
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].trim();
+    const next = i < lines.length - 1 ? lines[i + 1].trim() : null;
+
+    result.push(lines[i]);
+
+    // Always: blank line after XML declaration
+    if (lines[i].startsWith("<?")) {
+      result.push("");
+      continue;
+    }
+
+    if (ctx.blankLines === "few") continue;
+
+    if (ctx.blankLines === "some") {
+      if (cur.startsWith("</") && next !== null && next.startsWith("<")) {
+        const nextTag = /^<([^\s>/]+)/.exec(next)?.[1];
+        if (nextTag && newlineTags.includes(nextTag)) result.push("");
+      } else if (/^<title[\s>]/.test(cur)) {
+        result.push("");
+      }
+    } else if (ctx.blankLines === "many") {
+      if (
+        cur.startsWith("</") ||
+        (cur.startsWith("<") && next !== null && next.startsWith("<"))
+      ) {
+        result.push("");
+      }
+    }
+  }
+
+  return result;
+}
+
+// ─── Inline serialization ─────────────────────────────────────────────────────
+
+function inlineSerialize(children: ElementContent[]): string {
+  return children
+    .map((c) => {
+      if (c.type === "text") return escText((c as any).value);
+      if (c.type === "element") return inlineEl(c as Element);
+      if (c.type === "comment") return `<!--${(c as any).value}-->`;
+      if (c.type === "cdata") return `<![CDATA[${(c as any).value}]]>`;
+      return "";
+    })
+    .join("");
+}
+
+function inlineEl(node: Element): string {
+  if (isEmptyElement(node)) return selfClose(node);
+  return `${openTag(node)}${inlineSerialize(node.children)}</${node.name}>`;
+}
+
+// ─── Token collection and reflow ──────────────────────────────────────────────
+
+function collectTokens(children: ElementContent[]): string[] {
+  const tokens: string[] = [];
+  for (const c of children) {
+    if (c.type === "text") {
+      const words: string[] = (c as any).value
+        .split(/\s+/)
+        .filter((w: string) => w.length > 0);
+      for (let j = 0; j < words.length; j++) {
+        const w = escText(words[j]);
+        // Merge leading punctuation with the previous token to avoid "token ," artifacts
+        if (j === 0 && tokens.length > 0 && /^[.,;:!?]/.test(w)) {
+          tokens[tokens.length - 1] += w;
+        } else {
+          tokens.push(w);
+        }
+      }
+    } else if (c.type === "element") {
+      tokens.push(inlineEl(c as Element));
+    } else if (c.type === "comment") {
+      tokens.push(`<!--${(c as any).value}-->`);
+    }
+  }
+  return tokens;
+}
+
+function reflowTokens(
+  tokens: string[],
+  printWidth: number,
+  indentLen: number,
+  breakSentences: boolean,
+): string[] {
+  if (tokens.length === 0) return [];
+  const width = Math.max(20, printWidth - indentLen);
+  const lines: string[] = [];
+  let cur = "";
+
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (cur === "") {
+      cur = tok;
+    } else if (cur.length + 1 + tok.length <= width) {
+      cur += " " + tok;
+    } else {
+      lines.push(cur);
+      cur = tok;
+    }
+    if (breakSentences && /[.!?]$/.test(tok) && i < tokens.length - 1) {
+      lines.push(cur);
+      cur = "";
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// ─── Tag building helpers ─────────────────────────────────────────────────────
+
+function openTag(node: Element): string {
+  const attrs = buildAttrs(node);
+  return attrs ? `<${node.name} ${attrs}>` : `<${node.name}>`;
+}
+
+function selfClose(node: Element): string {
+  const attrs = buildAttrs(node);
+  return attrs ? `<${node.name} ${attrs}/>` : `<${node.name}/>`;
+}
+
+function buildAttrs(node: Element): string {
+  return Object.entries(node.attributes || {})
+    .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
+    .join(" ");
+}
+
+// ─── Predicates ───────────────────────────────────────────────────────────────
+
+function isEmptyElement(node: Element): boolean {
+  return node.children.every(
+    (c) => c.type === "text" && (c as any).value.trim() === "",
   );
+}
 
-  return allText;
+function meaningfulChildren(node: Element): ElementContent[] {
+  return node.children.filter(
+    (c) => !(c.type === "text" && (c as any).value.trim() === ""),
+  );
+}
+
+function isBlockChild(child: ElementContent): boolean {
+  if (child.type !== "element") return false;
+  const name = (child as Element).name;
+  // <c> is verbatim but always inline; don't treat it as a block child
+  if (name === "c") return false;
+  return (
+    (blockTags.includes(name) || verbatimTags.includes(name)) &&
+    !lineEndTags.includes(name)
+  );
+}
+
+function hasBlockChildren(node: Element): boolean {
+  return node.children.some((c) => isBlockChild(c));
+}
+
+// ─── Text escaping ────────────────────────────────────────────────────────────
+
+function escText(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escAttr(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;");
 }

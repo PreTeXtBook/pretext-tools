@@ -205,3 +205,6 @@ export const blockTags = [
   ...nestableTags,
   ...mathDisplay,
 ];
+
+// Elements with flowing text content (may contain inline elements and text)
+export const parTags = ["p", "li", "fn"];

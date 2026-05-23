@@ -5,6 +5,12 @@ export default defineConfig({
   build: {
     outDir: '../../dist/packages/playground',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        compare: 'format-compare.html',
+      },
+    },
   },
   server: {
     open: true,

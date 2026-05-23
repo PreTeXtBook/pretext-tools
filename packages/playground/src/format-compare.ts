@@ -1,0 +1,154 @@
+import { formatPretext, formatPretextLegacy } from "@pretextbook/format";
+
+// ─── Sample input ─────────────────────────────────────────────────────────────
+
+const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext><book xml:id="my-book"><title>My Book</title><frontmatter><titlepage><author><personname>Jane Doe</personname><institution>Some University</institution></author><date>2024</date></titlepage><abstract><p>This is a short abstract with some text that goes on for a while and might need to be wrapped depending on the print width.</p></abstract></frontmatter><chapter xml:id="ch-intro"><title>Introduction</title><p>This is the first paragraph of the introduction. It contains some inline math like <m>x^2 + y^2 = z^2</m> and references.</p><p>A theorem follows.</p><theorem xml:id="thm-example"><title>Example Theorem</title><statement><p>For all <m>n \geq 1</m>, we have <me>1 + 2 + \cdots + n = \frac{n(n+1)}{2}</me>.</p></statement><proof><p>By induction.</p></proof></theorem><section xml:id="sec-code"><title>Code</title><p>Here is a program:</p><listing><caption>Hello World</caption><program language="python"><input>
+def hello():
+    print("hello world")
+</input></program></listing></section></chapter></book></pretext>`.trim();
+
+// ─── DOM refs ─────────────────────────────────────────────────────────────────
+
+const inputEl = document.getElementById("input") as HTMLTextAreaElement;
+const outLegacy = document.getElementById("out-legacy") as HTMLPreElement;
+const outNew = document.getElementById("out-new") as HTMLPreElement;
+const statsEl = document.getElementById("stats") as HTMLSpanElement;
+
+const blankLinesEl = document.getElementById("blankLines") as HTMLSelectElement;
+const printWidthEl = document.getElementById("printWidth") as HTMLInputElement;
+const tabSizeEl = document.getElementById("tabSize") as HTMLInputElement;
+const useTabsEl = document.getElementById("useTabs") as HTMLInputElement;
+const breakSentencesEl = document.getElementById("breakSentences") as HTMLInputElement;
+
+// ─── Minimal line-level diff ──────────────────────────────────────────────────
+
+type DiffLine = { text: string; kind: "same" | "add" | "del" };
+
+function lineDiff(oldLines: string[], newLines: string[]): { left: DiffLine[]; right: DiffLine[] } {
+  // Simple LCS-based diff
+  const m = oldLines.length;
+  const n = newLines.length;
+
+  // Build LCS table
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = oldLines[i - 1] === newLines[j - 1]
+        ? dp[i - 1][j - 1] + 1
+        : Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+
+  // Backtrack
+  const left: DiffLine[] = [];
+  const right: DiffLine[] = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && oldLines[i - 1] === newLines[j - 1]) {
+      left.unshift({ text: oldLines[i - 1], kind: "same" });
+      right.unshift({ text: newLines[j - 1], kind: "same" });
+      i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      left.unshift({ text: "", kind: "add" });
+      right.unshift({ text: newLines[j - 1], kind: "add" });
+      j--;
+    } else {
+      left.unshift({ text: oldLines[i - 1], kind: "del" });
+      right.unshift({ text: "", kind: "del" });
+      i--;
+    }
+  }
+  return { left, right };
+}
+
+function renderDiff(el: HTMLPreElement, lines: DiffLine[]): void {
+  el.innerHTML = lines
+    .map((l) => {
+      const esc = l.text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      return `<span class="line-${l.kind}">${esc}\n</span>`;
+    })
+    .join("");
+}
+
+// ─── Main update loop ─────────────────────────────────────────────────────────
+
+function update(): void {
+  const text = inputEl.value;
+  const options = {
+    breakLines: blankLinesEl.value as "few" | "some" | "many",
+    printWidth: parseInt(printWidthEl.value, 10) || 80,
+    tabSize: parseInt(tabSizeEl.value, 10) || 2,
+    insertSpaces: !useTabsEl.checked,
+    breakSentences: breakSentencesEl.checked,
+  };
+
+  let legacyOut = "";
+  let newOut = "";
+
+  try {
+    legacyOut = formatPretextLegacy(text, options);
+  } catch (e) {
+    legacyOut = `Error: ${e}`;
+  }
+  try {
+    newOut = formatPretext(text, options);
+  } catch (e) {
+    newOut = `Error: ${e}`;
+  }
+
+  const oldLines = legacyOut.split("\n");
+  const newLines = newOut.split("\n");
+
+  const { left, right } = lineDiff(oldLines, newLines);
+  renderDiff(outLegacy, left);
+  renderDiff(outNew, right);
+
+  const adds = right.filter((l) => l.kind === "add").length;
+  const dels = left.filter((l) => l.kind === "del").length;
+  if (adds === 0 && dels === 0) {
+    statsEl.textContent = "Identical output";
+    statsEl.style.color = "var(--green)";
+  } else {
+    statsEl.innerHTML = `<span class="adds">+${adds}</span> / <span class="dels">-${dels}</span> lines`;
+    statsEl.style.color = "";
+  }
+}
+
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+  let t: ReturnType<typeof setTimeout>;
+  return ((...args: unknown[]) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
+const debouncedUpdate = debounce(update, 250);
+
+// ─── Event wiring ─────────────────────────────────────────────────────────────
+
+inputEl.addEventListener("input", debouncedUpdate);
+blankLinesEl.addEventListener("change", update);
+printWidthEl.addEventListener("input", debouncedUpdate);
+tabSizeEl.addEventListener("input", debouncedUpdate);
+useTabsEl.addEventListener("change", update);
+breakSentencesEl.addEventListener("change", update);
+
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    const s = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+    inputEl.value = inputEl.value.substring(0, s) + "  " + inputEl.value.substring(end);
+    inputEl.selectionStart = inputEl.selectionEnd = s + 2;
+    debouncedUpdate();
+  }
+});
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+
+inputEl.value = SAMPLE;
+update();

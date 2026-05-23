@@ -20,12 +20,12 @@
       </abstract>
     </frontmatter>
 
-
     <chapter xml:id="ch-intro">
       <title>Introduction</title>
 
       <p>
-        This is the first paragraph of the introduction chapter. It has some text that is reasonably long.
+        This is the first paragraph of the introduction chapter. It has some
+        text that is reasonably long.
       </p>
 
       <p>
