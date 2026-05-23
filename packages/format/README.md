@@ -89,4 +89,40 @@ Run `npm run build -w @pretextbook/format` to build the library.
 
 ## Running unit tests
 
-Run `npm run test -w @pretextbook/format` to execute the unit tests via [Vitest](https://vitest.dev/).
+Run `npx vitest --watch` (from this directory) or `npm run test -w @pretextbook/format` (from the root directory) to execute the unit tests via [Vitest](https://vitest.dev/).
+
+## Snapshot tests
+
+Snapshot tests live in `src/lib/format-snapshots.spec.ts`. They read `.ptx` input files from `src/lib/__fixtures__/`, run `formatPretext` on each one, and compare the output against reference files in `src/lib/__snapshots__/`.
+
+**To add a new snapshot test:**
+
+1. Add a `.ptx` input file to `src/lib/__fixtures__/`. The file should contain unformatted (or inconsistently formatted) PreTeXt that exercises the behavior you want to lock in.
+
+2. Register the fixture in `format-snapshots.spec.ts`. For default options, add its base name to the `fixtures` array:
+   ```ts
+   const fixtures = [
+     "minimal-book",
+     "my-new-fixture", // add here
+     ...
+   ] as const;
+   ```
+   For non-default options, add a dedicated `it` block:
+   ```ts
+   it("my-new-fixture with tabs", async () => {
+     const result = formatPretext(readFixture("my-new-fixture"), {
+       insertSpaces: false,
+     });
+     await expect(result).toMatchFileSnapshot(
+       snapshotPath("my-new-fixture-tabs"),
+     );
+   });
+   ```
+
+3. Run once with the update flag to generate the snapshot file:
+   ```sh
+   npx vitest --update
+   ```
+   This writes the formatted output to `src/lib/__snapshots__/<name>.ptx`. Review that file to confirm the formatter is behaving as expected, then commit both the fixture and the snapshot.
+
+**To update snapshots** after an intentional formatter change, re-run with `-u` and commit the updated snapshot files.

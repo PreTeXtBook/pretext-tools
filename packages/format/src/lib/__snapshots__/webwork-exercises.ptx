@@ -1,0 +1,35 @@
+<section xml:id="sec-exercises">
+  <title>Exercises</title>
+
+  <p>
+    Try the following exercises.
+  </p>
+
+  <exercise xml:id="ex-webwork-inline">
+    <webwork><xi:include href="problems/derivative.pg" parse="text"/></webwork>
+  </exercise>
+
+  <exercise xml:id="ex-webwork-source">
+    <webwork source="problems/integral.pg"/>
+  </exercise>
+
+  <exercise xml:id="ex-regular">
+    <statement>
+      <p>
+        A regular exercise without WebWork.
+      </p>
+    </statement>
+
+    <hint>
+      <p>
+        Think carefully.
+      </p>
+    </hint>
+
+    <solution>
+      <p>
+        The answer is 42.
+      </p>
+    </solution>
+  </exercise>
+</section>

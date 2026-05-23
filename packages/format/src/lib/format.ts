@@ -14,7 +14,7 @@ function joinLines(fullText: string): string {
   if (lines.length > 1) {
     joinedLines.push(lines[1].trim());
   }
-  // Itterate through lines, joining lines when not in a verbatim block.
+  // Iterate through lines, joining lines when not in a verbatim block.
   for (let i = 2; i < lines.length; i++) {
     // look for tags in a line
     let openTagMatch = /^<(\w\S*?)(\s.*?|>)$/.exec(lines[i].trim());
@@ -23,10 +23,12 @@ function joinLines(fullText: string): string {
       // This line starts a verbatim block.  Add it to the array of lines and set verbatim to true.
       joinedLines.push(lines[i]);
       verbatim = true;
+      console.log("Found opening verbatim tag: ", openTagMatch[1], " at line ", i, " text: ", lines[i]);
     } else if (closeTagMatch && verbatimTags.includes(closeTagMatch[1])) {
       // This line ends a verbatim block.  Add it to the array of lines and set verbatim to false.
       joinedLines.push(lines[i]);
       verbatim = false;
+      console.log("Found closing verbatim tag: ", closeTagMatch[1], " at line ", i, " text: ", lines[i]);
     } else if (verbatim) {
       // We must be inside a verbatim block.  Add the line to the array of lines.
       joinedLines.push(lines[i]);
@@ -43,6 +45,7 @@ function joinLines(fullText: string): string {
     }
   }
   let joinedText = joinedLines.join("\n");
+  console.log("joinedText: ", joinedText);
   return joinedText;
 }
 
@@ -105,6 +108,7 @@ export function formatPretext(
   let verbatim = false;
   let lines = allText.split(/\r\n|\r|\n/g);
   let fixedLines = [];
+  console.log("lines: ", lines);
   for (let line of lines) {
     let trimmedLine = line.trim();
     let openTagMatch = /^<(\w\S*?)(\s.*?|>)$/.exec(trimmedLine);
@@ -133,7 +137,9 @@ export function formatPretext(
       if (blockTags.includes(openTagMatch[1])) {
         level += 1;
       } else if (verbatimTags.includes(openTagMatch[1])) {
-        verbatim = true;
+        if (!trimmedLine.includes("</" + openTagMatch[1] + ">")) {
+          verbatim = true;
+        }
       }
     } else if (verbatim) {
       fixedLines.push(line);

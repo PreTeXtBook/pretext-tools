@@ -185,6 +185,7 @@ export const verbatimTags = [
   "prompt",
   "pre",
   "pg-code",
+  "script",
   "tikzpicture",
   "tikz",
   "code",
