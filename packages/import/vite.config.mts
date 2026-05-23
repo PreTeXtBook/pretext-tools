@@ -1,12 +1,14 @@
 /// <reference types='vitest' />
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import tailwindcss from "@tailwindcss/vite";
 import * as path from "path";
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: "../../node_modules/.vite/packages/import",
   plugins: [
+    tailwindcss(),
     dts({
       entryRoot: "src",
       tsconfigPath: path.join(import.meta.dirname, "tsconfig.lib.json"),
