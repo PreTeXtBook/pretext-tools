@@ -2,8 +2,10 @@ import { useMemo, useState } from "react";
 import { JsonView, collapseAllNested, defaultStyles } from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
 import { createRoot } from "react-dom/client";
-import { ImportUploadPanel } from "@pretextbook/import/react";
-import type { ImportedProjectResult } from "@pretextbook/import";
+import { ImportUploadPanel, ImportWizard } from "@pretextbook/import/react";
+import "@pretextbook/import/react.css";
+import type { ImportedProjectResult, ImportedProjectSuccess } from "@pretextbook/import";
+import type { ImportMode } from "@pretextbook/import/react";
 
 function formatSize(charCount: number): string {
   if (charCount < 1024) {
@@ -13,6 +15,33 @@ function formatSize(charCount: number): string {
     return `${(charCount / 1024).toFixed(1)} KB`;
   }
   return `${(charCount / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function WizardDemo() {
+  const [confirmed, setConfirmed] = useState<{
+    result: ImportedProjectSuccess;
+    mode: ImportMode;
+  } | null>(null);
+
+  return (
+    <section className="card output-card">
+      <h2>ImportWizard Demo</h2>
+      <div style={{ maxWidth: 520 }}>
+        <ImportWizard
+          onConfirm={(result, mode) => setConfirmed({ result, mode })}
+        />
+      </div>
+      {confirmed ? (
+        <div style={{ marginTop: 16 }}>
+          <p>
+            <strong>Confirmed:</strong> mode={confirmed.mode}, kind=
+            {confirmed.result.documentKind}, files=
+            {Object.keys(confirmed.result.outputFiles).length}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
 function App() {
@@ -48,8 +77,9 @@ function App() {
 
   return (
     <main className="smoke-page">
+      <WizardDemo />
       <header className="smoke-header">
-        <h1>PreTeXt Import UI Smoke Test</h1>
+        <h1>PreTeXt Import UI Smoke Test (debug)</h1>
         <p>
           Testing page for <code>@pretextbook/import</code> React upload
           components.

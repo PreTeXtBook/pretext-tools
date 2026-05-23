@@ -25,13 +25,14 @@
       "default": "./index.js"
     },
     "./react": {
-      "types": "./dist/react.d.ts",
+      "types": "./dist/react/index.d.ts",
       "import": "./dist/react.js",
       "require": "./dist/react.cjs",
       "default": "./dist/react.js"
-    }
+    },
+    "./react.css": "./dist/import.css"
   },
-  "sideEffects": false,
+  "sideEffects": ["*.css", "dist/*.css"],
   "files": [
     "*.js",
     "*.cjs",
@@ -45,6 +46,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "tailwindcss": "^4.0.0",
     "@pretextbook/format": "*",
     "@pretextbook/latex-pretext": "*",
     "@pretextbook/remark-pretext": "*",
