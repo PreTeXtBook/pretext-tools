@@ -117,7 +117,9 @@ function reindentForContext(
 ): string {
   return text
     .split("\n")
-    .map((line, i) => (i === 0 && skipFirst ? line : line ? baseIndent + line : line))
+    .map((line, i) =>
+      i === 0 && skipFirst ? line : line ? baseIndent + line : line,
+    )
     .join("\n");
 }
 
