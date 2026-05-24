@@ -185,6 +185,7 @@ export const verbatimTags = [
   "prompt",
   "pre",
   "pg-code",
+  "script",
   "tikzpicture",
   "tikz",
   "code",
@@ -203,4 +204,39 @@ export const blockTags = [
   ...docEnvs,
   ...nestableTags,
   ...mathDisplay,
+];
+
+// Elements with flowing text content that always expand to multiple lines.
+export const parTags = ["p", "li", "fn"];
+
+// Elements that prefer single-line when content fits within printWidth, but reflow
+// like parTags when the line would be too long. Checked before lineEndTags in dispatch.
+export const smartParTags = [
+  "title",
+  "shorttitle",
+  "caption",
+  "subtitle",
+  "attribution",
+  "personname",
+  "location",
+  "date",
+  "edition",
+  "entity",
+  "support",
+  "name",
+  "given",
+  "family",
+  "usage",
+  "volume",
+  "number",
+  "collection-title",
+  "page",
+  "year",
+  "publisher",
+  "publisher-place",
+  "URL",
+  "issued",
+  "description",
+  "shortdescription",
+  "q",
 ];

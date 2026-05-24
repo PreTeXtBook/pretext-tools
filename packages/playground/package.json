@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pretextbook/format": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",

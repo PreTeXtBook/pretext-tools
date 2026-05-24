@@ -87,11 +87,40 @@ export async function cmdConvertText() {
     })
     .then(() => {
       if (convertedText) {
+        const baseIndent =
+          editor.document
+            .lineAt(selectionRange.start.line)
+            .text.match(/^(\s*)/)?.[1] ?? "";
+        if (baseIndent) {
+          convertedText = reindentForContext(
+            convertedText,
+            baseIndent,
+            selectionRange.start.character > 0,
+          );
+        }
         editor.edit((editBuilder) => {
           editBuilder.replace(selectionRange, convertedText);
         });
       }
     });
+}
+
+/**
+ * Prepend baseIndent to every non-empty line of text.
+ * When skipFirst is true (selection starts mid-line), the first line is left
+ * as-is because the editor places it after the existing content on that line.
+ */
+function reindentForContext(
+  text: string,
+  baseIndent: string,
+  skipFirst: boolean,
+): string {
+  return text
+    .split("\n")
+    .map((line, i) =>
+      i === 0 && skipFirst ? line : line ? baseIndent + line : line,
+    )
+    .join("\n");
 }
 
 async function cmdLatexToPretext(initialText: string, selectionRange: Range) {

@@ -41,7 +41,12 @@
     "build": "vite build",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "xast-util-from-xml": "^4.0.0"
+  },
+  "peerDependencies": {
+    "unified": ">=11"
+  },
   "publishConfig": {
     "access": "public"
   }

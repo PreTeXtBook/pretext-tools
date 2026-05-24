@@ -1,0 +1,112 @@
+<p>
+  A paragraph just for testing.
+</p>
+
+<references xml:id="references-backmatter" label="references-backmatter">
+  <title>References</title>
+
+  <!-- note lower-case on AATA! -->
+  <biblio xml:id="biblio-judson-aata" type="book">
+    <author>
+      <name><given>Thomas</given> <family>Judson</family></name>
+    </author>
+    <title>Abstract Algebra: Theory and Applications</title>
+
+    <!-- "note" element not supported yet for CSL processing,     -->
+    <!-- makes bad JSON. Add an @xml:id to test cross-referencing -->
+    <!-- <note><p>Another online, open-source offering.</p></note> -->
+  </biblio>
+
+  <biblio xml:id="biblio-lay-article" type="article">
+    <author>
+      <name><given>David C.</given> <family>Lay</family></name>
+    </author>
+    <title>Subspaces and Echelon Forms</title>
+
+    <collection-title>The College Mathematics Journal</collection-title>
+    <issued><date year="1993" month="1"/></issued>
+    <volume>24</volume>
+    <number>1</number>
+    <page>57-62</page>
+  </biblio>
+  <!-- from test suite in citeproc.py JSON example program -->
+  <biblio xml:id="citeproc-py-item-3-later" type="book">
+    <author>
+      <name><family>Doe</family> <given>John</given></name>
+    </author>
+    <issued><date year="1970" month="6" day="1"/></issued>
+    <title>Still Anonymous, But now Ibid</title>
+
+  </biblio>
+  <!-- from test suite in citeproc.py JSON example program -->
+  <biblio xml:id="citeproc-py-item-3" type="book">
+    <author>
+      <name><family>Doe</family> <given>John</given></name>
+    </author>
+    <issued><date year="1965" month="6" day="1"/></issued>
+    <title>His Anonymous Life</title>
+
+  </biblio>
+
+  <biblio xml:id="conrey-farmer" type="article-journal">
+    <author>
+      <name><family>Conrey</family> <given>J. B.</given></name>
+      <name><family>Farmer</family> <given>D. W.</given></name>
+    </author>
+    <title>Mean values of <m>L</m>-functions and symmetry</title>
+
+    <collection-title>Internat. Math. Res. Notices</collection-title>
+    <issued><date year="2000"/></issued>
+    <volume>17</volume>
+    <page>883-908</page>
+  </biblio>
+  <!-- from test suite in citeproc.py JSON example program -->
+  <biblio xml:id="citeproc-py-item-5" type="book">
+    <author>
+      <name>
+        <family>D'Arcus</family> <given>Bruce</given>
+        <static-ordering>false</static-ordering>
+      </name>
+    </author>
+    <title>
+      Boundaries of Dissent: Protest and State Power in the Media Age
+    </title>
+    <publisher>Routledge</publisher>
+    <publisher-place>New York</publisher-place>
+    <issued><date year="2006"/></issued>
+    <URL>http://www.test01.com</URL>
+  </biblio>
+</references>
+
+<solutions divisional="hint answer solution">
+  <title>Hints and Answers to Selected Exercises</title>
+
+</solutions>
+
+<references>
+  <title>References and Suggested Readings</title>
+
+  <!-- was [1] -->
+  <!-- reference updated - TWJ 5/6/2010 -->
+  <biblio type="raw">
+    Koblitz, N.
+    <title>A Course in Number Theory and Cryptography</title>
+
+    . 2nd ed. Springer, New York, 1994.
+  </biblio>
+  <!-- was [2] -->
+  <biblio type="raw" xml:id="biblio-pomerance-1990">
+    Pomerance, C.
+    <q>Cryptology and Computational Number Theory <mdash/> An Introduction,</q>
+    in
+    <title>Cryptology and Computational Number Theory</title>
+
+    , Pomerance, C., ed. Proceedings of Symposia in Applied Mathematics, vol. 42, American Mathematical Society, Providence, RI, 1990.  This book gives an excellent account of how the method of repeated squares is used in cryptography.
+  </biblio>
+</references>
+
+<colophon xml:id="back-colophon">
+  <p>
+    This book was authored in MathBook XML.
+  </p>
+</colophon>

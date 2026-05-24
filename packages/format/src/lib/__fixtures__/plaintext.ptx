@@ -1,0 +1,9 @@
+This is just text without any elements.
+
+There are some 
+    strange.
+    Whitespace-only text nodes here.
+
+        line breaks.
+
+But it should all be a single line.
