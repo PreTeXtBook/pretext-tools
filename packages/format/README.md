@@ -22,6 +22,7 @@ You can pass options to customize formatting:
 const options = {
   breakLines: "many",
   breakSentences: true,
+  printWidth: 80,
   insertSpaces: true,
   tabSize: 2,
 };
