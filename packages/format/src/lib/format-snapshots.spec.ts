@@ -22,6 +22,9 @@ const fixtures = [
   "article-with-sections",
   "webwork-exercises",
   "verbatim-blocks",
+  "references",
+  "plaintext",
+  "min-tests",
 ] as const;
 
 describe("formatPretext — snapshot tests", () => {

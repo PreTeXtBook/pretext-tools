@@ -3,7 +3,7 @@ import { formatPretext, formatPretextLegacy } from "@pretextbook/format";
 // ─── Sample input ─────────────────────────────────────────────────────────────
 
 const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
-<pretext><book xml:id="my-book"><title>My Book</title><frontmatter><titlepage><author><personname>Jane Doe</personname><institution>Some University</institution></author><date>2024</date></titlepage><abstract><p>This is a short abstract with some text that goes on for a while and might need to be wrapped depending on the print width.</p></abstract></frontmatter><chapter xml:id="ch-intro"><title>Introduction</title><p>This is the first paragraph of the introduction. It contains some inline math like <m>x^2 + y^2 = z^2</m> and references.</p><p>A theorem follows.</p><theorem xml:id="thm-example"><title>Example Theorem</title><statement><p>For all <m>n \geq 1</m>, we have <me>1 + 2 + \cdots + n = \frac{n(n+1)}{2}</me>.</p></statement><proof><p>By induction.</p></proof></theorem><section xml:id="sec-code"><title>Code</title><p>Here is a program:</p><listing><caption>Hello World</caption><program language="python"><input>
+<pretext><book xml:id="my-book"><title>My Book</title><frontmatter><titlepage><author><personname>Jane Doe</personname><institution>Some University</institution></author><date>2024</date></titlepage><abstract><p>This is a short abstract with some text that goes on for a while and might need to be wrapped depending on the print width.</p></abstract></frontmatter><chapter xml:id="ch-intro"><title>Introduction</title><p>This is the first paragraph of the introduction. It contains some inline math like <m>x^2 + y^2 = z^2</m> and references.</p><p>A theorem follows.</p><theorem xml:id="thm-example"><title>Example Theorem</title><statement><p>For all <m>n \\geq 1</m>, we have <me>1 + 2 + \\cdots + n = \\frac{n(n+1)}{2}</me>.</p></statement><proof><p>By induction.</p></proof></theorem><section xml:id="sec-code"><title>Code</title><p>Here is a program:</p><listing><caption>Hello World</caption><program language="python"><input>
 def hello():
     print("hello world")
 </input></program></listing></section></chapter></book></pretext>`.trim();
@@ -78,9 +78,12 @@ function renderDiff(el: HTMLPreElement, lines: DiffLine[]): void {
 
 function update(): void {
   const text = inputEl.value;
+  const parsedWidth = parseInt(printWidthEl.value, 10);
   const options = {
     breakLines: blankLinesEl.value as "few" | "some" | "many",
-    printWidth: parseInt(printWidthEl.value, 10) || 80,
+    // Use undefined (not 0) as the NaN fallback so makeCtx applies its own default.
+    // Don't use || here: 0 is a valid sentinel meaning "no width limit".
+    printWidth: Number.isNaN(parsedWidth) ? undefined : parsedWidth,
     tabSize: parseInt(tabSizeEl.value, 10) || 2,
     insertSpaces: !useTabsEl.checked,
     breakSentences: breakSentencesEl.checked,

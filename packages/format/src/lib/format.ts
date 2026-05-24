@@ -6,6 +6,7 @@ import {
   lineEndTags,
   newlineTags,
   parTags,
+  smartParTags,
   verbatimTags,
 } from "./docStructure";
 
@@ -16,11 +17,12 @@ export interface FormatOptions {
   breakSentences?: boolean;
   insertSpaces?: boolean;
   tabSize?: number;
+  /** Target line width for paragraph text reflow. 0 = no width limit. Default 80. */
   printWidth?: number;
 }
 
 interface Ctx {
-  ind: string;
+  ind: string; // one indent unit (e.g. "  "); caller repeats it per depth level
   blankLines: "few" | "some" | "many";
   breakSentences: boolean;
   printWidth: number;
@@ -36,10 +38,20 @@ function makeCtx(options?: FormatOptions): Ctx {
   return { ind, blankLines, breakSentences, printWidth };
 }
 
-/** Serialize an already-parsed xast Root tree to formatted PreTeXt XML. */
+/**
+ * Serialize an already-parsed xast Root tree to formatted PreTeXt XML.
+ *
+ * Pipeline: each node is dispatched to a category-specific appender that pushes
+ * indented lines into an array, then applyBlankLines inserts blank separators as
+ * a post-processing pass, and the array is joined with newlines.
+ */
 export function serializeXast(tree: Root, options?: FormatOptions): string {
   const ctx = makeCtx(options);
   const lines: string[] = [];
+  // First remove the dummy root if present (see formatPretext) so it doesn't interfere with formatting decisions, but keep its children.
+  if (tree.children.length === 1 && tree.children[0].type === "element" && tree.children[0].name === "tmp-root") {
+    tree = { ...tree, children: tree.children[0].children };
+  }
   for (const child of tree.children) {
     appendNode(child, lines, 0, ctx);
   }
@@ -54,15 +66,48 @@ export const pretextFormatPlugin: Plugin<[FormatOptions?], Root, string> =
     this.compiler = (tree) => serializeXast(tree as Root, options);
   };
 
+/** Main entry point for formatting PreTeXt XML strings. */
 export function formatPretext(text: string, options?: FormatOptions): string {
   let tree: Root;
+  // If the input contains an xml declaration, it must be preserved verbatim at the top of the output; the serializer doesn't handle it as a normal processing instruction node since it must always come first. So we extract it before parsing and prepend it back to the final output.
+  let xmlDecl: string | null = null;
+  if (text.startsWith("<?xml")) {
+    const endIdx = text.indexOf("?>") + 2;
+    xmlDecl = text.slice(0, endIdx);
+    text = text.slice(endIdx);
+  }
+  // Wrap the rest of the text in a dummy root in case text contains multiple top-level nodes.
+  text = `<tmp-root>${text}</tmp-root>`;
+  // Parse the XML text into an xast tree. If parsing fails (e.g. due to unescaped special characters), log a warning and return the original text unmodified.
   try {
     tree = fromXml(text);
   } catch {
+    console.warn("Input is not well-formed XML; returning original text.");
+    //strip the dummy root before returning, since it was only needed for parsing and would be confusing to include in the output.
+    text = text.replace(/<tmp-root>(.*?)<\/tmp-root>/s, "$1");
+    if (xmlDecl) {
+      text = xmlDecl + "\n\n" + text;
+    }
     return text;
   }
-  return serializeXast(tree, options);
+  // serializeXast will remove the dummy root.
+  let result = serializeXast(tree, options);
+  // Add back the XML declaration if it was present in the input, ensuring it's followed by a blank line for readability.
+  if (xmlDecl) {
+    result = xmlDecl + "\n\n" + result;
+  }
+  return result;
 }
+
+
+// General strategy: recursively walk the tree depth-first, building an array of output lines as we go. 
+// Each node is dispatched to an appender function based on its tag name and role in the document structure, 
+// which handles indentation and line breaks according to the formatting rules for that category of node.
+// So we flow through appendNode → appendElement → appendPar/appendMixedPar/appendBlock/appendVerbatim/appendLineEnd, depending on the node type and tag,
+// and these call appendNode or another appender recursively on their children as needed.
+
+// After the tree is fully serialized into an array of lines, 
+// a post-processing pass inserts blank lines according to the breakLines option, and the array is joined into the final output string.
 
 // ─── Node dispatch ────────────────────────────────────────────────────────────
 
@@ -80,20 +125,21 @@ function appendNode(
       out.push(`<!DOCTYPE ${node.name}>`);
       break;
     case "comment":
-      out.push(`${ctx.ind.repeat(depth)}<!--${(node as any).value}-->`);
+      out.push(`${ctx.ind.repeat(depth)}<!--${node.value}-->`);
       break;
     case "cdata":
       out.push(
-        `${ctx.ind.repeat(depth)}<![CDATA[${(node as any).value}]]>`,
+        `${ctx.ind.repeat(depth)}<![CDATA[${node.value}]]>`,
       );
       break;
     case "text": {
-      const v = (node as any).value.trim();
+      // Whitespace-only text between tags is dropped; non-empty text is re-indented.
+      const v = node.value.trim();
       if (v) out.push(`${ctx.ind.repeat(depth)}${escText(v)}`);
       break;
     }
     case "element":
-      appendElement(node as Element, out, depth, ctx);
+      appendElement(node, out, depth, ctx);
       break;
   }
 }
@@ -104,9 +150,16 @@ function appendElement(
   depth: number,
   ctx: Ctx,
 ): void {
+  // Dispatch order matters: verbatim is checked first so it wins even for tags
+  // that also appear in blockTags. smartParTags is checked before lineEndTags so
+  // it takes precedence for tags that appear in both lists (e.g. title, caption).
+  // parTags are split by whether they contain structural block children.
+  // Everything else falls through to appendBlock.
   const name = node.name;
   if (verbatimTags.includes(name)) {
     appendVerbatim(node, out, depth, ctx);
+  } else if (smartParTags.includes(name)) {
+    appendSmartPar(node, out, depth, ctx);
   } else if (lineEndTags.includes(name)) {
     appendLineEnd(node, out, depth, ctx);
   } else if (parTags.includes(name) && !hasBlockChildren(node)) {
@@ -138,12 +191,13 @@ function appendVerbatim(
     return;
   }
   const raw = extractVerbatimContent(node);
-  // Single-line verbatim stays on one line
+  // Single-line verbatim (e.g. <c>print(x)</c>) stays on one line.  Applies to <input>sage code</input> as well.
   if (!raw.includes("\n")) {
     out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
     return;
   }
   out.push(`${ind}${openTag(node)}`);
+  // Lines are pushed without re-indenting so code/math content is preserved exactly.
   for (const line of raw.split("\n")) out.push(line);
   out.push(`${ind}</${node.name}>`);
 }
@@ -151,12 +205,14 @@ function appendVerbatim(
 function extractVerbatimContent(node: Element): string {
   const raw = node.children
     .map((c) => {
-      if (c.type === "text") return escText((c as any).value);
-      if (c.type === "cdata") return `<![CDATA[${(c as any).value}]]>`;
+      if (c.type === "text") return escText(c.value);
+      if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
       return "";
     })
     .join("");
-  // Strip one leading newline and all trailing blank lines (but preserve content)
+  // Authors typically write <input>\ncode\n</input>; strip the surrounding newlines
+  // so the content lines themselves set the indentation, not the tag placement.
+  // /(\n\s*)*$/ removes all trailing blank/whitespace-only lines, not just one \n.
   return raw.replace(/^\n/, "").replace(/(\n\s*)*$/, "");
 }
 
@@ -175,6 +231,45 @@ function appendLineEnd(
   }
   const content = inlineSerialize(node.children);
   out.push(`${ind}${openTag(node)}${content}</${node.name}>`);
+}
+
+// ─── Smart paragraph (single-line if fits, par reflow if too long) ───────────
+
+function appendSmartPar(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  // Uncommon: a smartParTag containing block children (e.g. display math in a title).
+  // Delegate to mixed-par which handles the inline-run / block-child alternation.
+  if (hasBlockChildren(node)) {
+    appendMixedPar(node, out, depth, ctx);
+    return;
+  }
+  // Always normalise through the token pipeline so author-introduced newlines or
+  // extra whitespace in the source are collapsed, and inline elements are handled
+  // the same way as in appendPar (punctuation merging, opaque token treatment).
+  const tokens = collectTokens(node.children);
+  const childInd = ctx.ind.repeat(depth + 1);
+
+  // Try single-line: join all tokens and check if the whole rendered line fits.
+  const singleLine = `${ind}${openTag(node)}${tokens.join(" ")}</${node.name}>`;
+  if (ctx.printWidth === 0 || singleLine.length <= ctx.printWidth) {
+    out.push(singleLine);
+    return;
+  }
+  // Doesn't fit — reflow in par format (open tag, wrapped content, close tag).
+  out.push(`${ind}${openTag(node)}`);
+  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+    out.push(`${childInd}${line}`);
+  }
+  out.push(`${ind}</${node.name}>`);
 }
 
 // ─── Pure paragraph (no block children) ──────────────────────────────────────
@@ -199,7 +294,7 @@ function appendPar(
   out.push(`${ind}</${node.name}>`);
 }
 
-// ─── Mixed paragraph (has block children like <me>, <ul>) ────────────────────
+// ─── Mixed paragraph (has block children like <md>, <ul>) ────────────────────
 
 function appendMixedPar(
   node: Element,
@@ -207,6 +302,9 @@ function appendMixedPar(
   depth: number,
   ctx: Ctx,
 ): void {
+  // A mixed <p> alternates between inline runs (text + inline elements) and
+  // structural block children (display math, lists, etc.). Each inline run is
+  // collected and reflowed as a unit; each block child is recursively serialized.
   const ind = ctx.ind.repeat(depth);
   const childInd = ctx.ind.repeat(depth + 1);
   if (isEmptyElement(node)) {
@@ -222,28 +320,31 @@ function appendMixedPar(
       const child = children[i] as Element;
       i++;
 
-      // Check for punctuation immediately after this block element
-      let punct = "";
+      // Fuse any immediately-following punctuation (e.g. the "." after </md>) onto
+      // the closing tag line rather than letting it appear as a dangling token on
+      // the next line.
+      let punctuation = "";
       if (i < children.length && children[i].type === "text") {
         const textVal: string = (children[i] as any).value;
         const m = /^(\s*)([.,;:!?])/.exec(textVal);
         if (m) {
-          punct = m[2];
+          punctuation = m[2];
           const remaining = textVal.slice(m[0].length);
-          // Replace this text node's value with what remains after the punct
+          // Consume the punctuation from the text node; skip the node if now empty.
           (children[i] as any).value = remaining;
-          if (!remaining.trim()) i++; // skip entirely if nothing left
+          if (!remaining.trim()) i++;
         }
       }
 
       const blockLines: string[] = [];
       appendElement(child, blockLines, depth + 1, ctx);
-      if (punct && blockLines.length > 0) {
-        blockLines[blockLines.length - 1] += punct;
+      if (punctuation && blockLines.length > 0) {
+        blockLines[blockLines.length - 1] += punctuation;
       }
       out.push(...blockLines);
     } else {
-      // Collect contiguous inline run
+      // Collect contiguous inline children (text nodes + inline elements) into one
+      // run, then reflow the whole run at printWidth.
       const run: ElementContent[] = [];
       while (i < children.length && !isBlockChild(children[i])) {
         run.push(children[i]);
@@ -275,39 +376,30 @@ function appendBlock(
     return;
   }
 
-  // Special case: webwork containing only lineEndTag children stays on one line.
-  // e.g. <webwork><xi:include href="..."/></webwork>
-  if (node.name === "webwork") {
-    const mc = meaningfulChildren(node);
-    if (
-      mc.length > 0 &&
-      mc.every(
-        (c) =>
-          c.type === "element" &&
-          lineEndTags.includes((c as Element).name),
-      )
-    ) {
-      const inner = mc
-        .map((c) => {
-          const el = c as Element;
-          return isEmptyElement(el)
-            ? selfClose(el)
-            : `${openTag(el)}${inlineSerialize(el.children)}</${el.name}>`;
-        })
-        .join("");
-      out.push(`${ind}${openTag(node)}${inner}</${node.name}>`);
-      return;
-    }
+  // Special case: any node whose only meaningful child is xi:include stays on one line.
+  // e.g. <outernode><xi:include href="..."/></outernode>
+  const mc = meaningfulChildren(node);
+  if (mc.length === 1 && mc[0].type === "element" && (mc[0] as Element).name === "xi:include") {
+    const el = mc[0] as Element;
+    const inner = isEmptyElement(el)
+      ? selfClose(el)
+      : `${openTag(el)}${inlineSerialize(el.children)}</${el.name}>`;
+    out.push(`${ind}${openTag(node)}${inner}</${node.name}>`);
+    return;
   }
 
+  //Add starting tag as its own line.
   out.push(`${ind}${openTag(node)}`);
   for (const child of meaningfulChildren(node)) {
     appendNode(child, out, depth + 1, ctx);
   }
+  // Add closing tag as its own line.
   out.push(`${ind}</${node.name}>`);
 }
 
 // ─── Blank line post-processing ───────────────────────────────────────────────
+// Blank lines are inserted as a separate pass so the serializer functions above
+// don't need look-ahead logic while building the line array.
 
 function applyBlankLines(lines: string[], ctx: Ctx): string[] {
   const result: string[] = [];
@@ -318,7 +410,7 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
 
     result.push(lines[i]);
 
-    // Always: blank line after XML declaration
+    // Always insert a blank line after the XML declaration.
     if (lines[i].startsWith("<?")) {
       result.push("");
       continue;
@@ -327,13 +419,18 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
     if (ctx.blankLines === "few") continue;
 
     if (ctx.blankLines === "some") {
+      // Blank before section/environment opening tags (the most common readable spacing).
       if (cur.startsWith("</") && next !== null && next.startsWith("<")) {
         const nextTag = /^<([^\s>/]+)/.exec(next)?.[1];
         if (nextTag && newlineTags.includes(nextTag)) result.push("");
-      } else if (/^<title[\s>]/.test(cur)) {
+      } else if (/^<title[\s>]/.test(cur) && cur.includes("</title>")) {
+        // Blank after a complete single-line <title>...</title>.
+        // Don't fire for the opening tag of a multi-line expanded title — that
+        // would inject a blank line between the open tag and the title text.
         result.push("");
       }
     } else if (ctx.blankLines === "many") {
+      // Blank after every closing tag, or between consecutive opening tags.
       if (
         cur.startsWith("</") ||
         (cur.startsWith("<") && next !== null && next.startsWith("<"))
@@ -351,10 +448,10 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
 function inlineSerialize(children: ElementContent[]): string {
   return children
     .map((c) => {
-      if (c.type === "text") return escText((c as any).value);
-      if (c.type === "element") return inlineEl(c as Element);
-      if (c.type === "comment") return `<!--${(c as any).value}-->`;
-      if (c.type === "cdata") return `<![CDATA[${(c as any).value}]]>`;
+      if (c.type === "text") return escText(c.value);
+      if (c.type === "element") return inlineEl(c);
+      if (c.type === "comment") return `<!--${c.value}-->`;
+      if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
       return "";
     })
     .join("");
@@ -368,25 +465,29 @@ function inlineEl(node: Element): string {
 // ─── Token collection and reflow ──────────────────────────────────────────────
 
 function collectTokens(children: ElementContent[]): string[] {
+  // Produces a flat list of reflow tokens: words from text nodes, and serialized
+  // inline elements treated as opaque single tokens.
   const tokens: string[] = [];
   for (const c of children) {
     if (c.type === "text") {
-      const words: string[] = (c as any).value
+      const words: string[] = c.value
         .split(/\s+/)
         .filter((w: string) => w.length > 0);
       for (let j = 0; j < words.length; j++) {
         const w = escText(words[j]);
-        // Merge leading punctuation with the previous token to avoid "token ," artifacts
-        if (j === 0 && tokens.length > 0 && /^[.,;:!?]/.test(w)) {
+        // If this text node begins with punctuation or a hyphen immediately after an
+        // element (e.g. ", we have" or "-functions"), merge onto the previous token.
+        // Covers: "<m>x</m>, we" → "<m>x</m>," and "<m>L</m>-functions" → "<m>L</m>-functions".
+        if (j === 0 && tokens.length > 0 && /^[.,;:!?\-]/.test(w)) {
           tokens[tokens.length - 1] += w;
         } else {
           tokens.push(w);
         }
       }
     } else if (c.type === "element") {
-      tokens.push(inlineEl(c as Element));
+      tokens.push(inlineEl(c));
     } else if (c.type === "comment") {
-      tokens.push(`<!--${(c as any).value}-->`);
+      tokens.push(`<!--${c.value}-->`);
     }
   }
   return tokens;
@@ -399,7 +500,9 @@ function reflowTokens(
   breakSentences: boolean,
 ): string[] {
   if (tokens.length === 0) return [];
-  const width = Math.max(20, printWidth - indentLen);
+  // 0 means no width limit; otherwise floor at 20 so deeply-nested content
+  // doesn't produce a zero/negative target when the indent exceeds printWidth.
+  const width = printWidth === 0 ? Infinity : Math.max(20, printWidth - indentLen);
   const lines: string[] = [];
   let cur = "";
 
@@ -436,6 +539,8 @@ function selfClose(node: Element): string {
 
 function buildAttrs(node: Element): string {
   return Object.entries(node.attributes || {})
+    // v == null (loose equality) covers both null and undefined that can appear
+    // in Object.entries output for boolean/valueless XML attributes.
     .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
     .join(" ");
 }
@@ -443,22 +548,29 @@ function buildAttrs(node: Element): string {
 // ─── Predicates ───────────────────────────────────────────────────────────────
 
 function isEmptyElement(node: Element): boolean {
+  // The XML parser always emits text nodes for whitespace between tags, so "empty"
+  // means every child is a whitespace-only text node.
   return node.children.every(
-    (c) => c.type === "text" && (c as any).value.trim() === "",
+    (c) => c.type === "text" && c.value.trim() === "",
   );
 }
 
 function meaningfulChildren(node: Element): ElementContent[] {
+  // Strip the whitespace-only text nodes the parser emits between elements so
+  // the serializer only sees structurally significant children.
   return node.children.filter(
-    (c) => !(c.type === "text" && (c as any).value.trim() === ""),
+    (c) => !(c.type === "text" && c.value.trim() === ""),
   );
 }
 
 function isBlockChild(child: ElementContent): boolean {
   if (child.type !== "element") return false;
-  const name = (child as Element).name;
-  // <c> is verbatim but always inline; don't treat it as a block child
+  const name = child.name;
+  // <c> is in verbatimTags (inline code) but is always rendered inline, never as a
+  // structural block, so it must be excluded before the verbatimTags check below.
   if (name === "c") return false;
+  // verbatimTags is included alongside blockTags because structural verbatim elements
+  // (<pre>, <program>, etc.) break the inline flow of a <p> just like block elements do.
   return (
     (blockTags.includes(name) || verbatimTags.includes(name)) &&
     !lineEndTags.includes(name)
@@ -470,7 +582,7 @@ function hasBlockChildren(node: Element): boolean {
 }
 
 // ─── Text escaping ────────────────────────────────────────────────────────────
-
+// The functions above will usually be passed a tree that was produced by parsing xml, so there would not be any special characters.  However, other libraries might forget to escape these, so we include them here just in case.
 function escText(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
