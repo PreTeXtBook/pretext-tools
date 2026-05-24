@@ -42,7 +42,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "xast-util-from-xml": "*"
+    "xast-util-from-xml": "^4.0.0"
   },
   "peerDependencies": {
     "unified": ">=11"
