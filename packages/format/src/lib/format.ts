@@ -72,9 +72,12 @@ export function formatPretext(text: string, options?: FormatOptions): string {
   // If the input contains an xml declaration, it must be preserved verbatim at the top of the output; the serializer doesn't handle it as a normal processing instruction node since it must always come first. So we extract it before parsing and prepend it back to the final output.
   let xmlDecl: string | null = null;
   if (text.startsWith("<?xml")) {
-    const endIdx = text.indexOf("?>") + 2;
-    xmlDecl = text.slice(0, endIdx);
-    text = text.slice(endIdx);
+    const declEndIdx = text.indexOf("?>");
+    if (declEndIdx !== -1) {
+      const endIdx = declEndIdx + 2;
+      xmlDecl = text.slice(0, endIdx);
+      text = text.slice(endIdx);
+    }
   }
   // Wrap the rest of the text in a dummy root in case text contains multiple top-level nodes.
   text = `<tmp-root>${text}</tmp-root>`;
