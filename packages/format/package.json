@@ -47,11 +47,6 @@
   "peerDependencies": {
     "unified": ">=11"
   },
-  "peerDependenciesMeta": {
-    "unified": {
-      "optional": true
-    }
-  },
   "publishConfig": {
     "access": "public"
   }
