@@ -412,7 +412,7 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
     result.push(lines[i]);
 
     // Always insert a blank line after the XML declaration.
-    if (lines[i].startsWith("<?")) {
+    if (i === 0 && /^<\?xml(?:\s|\?>)/.test(cur)) {
       result.push("");
       continue;
     }
