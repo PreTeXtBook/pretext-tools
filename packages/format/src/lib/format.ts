@@ -10,8 +10,6 @@ import {
   verbatimTags,
 } from "./docStructure";
 
-export { formatPretextLegacy } from "./format-legacy";
-
 export interface FormatOptions {
   breakLines?: "few" | "some" | "many";
   breakSentences?: boolean;

@@ -3,12 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PreTeXt Formatter Comparison</title>
+    <title>PreTeXt Formatter</title>
     <link rel="stylesheet" href="/src/style.css" />
     <style>
       .compare-layout {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: 1fr 1fr;
         grid-template-rows: auto 1fr;
         height: calc(100vh - var(--toolbar-h));
         gap: 0;
@@ -20,7 +20,6 @@
         border-right: 1px solid var(--overlay);
       }
       .controls-row {
-        grid-column: 2 / 4;
         background: var(--surface);
         border-bottom: 1px solid var(--overlay);
         padding: 8px 12px;
@@ -29,21 +28,12 @@
         gap: 16px;
         flex-wrap: wrap;
       }
-      .output-cols {
-        grid-column: 2 / 4;
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        overflow: hidden;
-      }
       .output-pane {
         display: flex;
         flex-direction: column;
         overflow: hidden;
       }
-      .output-pane + .output-pane {
-        border-left: 1px solid var(--overlay);
-      }
-      .output-pane .pane-header {
+      .pane-header {
         background: var(--surface);
         border-bottom: 1px solid var(--overlay);
         padding: 0 12px;
@@ -57,14 +47,6 @@
         text-transform: uppercase;
         gap: 8px;
       }
-      .badge {
-        font-size: 10px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: 500;
-      }
-      .badge-legacy { background: var(--overlay); color: var(--subtext); }
-      .badge-new    { background: #313244; color: var(--accent); }
       .output-pre {
         flex: 1;
         overflow: auto;
@@ -74,10 +56,8 @@
         line-height: 1.6;
         white-space: pre;
         background: var(--bg);
+        color: var(--text);
       }
-      .line-add  { background: rgba(166,227,161,0.12); color: var(--green); }
-      .line-del  { background: rgba(243,139,168,0.12); color: var(--red); }
-      .line-same { color: var(--text); }
       .control-group {
         display: flex;
         align-items: center;
@@ -97,13 +77,6 @@
         font-size: 12px;
       }
       .control-group input[type="checkbox"] { accent-color: var(--accent); }
-      .diff-stats {
-        margin-left: auto;
-        font-size: 11px;
-        color: var(--muted);
-      }
-      .diff-stats .adds { color: var(--green); }
-      .diff-stats .dels { color: var(--red); }
       .input-col textarea {
         flex: 1;
         resize: none;
@@ -121,59 +94,44 @@
   </head>
   <body>
     <header class="toolbar">
-      <span class="logo">⊕ PreTeXt Formatter Comparison</span>
+      <span class="logo">⊕ PreTeXt Formatter</span>
       <a href="/" class="page-link">← Playground</a>
     </header>
 
     <div class="compare-layout">
       <div class="input-col">
         <div class="pane-header">
-          <span class="pane-title">PreTeXt XML Input</span>
+          <span>PreTeXt XML Input</span>
         </div>
         <textarea id="input" spellcheck="false" autocomplete="off"></textarea>
       </div>
 
-      <div class="controls-row">
-        <div class="control-group">
-          <label for="blankLines">Blank lines:</label>
-          <select id="blankLines">
-            <option value="few">few</option>
-            <option value="some" selected>some</option>
-            <option value="many">many</option>
-          </select>
-        </div>
-        <div class="control-group">
-          <label for="printWidth">Print width:</label>
-          <input id="printWidth" type="number" value="80" min="20" max="200" style="width:60px" />
-        </div>
-        <div class="control-group">
-          <label for="tabSize">Tab size:</label>
-          <input id="tabSize" type="number" value="2" min="1" max="8" style="width:50px" />
-        </div>
-        <div class="control-group">
-          <label><input id="useTabs" type="checkbox" /> Tabs</label>
-        </div>
-        <div class="control-group">
-          <label><input id="breakSentences" type="checkbox" /> Break sentences</label>
-        </div>
-        <span class="diff-stats" id="stats"></span>
-      </div>
-
-      <div class="output-cols">
-        <div class="output-pane">
-          <div class="pane-header">
-            <span>Legacy formatter</span>
-            <span class="badge badge-legacy">regex</span>
+      <div class="output-pane">
+        <div class="controls-row">
+          <div class="control-group">
+            <label for="blankLines">Blank lines:</label>
+            <select id="blankLines">
+              <option value="few">few</option>
+              <option value="some" selected>some</option>
+              <option value="many">many</option>
+            </select>
           </div>
-          <pre id="out-legacy" class="output-pre"></pre>
-        </div>
-        <div class="output-pane">
-          <div class="pane-header">
-            <span>New formatter</span>
-            <span class="badge badge-new">xast</span>
+          <div class="control-group">
+            <label for="printWidth">Print width:</label>
+            <input id="printWidth" type="number" value="80" min="0" max="200" style="width:60px" />
           </div>
-          <pre id="out-new" class="output-pre"></pre>
+          <div class="control-group">
+            <label for="tabSize">Tab size:</label>
+            <input id="tabSize" type="number" value="2" min="1" max="8" style="width:50px" />
+          </div>
+          <div class="control-group">
+            <label><input id="useTabs" type="checkbox" /> Tabs</label>
+          </div>
+          <div class="control-group">
+            <label><input id="breakSentences" type="checkbox" /> Break sentences</label>
+          </div>
         </div>
+        <pre id="output" class="output-pre"></pre>
       </div>
     </div>
 

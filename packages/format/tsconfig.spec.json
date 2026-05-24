@@ -25,5 +25,6 @@
     "src/**/*.test.jsx",
     "src/**/*.spec.jsx",
     "src/**/*.d.ts"
-  ]
+  ],
+  "exclude": ["src/lib/__fixtures__/**"]
 }

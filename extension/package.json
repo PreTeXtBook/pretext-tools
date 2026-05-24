@@ -290,6 +290,12 @@
             "default": true,
             "markdownDescription": "Whether to add a line break after each period in a paragraph."
           },
+          "pretext-tools.formatter.printWidth": {
+            "order": 5,
+            "type": "number",
+            "default": 80,
+            "markdownDescription": "Maximum line width for paragraph text reflow. Set to `0` to disable line breaking."
+          },
           "pretext-tools.spellCheck.checkErrorsInsideScope": {
             "order": 3,
             "type": "object",
