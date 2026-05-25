@@ -81,6 +81,7 @@ export const docEnvs = [
   "image",
   "images",
   "insight",
+  "interactive",
   "investigation",
   "lemma",
   "list",
@@ -107,6 +108,7 @@ export const docEnvs = [
   "table",
   "tabular",
   "theorem",
+  "video",
   "warning",
   "webwork",
 ];
@@ -114,8 +116,6 @@ export const lineEndTags = [
   "address",
   "attribution",
   "caption",
-  "cd",
-  "cell",
   "cline",
   "date",
   "department",
@@ -133,7 +133,6 @@ export const lineEndTags = [
   "personname",
   "pg-macros",
   "pubtitle",
-  "row",
   "subtitle",
   "support",
   "title",
@@ -155,8 +154,7 @@ const docEmpty = [
   "webwork",
 ];
 const listLike = ["ol", "ul", "dl"];
-const mathDisplay = ["me", "men", "md", "mdn"];
-const footnoteLike = ["fn"];
+const mathDisplay = ["me", "men", "md", "mdn"]; // me, men, and mdn are deprecated but still used in some documents
 const nestableTags = [
   "ul",
   "ol",
@@ -190,6 +188,7 @@ export const verbatimTags = [
   "tikz",
   "code",
   "c",
+  "cd",
 ];
 export const newlineTags = [
   ...docStructure,
@@ -204,6 +203,7 @@ export const blockTags = [
   ...docEnvs,
   ...nestableTags,
   ...mathDisplay,
+  ...listLike,
 ];
 
 // Elements with flowing text content that always expand to multiple lines.
@@ -214,8 +214,8 @@ export const parTags = ["p", "li", "fn"];
 export const smartParTags = [
   "title",
   "shorttitle",
-  "caption",
   "subtitle",
+  "caption",
   "attribution",
   "personname",
   "location",
@@ -239,4 +239,8 @@ export const smartParTags = [
   "description",
   "shortdescription",
   "q",
+  "premise",
+  "response",
+  "li",
+  "cell",
 ];

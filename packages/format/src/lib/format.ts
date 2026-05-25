@@ -193,8 +193,9 @@ function appendVerbatim(
   }
   const raw = extractVerbatimContent(node);
   // Single-line verbatim (e.g. <c>print(x)</c>) stays on one line.  Applies to <input>sage code</input> as well.
+  // We choose to remove whitespace padding around the content in this case as well, since it's more likely to be accidental and visually distracting than intentional when the content is short enough to fit on one line.
   if (!raw.includes("\n")) {
-    out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
+    out.push(`${ind}${openTag(node)}${raw.trim()}</${node.name}>`);
     return;
   }
   out.push(`${ind}${openTag(node)}`);
