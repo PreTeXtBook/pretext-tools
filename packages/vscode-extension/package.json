@@ -3,6 +3,7 @@
   "displayName": "PreTeXt-tools",
   "description": "Language support and more for PreTeXt",
   "version": "0.36.1",
+  "private": true,
   "license": "See license in LICENSE",
   "icon": "logo.png",
   "publisher": "oscarlevin",
