@@ -32,6 +32,9 @@ jobs:
           git add packages/vscode-extension/assets/schema
           git commit -m "chore: update schemas" || true
 
+      - name: Build dependency packages
+        run: npm run build:packages
+
       - name: Build Extension
         run: npm run build -w pretext-tools
 
