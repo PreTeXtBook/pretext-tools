@@ -2,21 +2,6 @@ name: Publish VSCode Extension
 
 on:
   workflow_dispatch:
-    inputs:
-      level:
-        description: "The level of release to make"
-        required: true
-        type: choice
-        default: "patch"
-        options:
-          - "patch"
-          - "minor"
-          - "major"
-      update_internal_deps:
-        description: "Update internal monorepo dependency versions"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -36,10 +21,6 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Update internal monorepo dependency versions
-        if: ${{ inputs.update_internal_deps }}
-        run: node ./scripts/update-internal-deps.mjs
-
       - name: Set up git user
         run: |
           git config user.name "${{ github.actor }}"
@@ -49,16 +30,10 @@ jobs:
         run: |
           node ./scripts/getSchemas.js
           git add packages/vscode-extension/assets/schema
-          git commit -m "update schemas" || true
-
-      - name: Bump Version
-        run: |
-          cd packages/vscode-extension
-          npm version ${{ inputs.level }} --no-git-tag-version
+          git commit -m "chore: update schemas" || true
 
       - name: Build Extension
-        run: |
-          npm run build -w pretext-tools
+        run: npm run build -w pretext-tools
 
       - name: Package
         run: |
@@ -69,7 +44,7 @@ jobs:
         id: version
         run: echo "VERSION=$(jq -r '.version' packages/vscode-extension/package.json)" >> $GITHUB_OUTPUT
 
-      - name: Deploy to VSMarketplace
+      - name: Deploy to VS Marketplace
         run: |
           cd dist/vscode-extension
           npx vsce publish --no-dependencies -p ${{ secrets.VS_MARKETPLACE_TOKEN }}
@@ -84,14 +59,8 @@ jobs:
           newline="\\n## [${{ steps.version.outputs.VERSION }}] - $(date +'%Y-%m-%d')"
           sed '/## \[UNRELEASED\]/a\'"$newline" CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
-
-      - name: Commit
-        run: |
-          git add .
-          git commit -m "chore(vscode-extension): bump to v${{ steps.version.outputs.VERSION }}"
-
-      - name: push commit
-        run: |
+          git add CHANGELOG.md
+          git commit -m "chore(vscode-extension): publish v${{ steps.version.outputs.VERSION }}" || true
           git push origin main
 
       - name: Create Release
