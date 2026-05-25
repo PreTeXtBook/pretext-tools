@@ -21,6 +21,7 @@
     "build:dev": "npm run build:deps && npm run build:dev -w pretext-tools",
     "build:packages": "npm run build:deps",
     "publish-packages": "changeset publish",
+    "changes": "node ./scripts/changes-since-release.mjs",
     "watch": "npm run watch -w pretext-tools",
     "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs && npm run generate-types -w @pretextbook/ptxast",
     "check:schema-generated": "node ./scripts/check-schema-generated.mjs",
