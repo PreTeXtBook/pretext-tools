@@ -41,7 +41,7 @@ f.factor()
   </p>
 
   <console>
-    <prompt>$ </prompt>
+    <prompt>$</prompt>
     <input>echo "hello world"</input>
     <output>hello world</output>
   </console>
@@ -63,6 +63,7 @@ f.factor()
     Fast forward to the end of the animation and then click <c>New Graph</c>
     button to generate a new random graph.
   </p>
+
   <interactive platform="javascript" design-width="1600" aspect="4:2">
     <script type="module">
       import { DetectCycle } from "./external/interactives/data-structures/entry.js";

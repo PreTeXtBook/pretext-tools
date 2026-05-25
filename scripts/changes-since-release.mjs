@@ -60,6 +60,11 @@ const packages = [
     name: "prettier-plugin-pretext",
     oldPrefix: null,
   },
+  {
+    dir: "vscode-extension",
+    name: "pretext-tools",
+    oldPrefix: "v",
+  },
 ];
 
 const filter = process.argv[2]; // optional: filter to one package by dir name or npm name
@@ -68,15 +73,19 @@ function latestTag(pkg) {
   // Prefer changesets-style tag, fall back to old prefix
   const changesetsTag = `${pkg.name}@`;
   const candidates = allTags
-    .filter(
-      (t) => t.startsWith(changesetsTag) || (pkg.oldPrefix && t.startsWith(pkg.oldPrefix)),
-    )
+    .filter((t) => {
+      if (t.startsWith(changesetsTag)) return /\d/.test(t.slice(changesetsTag.length));
+      if (pkg.oldPrefix && t.startsWith(pkg.oldPrefix))
+        return /\d/.test(t.slice(pkg.oldPrefix.length));
+      return false;
+    })
     .sort((a, b) => {
       // Sort by version number descending
       const ver = (t) =>
         t
           .replace(/.*@/, "")
           .replace(/.*-v/, "")
+          .replace(/^v/, "")
           .split(".")
           .map(Number);
       const [av, bv] = [ver(a), ver(b)];

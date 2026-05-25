@@ -25,6 +25,7 @@ const fixtures = [
   "references",
   "plaintext",
   "min-tests",
+  "runestone",
 ] as const;
 
 describe("formatPretext — snapshot tests", () => {
