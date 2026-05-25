@@ -2,6 +2,16 @@ name: Publish VSCode Extension
 
 on:
   workflow_dispatch:
+    inputs:
+      level:
+        description: "Release level"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
 
 permissions:
   contents: write
@@ -32,6 +42,11 @@ jobs:
           git add packages/vscode-extension/assets/schema
           git commit -m "chore: update schemas" || true
 
+      - name: Bump version
+        run: |
+          cd packages/vscode-extension
+          npm version ${{ inputs.level }} --no-git-tag-version
+
       - name: Build dependency packages
         run: npm run build:packages
 
@@ -60,9 +75,9 @@ jobs:
       - name: Update changelog
         run: |
           newline="\\n## [${{ steps.version.outputs.VERSION }}] - $(date +'%Y-%m-%d')"
-          sed '/## \[UNRELEASED\]/a\'"$newline" CHANGELOG.md > CHANGELOG.md.tmp
-          mv CHANGELOG.md.tmp CHANGELOG.md
-          git add CHANGELOG.md
+          sed '/## \[UNRELEASED\]/a\'"$newline" packages/vscode-extension/CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp packages/vscode-extension/CHANGELOG.md
+          git add packages/vscode-extension/CHANGELOG.md
           git commit -m "chore(vscode-extension): publish v${{ steps.version.outputs.VERSION }}" || true
           git push origin main
 
