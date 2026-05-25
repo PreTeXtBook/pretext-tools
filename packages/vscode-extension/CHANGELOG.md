@@ -1,5 +1,17 @@
 # Change Log
 
+## 0.37.0
+
+### Minor Changes
+
+- f4235b7: Update formatter
+
+### Patch Changes
+
+- Updated dependencies [f4235b7]
+  - @pretextbook/format@0.1.0
+  - @pretextbook/visual-editor@0.0.5
+
 All notable changes to the "pretext-tools" extension will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -11,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- New formatter based on xast, with much better edge-case handling and more consistent formatting.  Includes a new feature to break lines at a specified width (set option to 0 to disable).
+- New formatter based on xast, with much better edge-case handling and more consistent formatting. Includes a new feature to break lines at a specified width (set option to 0 to disable).
 
 ## [0.36.1] - 2026-04-11
 
