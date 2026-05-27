@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [0.38.0] - 2026-05-27
+
+- Explosed the "Markdown-style PreTeXt" converter as one of the two conversion options.
+
 ## [0.37.0] - 2026-05-25
 
 ### Changed
