@@ -4,12 +4,34 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      release_target:
+        description: "What to release"
+        required: true
+        type: choice
+        default: "packages"
+        options:
+          - "packages"
+          - "vscode-extension"
+      extension_level:
+        description: "VS Code extension release level"
+        required: true
+        type: choice
+        default: "patch"
+        options:
+          - "patch"
+          - "minor"
+          - "major"
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
   release:
     name: Release
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release_target == 'packages')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,3 +60,80 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+
+  release-vscode-extension:
+    name: Release VS Code Extension
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_target == 'vscode-extension'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set up git user
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Update schema
+        run: |
+          node ./scripts/getSchemas.js
+          git add packages/vscode-extension/assets/schema
+          git commit -m "chore(vscode-extension): update schemas" || true
+
+      - name: Bump extension version
+        run: |
+          cd packages/vscode-extension
+          npm version ${{ github.event.inputs.extension_level }} --no-git-tag-version
+
+      - name: Build dependency packages
+        run: npm run build:packages
+
+      - name: Build extension
+        run: npm run build -w pretext-tools
+
+      - name: Package extension
+        run: |
+          cd dist/vscode-extension
+          npx vsce package --no-dependencies
+
+      - name: Get extension version
+        id: version
+        run: echo "VERSION=$(jq -r '.version' packages/vscode-extension/package.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to VS Marketplace
+        run: |
+          cd dist/vscode-extension
+          npx vsce publish --no-dependencies -p "${{ secrets.VS_MARKETPLACE_TOKEN }}"
+
+      - name: Publish to Open VSX
+        run: |
+          cd dist/vscode-extension
+          npx ovsx publish --no-dependencies -p "${{ secrets.OPEN_VSX_TOKEN }}"
+
+      - name: Update changelog and commit release metadata
+        run: |
+          newline="\\n## [${{ steps.version.outputs.VERSION }}] - $(date +'%Y-%m-%d')"
+          sed '/## \[UNRELEASED\]/a\'"$newline" packages/vscode-extension/CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp packages/vscode-extension/CHANGELOG.md
+          git add packages/vscode-extension/CHANGELOG.md
+          git add packages/vscode-extension/package.json
+          git add package-lock.json
+          git commit -m "chore(vscode-extension): publish v${{ steps.version.outputs.VERSION }}" || true
+          git push origin main
+
+      - name: Create GitHub release for extension
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "vscode-extension-v${{ steps.version.outputs.VERSION }}" \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="VS Code Extension v${{ steps.version.outputs.VERSION }}" \
+            --notes="See packages/vscode-extension/CHANGELOG.md for details."

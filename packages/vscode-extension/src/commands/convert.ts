@@ -53,10 +53,9 @@ export async function cmdConvertText() {
     .get<boolean>("experimentalFeatures", false);
   const conversionOptions = [
     "LaTeX-style PreTeXt",
-    "PreTeXt Markdown",
-    "Classic Markdown",
+    "Markdown-style PreTeXt",
     ...(experimentalFeaturesEnabled
-      ? ["PreTeXt Markdown (Experimental ptxast)"]
+      ? ["Mixed Markup", "Legacy Markdown Converter"]
       : []),
   ];
   window
@@ -71,17 +70,19 @@ export async function cmdConvertText() {
         case "LaTeX-style PreTeXt":
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
-        case "Classic Markdown":
-          convertedText = await validateAndFormatConvertedPretext(
-            "Classic Markdown",
-            await md2ptx(initialText),
+        case "Markdown-style PreTeXt":
+          convertedText = await cmdConvertPMDToPretextExperimental(
+            initialText,
           );
           break;
-        case "PreTeXt Markdown":
+        case "Mixed Markup":
           convertedText = await cmdConvertPMDToPretext(initialText);
           break;
-        case "PreTeXt Markdown (Experimental ptxast)":
-          convertedText = await cmdConvertPMDToPretextExperimental(initialText);
+        case "Legacy Markdown Converter":
+          convertedText = await validateAndFormatConvertedPretext(
+            "Legacy Markdown Converter",
+            await md2ptx(initialText),
+          );
           break;
       }
     })
@@ -154,16 +155,19 @@ function convertWithUnified(text: string) {
 
 async function cmdConvertPMDToPretext(initialText: string) {
   const newText = FlexTeXtConvert(initialText);
-  return validateAndFormatConvertedPretext("PreTeXt Markdown", newText);
+  return validateAndFormatConvertedPretext(
+    "PreTeXt Markdown (Experimental)",
+    newText,
+  );
 }
 
 async function cmdConvertPMDToPretextExperimental(initialText: string) {
   pretextOutputChannel.appendLine(
-    "PreTeXt Markdown ptxast conversion is experimental. Use with care.",
+    "Markdown-style PreTeXt ptxast conversion is experimental. Use with care.",
   );
   const newText = markdownToPretext(initialText);
   return validateAndFormatConvertedPretext(
-    "PreTeXt Markdown (Experimental ptxast)",
+    "Markdown-style PreTeXt",
     newText,
   );
 }
