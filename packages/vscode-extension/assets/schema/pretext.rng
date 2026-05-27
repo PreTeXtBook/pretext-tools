@@ -2394,7 +2394,17 @@
     <optional>
       <choice>
         <ref name="AlignmentVertical"/>
-        <attribute name="valigns"/>
+        <attribute name="valigns">
+          <list>
+            <oneOrMore>
+              <choice>
+                <value>top</value>
+                <value>middle</value>
+                <value>bottom</value>
+              </choice>
+            </oneOrMore>
+          </list>
+        </attribute>
       </choice>
     </optional>
   </define>
@@ -2985,7 +2995,15 @@
   <define name="ExerciseOrderedList">
     <element name="ol">
       <optional>
-        <attribute name="cols"/>
+        <attribute name="cols">
+          <choice>
+            <value>2</value>
+            <value>3</value>
+            <value>4</value>
+            <value>5</value>
+            <value>6</value>
+          </choice>
+        </attribute>
       </optional>
       <optional>
         <attribute name="marker"/>
@@ -4249,7 +4267,10 @@
         <!--
           multi-line: "mrow" content, not itself a
           cross-reference target, so no @xml:id, no @label;
-          @number defaults to "no" and applies to each "mrow"
+          @number defaults to "no" and applies to each "mrow".
+          Each "intertext" must be sandwiched between "mrow":
+          it cannot lead, cannot trail, and two cannot be
+          adjacent.
         -->
         <group>
           <optional>
@@ -4269,7 +4290,13 @@
             </attribute>
           </optional>
           <optional>
-            <attribute name="alignment"/>
+            <attribute name="alignment">
+              <choice>
+                <value>align</value>
+                <value>gather</value>
+                <value>alignat</value>
+              </choice>
+            </attribute>
           </optional>
           <optional>
             <attribute name="alignat-columns"/>
@@ -4278,7 +4305,10 @@
           <zeroOrMore>
             <choice>
               <ref name="MathRow"/>
-              <ref name="MathIntertext"/>
+              <group>
+                <ref name="MathIntertext"/>
+                <ref name="MathRow"/>
+              </group>
             </choice>
           </zeroOrMore>
         </group>
