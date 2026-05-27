@@ -71,9 +71,7 @@ export async function cmdConvertText() {
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
         case "Markdown-style PreTeXt":
-          convertedText = await cmdConvertPMDToPretextExperimental(
-            initialText,
-          );
+          convertedText = await cmdConvertPMDToPretextExperimental(initialText);
           break;
         case "Mixed Markup":
           convertedText = await cmdConvertPMDToPretext(initialText);
@@ -166,10 +164,7 @@ async function cmdConvertPMDToPretextExperimental(initialText: string) {
     "Markdown-style PreTeXt ptxast conversion is experimental. Use with care.",
   );
   const newText = markdownToPretext(initialText);
-  return validateAndFormatConvertedPretext(
-    "Markdown-style PreTeXt",
-    newText,
-  );
+  return validateAndFormatConvertedPretext("Markdown-style PreTeXt", newText);
 }
 
 function formatConvertedPretext(xml: string) {
