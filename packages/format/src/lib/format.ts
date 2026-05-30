@@ -191,20 +191,9 @@ function appendVerbatim(
     out.push(`${ind}${selfClose(node)}`);
     return;
   }
-  const raw = extractVerbatimContent(node);
-  // Single-line verbatim (e.g. <c>print(x)</c>) stays on one line.  Applies to <input>sage code</input> as well.
-  // We choose to remove whitespace padding around the content in this case as well, since it's more likely to be accidental and visually distracting than intentional when the content is short enough to fit on one line.
-  if (!raw.includes("\n")) {
-    out.push(`${ind}${openTag(node)}${raw.trim()}</${node.name}>`);
-    return;
-  }
-  out.push(`${ind}${openTag(node)}`);
-  // Lines are pushed without re-indenting so code/math content is preserved exactly.
-  for (const line of raw.split("\n")) out.push(line);
-  out.push(`${ind}</${node.name}>`);
-}
 
-function extractVerbatimContent(node: Element): string {
+  // Preserve verbatim inner content exactly as parsed (including newlines and
+  // trailing spaces), while still escaping text-node XML entities.
   const raw = node.children
     .map((c) => {
       if (c.type === "text") return escText(c.value);
@@ -212,10 +201,16 @@ function extractVerbatimContent(node: Element): string {
       return "";
     })
     .join("");
-  // Authors typically write <input>\ncode\n</input>; strip the surrounding newlines
-  // so the content lines themselves set the indentation, not the tag placement.
-  // /(\n\s*)*$/ removes all trailing blank/whitespace-only lines, not just one \n.
-  return raw.replace(/^\n/, "").replace(/(\n\s*)*$/, "");
+    const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
+    if (trailingNewlineWithWhitespace) {
+      // Strip any trailing whitespace after the final newline so the closing tag
+      // gets the correct indentation.
+      const trimmedRaw = raw.replace(/\n[ \t]*$/, "\n");
+      out.push(`${ind}${openTag(node)}${trimmedRaw}${ind}</${node.name}>`);
+  } else {
+    // Otherwise, render the whole verbatim element on one line. Any internal newlines will be preserved as literal \n characters in the text content, and any trailing spaces will be preserved because the closing tag is on the same line.
+    out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
+  }
 }
 
 // ─── Line-end ─────────────────────────────────────────────────────────────────

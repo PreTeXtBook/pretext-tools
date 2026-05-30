@@ -28,7 +28,9 @@ x = var('x')
 f = x^2 + 3*x + 2
 f.factor()
     </input>
-    <output>(x + 1)*(x + 2)</output>
+    <output>
+(x + 1)*(x + 2)
+    </output>
   </sage>
 
   <p>
@@ -37,11 +39,25 @@ f.factor()
   </p>
 
   <p>
+    Inline code with surrounding spaces <c> x + 1 </c> should preserve those
+    spaces.
+  </p>
+
+  <p>
+    A program with a trailing blank line:
+  </p>
+
+  <program language="python">
+def foo():
+    return 1
+
+  </program>
+  <p>
     A console session:
   </p>
 
   <console>
-    <prompt>$</prompt>
+    <prompt>$ </prompt>
     <input>echo "hello world"</input>
     <output>hello world</output>
   </console>
@@ -58,7 +74,6 @@ f.factor()
         }
       }
   </program>
-
   <p>
     Fast forward to the end of the animation and then click <c>New Graph</c>
     button to generate a new random graph.
@@ -75,7 +90,23 @@ f.factor()
       });
       anim.doDetectCycle();
     </script>
-
     <xi:include href="../../fragments/ds-graph-instructions.xml"/>
   </interactive>
+
+  <listing>
+    <program>
+      <preamble>//line A
+//line B
+      </preamble>
+      <code><![CDATA[
+
+
+//line C
+
+]]></code>
+      <postamble>
+
+//line D</postamble>
+    </program>
+  </listing>
 </section>

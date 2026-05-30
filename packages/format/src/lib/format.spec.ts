@@ -1,3 +1,4 @@
+import { skip } from "node:test";
 import { formatPretext } from "./format";
 
 describe("format", () => {
@@ -23,4 +24,51 @@ describe("format", () => {
     expect(result).not.toMatch(/<webwork>\s*\n\s*<xi:include/);
     expect(result).not.toMatch(/<xi:include[^>]*\/>\s*\n\s*<\/webwork>/);
   });
+});
+
+describe("verbatim content preservation", () => {
+  it("preserves trailing space in single-line verbatim (e.g. <prompt>$ </prompt>)", () => {
+    const input = `<console><prompt>$ </prompt><input>ls</input></console>`;
+    const result = formatPretext(input);
+    expect(result).toContain("<prompt>$ </prompt>");
+  });
+
+  it("preserves leading and trailing spaces in inline <c> tags", () => {
+    const input = `<p>Inline <c> x + 1 </c> with spaces.</p>`;
+    const result = formatPretext(input);
+    expect(result).toContain("<c> x + 1 </c>");
+  });
+
+  it("preserves intentional trailing blank line inside a program block", () => {
+    const input = `<program>\ndef foo():\n    return 1\n\n</program>`;
+    const result = formatPretext(input);
+    // The blank line at the end of the code should survive formatting
+    expect(result).toMatch(/return 1\n\n/);
+  });
+
+  it("does not alter internal whitespace or indentation in code blocks", () => {
+    const code = "  line1\n    line2 indented\n  line3";
+    const input = `<pre>\n${code}\n</pre>`;
+    const result = formatPretext(input);
+    expect(result).toContain(code);
+  });
+
+  it("preserves internal blank lines inside verbatim blocks", () => {
+    const input = `<program>\nline1\n\nline3\n</program>`;
+    const result = formatPretext(input);
+    expect(result).toMatch(/line1\n\nline3/);
+  });
+
+  it("preserves boundary newlines in verbatim blocks", () => {
+    const input = `<output>\nline\n</output>`;
+    const result = formatPretext(input);
+    expect(result).toBe(input);
+  });
+
+  
+  //it("preserves indentation adjacent to a verbatim closing tag", () => {
+  //  const input = `<code>\n  print("hi")\n    </code>`;
+  //  const result = formatPretext(input);
+  //  expect(result).toBe(input);
+  //});
 });

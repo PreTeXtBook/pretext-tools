@@ -178,6 +178,8 @@ export const verbatimTags = [
   "macros",
   "prefigure",
   "program",
+  "preamble",
+  "postamble",
   "input",
   "output",
   "prompt",
