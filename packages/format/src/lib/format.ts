@@ -13,6 +13,8 @@ import {
 export interface FormatOptions {
   breakLines?: "few" | "some" | "many";
   breakSentences?: boolean;
+  /** Wrap long block start-tag attributes onto separate lines. */
+  breakLongAttributes?: boolean;
   insertSpaces?: boolean;
   tabSize?: number;
   /** Target line width for paragraph text reflow. 0 = no width limit. Default 80. */
@@ -23,6 +25,7 @@ interface Ctx {
   ind: string; // one indent unit (e.g. "  "); caller repeats it per depth level
   blankLines: "few" | "some" | "many";
   breakSentences: boolean;
+  breakLongAttributes: boolean;
   printWidth: number;
 }
 
@@ -31,9 +34,10 @@ function makeCtx(options?: FormatOptions): Ctx {
   const tabSize = options?.tabSize ?? 2;
   const insertSpaces = options?.insertSpaces ?? true;
   const breakSentences = options?.breakSentences ?? false;
+  const breakLongAttributes = options?.breakLongAttributes ?? false;
   const printWidth = options?.printWidth ?? 80;
   const ind = insertSpaces ? " ".repeat(tabSize) : "\t";
-  return { ind, blankLines, breakSentences, printWidth };
+  return { ind, blankLines, breakSentences, breakLongAttributes, printWidth };
 }
 
 /**
@@ -369,7 +373,7 @@ function appendBlock(
 ): void {
   const ind = ctx.ind.repeat(depth);
   if (isEmptyElement(node)) {
-    out.push(`${ind}${selfClose(node)}`);
+    out.push(...startTagLines(node, depth, ctx, true));
     return;
   }
 
@@ -378,15 +382,22 @@ function appendBlock(
   const mc = meaningfulChildren(node);
   if (mc.length === 1 && mc[0].type === "element" && (mc[0] as Element).name === "xi:include") {
     const el = mc[0] as Element;
-    const inner = isEmptyElement(el)
-      ? selfClose(el)
-      : `${openTag(el)}${inlineSerialize(el.children)}</${el.name}>`;
-    out.push(`${ind}${openTag(node)}${inner}</${node.name}>`);
+    const startLines = startTagLines(node, depth, ctx);
+    if (startLines.length === 1) {
+      const inner = isEmptyElement(el)
+        ? selfClose(el)
+        : `${openTag(el)}${inlineSerialize(el.children)}</${el.name}>`;
+      out.push(`${startLines[0]}${inner}</${node.name}>`);
+      return;
+    }
+    out.push(...startLines);
+    appendNode(el, out, depth + 1, ctx);
+    out.push(`${ind}</${node.name}>`);
     return;
   }
 
   //Add starting tag as its own line.
-  out.push(`${ind}${openTag(node)}`);
+  out.push(...startTagLines(node, depth, ctx));
   for (const child of meaningfulChildren(node)) {
     appendNode(child, out, depth + 1, ctx);
   }
@@ -535,11 +546,41 @@ function selfClose(node: Element): string {
 }
 
 function buildAttrs(node: Element): string {
+  return buildAttrList(node).join(" ");
+}
+
+function buildAttrList(node: Element): string[] {
   return Object.entries(node.attributes || {})
     // v == null (loose equality) covers both null and undefined that can appear
     // in Object.entries output for boolean/valueless XML attributes.
     .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
-    .join(" ");
+}
+
+function startTagLines(
+  node: Element,
+  depth: number,
+  ctx: Ctx,
+  selfClosing = false,
+): string[] {
+  const ind = ctx.ind.repeat(depth);
+  const attrs = buildAttrList(node);
+  const close = selfClosing ? "/>" : ">";
+  if (attrs.length === 0) {
+    return [`${ind}<${node.name}${close}`];
+  }
+
+  const singleLine = `${ind}<${node.name} ${attrs.join(" ")}${close}`;
+  if (!ctx.breakLongAttributes || ctx.printWidth === 0 || singleLine.length <= ctx.printWidth) {
+    return [singleLine];
+  }
+
+  const continuationIndent = `${ind}${" ".repeat(node.name.length + 2)}`;
+  const lines = [`${ind}<${node.name} ${attrs[0]}`];
+  for (const attr of attrs.slice(1)) {
+    lines.push(`${continuationIndent}${attr}`);
+  }
+  lines[lines.length - 1] += close;
+  return lines;
 }
 
 // ─── Predicates ───────────────────────────────────────────────────────────────

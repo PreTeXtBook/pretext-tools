@@ -158,6 +158,7 @@ interface LspSettings {
   formatter: {
     breakSentences: boolean;
     blankLines: "few" | "some" | "many";
+    breakLongAttributes: boolean;
     printWidth: number;
   };
   editor: {
@@ -174,7 +175,12 @@ const insertSpacesConfigSection = "editor.insertSpaces";
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 const defaultSettings: LspSettings = {
   schema: { versionName: "Stable", customPath: "" },
-  formatter: { blankLines: "some", breakSentences: true, printWidth: 80 },
+  formatter: {
+    blankLines: "some",
+    breakSentences: true,
+    breakLongAttributes: false,
+    printWidth: 80,
+  },
   editor: { tabSize: 2, insertSpaces: true },
 };
 export let globalSettings: LspSettings = defaultSettings;

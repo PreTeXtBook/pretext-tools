@@ -1,4 +1,4 @@
-import { skip } from "node:test";
+import { describe, expect, it } from "vitest";
 import { formatPretext } from "./format";
 
 describe("format", () => {
@@ -23,6 +23,18 @@ describe("format", () => {
     );
     expect(result).not.toMatch(/<webwork>\s*\n\s*<xi:include/);
     expect(result).not.toMatch(/<xi:include[^>]*\/>\s*\n\s*<\/webwork>/);
+  });
+
+  it("wraps long block start-tag attributes when enabled", () => {
+    const input = `<book xml:id="my-book" audience="undergraduate" origin="A very long attribute value that should push the line over the limit"><title>Example</title></book>`;
+    const result = formatPretext(input, {
+      printWidth: 80,
+      breakLongAttributes: true,
+    });
+
+    expect(result).toBe(
+      `<book xml:id="my-book"\n      audience="undergraduate"\n      origin="A very long attribute value that should push the line over the limit">\n  <title>Example</title>\n\n</book>`,
+    );
   });
 });
 

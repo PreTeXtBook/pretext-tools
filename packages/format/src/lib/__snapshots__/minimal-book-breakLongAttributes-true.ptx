@@ -20,7 +20,9 @@
       </abstract>
     </frontmatter>
 
-    <chapter xml:id="ch-intro-has-a-really-long-id" label="a-really-long-label-for-this-chapter" custom="custom-attribute">
+    <chapter xml:id="ch-intro-has-a-really-long-id"
+             label="a-really-long-label-for-this-chapter"
+             custom="custom-attribute">
       <title>Introduction</title>
 
       <p>
