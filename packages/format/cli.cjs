@@ -15,6 +15,7 @@ Options:
       --stdin                Read input from stdin
       --break-lines <mode>   Line break mode: few | some | many
       --break-sentences      Break plain-text sentences onto new lines
+      --break-long-attributes Wrap long block start-tag attributes onto their own lines
       --tab-size <n>         Number of spaces per indent level
       --use-tabs             Indent with tabs instead of spaces
   -h, --help                 Show this help
@@ -36,6 +37,7 @@ function parseCli() {
         stdin: { type: "boolean", default: false },
         "break-lines": { type: "string" },
         "break-sentences": { type: "boolean", default: false },
+        "break-long-attributes": { type: "boolean", default: false },
         "tab-size": { type: "string" },
         "use-tabs": { type: "boolean", default: false },
         help: { type: "boolean", short: "h", default: false },
@@ -50,7 +52,7 @@ function parseCli() {
 }
 
 function parseOptions(values) {
-  /** @type {{breakLines?: "few" | "some" | "many"; breakSentences?: boolean; insertSpaces?: boolean; tabSize?: number}} */
+  /** @type {{breakLines?: "few" | "some" | "many"; breakSentences?: boolean; breakLongAttributes?: boolean; insertSpaces?: boolean; tabSize?: number}} */
   const formatOptions = {};
   if (values["break-lines"] !== undefined) {
     if (!["few", "some", "many"].includes(values["break-lines"])) {
@@ -60,6 +62,9 @@ function parseOptions(values) {
   }
   if (values["break-sentences"]) {
     formatOptions.breakSentences = true;
+  }
+  if (values["break-long-attributes"]) {
+    formatOptions.breakLongAttributes = true;
   }
   if (values["use-tabs"]) {
     formatOptions.insertSpaces = false;

@@ -32,7 +32,7 @@
 
     </frontmatter>
 
-    <chapter xml:id="ch-intro">
+    <chapter xml:id="ch-intro-has-a-really-long-id" label="a-really-long-label-for-this-chapter" custom="custom-attribute">
 
       <title>Introduction</title>
 

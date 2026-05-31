@@ -13,6 +13,7 @@ function getOptions() {
   return {
     breakSentences: globalSettings.formatter.breakSentences,
     breakLines: globalSettings.formatter.blankLines,
+    breakLongAttributes: globalSettings.formatter.breakLongAttributes,
     tabSize: globalSettings.editor.tabSize,
     insertSpaces: globalSettings.editor.insertSpaces,
     printWidth: globalSettings.formatter.printWidth,

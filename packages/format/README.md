@@ -22,6 +22,7 @@ You can pass options to customize formatting:
 const options = {
   breakLines: "many",
   breakSentences: true,
+  breakLongAttributes: true,
   printWidth: 80,
   insertSpaces: true,
   tabSize: 2,
@@ -79,6 +80,7 @@ Options:
 - `--stdin` read input from stdin
 - `--break-lines <few|some|many>` choose line break density
 - `--break-sentences` break plain-text sentences onto new lines
+- `--break-long-attributes` wrap long block start-tag attributes onto their own lines
 - `--tab-size <n>` set spaces per indent level
 - `--use-tabs` indent with tabs instead of spaces
 - `-h, --help` show help

@@ -90,7 +90,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program xml:id="python-hello-world" interactive="activecode" language="python" label="hello-world">
-        <code>print("Hello, World!")</code>
+        <code>
+                print("Hello, World!")
+        </code>
       </program>
     </listing>
 
@@ -107,7 +109,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program xml:id="python-hello-world2" label="hello-world2">
-        <code>print("Hello, World!")</code>
+        <code>
+                print("Hello, World!")
+        </code>
       </program>
     </listing>
 
@@ -162,7 +166,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program xml:id="javascript-hello-world" interactive="activecode" language="javascript">
-        <code>document.write('Hello, world!');</code>
+        <code>
+                document.write('Hello, world!');
+        </code>
       </program>
     </listing>
 
@@ -296,7 +302,6 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
             else:
                 print("Test failed")
     </program>
-
     <p>
       A program can have a <tag>preamble</tag> and/or <tag>postamble</tag> which
       are added to the code that the user writes before it is run. They are
@@ -333,11 +338,14 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
 
       <program interactive="activecode" language="python" label="program-activecode-python-ambles-invisible" include-source="yes">
         <preamble visible="no">
-          def add(a, b):
+                def add(a, b):
         </preamble>
-        <code># TODO - complete the add function</code>
+        <code>
+                    # TODO - complete the add function
+        </code>
         <postamble visible="no">
-          # Use the function
+
+                # Use the function
                 result = add(2, 3)
                 if result == 5:
                     print("Test passed")
@@ -522,7 +530,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </statement>
 
       <program xml:id="sql-using-db" interactive="activecode" language="sql" label="sql-using-db" database="sql/test.db">
-        <code>SELECT * FROM test</code>
+        <code>
+                    SELECT * FROM test
+        </code>
         <tests>
           assert 1,1 == world
                     assert 0,1 == hello
@@ -565,7 +575,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
         add.h (version 1) - A very simple header file that lacks header guards.
       </title>
 
-      <program filename="add.h" xml:id="addh-v1" label="addh-v1-label" language="cpp" include-source="yes">int add(int a, int b);</program>
+      <program filename="add.h" xml:id="addh-v1" label="addh-v1-label" language="cpp" include-source="yes">
+                int add(int a, int b);
+      </program>
     </listing>
 
     <p>
@@ -624,7 +636,6 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
                 cout << "The sum of " << a << " and " << b << " is " << add(a, b) << endl;
             }]]>
     </program>
-
     <p>
       Note that there is a cross page test of <attr>add-files</attr> located in
       <xref ref="runestone-hodgepodge"/>
@@ -651,7 +662,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       <title>A Python program, stepable with CodeLens</title>
 
       <program label="python-hello-world-code-lens" interactive="codelens" language="python">
-        <code>print('Hello, World!')</code>
+        <code>
+                print('Hello, World!')
+        </code>
       </program>
     </listing>
 
@@ -741,8 +754,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </statement>
 
       <program interactive="codelens" language="cpp" include-source="yes">
-        <code>
-<![CDATA[
+        <code><![CDATA[
                   int foo() {
                       int x = 2;
                       int y = ++x;
@@ -796,8 +808,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program label="sieve-codelens-python" interactive="codelens" language="python" starting-step="73" include-source="yes">
-        <code>
-<![CDATA[
+        <code><![CDATA[
                 def SieveOfEratosthenes(n):
                    # array of type boolean with True values in it
                    prime = [True for i in range(n + 1)]
@@ -832,8 +843,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program label="sieve-codelens-cpp" interactive="codelens" language="cpp">
-        <code>
- <![CDATA[
+        <code> <![CDATA[
                 #include <stdio.h>
                 const int len = 20;
                 int main() {
@@ -860,8 +870,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       </title>
 
       <program label="sieve-codelens-java" interactive="codelens" language="java">
-        <code>
-<![CDATA[
+        <code><![CDATA[
                 public class SievePrimeFactors  {
                    public static void main(String args[]) {
                       int num = 20;
@@ -1127,8 +1136,7 @@ TEST_CASE( "Test the add function" ) {
       </statement>
 
       <program interactive="activecode" language="cpp">
-        <code>
-<![CDATA[
+        <code><![CDATA[
                 #include <iostream>
                 using namespace std;
                 int main() {
@@ -1145,7 +1153,9 @@ TEST_CASE( "Test the add function" ) {
         <tests>
           <iotest>
             <input>1</input>
-            <output>*</output>
+            <output>
+                            *
+            </output>
           </iotest>
           <iotest>
             <input>3</input>
@@ -1408,8 +1418,7 @@ TEST_CASE( "Test the add function" ) {
 
     <program label="java-flower-collage" interactive="activecode" language="java" add-files="file-picture-classes-jar, flower1-datafile, flower2-datafile" include-source="yes">
       <!-- About 10 XML characters, hence CDATA -->
-      <code>
-<![CDATA[
+      <code><![CDATA[
             import java.awt.*;
             import java.awt.font.*;
             import java.awt.geom.*;
@@ -7040,7 +7049,6 @@ TEST_CASE( "Test the add function" ) {
                                 \draw[fill=blue!20] (0,0) -| (1,1) -| cycle;
                             \end{tikzpicture}
             </latex-image>
-
             <shortdescription>a blue square</shortdescription>
           </image>
 
@@ -7472,7 +7480,6 @@ TEST_CASE( "Test the add function" ) {
                                     <cell><math simplify>4$a</math></cell>
                                     <cell><math simplify>5$a</math></cell>
                                   </row>
-
                                   <row>
                                     <cell><m>s</m> (feet)</cell>
                                     <cell><math simplify displayDigits="4">$$s(0)</math></cell>
@@ -7498,11 +7505,9 @@ TEST_CASE( "Test the add function" ) {
                                         </choiceInput>
                                       </answer>
                                   </li>
-
                                   <li>
                                     <p>Find the average velocity of the car on the interval <m>0 \le t \le <math simplify>3*$a</math>.</m> </p>
                                   </li>
-
                                   <answer allowedErrorInNumbers="0.05" allowedErrorIsAbsolute="true">
                                       ($$s(3*$a)-$$s(0*$a))/(3$a)
                                   </answer>
@@ -7514,7 +7519,6 @@ TEST_CASE( "Test the add function" ) {
                                       Find the average velocity of the car on the interval <m>[<math simplify>$c*$a</math>, <math simplify>($c+2)*$a</math>]</m>.
                                     </p>
                                   </li>
-
                                   <answer allowedErrorInNumbers="0.05" allowedErrorIsAbsolute="true">
                                       ($$s(($c+2)*$a)-$$s($c*$a))/(2$a)
                                   </answer>

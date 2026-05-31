@@ -290,6 +290,12 @@
             "default": true,
             "markdownDescription": "Whether to add a line break after each period in a paragraph."
           },
+          "pretext-tools.formatter.breakLongAttributes": {
+            "order": 4,
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Wrap long block start-tag attributes onto their own lines."
+          },
           "pretext-tools.formatter.printWidth": {
             "order": 5,
             "type": "number",

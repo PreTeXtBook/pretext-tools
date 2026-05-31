@@ -60,6 +60,17 @@ describe("formatPretext — snapshot tests", () => {
     });
   });
 
+  describe("breakLongAttributes=true", () => {
+    it("minimal-book", async () => {
+      const result = formatPretext(readFixture("minimal-book"), {
+        breakLongAttributes: true,
+      });
+      await expect(result).toMatchFileSnapshot(
+        snapshotPath("minimal-book-breakLongAttributes-true"),
+      );
+    });
+  });
+
   describe("tab indentation", () => {
     it("minimal-book with tabs", async () => {
       const result = formatPretext(readFixture("minimal-book"), {
