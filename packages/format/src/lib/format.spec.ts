@@ -77,10 +77,4 @@ describe("verbatim content preservation", () => {
     expect(result).toBe(input);
   });
 
-  
-  //it("preserves indentation adjacent to a verbatim closing tag", () => {
-  //  const input = `<code>\n  print("hi")\n    </code>`;
-  //  const result = formatPretext(input);
-  //  expect(result).toBe(input);
-  //});
 });
