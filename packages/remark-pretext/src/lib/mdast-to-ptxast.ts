@@ -35,24 +35,25 @@ import type {
   ListItem,
   Blockquote as MdastBlockquote,
   Code,
-} from 'mdast';
-import type { ContainerDirective } from 'mdast-util-directive';
-import type { Math as CustomMath } from './math-parser.js';
-import type { Root } from 'xast';
-import type { Element } from 'xast';
-import { getDirectiveSpec, DIRECTIVE_MAP } from './directive-map.js';
-import { buildDirectiveWithSpec } from './directive-factory.js';
-import type { VisitContext, ConversionMessage } from './context.js';
+} from "mdast";
+import type { ContainerDirective } from "mdast-util-directive";
+import type { Math as CustomMath } from "./math-parser.js";
+import type { Root } from "xast";
+import type { Element } from "xast";
+import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
+import { buildDirectiveWithSpec } from "./directive-factory.js";
+import type { VisitContext, ConversionMessage } from "./context.js";
 
 // ---------------------------------------------------------------------------
 // Xast node builders (local helpers for this module)
 // ---------------------------------------------------------------------------
 
-type XastText = { type: 'text'; value: string };
-type XastChild = Element | XastText;
+type XastText = { type: "text"; value: string };
+type XastComment = { type: "comment"; value: string };
+type XastChild = Element | XastText | XastComment;
 
 function text(value: string): XastText {
-  return { type: 'text', value };
+  return { type: "text", value };
 }
 
 function el(
@@ -61,16 +62,56 @@ function el(
   attributes?: Record<string, string>,
 ): Element {
   return {
-    type: 'element',
+    type: "element",
     name,
     attributes: attributes ?? {},
-    children: children as Element['children'],
+    children: children as Element["children"],
   };
 }
 
 /** Create a value element: single text child holds the raw string content. */
-function valueEl(name: string, value: string, attributes?: Record<string, string>): Element {
+function valueEl(
+  name: string,
+  value: string,
+  attributes?: Record<string, string>,
+): Element {
   return el(name, [text(value)], attributes);
+}
+
+function comment(value: string): XastComment {
+  // XML comments cannot contain '--'; replace to keep output well-formed
+  return { type: "comment", value: value.replace(/--/g, "- -") };
+}
+
+/** Extract the original source text for a node using its position offsets. */
+function nodeSource(node: unknown, ctx: VisitContext): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pos = (node as any)?.position;
+  const start: number | undefined = pos?.start?.offset;
+  const end: number | undefined = pos?.end?.offset;
+  if (ctx.source && start != null && end != null) {
+    return ctx.source.slice(start, end);
+  }
+  return "";
+}
+
+/**
+ * Build a <TODO> placeholder for unrecognized block content.
+ * Structure: <TODO type="..."><!-- todo: ... --><pre>raw source</pre></TODO>
+ * The XML comment is compatible with PreTeXt's author.tools="yes" mechanism.
+ * The schema-invalid <TODO> element surfaces as a validation error in the LSP.
+ */
+function todoBlock(type: string, label: string, rawSource: string): Element {
+  return el("TODO", [comment(`todo: ${label}`), valueEl("pre", rawSource)], {
+    type,
+  });
+}
+
+/** Build a <TODO> placeholder for unrecognized inline content, using <c> instead of <pre>. */
+function todoInline(type: string, label: string, rawSource: string): Element {
+  return el("TODO", [comment(`todo: ${label}`), valueEl("c", rawSource)], {
+    type,
+  });
 }
 
 /**
@@ -81,13 +122,13 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
   const result: Element[] = [];
 
   for (const elem of elements) {
-    if (elem.name === 'ul' || elem.name === 'ol') {
-      if (result.length > 0 && result[result.length - 1]?.name === 'p') {
+    if (elem.name === "ul" || elem.name === "ol") {
+      if (result.length > 0 && result[result.length - 1]?.name === "p") {
         // Append list to preceding paragraph
         (result[result.length - 1].children as XastChild[]).push(elem);
       } else {
         // Wrap orphaned list in new <p>
-        result.push(el('p', [elem]));
+        result.push(el("p", [elem]));
       }
     } else {
       result.push(elem);
@@ -117,13 +158,16 @@ export function mdastToPtxast(tree: MdastRoot, source?: string): Root {
 export { mdastToPtxast as mdastToXast };
 
 /** Transform an mdast Root node, returning tree + diagnostic messages. */
-export function mdastToPtxastWithDiagnostics(tree: MdastRoot, source?: string): ConversionResult {
+export function mdastToPtxastWithDiagnostics(
+  tree: MdastRoot,
+  source?: string,
+): ConversionResult {
   const messages: ConversionMessage[] = [];
   const ctx: VisitContext = { ancestors: [], depth: 0, messages, source };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
   const children = nestSections(nodes, ctx);
   return {
-    tree: { type: 'root', children: children as Root['children'] },
+    tree: { type: "root", children: children as Root["children"] },
     messages,
   };
 }
@@ -132,9 +176,20 @@ export function mdastToPtxastWithDiagnostics(tree: MdastRoot, source?: string): 
 // Section nesting
 // ---------------------------------------------------------------------------
 
-type DivType = 'chapter' | 'section' | 'subsection' | 'subsubsection' | 'paragraphs';
+type DivType =
+  | "chapter"
+  | "section"
+  | "subsection"
+  | "subsubsection"
+  | "paragraphs";
 
-const DEPTH_TO_TYPE: DivType[] = ['chapter', 'section', 'subsection', 'subsubsection', 'paragraphs'];
+const DEPTH_TO_TYPE: DivType[] = [
+  "chapter",
+  "section",
+  "subsection",
+  "subsubsection",
+  "paragraphs",
+];
 
 function depthToType(depth: number): DivType {
   return DEPTH_TO_TYPE[Math.min(depth - 1, DEPTH_TO_TYPE.length - 1)];
@@ -148,11 +203,12 @@ function depthToType(depth: number): DivType {
 function nestSections(
   nodes: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  wrapOrphanedLists = false
+  wrapOrphanedLists = false,
 ): Element[] {
   let minDepth = 7;
   for (const node of nodes) {
-    if (node.type === 'heading') minDepth = Math.min(minDepth, (node as Heading).depth);
+    if (node.type === "heading")
+      minDepth = Math.min(minDepth, (node as Heading).depth);
   }
   if (minDepth === 7) {
     return convertBlockSequence(nodes, ctx, wrapOrphanedLists);
@@ -171,9 +227,11 @@ function nestSections(
   };
 
   for (const node of nodes) {
-    if (node.type === 'heading' && (node as Heading).depth === minDepth) {
+    if (node.type === "heading" && (node as Heading).depth === minDepth) {
       if (!currentHeading && preHeadingNodes.length > 0) {
-        result.push(...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists));
+        result.push(
+          ...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists),
+        );
         preHeadingNodes = [];
       }
       flushSection();
@@ -186,7 +244,9 @@ function nestSections(
     }
   }
   if (!currentHeading && preHeadingNodes.length > 0) {
-    result.push(...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists));
+    result.push(
+      ...convertBlockSequence(preHeadingNodes, ctx, wrapOrphanedLists),
+    );
   }
   flushSection();
   return result;
@@ -195,7 +255,7 @@ function nestSections(
 function convertBlockSequence(
   nodes: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  wrapOrphanedLists = false
+  wrapOrphanedLists = false,
 ): Element[] {
   const result: Element[] = [];
 
@@ -207,19 +267,23 @@ function convertBlockSequence(
 
     // Fold display-math-only paragraphs into paragraph flow.
     if (
-      converted.name === 'p' &&
+      converted.name === "p" &&
       converted.children.length === 1 &&
-      (converted.children[0] as Element).name === 'md'
+      (converted.children[0] as Element).name === "md"
     ) {
       const md = converted.children[0] as Element;
       const prev = result[result.length - 1];
-      const nextConverted = i + 1 < nodes.length ? convertBlock(nodes[i + 1], ctx) : null;
-      const nextParagraphChildren = nextConverted?.name === 'p' ? nextConverted.children : null;
+      const nextConverted =
+        i + 1 < nodes.length ? convertBlock(nodes[i + 1], ctx) : null;
+      const nextParagraphChildren =
+        nextConverted?.name === "p" ? nextConverted.children : null;
 
-      if (prev?.name === 'p') {
+      if (prev?.name === "p") {
         (prev.children as XastChild[]).push(md);
         if (nextParagraphChildren) {
-          (prev.children as XastChild[]).push(...(nextParagraphChildren as XastChild[]));
+          (prev.children as XastChild[]).push(
+            ...(nextParagraphChildren as XastChild[]),
+          );
           i += 1;
         }
       } else {
@@ -228,16 +292,19 @@ function convertBlockSequence(
           children.push(...(nextParagraphChildren as XastChild[]));
           i += 1;
         }
-        result.push(el('p', children));
+        result.push(el("p", children));
       }
 
       continue;
     }
 
     // Nest lists inside preceding paragraphs (PreTeXt spec requires lists in <p> tags)
-    if ((converted.name === 'ul' || converted.name === 'ol') && result.length > 0) {
+    if (
+      (converted.name === "ul" || converted.name === "ol") &&
+      result.length > 0
+    ) {
       const prev = result[result.length - 1];
-      if (prev?.name === 'p') {
+      if (prev?.name === "p") {
         // Append list to preceding paragraph
         (prev.children as XastChild[]).push(converted);
         continue;
@@ -254,14 +321,18 @@ function convertBlockSequence(
 function buildDivision(
   heading: Heading,
   body: Array<BlockContent | DefinitionContent>,
-  ctx: VisitContext
+  ctx: VisitContext,
 ): Element {
   const divType = depthToType(heading.depth);
-  const titleEl = el('title', convertInlineNodes(heading.children, ctx));
+  const titleEl = el("title", convertInlineNodes(heading.children, ctx));
   const attrs = getHeadingAttrs(heading);
   // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)
-  const innerChildren = nestSections(body, { ...ctx, depth: ctx.depth + 1 }, true);
-  
+  const innerChildren = nestSections(
+    body,
+    { ...ctx, depth: ctx.depth + 1 },
+    true,
+  );
+
   // Also wrap orphaned lists that directly follow the title
   const wrappedChildren = nestListsInParagraphs(innerChildren);
 
@@ -270,7 +341,7 @@ function buildDivision(
 
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {
   const data = heading.data as { id?: string } | undefined;
-  return data?.id ? { 'xml:id': data.id } : undefined;
+  return data?.id ? { "xml:id": data.id } : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -286,73 +357,99 @@ const blockHandlers: Record<
   blockquote: (node, ctx) => convertBlockquote(node as MdastBlockquote, ctx),
   list: (node, ctx) => convertList(node as List, ctx),
   code: (node, ctx) => convertCode(node as Code, ctx),
-  containerDirective: (node, ctx) => convertContainerDirective(node as ContainerDirective, ctx),
+  containerDirective: (node, ctx) =>
+    convertContainerDirective(node as ContainerDirective, ctx),
 };
 
-function convertBlock(node: BlockContent | DefinitionContent, ctx: VisitContext): Element | null {
+function convertBlock(
+  node: BlockContent | DefinitionContent,
+  ctx: VisitContext,
+): Element | null {
   const handler = blockHandlers[node.type];
 
   if (!handler) {
     if (ctx.messages) {
       ctx.messages.push({
-        type: 'warning',
+        type: "warning",
         reason: `Unknown block type: ${node.type}`,
-        category: 'unknown-block-type',
+        category: "unknown-block-type",
       });
     }
-    return null;
+    return todoBlock(
+      "unknown-block-type",
+      `unknown block type "${node.type}"`,
+      nodeSource(node, ctx),
+    );
   }
 
   return handler(node, ctx);
 }
 
 function convertParagraph(node: Paragraph, ctx: VisitContext): Element {
-  return el('p', convertInlineNodes(node.children, ctx));
+  return el("p", convertInlineNodes(node.children, ctx));
 }
 
 function convertBlockquote(node: MdastBlockquote, ctx: VisitContext): Element {
   const paragraphs = (node.children as Array<BlockContent | DefinitionContent>)
-    .filter((n): n is Paragraph => n.type === 'paragraph')
-    .map(n => {
+    .filter((n): n is Paragraph => n.type === "paragraph")
+    .map((n) => {
       // Pass blockquote as parent context for its paragraph children
-      const childCtx = { ...ctx, ancestors: [...ctx.ancestors, node], depth: ctx.depth + 1 };
+      const childCtx = {
+        ...ctx,
+        ancestors: [...ctx.ancestors, node],
+        depth: ctx.depth + 1,
+      };
       return convertParagraph(n, childCtx);
     });
-  return el('blockquote', paragraphs);
+  return el("blockquote", paragraphs);
 }
 
 function convertList(node: List, ctx: VisitContext): Element {
-  const items = node.children.map(child => {
-    const childCtx = { ...ctx, ancestors: [...ctx.ancestors, node], depth: ctx.depth + 1 };
+  const items = node.children.map((child) => {
+    const childCtx = {
+      ...ctx,
+      ancestors: [...ctx.ancestors, node],
+      depth: ctx.depth + 1,
+    };
     return convertListItem(child, childCtx);
   });
-  return el(node.ordered ? 'ol' : 'ul', items);
+  return el(node.ordered ? "ol" : "ul", items);
 }
 
 function convertListItem(node: ListItem, ctx: VisitContext): Element {
-  const children = convertBlockSequence(node.children as Array<BlockContent | DefinitionContent>, ctx);
-  return el('li', children);
+  const children = convertBlockSequence(
+    node.children as Array<BlockContent | DefinitionContent>,
+    ctx,
+  );
+  return el("li", children);
 }
 
 function convertCode(node: Code, ctx: VisitContext): Element {
-  return valueEl('program', node.value, node.lang ? { language: node.lang } : undefined);
+  return valueEl(
+    "program",
+    node.value,
+    node.lang ? { language: node.lang } : undefined,
+  );
 }
 
 function convertDisplayMath(node: CustomMath, ctx: VisitContext): Element {
   const rows = node.value
     .split(/\\\\|[\r\n]+/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
 
   if (rows.length > 1) {
-    return el('md', rows.map(line => valueEl('mrow', line)));
+    return el(
+      "md",
+      rows.map((line) => valueEl("mrow", line)),
+    );
   }
-  return valueEl('md', rows[0] ?? '');
+  return valueEl("md", rows[0] ?? "");
 }
 
 function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
-  if (node.meta === 'inline') {
-    return valueEl('m', node.value);
+  if (node.meta === "inline") {
+    return valueEl("m", node.value);
   }
   return convertDisplayMath(node, ctx);
 }
@@ -361,25 +458,41 @@ function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
 // Container directive converters
 // ---------------------------------------------------------------------------
 
-function convertContainerDirective(node: ContainerDirective, ctx: VisitContext): Element | null {
+function convertContainerDirective(
+  node: ContainerDirective,
+  ctx: VisitContext,
+): Element | null {
   const spec = getDirectiveSpec(node.name);
 
   if (!spec) {
     if (ctx.messages) {
       ctx.messages.push({
-        type: 'warning',
+        type: "warning",
         reason: `Unknown directive: ${node.name}`,
-        category: 'unknown-directive',
+        category: "unknown-directive",
       });
     }
-    return null;
+    return todoBlock(
+      "unknown-directive",
+      `unknown directive "${node.name}"`,
+      nodeSource(node, ctx),
+    );
   }
 
   const attrs = buildDirectiveAttrs(node);
-  const directiveChildren = node.children as Array<BlockContent | DefinitionContent>;
-  const { title: titleEl, body } = extractDirectiveLabel(directiveChildren, ctx);
+  const directiveChildren = node.children as Array<
+    BlockContent | DefinitionContent
+  >;
+  const { title: titleEl, body } = extractDirectiveLabel(
+    directiveChildren,
+    ctx,
+  );
 
-  const childCtx = { ...ctx, ancestors: [...ctx.ancestors, node], depth: ctx.depth + 1 };
+  const childCtx = {
+    ...ctx,
+    ancestors: [...ctx.ancestors, node],
+    depth: ctx.depth + 1,
+  };
 
   // Phase 2: Use factory pattern - single function applies semantic rules from spec
   return buildDirectiveWithSpec(
@@ -389,7 +502,7 @@ function convertContainerDirective(node: ContainerDirective, ctx: VisitContext):
     body,
     childCtx,
     (child, ctx) => convertBlock(child, ctx),
-    (directive, ctx) => convertContainerDirective(directive, ctx)
+    (directive, ctx) => convertContainerDirective(directive, ctx),
   );
 }
 
@@ -402,23 +515,29 @@ function extractDirectiveLabel(
 } {
   const first = children[0];
   if (
-    first?.type === 'paragraph' &&
-    (first as Paragraph & { data?: { directiveLabel?: boolean } }).data?.directiveLabel === true
+    first?.type === "paragraph" &&
+    (first as Paragraph & { data?: { directiveLabel?: boolean } }).data
+      ?.directiveLabel === true
   ) {
     return {
-      title: el('title', convertInlineNodes((first as Paragraph).children, ctx)),
+      title: el(
+        "title",
+        convertInlineNodes((first as Paragraph).children, ctx),
+      ),
       body: children.slice(1),
     };
   }
   return { title: null, body: children };
 }
 
-function buildDirectiveAttrs(node: ContainerDirective): Record<string, string> | undefined {
+function buildDirectiveAttrs(
+  node: ContainerDirective,
+): Record<string, string> | undefined {
   const raw = node.attributes ?? {};
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(raw)) {
     if (v == null) continue;
-    result[k === 'id' ? 'xml:id' : k] = v;
+    result[k === "id" ? "xml:id" : k] = v;
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -432,12 +551,19 @@ function buildDirectiveAttrs(node: ContainerDirective): Record<string, string> |
  * Returns 'underscore' or 'asterisk' based on the source text at the node's position.
  * If source is unavailable, defaults to 'asterisk' for backwards compatibility.
  */
-function getEmphasisDelimiter(node: Emphasis, source?: string): 'underscore' | 'asterisk' {
-  if (!source || node.position?.start?.offset === null || node.position?.start?.offset === undefined) {
-    return 'asterisk'; // default
+function getEmphasisDelimiter(
+  node: Emphasis,
+  source?: string,
+): "underscore" | "asterisk" {
+  if (
+    !source ||
+    node.position?.start?.offset === null ||
+    node.position?.start?.offset === undefined
+  ) {
+    return "asterisk"; // default
   }
   const delimiter = source.charAt(node.position.start.offset);
-  return delimiter === '_' ? 'underscore' : 'asterisk';
+  return delimiter === "_" ? "underscore" : "asterisk";
 }
 
 /** Dictionary of inline handlers. Maps node type → handler function. */
@@ -448,30 +574,43 @@ const inlineHandlers: Record<
   text: (node, ctx) => text((node as Text).value),
   emphasis: (node, ctx) => {
     const delim = getEmphasisDelimiter(node as Emphasis, ctx.source);
-    const tag = delim === 'underscore' ? 'term' : 'em';
+    const tag = delim === "underscore" ? "term" : "em";
     return el(tag, convertInlineNodes((node as Emphasis).children, ctx));
   },
-  strong: (node, ctx) => el('alert', convertInlineNodes((node as Strong).children, ctx)),
-  inlineCode: (node, ctx) => valueEl('c', (node as InlineCode).value),
+  strong: (node, ctx) =>
+    el("alert", convertInlineNodes((node as Strong).children, ctx)),
+  inlineCode: (node, ctx) => valueEl("c", (node as InlineCode).value),
   math: (node, ctx) => convertMathNode(node as unknown as CustomMath, ctx),
 };
 
-function convertInlineNodes(nodes: PhrasingContent[], ctx: VisitContext): XastChild[] {
-  return nodes.flatMap(node => convertInline(node, ctx)).filter((n): n is XastChild => n !== null);
+function convertInlineNodes(
+  nodes: PhrasingContent[],
+  ctx: VisitContext,
+): XastChild[] {
+  return nodes
+    .flatMap((node) => convertInline(node, ctx))
+    .filter((n): n is XastChild => n !== null);
 }
 
-function convertInline(node: PhrasingContent, ctx: VisitContext): XastChild | null {
+function convertInline(
+  node: PhrasingContent,
+  ctx: VisitContext,
+): XastChild | null {
   const handler = inlineHandlers[node.type];
 
   if (!handler) {
     if (ctx.messages) {
       ctx.messages.push({
-        type: 'warning',
+        type: "warning",
         reason: `Unknown inline type: ${node.type}`,
-        category: 'unknown-inline-type',
+        category: "unknown-inline-type",
       });
     }
-    return null;
+    return todoInline(
+      "unknown-inline-type",
+      `unknown inline type "${node.type}"`,
+      nodeSource(node, ctx),
+    );
   }
 
   // Pass context with this node added to ancestors, but parent unchanged
