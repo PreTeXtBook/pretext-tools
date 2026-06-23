@@ -25,6 +25,7 @@
 import type { Plugin } from 'unified';
 import type { Root as MdastRoot } from 'mdast';
 import type { Root } from 'xast';
+import type { DivisionType } from '@pretextbook/ptxast';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
@@ -32,17 +33,31 @@ import { mdastToPtxast } from './mdast-to-ptxast.js';
 import { applyMathDelimiters, applyMathTokens, tokenizeMathInMarkdown } from './math-parser.js';
 import { normalizeDirectiveColons } from './directive-normalizer.js';
 import { normalizeIndentationDirectives } from './indentation-normalizer.js';
+import { extractFrontmatter } from './frontmatter.js';
 
-/** Options for the remark-pretext plugin (currently none, reserved for future use). */
-export interface RemarkPretextOptions {}
+/** Options for the remark-pretext plugin. */
+export interface RemarkPretextOptions {
+  /**
+   * The division type that a depth-1 heading (`#`) maps to. Overrides any
+   * `division:` field declared in the markdown's frontmatter. Defaults to
+   * `'chapter'` (matching historical behavior) when neither is set.
+   */
+  topLevelDivision?: DivisionType;
+}
 
-const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function () {
+const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function (
+  options?: RemarkPretextOptions,
+) {
   return function transformer(tree: MdastRoot, file?: { value?: unknown }): Root {
     // Preferred path: tokenize raw markdown first so LaTeX delimiters are parsed
     // from source text (no heuristic inference from parsed text nodes).
     if (typeof file?.value === 'string') {
+      const frontmatter = extractFrontmatter(file.value);
+      const topLevelDivision =
+        options?.topLevelDivision ?? frontmatter.division ?? 'chapter';
+
       // Pipeline: indentation→colons→directive-normalize→math-tokenize→reparse
-      const indentNormalized = normalizeIndentationDirectives(file.value);
+      const indentNormalized = normalizeIndentationDirectives(frontmatter.body);
       const normalized = normalizeDirectiveColons(indentNormalized);
       const tokenized = tokenizeMathInMarkdown(normalized);
       // Disable indented code blocks: this markdown dialect uses indentation
@@ -55,12 +70,15 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
         .use(remarkDirective);
       const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
       applyMathTokens(reparsed, tokenized.tokens);
-      return mdastToPtxast(reparsed, tokenized.markdown); // pass tokenized source for delimiter detection
+      // pass tokenized source for delimiter detection
+      return mdastToPtxast(reparsed, tokenized.markdown, { topLevelDivision });
     }
 
     // Fallback for parse+runSync(tree) usage where raw source text is unavailable.
     applyMathDelimiters(tree);
-    return mdastToPtxast(tree);
+    return mdastToPtxast(tree, undefined, {
+      topLevelDivision: options?.topLevelDivision ?? 'chapter',
+    });
   };
 };
 

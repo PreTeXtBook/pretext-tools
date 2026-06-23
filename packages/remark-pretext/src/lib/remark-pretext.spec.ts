@@ -3,6 +3,7 @@ import remarkParse from "remark-parse";
 import remarkDirective from "remark-directive";
 import { describe, it, expect } from "vitest";
 import { remarkPretext, mdastToPtxast } from "../index.js";
+import type { RemarkPretextOptions } from "./remark-pretext.js";
 import remarkMath from "./math-parser.js";
 import { mdastToPtxastWithDiagnostics } from "./mdast-to-ptxast.js";
 import { normalizeDirectiveColons } from "./directive-normalizer.js";
@@ -314,6 +315,80 @@ describe("heading  section nesting", () => {
     const tree = parse("Intro text.\n\n## Section\n\nBody.");
     expect(elName(tree.children[0])).toBe("p");
     expect(elName(tree.children[1])).toBe("section");
+  });
+});
+
+describe("relative top-level division", () => {
+  /** Helper: parse markdown with explicit remarkPretext options. */
+  function parseWithOptions(
+    md: string,
+    options: RemarkPretextOptions,
+  ): Root {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkDirective)
+      .use(remarkPretext, options);
+    const mdast = processor.parse(md);
+    return processor.runSync(mdast, { value: md }) as unknown as Root;
+  }
+
+  it("defaults to chapter when no option or frontmatter is given", () => {
+    const tree = parse("# Title\n\n## Sub");
+    expect(elName(tree.children[0])).toBe("chapter");
+  });
+
+  it("topLevelDivision option shifts # to section, ## to subsection", () => {
+    const tree = parseWithOptions("# Title\n\n## Sub", {
+      topLevelDivision: "section",
+    });
+    const section = tree.children[0] as Element;
+    expect(elName(section)).toBe("section");
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
+      true,
+    );
+  });
+
+  it("topLevelDivision option supports part, nesting down to chapter/section", () => {
+    const tree = parseWithOptions("# Part\n\n## Chapter\n\n### Section", {
+      topLevelDivision: "part",
+    });
+    const part = tree.children[0] as Element;
+    expect(elName(part)).toBe("part");
+    const chapter = part.children.find(
+      (c) => elName(c) === "chapter",
+    ) as Element;
+    expect(chapter).toBeDefined();
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
+  });
+
+  it("clamps at paragraphs once the hierarchy is exhausted", () => {
+    const tree = parseWithOptions("#### Deep", {
+      topLevelDivision: "subsection",
+    });
+    expect(elName(tree.children[0])).toBe("paragraphs");
+  });
+
+  it("frontmatter division field sets the top-level division", () => {
+    const tree = parse("---\ndivision: section\n---\n\n# Title\n\nText.");
+    expect(elName(tree.children[0])).toBe("section");
+  });
+
+  it("frontmatter block is stripped from the output (no stray content)", () => {
+    const tree = parse("---\ndivision: section\n---\n\n# Title\n\nText.");
+    expect(tree.children).toHaveLength(1);
+  });
+
+  it("explicit option overrides frontmatter", () => {
+    const tree = parseWithOptions(
+      "---\ndivision: section\n---\n\n# Title",
+      { topLevelDivision: "part" },
+    );
+    expect(elName(tree.children[0])).toBe("part");
+  });
+
+  it("invalid frontmatter division value falls back to default chapter", () => {
+    const tree = parse("---\ndivision: bogus\n---\n\n# Title");
+    expect(elName(tree.children[0])).toBe("chapter");
   });
 });
 

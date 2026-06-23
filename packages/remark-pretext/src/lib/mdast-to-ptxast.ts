@@ -43,6 +43,8 @@ import type { Element } from "xast";
 import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
 import { buildDirectiveWithSpec } from "./directive-factory.js";
 import type { VisitContext, ConversionMessage } from "./context.js";
+import type { DivisionType } from "@pretextbook/ptxast";
+import { divisionTypeAtRelativeDepth } from "@pretextbook/ptxast";
 
 // ---------------------------------------------------------------------------
 // Xast node builders (local helpers for this module)
@@ -148,9 +150,19 @@ export interface ConversionResult {
   messages: ConversionMessage[];
 }
 
+/** Options controlling heading-to-division conversion. */
+export interface MdastToPtxastOptions {
+  /** The division type that a depth-1 heading (`#`) maps to. Defaults to `'chapter'`. */
+  topLevelDivision?: DivisionType;
+}
+
 /** Transform an mdast Root node into an xast Root node (backwards compatible). */
-export function mdastToPtxast(tree: MdastRoot, source?: string): Root {
-  const result = mdastToPtxastWithDiagnostics(tree, source);
+export function mdastToPtxast(
+  tree: MdastRoot,
+  source?: string,
+  options?: MdastToPtxastOptions,
+): Root {
+  const result = mdastToPtxastWithDiagnostics(tree, source, options);
   return result.tree;
 }
 
@@ -161,9 +173,16 @@ export { mdastToPtxast as mdastToXast };
 export function mdastToPtxastWithDiagnostics(
   tree: MdastRoot,
   source?: string,
+  options?: MdastToPtxastOptions,
 ): ConversionResult {
   const messages: ConversionMessage[] = [];
-  const ctx: VisitContext = { ancestors: [], depth: 0, messages, source };
+  const ctx: VisitContext = {
+    ancestors: [],
+    depth: 0,
+    messages,
+    source,
+    topLevelDivision: options?.topLevelDivision ?? "chapter",
+  };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
   const children = nestSections(nodes, ctx);
   return {
@@ -175,25 +194,6 @@ export function mdastToPtxastWithDiagnostics(
 // ---------------------------------------------------------------------------
 // Section nesting
 // ---------------------------------------------------------------------------
-
-type DivType =
-  | "chapter"
-  | "section"
-  | "subsection"
-  | "subsubsection"
-  | "paragraphs";
-
-const DEPTH_TO_TYPE: DivType[] = [
-  "chapter",
-  "section",
-  "subsection",
-  "subsubsection",
-  "paragraphs",
-];
-
-function depthToType(depth: number): DivType {
-  return DEPTH_TO_TYPE[Math.min(depth - 1, DEPTH_TO_TYPE.length - 1)];
-}
 
 /**
  * Partition a flat list of mdast nodes by headings at the minimum heading depth
@@ -323,7 +323,10 @@ function buildDivision(
   body: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
 ): Element {
-  const divType = depthToType(heading.depth);
+  const divType = divisionTypeAtRelativeDepth(
+    ctx.topLevelDivision,
+    heading.depth,
+  );
   const titleEl = el("title", convertInlineNodes(heading.children, ctx));
   const attrs = getHeadingAttrs(heading);
   // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)

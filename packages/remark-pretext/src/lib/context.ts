@@ -6,6 +6,7 @@
  */
 
 import type { BlockContent, DefinitionContent, PhrasingContent } from 'mdast';
+import type { DivisionType } from '@pretextbook/ptxast';
 
 export interface VisitContext {
   /** Parent node, if any. */
@@ -18,6 +19,8 @@ export interface VisitContext {
   messages?: ConversionMessage[];
   /** Raw source markdown (optional, used for delimiter detection). */
   source?: string;
+  /** The division type that a depth-1 heading (`#`) maps to. */
+  topLevelDivision: DivisionType;
 }
 
 export interface ConversionMessage {

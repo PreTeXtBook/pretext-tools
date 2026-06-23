@@ -45,6 +45,47 @@ const ptxast = processor.runSync(mdast, { value: markdownString }) // PtxRoot
 
 > **Note:** Use `.runSync()` (or `.run()`) rather than `.parse()` — `.parse()` only runs the parser phase; transformers (including `remarkPretext`) run during the transform phase.
 
+## Headings and the top-level division
+
+Headings map to divisions **relative to a configurable top-level division
+type** — `#` always means "the title of this document's top-level division",
+and each additional `#` moves one level down the hierarchy:
+
+```
+part → chapter → section → subsection → subsubsection → paragraphs
+```
+
+(`book`/`article` aren't included — they're document roots, never chosen via
+heading depth.) By default the top-level division is `chapter` (`#` →
+`<chapter>`, `##` → `<section>`, etc.), matching historical behavior.
+
+There are two ways to change it:
+
+1. **Frontmatter** — add a `division:` field to a leading YAML-style block,
+   useful for a standalone markdown document that wants to describe its own
+   structure:
+
+   ```markdown
+   ---
+   division: section
+   ---
+
+   # Top-level section
+
+   ## A subsection
+   ```
+
+2. **Explicit option** — pass `topLevelDivision` to `remarkPretext` or
+   `markdownToPretext` when the caller already knows the context. This takes
+   precedence over frontmatter when both are present.
+
+   ```ts
+   import { markdownToPretext } from '@pretextbook/remark-pretext'
+
+   markdownToPretext('# Title\n\n## Sub', { topLevelDivision: 'section' })
+   // → '<section><title>Title</title><subsection>...'
+   ```
+
 ## Syntax Rules
 
 - `:::name[optional title]{#id attr=val}` opens a block directive
@@ -52,11 +93,6 @@ const ptxast = processor.runSync(mdast, { value: markdownString }) // PtxRoot
 - **Nesting**: use one more colon for the outer container when nesting directives:
   - `::::theorem` containing `:::proof` — use `::::` for theorem, `:::` for proof
 - All standard PreTeXt block names are recognised (see `DIRECTIVE_MAP`)
-- Standard Markdown headings map to divisions:
-  - `#` → `<chapter>`
-  - `##` → `<section>`
-  - `###` → `<subsection>`
-  - `####` → `<subsubsection>`
 - Inline elements:
   - `*text*` → `<em>`
   - `**text**` → `<alert>` (semantic emphasis in PreTeXt)
