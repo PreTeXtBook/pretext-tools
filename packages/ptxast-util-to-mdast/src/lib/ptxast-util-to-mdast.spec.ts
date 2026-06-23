@@ -173,23 +173,24 @@ describe('program', () => {
 //  Divisions  headings ─
 
 describe('divisions', () => {
-  it('converts a section to a depth-2 heading', () => {
+  it('converts a top-level section to a depth-1 heading, relative to itself', () => {
     const xast = root(section([title([text('Introduction')]), p([text('Body text.')])], { 'xml:id': 'sec-intro' }));
     const result = ptxastToMdast(xast);
-    expect(result.children[0]).toMatchObject({ type: 'heading', depth: 2 });
+    expect(result.children[0]).toMatchObject({ type: 'heading', depth: 1 });
     const h = result.children[0] as { type: string; depth: number; children: { value: string }[] };
     expect(h.children[0].value).toBe('Introduction');
     expect(result.children[1]).toMatchObject({ type: 'paragraph' });
     const output = md(xast);
-    expect(output).toContain('## Introduction');
+    expect(output).toContain('division: section');
+    expect(output).toContain('# Introduction');
     expect(output).toContain('Body text.');
   });
 
-  it('converts nested section/subsection to headings at correct depths', () => {
+  it('converts nested section/subsection to headings at correct relative depths', () => {
     const xast = root(section([title([text('Section')]), subsection([title([text('Sub')]), p([text('Content.')])])]));
     const output = md(xast);
-    expect(output).toContain('## Section');
-    expect(output).toContain('### Sub');
+    expect(output).toContain('# Section');
+    expect(output).toContain('## Sub');
   });
 
   it('preserves xml:id as heading data', () => {
@@ -204,6 +205,32 @@ describe('divisions', () => {
     const result = ptxastToMdast(xast);
     expect(result.children[0]).toMatchObject({ type: 'heading', depth: 1 });
     expect(md(xast)).toContain('# Chapter One');
+  });
+
+  it('omits frontmatter when the top-level division is chapter', () => {
+    const xast = root(chapter([title([text('Chapter One')])]));
+    expect(md(xast)).not.toContain('division:');
+  });
+
+  it('converts part > chapter > section to headings at depths 1/2/3 with frontmatter', () => {
+    const partEl = {
+      type: 'element' as const,
+      name: 'part',
+      attributes: {},
+      children: [
+        title([text('Part One')]),
+        chapter([
+          title([text('Chapter One')]),
+          section([title([text('Section One')])]),
+        ]),
+      ],
+    } as unknown as Element;
+    const xast = root(partEl);
+    const output = md(xast);
+    expect(output).toContain('division: part');
+    expect(output).toContain('# Part One');
+    expect(output).toContain('## Chapter One');
+    expect(output).toContain('### Section One');
   });
 });
 
@@ -301,7 +328,7 @@ describe('structural containers (pretext/book/article)', () => {
     } as Element;
     const xast = root(pretext);
     const output = md(xast);
-    expect(output).toContain('## Section');
+    expect(output).toContain('# Section');
   });
 });
 
@@ -322,6 +349,25 @@ describe('unknown node handling', () => {
     expect(para.children).toHaveLength(2);
     expect(para.children[0].value).toBe('before ');
     expect(para.children[1].value).toBe(' after');
+  });
+});
+
+describe('frontmatter round-trip (xast -> markdown -> xast)', () => {
+  it('preserves a section-rooted document through markdown and back', () => {
+    const xast = root(section([
+      title([text('Top Section')]),
+      p([text('Body.')]),
+      subsection([title([text('Sub')]), p([text('Nested body.')])]),
+    ]));
+
+    const markdown = ptxastToMarkdown(xast);
+    expect(markdown).toMatch(/^---\ndivision: section\n---/);
+
+    const reparsed = parseMarkdownToXast(markdown);
+    const counts = nodeNameCounts(reparsed);
+    expect(counts.get('section')).toBe(1);
+    expect(counts.get('subsection')).toBe(1);
+    expect(counts.get('chapter')).toBeUndefined();
   });
 });
 

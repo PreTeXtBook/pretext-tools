@@ -214,3 +214,4 @@ export {
 
 export * from './lib/guards.js';
 export * from './lib/builders.js';
+export * from './lib/division-hierarchy.js';
