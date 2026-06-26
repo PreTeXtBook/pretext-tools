@@ -43,8 +43,11 @@ import type { Element } from "xast";
 import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
 import { buildDirectiveWithSpec } from "./directive-factory.js";
 import type { VisitContext, ConversionMessage } from "./context.js";
-import type { DivisionType } from "@pretextbook/ptxast";
-import { divisionTypeAtRelativeDepth } from "@pretextbook/ptxast";
+import type { TopLevelDivisionType } from "@pretextbook/ptxast";
+import {
+  divisionTypeAtRelativeDepth,
+  isTitlelessDivisionType,
+} from "@pretextbook/ptxast";
 
 // ---------------------------------------------------------------------------
 // Xast node builders (local helpers for this module)
@@ -153,7 +156,10 @@ export interface ConversionResult {
 /** Options controlling heading-to-division conversion. */
 export interface MdastToPtxastOptions {
   /** The division type that a depth-1 heading (`#`) maps to. Defaults to `'chapter'`. */
-  topLevelDivision?: DivisionType;
+  topLevelDivision?: TopLevelDivisionType;
+  /** Attributes (`xml:id`, `label`, `component`) applied to the first
+   * root-level division built from the document, e.g. from frontmatter. */
+  topLevelAttributes?: Record<string, string>;
 }
 
 /** Transform an mdast Root node into an xast Root node (backwards compatible). */
@@ -182,8 +188,28 @@ export function mdastToPtxastWithDiagnostics(
     messages,
     source,
     topLevelDivision: options?.topLevelDivision ?? "chapter",
+    topLevelAttributes: options?.topLevelAttributes,
+    topLevelAttributesApplied: options?.topLevelAttributes
+      ? { done: false }
+      : undefined,
   };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
+
+  // `introduction`/`conclusion` have no `<title>` in the PreTeXt schema, so
+  // they can't be produced from a heading like other divisions. Instead, the
+  // whole document becomes their (titleless) body, wrapped in a single
+  // top-level element; any headings inside become `paragraphs` divisions
+  // (divisionTypeAtRelativeDepth already maps every depth to `paragraphs`
+  // for these two types).
+  if (isTitlelessDivisionType(ctx.topLevelDivision)) {
+    const attrs = takeTopLevelAttributes(ctx);
+    const bodyChildren = nestListsInParagraphs(
+      nestSections(nodes, { ...ctx, depth: 1 }, true),
+    );
+    const wrapper = el(ctx.topLevelDivision, bodyChildren, attrs);
+    return { tree: { type: "root", children: [wrapper] as Root["children"] }, messages };
+  }
+
   const children = nestSections(nodes, ctx);
   return {
     tree: { type: "root", children: children as Root["children"] },
@@ -328,7 +354,7 @@ function buildDivision(
     heading.depth,
   );
   const titleEl = el("title", convertInlineNodes(heading.children, ctx));
-  const attrs = getHeadingAttrs(heading);
+  const attrs = getDivisionAttrs(heading, ctx);
   // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)
   const innerChildren = nestSections(
     body,
@@ -345,6 +371,33 @@ function buildDivision(
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {
   const data = heading.data as { id?: string } | undefined;
   return data?.id ? { "xml:id": data.id } : undefined;
+}
+
+/**
+ * Combine a heading's own `{#id}` attribute with the document's
+ * `topLevelAttributes` (e.g. from frontmatter `xmlid`/`label`/`component`).
+ * The frontmatter attributes are consumed at most once, on the first
+ * root-level division built from the document; the heading's own `{#id}`
+ * takes precedence if both set `xml:id`.
+ */
+function getDivisionAttrs(
+  heading: Heading,
+  ctx: VisitContext,
+): Record<string, string> | undefined {
+  const headingAttrs = getHeadingAttrs(heading);
+  const frontmatterAttrs = takeTopLevelAttributes(ctx);
+  if (!headingAttrs && !frontmatterAttrs) return undefined;
+  return { ...frontmatterAttrs, ...headingAttrs };
+}
+
+function takeTopLevelAttributes(
+  ctx: VisitContext,
+): Record<string, string> | undefined {
+  if (ctx.depth !== 0) return undefined;
+  const tracker = ctx.topLevelAttributesApplied;
+  if (!ctx.topLevelAttributes || !tracker || tracker.done) return undefined;
+  tracker.done = true;
+  return ctx.topLevelAttributes;
 }
 
 // ---------------------------------------------------------------------------

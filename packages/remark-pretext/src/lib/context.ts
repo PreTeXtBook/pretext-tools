@@ -6,7 +6,7 @@
  */
 
 import type { BlockContent, DefinitionContent, PhrasingContent } from 'mdast';
-import type { DivisionType } from '@pretextbook/ptxast';
+import type { TopLevelDivisionType } from '@pretextbook/ptxast';
 
 export interface VisitContext {
   /** Parent node, if any. */
@@ -20,7 +20,13 @@ export interface VisitContext {
   /** Raw source markdown (optional, used for delimiter detection). */
   source?: string;
   /** The division type that a depth-1 heading (`#`) maps to. */
-  topLevelDivision: DivisionType;
+  topLevelDivision: TopLevelDivisionType;
+  /** Attributes (e.g. from frontmatter `xmlid`/`label`/`component`) to apply
+   * to the first root-level division built from the document. */
+  topLevelAttributes?: Record<string, string>;
+  /** Mutable: set once `topLevelAttributes` has been applied to a division,
+   * shared by reference across the recursive conversion of this document. */
+  topLevelAttributesApplied?: { done: boolean };
 }
 
 export interface ConversionMessage {

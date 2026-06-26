@@ -86,6 +86,58 @@ There are two ways to change it:
    // → '<section><title>Title</title><subsection>...'
    ```
 
+### Section-like divisions
+
+`division:` also accepts a set of section-like types that don't belong to
+the part/chapter/.../paragraphs hierarchy: `worksheet`, `exercises`,
+`references`, `appendix`, `glossary`, `handout`, `solutions`,
+`reading-questions`, `introduction`, and `conclusion`.
+
+`appendix` nests like `chapter` (deeper headings become `section`,
+`subsection`, etc.), since the PreTeXt schema allows nested sections inside
+an appendix. The rest don't support nested sections, so any heading deeper
+than the top-level one becomes a `<paragraphs>` division instead:
+
+```markdown
+---
+division: worksheet
+---
+
+# Worksheet on Limits
+
+## Part A
+
+A `<paragraphs>` division, titled "Part A".
+```
+
+### Attributes from frontmatter
+
+`xmlid:`, `label:`, and `component:` frontmatter fields become `xml:id`,
+`label`, and `component` attributes on the document's first top-level
+division:
+
+```markdown
+---
+division: section
+xmlid: limits-intro
+label: sec-limits-intro
+component: limits
+---
+
+# Introduction to Limits
+```
+
+```xml
+<section xml:id="limits-intro" label="sec-limits-intro" component="limits">
+  <title>Introduction to Limits</title>
+  ...
+</section>
+```
+
+Pass `topLevelAttributes` to `remarkPretext` or `markdownToPretext` to set
+these explicitly instead; like `topLevelDivision`, it overrides frontmatter
+when both are present.
+
 ## Syntax Rules
 
 - `:::name[optional title]{#id attr=val}` opens a block directive

@@ -25,7 +25,7 @@
 import type { Plugin } from 'unified';
 import type { Root as MdastRoot } from 'mdast';
 import type { Root } from 'xast';
-import type { DivisionType } from '@pretextbook/ptxast';
+import type { TopLevelDivisionType } from '@pretextbook/ptxast';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
@@ -42,7 +42,13 @@ export interface RemarkPretextOptions {
    * `division:` field declared in the markdown's frontmatter. Defaults to
    * `'chapter'` (matching historical behavior) when neither is set.
    */
-  topLevelDivision?: DivisionType;
+  topLevelDivision?: TopLevelDivisionType;
+  /**
+   * Attributes (`xml:id`, `label`, `component`) applied to the first
+   * root-level division. Overrides any `xmlid:`/`label:`/`component:`
+   * fields declared in the markdown's frontmatter.
+   */
+  topLevelAttributes?: Record<string, string>;
 }
 
 const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function (
@@ -55,6 +61,8 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
       const frontmatter = extractFrontmatter(file.value);
       const topLevelDivision =
         options?.topLevelDivision ?? frontmatter.division ?? 'chapter';
+      const topLevelAttributes =
+        options?.topLevelAttributes ?? frontmatter.attributes;
 
       // Pipeline: indentation→colons→directive-normalize→math-tokenize→reparse
       const indentNormalized = normalizeIndentationDirectives(frontmatter.body);
@@ -71,13 +79,17 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
       const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
       applyMathTokens(reparsed, tokenized.tokens);
       // pass tokenized source for delimiter detection
-      return mdastToPtxast(reparsed, tokenized.markdown, { topLevelDivision });
+      return mdastToPtxast(reparsed, tokenized.markdown, {
+        topLevelDivision,
+        topLevelAttributes,
+      });
     }
 
     // Fallback for parse+runSync(tree) usage where raw source text is unavailable.
     applyMathDelimiters(tree);
     return mdastToPtxast(tree, undefined, {
       topLevelDivision: options?.topLevelDivision ?? 'chapter',
+      topLevelAttributes: options?.topLevelAttributes,
     });
   };
 };

@@ -29,18 +29,30 @@ import type {
 import type { ContainerDirective } from 'mdast-util-directive';
 import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
 import type { Root, Element, ElementContent } from '@pretextbook/ptxast';
-import { getPtxTextContent, DIVISION_HIERARCHY } from '@pretextbook/ptxast';
+import {
+  getPtxTextContent,
+  DIVISION_HIERARCHY,
+  EXTRA_DIVISION_TYPES,
+  TITLELESS_DIVISION_TYPES as TITLELESS_DIVISION_TYPE_LIST,
+  isTitlelessDivisionType,
+} from '@pretextbook/ptxast';
 
 // ---------------------------------------------------------------------------
 // Division metadata
 // ---------------------------------------------------------------------------
 
-// `appendix` is division-like (sibling-depth to chapter) but isn't part of
-// the heading-mappable hierarchy used on the markdown -> PreTeXt direction.
+// Division-like types that are heading-mappable on the way back to markdown
+// (they have a <title>, so they become a heading). `introduction`/
+// `conclusion` are excluded here — see TITLELESS_DIVISION_TYPES below.
 export const DIVISION_TYPE_NAMES = new Set<string>([
   ...DIVISION_HIERARCHY,
-  'appendix',
+  ...EXTRA_DIVISION_TYPES.filter((name) => !isTitlelessDivisionType(name)),
 ]);
+
+// `introduction`/`conclusion` have no <title> in the PreTeXt schema, so they
+// never become a heading: their content is spliced into the surrounding flow
+// (and the heading depth they'd otherwise consume is left untouched).
+export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_LIST);
 
 /**
  * Structural container types whose content should be recursed into
@@ -125,22 +137,52 @@ export function ptxastToMdast(root: Root): MdastRoot {
   };
 }
 
+/** The outermost division's name plus the subset of its attributes that
+ * round-trip through markdown frontmatter (`xmlid`, `label`, `component`). */
+export interface TopLevelDivisionInfo {
+  name: string;
+  attributes: {
+    xmlid?: string;
+    label?: string;
+    component?: string;
+  };
+}
+
+/**
+ * Find the outermost division in a ptxast tree (skipping transparent
+ * structural wrappers), i.e. the division a depth-1 heading would represent
+ * if this tree were flattened to markdown — along with its `xml:id`/
+ * `label`/`component` attributes, for round-tripping into frontmatter.
+ */
+export function findTopLevelDivisionInfo(
+  nodes: ElementContent[],
+): TopLevelDivisionInfo | undefined {
+  for (const node of nodes) {
+    if (node.type !== 'element') continue;
+    const el = node as Element;
+    if (DIVISION_TYPE_NAMES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+      const attrs = el.attributes ?? {};
+      const attributes: TopLevelDivisionInfo['attributes'] = {};
+      if (attrs['xml:id']) attributes.xmlid = attrs['xml:id'];
+      if (attrs['label']) attributes.label = attrs['label'];
+      if (attrs['component']) attributes.component = attrs['component'];
+      return { name: el.name, attributes };
+    }
+    if (TRANSPARENT_TYPES.has(el.name)) {
+      const found = findTopLevelDivisionInfo(el.children);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
 /**
  * Find the name of the outermost division in a ptxast tree (skipping
  * transparent structural wrappers), i.e. the division a depth-1 heading
  * would represent if this tree were flattened to markdown.
  */
 export function findTopLevelDivision(nodes: ElementContent[]): string | undefined {
-  for (const node of nodes) {
-    if (node.type !== 'element') continue;
-    const el = node as Element;
-    if (DIVISION_TYPE_NAMES.has(el.name)) return el.name;
-    if (TRANSPARENT_TYPES.has(el.name)) {
-      const found = findTopLevelDivision(el.children);
-      if (found) return found;
-    }
-  }
-  return undefined;
+  return findTopLevelDivisionInfo(nodes)?.name;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +199,7 @@ function flattenChildren(nodes: ElementContent[], depth: number): MdastContent[]
   for (const node of nodes) {
     if (node.type !== 'element') continue;
     const el = node as Element;
-    if (TRANSPARENT_TYPES.has(el.name)) {
+    if (TRANSPARENT_TYPES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
       result.push(...flattenChildren(el.children, depth));
     } else if (DIVISION_TYPE_NAMES.has(el.name)) {
       result.push(...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6));

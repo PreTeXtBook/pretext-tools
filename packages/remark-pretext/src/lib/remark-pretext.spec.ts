@@ -390,6 +390,107 @@ describe("relative top-level division", () => {
     const tree = parse("---\ndivision: bogus\n---\n\n# Title");
     expect(elName(tree.children[0])).toBe("chapter");
   });
+
+  it("frontmatter division accepts section-like types (e.g. worksheet)", () => {
+    const tree = parse("---\ndivision: worksheet\n---\n\n# Title\n\nText.");
+    expect(elName(tree.children[0])).toBe("worksheet");
+  });
+
+  it("headings nested inside a section-like division become paragraphs", () => {
+    const tree = parse(
+      "---\ndivision: worksheet\n---\n\n# Title\n\n## Part A\n\nText.",
+    );
+    const worksheet = tree.children[0] as Element;
+    expect(elName(worksheet)).toBe("worksheet");
+    expect(worksheet.children.some((c) => elName(c) === "paragraphs")).toBe(
+      true,
+    );
+  });
+
+  it("appendix nests like chapter: section, then subsection", () => {
+    const tree = parse(
+      "---\ndivision: appendix\n---\n\n# Title\n\n## Sec\n\n### Sub",
+    );
+    const appendix = tree.children[0] as Element;
+    expect(elName(appendix)).toBe("appendix");
+    const section = appendix.children.find(
+      (c) => elName(c) === "section",
+    ) as Element;
+    expect(section).toBeDefined();
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
+      true,
+    );
+  });
+
+  it("frontmatter xmlid/label/component become attributes on the top-level division", () => {
+    const tree = parse(
+      "---\ndivision: section\nxmlid: my-id\nlabel: my-label\ncomponent: my-component\n---\n\n# Title",
+    );
+    const section = tree.children[0] as Element;
+    expect(section.attributes).toEqual({
+      "xml:id": "my-id",
+      label: "my-label",
+      component: "my-component",
+    });
+  });
+
+  it("frontmatter attributes apply only to the first top-level division", () => {
+    const tree = parse(
+      "---\ndivision: section\nxmlid: my-id\n---\n\n# First\n\n# Second",
+    );
+    expect((tree.children[0] as Element).attributes["xml:id"]).toBe("my-id");
+    expect(
+      (tree.children[1] as Element).attributes["xml:id"],
+    ).toBeUndefined();
+  });
+
+  it("explicit topLevelAttributes option overrides frontmatter attributes", () => {
+    const tree = parseWithOptions(
+      "---\nxmlid: from-frontmatter\n---\n\n# Title",
+      { topLevelAttributes: { "xml:id": "from-option" } },
+    );
+    const chapter = tree.children[0] as Element;
+    expect(chapter.attributes["xml:id"]).toBe("from-option");
+  });
+
+  it("division: introduction wraps the whole document, with no title, when there's no heading", () => {
+    const tree = parse(
+      "---\ndivision: introduction\n---\n\nThis chapter begins by...",
+    );
+    expect(tree.children).toHaveLength(1);
+    const introduction = tree.children[0] as Element;
+    expect(elName(introduction)).toBe("introduction");
+    expect(introduction.children.some((c) => elName(c) === "title")).toBe(
+      false,
+    );
+    expect(introduction.children.some((c) => elName(c) === "p")).toBe(true);
+  });
+
+  it("a heading inside division: introduction becomes a titled paragraphs division", () => {
+    const tree = parse("---\ndivision: introduction\n---\n\n# Part A\n\nText.");
+    const introduction = tree.children[0] as Element;
+    expect(elName(introduction)).toBe("introduction");
+    expect(
+      introduction.children.some((c) => elName(c) === "paragraphs"),
+    ).toBe(true);
+  });
+
+  it("division: conclusion also wraps the document titlelessly", () => {
+    const tree = parse("---\ndivision: conclusion\n---\n\nIn summary...");
+    const conclusion = tree.children[0] as Element;
+    expect(elName(conclusion)).toBe("conclusion");
+    expect(conclusion.children.some((c) => elName(c) === "title")).toBe(
+      false,
+    );
+  });
+
+  it("frontmatter attributes apply to the introduction/conclusion wrapper itself", () => {
+    const tree = parse(
+      "---\ndivision: introduction\nxmlid: intro-1\n---\n\nText.",
+    );
+    const introduction = tree.children[0] as Element;
+    expect(introduction.attributes["xml:id"]).toBe("intro-1");
+  });
 });
 
 describe("container directives", () => {
