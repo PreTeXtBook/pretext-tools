@@ -64,6 +64,15 @@ function root(...children: Root['children']): Root {
   return { type: 'root', children };
 }
 
+/** Build a raw xast element for division types without a dedicated builder. */
+function elRaw(
+  name: string,
+  children: Root['children'],
+  attributes: Record<string, string> = {},
+): Element {
+  return { type: 'element', name, attributes, children } as unknown as Element;
+}
+
 //  Plain text & paragraphs 
 
 describe('paragraphs and inline', () => {
@@ -231,6 +240,103 @@ describe('divisions', () => {
     expect(output).toContain('# Part One');
     expect(output).toContain('## Chapter One');
     expect(output).toContain('### Section One');
+  });
+});
+
+//  Section-like divisions and frontmatter attributes ─
+
+describe('section-like divisions and frontmatter attributes', () => {
+  it('emits division: worksheet and flattens nested paragraphs to a heading', () => {
+    const xast = root(
+      elRaw('worksheet', [
+        title([text('Worksheet on Limits')]),
+        elRaw('paragraphs', [title([text('Part A')]), p([text('Some text.')])]),
+      ]),
+    );
+    const output = md(xast);
+    expect(output).toContain('division: worksheet');
+    expect(output).toContain('# Worksheet on Limits');
+    expect(output).toContain('## Part A');
+    expect(output).toContain('Some text.');
+  });
+
+  it('emits division: appendix nesting like chapter (section, then subsection)', () => {
+    const xast = root(
+      elRaw('appendix', [
+        title([text('Appendix')]),
+        section([title([text('Sec')]), subsection([title([text('Sub')])])]),
+      ]),
+    );
+    const output = md(xast);
+    expect(output).toContain('division: appendix');
+    expect(output).toContain('# Appendix');
+    expect(output).toContain('## Sec');
+    expect(output).toContain('### Sub');
+  });
+
+  it('emits xmlid/label/component frontmatter from the top-level division attributes', () => {
+    const xast = root(
+      section([title([text('Title')])], {
+        'xml:id': 'my-id',
+        label: 'my-label',
+        component: 'my-component',
+      }),
+    );
+    const output = md(xast);
+    expect(output).toContain('division: section');
+    expect(output).toContain('xmlid: my-id');
+    expect(output).toContain('label: my-label');
+    expect(output).toContain('component: my-component');
+  });
+
+  it('round-trips xmlid/label/component through markdown frontmatter', () => {
+    const xast = root(
+      section([title([text('Title')])], {
+        'xml:id': 'my-id',
+        label: 'my-label',
+        component: 'my-component',
+      }),
+    );
+    const markdown = ptxastToMarkdown(xast);
+    const reparsed = parseMarkdownToXast(markdown);
+    const sectionEl = reparsed.children[0] as Element;
+    expect(sectionEl.attributes).toEqual({
+      'xml:id': 'my-id',
+      label: 'my-label',
+      component: 'my-component',
+    });
+  });
+
+  it('a root-level introduction has no heading, just frontmatter + flat content', () => {
+    const xast = root(elRaw('introduction', [p([text('This chapter begins by...')])]));
+    const output = md(xast);
+    expect(output).toMatch(/^---\ndivision: introduction\n---/);
+    expect(output).not.toContain('#');
+    expect(output).toContain('This chapter begins by...');
+  });
+
+  it('round-trips a root-level introduction back to an <introduction> element', () => {
+    const xast = root(elRaw('introduction', [p([text('Body.')])], { 'xml:id': 'intro-1' }));
+    const markdown = ptxastToMarkdown(xast);
+    const reparsed = parseMarkdownToXast(markdown);
+    const introEl = reparsed.children[0] as Element;
+    expect(introEl.name).toBe('introduction');
+    expect(introEl.attributes['xml:id']).toBe('intro-1');
+  });
+
+  it('a nested introduction (inside a chapter) keeps its content without a heading', () => {
+    const xast = root(
+      chapter([
+        title([text('Chapter One')]),
+        elRaw('introduction', [p([text('Intro text.')])]),
+        p([text('Main text.')]),
+      ]),
+    );
+    const output = md(xast);
+    expect(output).toContain('# Chapter One');
+    expect(output).toContain('Intro text.');
+    expect(output).toContain('Main text.');
+    expect(output).not.toContain('division: introduction');
   });
 });
 
@@ -421,7 +527,8 @@ describe('semantic round-trip (xml -> xast -> markdown -> xast)', () => {
     const sectionEl = reparsed.children.find(
       (node) => node.type === 'element' && (node as Element).name === 'section',
     ) as Element | undefined;
-    expect(sectionEl?.attributes?.['xml:id']).toBeUndefined();
+    // The outer section's xml:id round-trips via the `xmlid:` frontmatter field.
+    expect(sectionEl?.attributes?.['xml:id']).toBe('sec-xml');
     if (sectionEl) {
       const theoremEl = sectionEl.children.find(
         (node) => node.type === 'element' && (node as Element).name === 'theorem',
