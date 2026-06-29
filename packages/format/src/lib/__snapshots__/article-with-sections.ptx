@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<pretext>
+  <article xml:id="my-article">
+    <title>An Article About Mathematics</title>
+
+    <section xml:id="sec-intro">
+      <title>Introduction</title>
+
+      <p>
+        This is a paragraph with inline math <m>x^2 + y^2 = z^2</m> and some
+        text after it. Here is more text to make the paragraph a bit longer.
+      </p>
+
+      <p>
+        Another paragraph with a list:
+        <ul>
+          <li>
+            <p>
+              First item with some text.
+            </p>
+          </li>
+
+          <li>
+            <p>
+              Second item with <em>emphasized</em> text.
+            </p>
+          </li>
+
+          <li>
+            <p>
+              Third item.
+            </p>
+          </li>
+        </ul>
+      </p>
+    </section>
+
+    <section xml:id="sec-math">
+      <title>Some Mathematics</title>
+
+      <p>
+        We recall a famous result.
+      </p>
+
+      <theorem xml:id="thm-pythagoras">
+        <title>Pythagorean Theorem</title>
+
+        <statement>
+          <p>
+            For a right triangle with legs <m>a</m> and <m>b</m> and hypotenuse
+            <m>c</m>, we have
+            <me>
+              a^2 + b^2 = c^2
+            </me>.
+          </p>
+        </statement>
+
+        <proof>
+          <p>
+            This follows from the definition of a right triangle and basic
+            geometry.
+          </p>
+        </proof>
+      </theorem>
+
+      <p>
+        Display math can also appear at the paragraph level:
+        <me>
+          \sum_{n=1}^\infty \frac{1}{n^2} = \frac{\pi^2}{6}
+        </me>.
+      </p>
+
+      <p>
+        And aligned equations work too:
+        <md>
+          <mrow>a + b &amp;= c</mrow>
+          <mrow>d + e &amp;= f</mrow>
+        </md>.
+      </p>
+    </section>
+  </article>
+</pretext>

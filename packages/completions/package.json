@@ -31,7 +31,11 @@
   "scripts": {
     "fetch:dev-schema": "node ../../scripts/getSchemas.js --only-pretext-dev",
     "generate:schema": "node ./scripts/generate-default-schema.mjs",
-    "prebuild": "npm run fetch:dev-schema && npm run generate:schema"
+    "refresh-schema": "npm run fetch:dev-schema && npm run generate:schema",
+    "prebuild": "npm run refresh-schema",
+    "build": "tsc --build tsconfig.lib.json",
+    "typecheck": "tsc --build --emitDeclarationOnly",
+    "test": "vitest run"
   },
   "dependencies": {
     "vscode-languageserver": "^9.0.1"

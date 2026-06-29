@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<pretext>
+  <book xml:id="my-book">
+    <title>My Book</title>
+
+    <frontmatter>
+      <titlepage>
+        <author>
+          <personname>Jane Doe</personname>
+          <institution>Some University</institution>
+        </author>
+        <date>2024</date>
+      </titlepage>
+
+      <abstract>
+        <p>
+          This is a very short abstract for the book.
+        </p>
+      </abstract>
+    </frontmatter>
+
+    <chapter xml:id="ch-intro-has-a-really-long-id" label="a-really-long-label-for-this-chapter" custom="custom-attribute">
+      <title>Introduction</title>
+
+      <p>
+        This is the first paragraph of the introduction chapter. It has some
+        text that is reasonably long.
+      </p>
+
+      <p>
+        This is a second paragraph.
+      </p>
+
+      <section xml:id="sec-first">
+        <title>First Section</title>
+
+        <p>
+          Some content here in the first section.
+        </p>
+      </section>
+
+      <section xml:id="sec-second">
+        <title>Second Section</title>
+
+        <p>
+          Content in the second section.
+        </p>
+      </section>
+    </chapter>
+
+    <backmatter>
+      <index/>
+    </backmatter>
+  </book>
+</pretext>

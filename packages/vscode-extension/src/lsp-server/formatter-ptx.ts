@@ -10,13 +10,14 @@ import { globalSettings } from "./main";
 import { formatPretext } from "@pretextbook/format";
 
 function getOptions() {
-  const options = {
+  return {
     breakSentences: globalSettings.formatter.breakSentences,
-    blankLines: globalSettings.formatter.blankLines,
-    indentSize: globalSettings.editor.tabSize,
+    breakLines: globalSettings.formatter.blankLines,
+    breakLongAttributes: globalSettings.formatter.breakLongAttributes,
+    tabSize: globalSettings.editor.tabSize,
     insertSpaces: globalSettings.editor.insertSpaces,
+    printWidth: globalSettings.formatter.printWidth,
   };
-  return options;
 }
 
 export async function formatDocument(

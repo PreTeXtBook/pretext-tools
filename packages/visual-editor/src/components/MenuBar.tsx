@@ -1,3 +1,6 @@
+import type { ReactNode } from "react";
+import "./MenuBar.css";
+
 export interface MenuBarProps {
   isChecked: boolean;
   onChange: () => void;
@@ -8,9 +11,8 @@ export interface MenuBarProps {
   onCancelButton?: () => void;
   cancelButtonLabel?: string;
   showPreviewModeToggle?: boolean;
+  feedbackControl?: ReactNode;
 }
-
-import "./MenuBar.css";
 
 const MenuBar = (props: MenuBarProps) => {
   let previewModeToggle;
@@ -93,6 +95,7 @@ const MenuBar = (props: MenuBarProps) => {
             {props.cancelButtonLabel || "Cancel"}
           </button>
         )}
+        {props.feedbackControl}
         {previewModeToggle}
       </div>
     </div>

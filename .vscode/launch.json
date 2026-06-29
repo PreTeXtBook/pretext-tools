@@ -33,7 +33,7 @@
             "port": 6009,
             "restart": true,
             "outFiles": [
-                "${workspaceRoot}/dist/vscode-extension/out/lsp-server.js"
+                "${workspaceFolder}/dist/vscode-extension/out/lsp-server.js"
             ]
         },
         {

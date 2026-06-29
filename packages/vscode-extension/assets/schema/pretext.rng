@@ -1210,6 +1210,7 @@
       <ref name="ListGenerator"/>
       <ref name="Fragment"/>
       <ref name="PrintoutSideBySide"/>
+      <ref name="Paragraphs"/>
     </choice>
   </define>
   <!-- Allow exercise in sidebyside -->
@@ -2393,7 +2394,17 @@
     <optional>
       <choice>
         <ref name="AlignmentVertical"/>
-        <attribute name="valigns"/>
+        <attribute name="valigns">
+          <list>
+            <oneOrMore>
+              <choice>
+                <value>top</value>
+                <value>middle</value>
+                <value>bottom</value>
+              </choice>
+            </oneOrMore>
+          </list>
+        </attribute>
       </choice>
     </optional>
   </define>
@@ -2984,7 +2995,15 @@
   <define name="ExerciseOrderedList">
     <element name="ol">
       <optional>
-        <attribute name="cols"/>
+        <attribute name="cols">
+          <choice>
+            <value>2</value>
+            <value>3</value>
+            <value>4</value>
+            <value>5</value>
+            <value>6</value>
+          </choice>
+        </attribute>
       </optional>
       <optional>
         <attribute name="marker"/>
@@ -4143,6 +4162,25 @@
       </mixed>
     </element>
   </define>
+  <define name="TagSymbol">
+    <choice>
+      <value>star</value>
+      <value>dstar</value>
+      <value>tstar</value>
+      <value>dagger</value>
+      <value>ddagger</value>
+      <value>tdagger</value>
+      <value>daggerdbl</value>
+      <value>ddaggerdbl</value>
+      <value>tdaggerdbl</value>
+      <value>hash</value>
+      <value>dhash</value>
+      <value>thash</value>
+      <value>maltese</value>
+      <value>dmaltese</value>
+      <value>tmaltese</value>
+    </choice>
+  </define>
   <define name="MathRow">
     <element name="mrow">
       <ref name="MetaDataTarget"/>
@@ -4155,23 +4193,7 @@
             </choice>
           </attribute>
           <attribute name="tag">
-            <choice>
-              <value>star</value>
-              <value>dstar</value>
-              <value>tstar</value>
-              <value>dagger</value>
-              <value>ddagger</value>
-              <value>tdagger</value>
-              <value>daggerdbl</value>
-              <value>ddaggerdbl</value>
-              <value>tdaggerdbl</value>
-              <value>hash</value>
-              <value>dhash</value>
-              <value>thash</value>
-              <value>maltese</value>
-              <value>dmaltese</value>
-              <value>tmaltese</value>
-            </choice>
+            <ref name="TagSymbol"/>
           </attribute>
         </choice>
       </optional>
@@ -4200,103 +4222,98 @@
     </element>
   </define>
   <define name="MathDisplay">
-    <choice>
-      <element name="me">
-        <mixed>
-          <zeroOrMore>
+    <element name="md">
+      <optional>
+        <!-- common to both forms -->
+        <ref name="Component"/>
+      </optional>
+      <zeroOrMore>
+        <ref name="Index"/>
+      </zeroOrMore>
+      <choice>
+        <!--
+          single-line: text content, optional @xml:id
+          makes it a cross-reference target, no @label;
+          @number and @tag are mutually exclusive,
+          @number defaults to "no"
+        -->
+        <group>
+          <optional>
+            <ref name="UniqueID"/>
+          </optional>
+          <optional>
             <choice>
-              <ref name="FillInMath"/>
-              <ref name="WWVariable"/>
+              <attribute name="number">
+                <choice>
+                  <value>yes</value>
+                  <value>no</value>
+                </choice>
+              </attribute>
+              <attribute name="tag">
+                <ref name="TagSymbol"/>
+              </attribute>
             </choice>
-          </zeroOrMore>
-        </mixed>
-      </element>
-      <element name="men">
-        <ref name="MetaDataTarget"/>
-        <mixed>
-          <zeroOrMore>
-            <choice>
-              <ref name="FillInMath"/>
-              <ref name="WWVariable"/>
-            </choice>
-          </zeroOrMore>
-        </mixed>
-      </element>
-      <element name="md">
-        <optional>
-          <attribute name="number">
-            <choice>
-              <value>yes</value>
-              <value>no</value>
-            </choice>
-          </attribute>
-        </optional>
-        <optional>
-          <attribute name="break">
-            <choice>
-              <value>yes</value>
-              <value>no</value>
-            </choice>
-          </attribute>
-        </optional>
-        <optional>
-          <attribute name="alignment"/>
-        </optional>
-        <optional>
-          <attribute name="alignat-columns"/>
-        </optional>
-        <choice>
+          </optional>
           <mixed>
             <zeroOrMore>
               <choice>
+                <ref name="Xref"/>
                 <ref name="FillInMath"/>
                 <ref name="WWVariable"/>
               </choice>
             </zeroOrMore>
           </mixed>
-          <group>
-            <ref name="MathRow"/>
-            <zeroOrMore>
+        </group>
+        <!--
+          multi-line: "mrow" content, not itself a
+          cross-reference target, so no @xml:id, no @label;
+          @number defaults to "no" and applies to each "mrow".
+          Each "intertext" must be sandwiched between "mrow":
+          it cannot lead, cannot trail, and two cannot be
+          adjacent.
+        -->
+        <group>
+          <optional>
+            <attribute name="number">
               <choice>
-                <ref name="MathRow"/>
-                <ref name="MathIntertext"/>
+                <value>yes</value>
+                <value>no</value>
               </choice>
-            </zeroOrMore>
-          </group>
-        </choice>
-      </element>
-      <element name="mdn">
-        <optional>
-          <attribute name="number">
+            </attribute>
+          </optional>
+          <optional>
+            <attribute name="break">
+              <choice>
+                <value>yes</value>
+                <value>no</value>
+              </choice>
+            </attribute>
+          </optional>
+          <optional>
+            <attribute name="alignment">
+              <choice>
+                <value>align</value>
+                <value>gather</value>
+                <value>alignat</value>
+              </choice>
+            </attribute>
+          </optional>
+          <optional>
+            <attribute name="alignat-columns"/>
+          </optional>
+          <ref name="MathRow"/>
+          <zeroOrMore>
             <choice>
-              <value>yes</value>
-              <value>no</value>
+              <ref name="MathRow"/>
+              <group>
+                <ref name="MathIntertext"/>
+                <ref name="MathRow"/>
+              </group>
             </choice>
-          </attribute>
-        </optional>
-        <optional>
-          <attribute name="break">
-            <choice>
-              <value>yes</value>
-              <value>no</value>
-            </choice>
-          </attribute>
-        </optional>
-        <optional>
-          <attribute name="alignment"/>
-        </optional>
-        <optional>
-          <attribute name="alignat-columns"/>
-        </optional>
-        <ref name="MathRow"/>
-        <zeroOrMore>
-          <choice>
-            <ref name="MathRow"/>
-            <ref name="MathIntertext"/>
-          </choice>
-        </zeroOrMore>
-      </element>
-    </choice>
+          </zeroOrMore>
+        </group>
+      </choice>
+    </element>
   </define>
   <define name="Verbatim">
     <choice>

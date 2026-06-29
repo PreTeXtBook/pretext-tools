@@ -11,7 +11,12 @@ import {
 } from "./types";
 import { defaultDevSchema } from "./default-dev-schema";
 import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from "./constants";
-import { getCurrentTag, getTextInRange, linePrefix, rangeInLine } from "./utils";
+import {
+  getCurrentTag,
+  getTextInRange,
+  linePrefix,
+  rangeInLine,
+} from "./utils";
 
 function normalizePath(filePath: string): string {
   return filePath.replace(/\\/g, "/");

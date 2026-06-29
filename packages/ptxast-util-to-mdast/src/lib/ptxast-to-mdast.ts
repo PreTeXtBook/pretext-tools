@@ -1,0 +1,443 @@
+/**
+ * ptxast-to-mdast: converts an xast Root (PreTeXt document) into an mdast Root.
+ *
+ * Division nodes (section/subsection/etc.) are flattened back to headings.
+ * PreTeXt block environments (theorem/proof/definition/etc.) become
+ * container directives (`:::theorem[Title]{#id}` syntax).
+ *
+ * The resulting mdast can be serialized to markdown using `ptxastToMarkdown`,
+ * which passes the directive and math extensions to `mdast-util-to-markdown`.
+ */
+
+import type {
+  Root as MdastRoot,
+  Content as MdastContent,
+  BlockContent,
+  DefinitionContent,
+  PhrasingContent,
+  Paragraph,
+  Heading,
+  Text,
+  Emphasis,
+  Strong,
+  InlineCode,
+  List,
+  ListItem,
+  Code,
+  Blockquote as MdastBlockquote,
+} from 'mdast';
+import type { ContainerDirective } from 'mdast-util-directive';
+import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
+import type { Root, Element, ElementContent } from '@pretextbook/ptxast';
+import {
+  getPtxTextContent,
+  DIVISION_HIERARCHY,
+  EXTRA_DIVISION_TYPES,
+  TITLELESS_DIVISION_TYPES as TITLELESS_DIVISION_TYPE_LIST,
+  isTitlelessDivisionType,
+} from '@pretextbook/ptxast';
+
+// ---------------------------------------------------------------------------
+// Division metadata
+// ---------------------------------------------------------------------------
+
+// Division-like types that are heading-mappable on the way back to markdown
+// (they have a <title>, so they become a heading). `introduction`/
+// `conclusion` are excluded here — see TITLELESS_DIVISION_TYPES below.
+export const DIVISION_TYPE_NAMES = new Set<string>([
+  ...DIVISION_HIERARCHY,
+  ...EXTRA_DIVISION_TYPES.filter((name) => !isTitlelessDivisionType(name)),
+]);
+
+// `introduction`/`conclusion` have no <title> in the PreTeXt schema, so they
+// never become a heading: their content is spliced into the surrounding flow
+// (and the heading depth they'd otherwise consume is left untouched).
+export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_LIST);
+
+/**
+ * Structural container types whose content should be recursed into
+ * without emitting a heading, and without changing the current depth.
+ * This handles full ptxast trees that include a `pretext > book > chapter`
+ * hierarchy.
+ */
+export const TRANSPARENT_TYPES = new Set([
+  'pretext', 'book', 'article', 'frontmatter', 'backmatter',
+]);
+
+// ---------------------------------------------------------------------------
+// Directive type metadata  (mirrors directive-map.ts in remark-pretext)
+// ---------------------------------------------------------------------------
+
+type DirectiveCategory =
+  | 'theorem-like'    // has <statement> wrapper + optional proof children
+  | 'definition-like' // has <statement> wrapper
+  | 'remark-like'     // no statement wrapper, direct block children
+  | 'example-like'    // no statement wrapper
+  | 'proof-like'      // no statement wrapper
+  | 'solution-like';  // no statement wrapper
+
+interface DirectiveMeta {
+  name: string;
+  category: DirectiveCategory;
+}
+
+const TYPE_TO_DIRECTIVE = new Map<string, DirectiveMeta>([
+  // theorem-like
+  ['theorem',       { name: 'theorem',       category: 'theorem-like' }],
+  ['lemma',         { name: 'lemma',         category: 'theorem-like' }],
+  ['corollary',     { name: 'corollary',     category: 'theorem-like' }],
+  ['proposition',   { name: 'proposition',   category: 'theorem-like' }],
+  ['claim',         { name: 'claim',         category: 'theorem-like' }],
+  ['fact',          { name: 'fact',          category: 'theorem-like' }],
+  ['conjecture',    { name: 'conjecture',    category: 'theorem-like' }],
+  ['axiom',         { name: 'axiom',         category: 'theorem-like' }],
+  ['principle',     { name: 'principle',     category: 'theorem-like' }],
+  ['hypothesis',    { name: 'hypothesis',    category: 'theorem-like' }],
+  ['algorithm',     { name: 'algorithm',     category: 'theorem-like' }],
+  // definition-like
+  ['definition',    { name: 'definition',    category: 'definition-like' }],
+  ['notation',      { name: 'notation',      category: 'definition-like' }],
+  // remark-like
+  ['remark',        { name: 'remark',        category: 'remark-like' }],
+  ['note',          { name: 'note',          category: 'remark-like' }],
+  ['observation',   { name: 'observation',   category: 'remark-like' }],
+  ['warning',       { name: 'warning',       category: 'remark-like' }],
+  ['insight',       { name: 'insight',       category: 'remark-like' }],
+  ['assemblage',    { name: 'assemblage',    category: 'remark-like' }],
+  // example-like
+  ['example',       { name: 'example',       category: 'example-like' }],
+  ['question',      { name: 'question',      category: 'example-like' }],
+  ['problem',       { name: 'problem',       category: 'example-like' }],
+  ['exercise',      { name: 'exercise',      category: 'example-like' }],
+  ['activity',      { name: 'activity',      category: 'example-like' }],
+  ['exploration',   { name: 'exploration',   category: 'example-like' }],
+  ['investigation', { name: 'investigation', category: 'example-like' }],
+  ['project',       { name: 'project',       category: 'example-like' }],
+  // proof-like
+  ['proof',         { name: 'proof',         category: 'proof-like' }],
+  ['case',          { name: 'case',          category: 'proof-like' }],
+  // solution-like
+  ['solution',      { name: 'solution',      category: 'solution-like' }],
+  ['hint',          { name: 'hint',          category: 'solution-like' }],
+  ['answer',        { name: 'answer',        category: 'solution-like' }],
+]);
+
+// theorem-like and definition-like wrap body in <statement>
+const HAS_STATEMENT_WRAPPER = new Set(['theorem-like', 'definition-like']);
+
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
+
+/** Convert an xast Root (PreTeXt document) to an mdast Root. */
+export function ptxastToMdast(root: Root): MdastRoot {
+  return {
+    type: 'root',
+    children: flattenChildren(root.children as ElementContent[], 1),
+  };
+}
+
+/** The outermost division's name plus the subset of its attributes that
+ * round-trip through markdown frontmatter (`xmlid`, `label`, `component`). */
+export interface TopLevelDivisionInfo {
+  name: string;
+  attributes: {
+    xmlid?: string;
+    label?: string;
+    component?: string;
+  };
+}
+
+/**
+ * Find the outermost division in a ptxast tree (skipping transparent
+ * structural wrappers), i.e. the division a depth-1 heading would represent
+ * if this tree were flattened to markdown — along with its `xml:id`/
+ * `label`/`component` attributes, for round-tripping into frontmatter.
+ */
+export function findTopLevelDivisionInfo(
+  nodes: ElementContent[],
+): TopLevelDivisionInfo | undefined {
+  for (const node of nodes) {
+    if (node.type !== 'element') continue;
+    const el = node as Element;
+    if (DIVISION_TYPE_NAMES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+      const attrs = el.attributes ?? {};
+      const attributes: TopLevelDivisionInfo['attributes'] = {};
+      if (attrs['xml:id']) attributes.xmlid = attrs['xml:id'];
+      if (attrs['label']) attributes.label = attrs['label'];
+      if (attrs['component']) attributes.component = attrs['component'];
+      return { name: el.name, attributes };
+    }
+    if (TRANSPARENT_TYPES.has(el.name)) {
+      const found = findTopLevelDivisionInfo(el.children);
+      if (found) return found;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Find the name of the outermost division in a ptxast tree (skipping
+ * transparent structural wrappers), i.e. the division a depth-1 heading
+ * would represent if this tree were flattened to markdown.
+ */
+export function findTopLevelDivision(nodes: ElementContent[]): string | undefined {
+  return findTopLevelDivisionInfo(nodes)?.name;
+}
+
+// ---------------------------------------------------------------------------
+// Flattening divisions into heading + flat content
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert an array of xast ElementContent nodes to mdast. `depth` (1-based,
+ * clamped to 6) is the heading depth that the next division encountered at
+ * this level should use; nested divisions go one level deeper.
+ */
+function flattenChildren(nodes: ElementContent[], depth: number): MdastContent[] {
+  const result: MdastContent[] = [];
+  for (const node of nodes) {
+    if (node.type !== 'element') continue;
+    const el = node as Element;
+    if (TRANSPARENT_TYPES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+      result.push(...flattenChildren(el.children, depth));
+    } else if (DIVISION_TYPE_NAMES.has(el.name)) {
+      result.push(...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6));
+    } else {
+      const converted = convertBlock(el);
+      if (converted !== null) result.push(converted);
+    }
+  }
+  return result;
+}
+
+function flattenDivision(
+  el: Element,
+  depth: 1 | 2 | 3 | 4 | 5 | 6,
+): MdastContent[] {
+  const result: MdastContent[] = [];
+  const attrs = el.attributes ?? {};
+  const children = el.children;
+
+  const titleNode = children.find(
+    (c) => c.type === 'element' && (c as Element).name === 'title',
+  ) as Element | undefined;
+  const restChildren = children.filter(
+    (c) => !(c.type === 'element' && (c as Element).name === 'title'),
+  );
+
+  const heading: Heading = {
+    type: 'heading',
+    depth,
+    children: titleNode ? titleNode.children.map(convertInlineNode).filter(notNull) : [],
+    ...(attrs['xml:id']
+      ? { data: { id: attrs['xml:id'], hProperties: { id: attrs['xml:id'] } } }
+      : {}),
+  };
+  result.push(heading);
+
+  const childDepth = Math.min(depth + 1, 6) as 1 | 2 | 3 | 4 | 5 | 6;
+  result.push(...flattenChildren(restChildren, childDepth));
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// Block converters
+// ---------------------------------------------------------------------------
+
+function convertBlock(el: Element): BlockContent | DefinitionContent | null {
+  switch (el.name) {
+    case 'p':          return convertP(el);
+    case 'blockquote': return convertBlockquote(el);
+    case 'ol':         return convertList(el, true);
+    case 'ul':         return convertList(el, false);
+    case 'program':    return convertProgram(el);
+    case 'me':
+    case 'men':
+    case 'md':
+    case 'mdn':        return convertDisplayMath(el);
+    default: {
+      const directive = TYPE_TO_DIRECTIVE.get(el.name);
+      if (directive) return convertDirective(el, directive);
+      return null;
+    }
+  }
+}
+
+// ── Paragraph ───────────────────────────────────────────────────────────────
+
+function convertP(el: Element): Paragraph {
+  return {
+    type: 'paragraph',
+    children: el.children.map(convertInlineNode).filter(notNull),
+  };
+}
+
+// ── Blockquote ───────────────────────────────────────────────────────────────
+
+function convertBlockquote(el: Element): MdastBlockquote {
+  return {
+    type: 'blockquote',
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertBlock(c as Element))
+      .filter(notNull) as BlockContent[],
+  };
+}
+
+// ── Lists ─────────────────────────────────────────────────────────────────────
+
+function convertList(el: Element, ordered: boolean): List {
+  return {
+    type: 'list',
+    ordered,
+    spread: false,
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertListItem(c as Element)),
+  };
+}
+
+function convertListItem(el: Element): ListItem {
+  return {
+    type: 'listItem',
+    spread: false,
+    children: el.children
+      .filter((c) => c.type === 'element')
+      .map((c) => convertBlock(c as Element))
+      .filter(notNull) as BlockContent[],
+  };
+}
+
+// ── Code / program ───────────────────────────────────────────────────────────
+
+function convertProgram(el: Element): Code {
+  const attrs = el.attributes ?? {};
+  return {
+    type: 'code',
+    lang: attrs['language'] ?? null,
+    value: getPtxTextContent(el),
+  };
+}
+
+// ── Display math ─────────────────────────────────────────────────────────────
+
+function convertDisplayMath(el: Element): MdastMath {
+  const children = el.children;
+  // Single-line: first child is a Text node
+  if (children.length > 0 && children[0].type === 'text') {
+    return { type: 'math', value: getPtxTextContent(el) };
+  }
+  // Multi-line: mrow elements
+  const value = children
+    .filter((child) => child.type === 'element' && (child as Element).name === 'mrow')
+    .map((child) => getPtxTextContent(child as Element))
+    .join(' \\\\\n');
+  return { type: 'math', value };
+}
+
+// ---------------------------------------------------------------------------
+// Directive (theorem/proof/definition/etc.) converters
+// ---------------------------------------------------------------------------
+
+function convertDirective(
+  el: Element,
+  meta: DirectiveMeta,
+): ContainerDirective {
+  const attrs = el.attributes ?? {};
+  const children = el.children;
+
+  const directiveAttrs: Record<string, string> = {};
+  if (attrs['xml:id']) directiveAttrs['id'] = attrs['xml:id'];
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'xml:id' || v == null) continue;
+    directiveAttrs[k] = v as string;
+  }
+
+  const titleNode = children.find(
+    (c: ElementContent) => c.type === 'element' && (c as Element).name === 'title',
+  ) as Element | undefined;
+
+  const directiveChildren: (BlockContent | DefinitionContent)[] = [];
+
+  if (titleNode) {
+    const labelPara: Paragraph & { data: { directiveLabel: boolean } } = {
+      type: 'paragraph',
+      data: { directiveLabel: true },
+      children: titleNode.children.map(convertInlineNode).filter(notNull),
+    };
+    directiveChildren.push(labelPara);
+  }
+
+  if (HAS_STATEMENT_WRAPPER.has(meta.category)) {
+    for (const child of children) {
+      if (child.type !== 'element') continue;
+      const childEl = child as Element;
+      if (childEl.name === 'title') continue;
+      if (childEl.name === 'statement') {
+        for (const sc of childEl.children) {
+          if (sc.type !== 'element') continue;
+          const c = convertBlock(sc as Element);
+          if (c) directiveChildren.push(c);
+        }
+      } else {
+        const c = convertBlock(childEl);
+        if (c) directiveChildren.push(c);
+      }
+    }
+  } else {
+    for (const child of children) {
+      if (child.type !== 'element') continue;
+      const childEl = child as Element;
+      if (childEl.name === 'title') continue;
+      const c = convertBlock(childEl);
+      if (c) directiveChildren.push(c);
+    }
+  }
+
+  return {
+    type: 'containerDirective',
+    name: meta.name,
+    attributes: Object.keys(directiveAttrs).length > 0 ? directiveAttrs : undefined,
+    children: directiveChildren,
+  } as unknown as ContainerDirective;
+}
+
+// ---------------------------------------------------------------------------
+// Inline converters
+// ---------------------------------------------------------------------------
+
+function convertInlineNode(node: ElementContent): PhrasingContent | null {
+  if (node.type === 'text') {
+    return { type: 'text', value: (node as { value: string }).value ?? '' } as Text;
+  }
+  if (node.type !== 'element') return null;
+  const el = node as Element;
+  switch (el.name) {
+    case 'em':
+      return {
+        type: 'emphasis',
+        children: el.children.map(convertInlineNode).filter(notNull),
+      } as Emphasis;
+    case 'alert':
+      return {
+        type: 'strong',
+        children: el.children.map(convertInlineNode).filter(notNull),
+      } as Strong;
+    case 'c':
+      return { type: 'inlineCode', value: getPtxTextContent(el) } as InlineCode;
+    case 'm':
+      return { type: 'inlineMath', value: getPtxTextContent(el) } as InlineMath;
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Utility
+// ---------------------------------------------------------------------------
+
+function notNull<T>(value: T | null): value is T {
+  return value !== null;
+}

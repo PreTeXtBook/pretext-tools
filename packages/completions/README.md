@@ -30,5 +30,5 @@ Absolute paths are recommended when `currentFileDir` is provided so the package 
 
 The bundled default schema is generated from `extension/assets/schema/pretext-dev.rng`.
 
-- `nx run @pretextbook/completions:build` refreshes the latest dev schema and regenerates `src/default-dev-schema.ts` before compiling.
+- `npm run build -w @pretextbook/completions` refreshes the latest dev schema and regenerates `src/default-dev-schema.ts` before compiling.
 - `npm run refresh:schemas` (from workspace root) refreshes all extension schemas and regenerates the completions default schema.

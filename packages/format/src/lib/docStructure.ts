@@ -81,6 +81,7 @@ export const docEnvs = [
   "image",
   "images",
   "insight",
+  "interactive",
   "investigation",
   "lemma",
   "list",
@@ -107,6 +108,7 @@ export const docEnvs = [
   "table",
   "tabular",
   "theorem",
+  "video",
   "warning",
   "webwork",
 ];
@@ -114,8 +116,6 @@ export const lineEndTags = [
   "address",
   "attribution",
   "caption",
-  "cd",
-  "cell",
   "cline",
   "date",
   "department",
@@ -133,7 +133,6 @@ export const lineEndTags = [
   "personname",
   "pg-macros",
   "pubtitle",
-  "row",
   "subtitle",
   "support",
   "title",
@@ -155,8 +154,7 @@ const docEmpty = [
   "webwork",
 ];
 const listLike = ["ol", "ul", "dl"];
-const mathDisplay = ["me", "men", "md", "mdn"];
-const footnoteLike = ["fn"];
+const mathDisplay = ["me", "men", "md", "mdn"]; // me, men, and mdn are deprecated but still used in some documents
 const nestableTags = [
   "ul",
   "ol",
@@ -180,15 +178,19 @@ export const verbatimTags = [
   "macros",
   "prefigure",
   "program",
+  "preamble",
+  "postamble",
   "input",
   "output",
   "prompt",
   "pre",
   "pg-code",
+  "script",
   "tikzpicture",
   "tikz",
   "code",
   "c",
+  "cd",
 ];
 export const newlineTags = [
   ...docStructure,
@@ -203,4 +205,44 @@ export const blockTags = [
   ...docEnvs,
   ...nestableTags,
   ...mathDisplay,
+  ...listLike,
+];
+
+// Elements with flowing text content that always expand to multiple lines.
+export const parTags = ["p", "li", "fn"];
+
+// Elements that prefer single-line when content fits within printWidth, but reflow
+// like parTags when the line would be too long. Checked before lineEndTags in dispatch.
+export const smartParTags = [
+  "title",
+  "shorttitle",
+  "subtitle",
+  "caption",
+  "attribution",
+  "personname",
+  "location",
+  "date",
+  "edition",
+  "entity",
+  "support",
+  "name",
+  "given",
+  "family",
+  "usage",
+  "volume",
+  "number",
+  "collection-title",
+  "page",
+  "year",
+  "publisher",
+  "publisher-place",
+  "URL",
+  "issued",
+  "description",
+  "shortdescription",
+  "q",
+  "premise",
+  "response",
+  "li",
+  "cell",
 ];

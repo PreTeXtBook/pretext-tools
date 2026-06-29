@@ -1,0 +1,112 @@
+<section xml:id="sec-code">
+  <title>Code Examples</title>
+
+  <p>
+    Here is a Python program:
+  </p>
+
+  <listing xml:id="listing-hello">
+    <caption>Hello World in Python</caption>
+    <program language="python">
+      <input>
+
+def hello(name):
+    print(f"Hello, {name}!")
+    return 42
+
+result = hello("world")
+      </input>
+    </program>
+  </listing>
+
+  <p>
+    And a Sage computation:
+  </p>
+  <sage>
+    <input>
+x = var('x')
+f = x^2 + 3*x + 2
+f.factor()
+    </input>
+    <output>
+(x + 1)*(x + 2)
+    </output>
+  </sage>
+
+  <p>
+    Inline code like <c>print("hello")</c> should remain inline and not be
+    broken across lines.
+  </p>
+
+  <p>
+    Inline code with surrounding spaces <c> x + 1 </c> should preserve those
+    spaces.
+  </p>
+
+  <p>
+    A program with a trailing blank line:
+  </p>
+
+  <program language="python">
+def foo():
+    return 1
+
+  </program>
+  <p>
+    A console session:
+  </p>
+
+  <console>
+    <prompt>$ </prompt>
+    <input>echo "hello world"</input>
+    <output>hello world</output>
+  </console>
+
+  <p>
+    A program block with angle brackets:
+  </p>
+
+  <program>
+      int sum = 0;
+      for (int i = 0; i &lt; n; i++) {
+        for (int j = 0; j &lt; n; j *= 2) {
+          sum = sum + i + j;
+        }
+      }
+  </program>
+  <p>
+    Fast forward to the end of the animation and then click <c>New Graph</c>
+    button to generate a new random graph.
+  </p>
+
+  <interactive platform="javascript" design-width="1600" aspect="4:2">
+    <script type="module">
+      import { DetectCycle } from "./external/interactives/data-structures/entry.js";
+      let anim = new DetectCycle({
+        zoom: "1.0x",
+        // values that are known to produce a cycle on search from 2
+        randomSeed: 74919,
+        edgePercentage: 0.35
+      });
+      anim.doDetectCycle();
+    </script>
+    <xi:include href="../../fragments/ds-graph-instructions.xml"/>
+  </interactive>
+
+  <listing>
+    <program>
+      <preamble>//line A
+//line B
+      </preamble>
+      <code><![CDATA[
+
+
+//line C
+
+]]></code>
+      <postamble>
+
+//line D</postamble>
+    </program>
+  </listing>
+</section>

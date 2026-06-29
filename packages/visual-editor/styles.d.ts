@@ -1,0 +1,1 @@
+declare module "@pretextbook/visual-editor/styles";

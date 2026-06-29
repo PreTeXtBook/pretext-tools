@@ -93,6 +93,7 @@ function getParser(node: ElementCstNode, opts: Options) {
         opts.plugins.some(
             (plugin) =>
                 typeof plugin !== "string" &&
+                !(plugin instanceof URL) &&
                 plugin.parsers &&
                 Object.prototype.hasOwnProperty.call(plugin.parsers, parser)
         )

@@ -9,6 +9,7 @@ const distRoot = path.join(workspaceRoot, 'dist', 'vscode-extension');
 
 const filesToCopy = [
   ['LICENSE', path.join(workspaceRoot, 'LICENSE')],
+  ['README.md', path.join(extensionRoot, 'README.md')],
   ['logo.png', path.join(extensionRoot, 'logo.png')],
   ['language-configuration.json', path.join(extensionRoot, 'language-configuration.json')],
   ['.vscodeignore', path.join(extensionRoot, '.vscodeignore')],

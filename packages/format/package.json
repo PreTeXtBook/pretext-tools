@@ -1,22 +1,25 @@
 {
   "name": "@pretextbook/format",
-  "version": "0.0.5",
+  "version": "0.2.0",
   "description": "Formatter for PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pretextbook/pretext-tools.git"
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git"
   },
   "bugs": {
-    "url": "https://github.com/pretextbook/pretext-tools/issues"
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/pretextbook/pretext-tools/packages/format#readme",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/format#readme",
   "private": false,
   "type": "module",
   "main": "./index.cjs",
   "module": "./index.js",
   "types": "./index.d.ts",
+  "bin": {
+    "pretext-format": "./cli.cjs"
+  },
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -30,9 +33,20 @@
     "*.js",
     "*.cjs",
     "*.d.ts",
-    "*.d.cts"
+    "*.d.cts",
+    "cli.cjs",
+    "dist"
   ],
-  "dependencies": {},
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "xast-util-from-xml": "^4.0.0"
+  },
+  "peerDependencies": {
+    "unified": ">=11"
+  },
   "publishConfig": {
     "access": "public"
   }

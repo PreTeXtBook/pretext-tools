@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/visual-editor",
-  "version": "0.0.1",
+  "version": "0.0.6",
   "description": "React-based visual editor components and TipTap extensions for PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
@@ -30,22 +30,28 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
-    "./styles": "./dist/style.css"
+    "./styles": {
+      "types": "./styles.d.ts",
+      "default": "./dist/style.css"
+    }
   },
   "files": [
     "dist",
+    "styles.d.ts",
     "README.md"
   ],
   "scripts": {
     "dev": "vite",
     "build": "vite build --config vite.lib.config.ts",
+    "build:lib": "npm run build",
+    "build:all": "npm run build",
     "watch": "vite build --watch --config vite.lib.config.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
-    "@pretextbook/format": "^0.0.5",
+    "@pretextbook/format": "0.2.0",
     "@tiptap/extension-code-block": "^3.14.0",
     "@tiptap/extension-list": "^3.14.0",
     "@tiptap/extensions": "^3.14.0",

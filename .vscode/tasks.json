@@ -7,14 +7,14 @@
         "label": "watch: extension + visual-editor",
         "type": "shell",
         "command": "npm",
-        "args": ["run", "watch"],
+        "args": ["run", "watch:all", "-w", "pretext-tools"],
         "isBackground": true,
         "problemMatcher": {
-          "pattern": "$eslint-stylish",
+          "pattern": "$tsc",
           "background": {
             "activeOnStart": true,
-            "beginsPattern": "^\\s*(transforming|watching|\\[.*\\]).*",
-            "endsPattern": "(✓|✗|ERROR|error)"
+            "beginsPattern": "\\[watch\\] build started",
+            "endsPattern": "\\[watch\\] build finished"
           }
         },
         "presentation": {

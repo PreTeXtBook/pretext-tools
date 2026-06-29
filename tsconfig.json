@@ -1,20 +1,16 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "5.0",
     "module": "commonjs",
     "target": "esnext",
     "outDir": "out",
     "lib": ["es2022", "WebWorker"],
     "sourceMap": true,
     "rootDir": ".",
-    "baseUrl": ".",
     "strict": true,
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": {
-      "format": ["packages/format/src/index.ts"]
-    }
+    "skipLibCheck": true
   },
   "exclude": ["node_modules", ".vscode-test"],
   "references": [
@@ -23,6 +19,15 @@
     },
     {
       "path": "./packages/latex-pretext"
+    },
+    {
+      "path": "./packages/ptxast"
+    },
+    {
+      "path": "./packages/remark-pretext"
+    },
+    {
+      "path": "./packages/ptxast-util-to-mdast"
     }
   ]
 }

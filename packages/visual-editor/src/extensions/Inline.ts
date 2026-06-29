@@ -108,11 +108,39 @@ const Alert = Mark.create({
   },
 });
 
+const CodeInline = Mark.create({
+  name: "c",
+  group: "inline",
+
+  parseHTML() {
+    return [{ tag: "c" }];
+  },
+  renderHTML({ HTMLAttributes }) {
+    return ["span", mergeAttributes({ class: "c" }, HTMLAttributes), 0];
+  },
+  addInputRules() {
+    return [
+      markInputRule({
+        find: /(?:^|\s)(<c>(.*?)<\/c>)$/,
+        type: this.type,
+      }),
+    ];
+  },
+  addPasteRules() {
+    return [
+      markPasteRule({
+        find: /(?:^|\s)(<c>(.*?)<\/c>)/g,
+        type: this.type,
+      }),
+    ];
+  },
+});
+
 const Inline = Extension.create({
   name: "myinline",
 
   addExtensions() {
-    return [MyText, MyHardBreak, Term, Emph, Alert];
+    return [MyText, MyHardBreak, Term, Emph, Alert, CodeInline];
   },
 });
 

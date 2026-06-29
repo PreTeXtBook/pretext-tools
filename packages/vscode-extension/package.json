@@ -2,7 +2,8 @@
   "name": "pretext-tools",
   "displayName": "PreTeXt-tools",
   "description": "Language support and more for PreTeXt",
-  "version": "0.36.0",
+  "version": "0.38.1",
+  "private": true,
   "license": "See license in LICENSE",
   "icon": "logo.png",
   "publisher": "oscarlevin",
@@ -366,6 +367,12 @@
             "default": true,
             "markdownDescription": "Whether to add a line break after each period in a paragraph."
           },
+          "pretext-tools.formatter.printWidth": {
+            "order": 5,
+            "type": "number",
+            "default": 80,
+            "markdownDescription": "Maximum line width for paragraph text reflow. Set to `0` to disable line breaking."
+          },
           "pretext-tools.spellCheck.checkErrorsInsideScope": {
             "order": 3,
             "type": "object",
@@ -557,31 +564,43 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build:all",
-    "build:all": "npm run esbuild-base -- --minify && npm run build:webview",
+    "build:all": "npm run esbuild-base -- --minify && npm run build:webview && npm run copy-assets",
+    "build": "npm run build:all",
+    "build:dev": "npm run esbuild && npm run build:webview && npm run copy-assets",
+    "build:watch": "npm run watch:all",
     "build:webview": "vite build --config vite.webview.config.mts",
     "esbuild-base": "node build.mjs",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && concurrently --kill-others -n \"visual-editor,extension,webview\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\"",
-    "watch": "npm run esbuild-watch",
-    "test-compile": "tsc -p ./",
+    "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && npm run copy-assets && concurrently --kill-others -n \"visual-editor,extension,webview\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\"",
+    "watch": "npm run copy-assets && npm run esbuild-watch",
+    "copy-assets": "node ../../scripts/copy-vscode-extension-assets.mjs",
+    "test-compile": "tsc -p ./ --noEmit",
+    "typecheck": "tsc -p ./ --noEmit",
     "pretest": "npm run esbuild && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test",
     "package": "npm run esbuild -- --production"
   },
   "dependencies": {
-    "@pretextbook/format": "^0.0.5",
-    "@pretextbook/completions": "^0.0.3",
-    "@pretextbook/latex-pretext": "^0.0.7",
-    "@pretextbook/visual-editor": "^0.0.1",
+    "@pretextbook/completions": "*",
+    "@pretextbook/format": "*",
+    "@pretextbook/latex-pretext": "*",
+    "@pretextbook/ptxast": "*",
+    "@pretextbook/remark-pretext": "*",
+    "@pretextbook/visual-editor": "*",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "remark-directive": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5",
+    "xast-util-from-xml": "^4.0.0",
+    "xast-util-to-xml": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
     "concurrently": "^9.1.2",
-    "vite": "^7.3.1"
+    "vite": "^7.3.5"
   },
   "prettier": {
     "tabWidth": 2

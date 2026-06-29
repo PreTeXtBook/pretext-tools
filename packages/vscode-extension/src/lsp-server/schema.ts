@@ -144,9 +144,15 @@ function resolveRefs(elements: SchemaGroup, aliases: SchemaGroup) {
   for (let elem in elements) {
     let resolvedElement = { ...elements[elem] };
     if (resolvedElement.refs) {
+      // Track visited refs to prevent infinite loops caused by circular ref chains
+      // in the schema (e.g. A → B → A). Without this, resolveRefs would push
+      // previously-seen refs back onto the stack indefinitely, blocking the
+      // Node.js event loop and silently breaking all LSP request handling.
+      const visited = new Set<string>();
       while (resolvedElement.refs.length > 0) {
         let ref = resolvedElement.refs.pop();
-        if (ref && aliases[ref]) {
+        if (ref && aliases[ref] && !visited.has(ref)) {
+          visited.add(ref);
           resolvedElement.elements.push(...aliases[ref].elements);
           resolvedElement.attributes.push(...aliases[ref].attributes);
           if (aliases[ref].refs) {

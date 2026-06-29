@@ -68,12 +68,8 @@ dist-demo
 
 .npmrc
 
-
-.nx/cache
-.nx/workspace-data
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 
-.nx/polygraph
 .claude/worktrees
 .claude/settings.local.json

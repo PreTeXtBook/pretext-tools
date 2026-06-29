@@ -2,7 +2,7 @@ import { processLatexViaUnified } from "@unified-latex/unified-latex";
 import {
   unifiedLatexToPretext,
   xmlCompilePlugin,
-} from "@unified-latex/unified-latex-to-pretext";
+} from "@pretextbook/unified-latex-to-pretext";
 
 type UnifiedProcessResult = ReturnType<
   ReturnType<typeof processLatexViaUnified>["processSync"]
