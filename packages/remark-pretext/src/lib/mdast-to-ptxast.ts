@@ -49,6 +49,7 @@ import {
   divisionTypeAtRelativeDepth,
   divisionTypeAtRootDepth,
   isTitlelessDivisionType,
+  isTopLevelDivisionType,
 } from "@pretextbook/ptxast";
 
 // ---------------------------------------------------------------------------
@@ -380,17 +381,64 @@ function buildDivision(
     : divisionTypeAtRelativeDepth(ctx.topLevelDivision, heading.depth);
   const titleEl = el("title", convertInlineNodes(heading.children, ctx));
   const attrs = getDivisionAttrs(heading, ctx);
+  const childCtx = { ...ctx, depth: ctx.depth + 1 };
+
+  // Content between the title and the first subdivision (a deeper heading, or
+  // a division-typed leaf directive like `::subsection{ref="x"}`) has no
+  // division of its own to live in, so the schema requires it inside an
+  // <introduction>.
+  const { introduction, rest } = splitDivisionIntroduction(body, childCtx);
+
   // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)
-  const innerChildren = nestSections(
-    body,
-    { ...ctx, depth: ctx.depth + 1 },
-    true,
-  );
+  const innerChildren = nestSections(rest, childCtx, true);
 
   // Also wrap orphaned lists that directly follow the title
   const wrappedChildren = nestListsInParagraphs(innerChildren);
 
-  return el(divType, [titleEl, ...wrappedChildren], attrs);
+  const children = introduction
+    ? [titleEl, introduction, ...wrappedChildren]
+    : [titleEl, ...wrappedChildren];
+
+  return el(divType, children, attrs);
+}
+
+/** True for a leaf directive whose name is a PreTeXt division type, e.g.
+ * `::subsection{ref="x"}` — an included subdivision, not transcluded content. */
+function isDivisionLeafDirective(
+  node: BlockContent | DefinitionContent,
+): boolean {
+  return (
+    node.type === "leafDirective" &&
+    isTopLevelDivisionType((node as LeafDirective).name)
+  );
+}
+
+/**
+ * Split a division's body at the first subdivision boundary (a heading, or a
+ * division-typed leaf directive). Content before that boundary is wrapped in
+ * an <introduction>; content from the boundary onward is returned unchanged
+ * for normal section nesting.
+ */
+function splitDivisionIntroduction(
+  body: Array<BlockContent | DefinitionContent>,
+  ctx: VisitContext,
+): {
+  introduction: Element | null;
+  rest: Array<BlockContent | DefinitionContent>;
+} {
+  const boundary = body.findIndex(
+    (node) => node.type === "heading" || isDivisionLeafDirective(node),
+  );
+  if (boundary <= 0) {
+    return { introduction: null, rest: body };
+  }
+
+  const introContent = body.slice(0, boundary);
+  const rest = body.slice(boundary);
+  const introChildren = convertBlockSequence(introContent, ctx, true);
+  const introduction =
+    introChildren.length > 0 ? el("introduction", introChildren) : null;
+  return { introduction, rest };
 }
 
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {

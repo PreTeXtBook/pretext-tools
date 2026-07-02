@@ -42,7 +42,7 @@
     "playground:build": "npm run dev:build"
   },
   "dependencies": {
-    "@pretextbook/unified-latex-to-pretext": "^0.0.2",
+    "@pretextbook/unified-latex-to-pretext": "^0.0.3",
     "@unified-latex/unified-latex-types": "^1.8.4",
     "@unified-latex/unified-latex-util-parse": "^1.8.4",
     "tslib": "^2.3.0"
