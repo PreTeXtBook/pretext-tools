@@ -61,7 +61,7 @@ export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_
  * hierarchy.
  */
 export const TRANSPARENT_TYPES = new Set([
-  'pretext', 'book', 'article', 'frontmatter', 'backmatter',
+  'pretext', 'book', 'article', 'slideshow', 'frontmatter', 'backmatter',
 ]);
 
 // ---------------------------------------------------------------------------

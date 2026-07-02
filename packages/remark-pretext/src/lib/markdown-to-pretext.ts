@@ -36,5 +36,10 @@ export function markdownToPretext(
 
   const mdast = processor.parse(markdown);
   const ptxast = processor.runSync(mdast, { value: markdown }) as PtxRoot;
-  return toXml(ptxast.children);
+  // Self-close empty elements (`<plus:section ref="x"/>`, `<image .../>`) rather
+  // than emitting the expanded `<foo></foo>` form — the idiomatic PreTeXt shape.
+  return toXml(ptxast.children, {
+    closeEmptyElements: true,
+    tightClose: true,
+  });
 }
