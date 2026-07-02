@@ -316,6 +316,34 @@ describe("heading  section nesting", () => {
     expect(elName(tree.children[0])).toBe("p");
     expect(elName(tree.children[1])).toBe("section");
   });
+
+  it("content before the first subsection heading is wrapped in <introduction>", () => {
+    const tree = parse("# Chapter\n\nIntro text.\n\n## Sub\n\nBody.");
+    const chapter = tree.children[0] as Element;
+    expect(elName(chapter.children[0])).toBe("title");
+    const intro = chapter.children[1] as Element;
+    expect(elName(intro)).toBe("introduction");
+    expect(elName(intro.children[0])).toBe("p");
+    expect(elName(chapter.children[2])).toBe("section");
+  });
+
+  it("no <introduction> is added when a heading has no subsection", () => {
+    const tree = parse("# Chapter\n\nJust a paragraph.");
+    const chapter = tree.children[0] as Element;
+    expect(elName(chapter.children[1])).toBe("p");
+    expect(
+      chapter.children.some((c) => elName(c) === "introduction"),
+    ).toBe(false);
+  });
+
+  it("no <introduction> is added when a subsection immediately follows the title", () => {
+    const tree = parse("# Chapter\n\n## Sub\n\nBody.");
+    const chapter = tree.children[0] as Element;
+    expect(elName(chapter.children[1])).toBe("section");
+    expect(
+      chapter.children.some((c) => elName(c) === "introduction"),
+    ).toBe(false);
+  });
 });
 
 describe("relative top-level division", () => {
@@ -949,6 +977,25 @@ describe("plus include leaf directives", () => {
     ) as Element;
     expect(include).toBeDefined();
     expect(include.attributes?.["ref"]).toBe("sub-a");
+  });
+
+  it("content before a division-typed leaf directive is wrapped in <introduction>", () => {
+    const tree = parse('# Chapter\n\nIntro text.\n\n::subsection{ref="foo"}');
+    const chapter = tree.children[0] as Element;
+    expect(elName(chapter.children[0])).toBe("title");
+    const intro = chapter.children[1] as Element;
+    expect(elName(intro)).toBe("introduction");
+    expect(elName(intro.children[0])).toBe("p");
+    expect(elName(chapter.children[2])).toBe("plus:subsection");
+  });
+
+  it("a non-division leaf directive (e.g. ::image) does not trigger <introduction> wrapping", () => {
+    const tree = parse('# Chapter\n\nIntro text.\n\n::image{ref="fig-1"}');
+    const chapter = tree.children[0] as Element;
+    expect(
+      chapter.children.some((c) => elName(c) === "introduction"),
+    ).toBe(false);
+    expect(elName(chapter.children[1])).toBe("p");
   });
 });
 
