@@ -1,5 +1,13 @@
 # @pretextbook/remark-pretext
 
+## 0.0.8
+
+### Patch Changes
+
+- c98a799: Fix root division frontmatter; convert leaf node directives to plus:type includes
+- Updated dependencies [c98a799]
+  - @pretextbook/ptxast@0.0.7
+
 ## 0.0.7
 
 ### Patch Changes
