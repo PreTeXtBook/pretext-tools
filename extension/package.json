@@ -92,6 +92,18 @@
         "key": "ctrl+alt+p",
         "mac": "cmd+alt+p",
         "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "pretext-tools.livePreview",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "pretext-tools.forwardSearch",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j",
+        "when": "editorTextFocus && editorLangId == 'pretext'"
       }
     ],
     "commands": [
@@ -161,6 +173,19 @@
         "title": "Preview file with CodeChat",
         "icon": "$(open-preview)",
         "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.livePreview",
+        "title": "Live Preview (side-by-side)",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt",
+        "description": "Open a live side-by-side HTML preview that auto-refreshes on save."
+      },
+      {
+        "command": "pretext-tools.forwardSearch",
+        "title": "Forward Search (scroll preview to cursor)",
+        "category": "PreTeXt",
+        "description": "Scroll the live preview to the element at the cursor position."
       },
       {
         "command": "pretext-tools.viewCLI",
@@ -258,15 +283,23 @@
             "default": "Ask",
             "enum": [
               "Ask",
+              "Live Preview",
               "CodeChat",
               "PreTeXT-CLI View"
             ],
             "markdownEnumDescriptions": [
               "Ask for view method each time (default).",
+              "Open a live side-by-side HTML preview inside VS Code that auto-refreshes on save. Supports forward search (source to preview) and inverse search (double-click preview to jump to source).",
               "Use CodeChat to view the 'web' target in a separate tab of VS Code.  Auto-refreshes when a ptx files is saved (not recommended for large projects).  Requires CodeChat extension and CodeChat_Server installed via pip.",
               "Use the `pretext view` command from the PreTeXt CLI.  Works with all targets.  Opens the output in a separate application."
             ],
             "markdownDescription": "Select which method to use when viewing the output of a pretext project.  Leaving this at the default will ask for available methods each time.  Your choice will likely depend on the size of your project and whether you are building output other than the 'web' target."
+          },
+          "pretext-tools.livePreview.autoCompile": {
+            "order": 3,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Automatically rebuild and refresh the live preview when a `.ptx` file is saved."
           },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
