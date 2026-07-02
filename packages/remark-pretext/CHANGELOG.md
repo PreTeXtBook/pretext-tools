@@ -1,5 +1,11 @@
 # @pretextbook/remark-pretext
 
+## 0.0.9
+
+### Patch Changes
+
+- 5885a18: Improve markdown and latex conversions to pretext
+
 ## 0.0.8
 
 ### Patch Changes
