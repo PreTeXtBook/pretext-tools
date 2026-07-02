@@ -491,6 +491,121 @@ describe("relative top-level division", () => {
     const introduction = tree.children[0] as Element;
     expect(introduction.attributes["xml:id"]).toBe("intro-1");
   });
+
+  it("frontmatter accepts `xml:id` as a synonym for `xmlid`", () => {
+    const tree = parse(
+      "---\ndivision: section\nxml:id: my-id\n---\n\n# Title",
+    );
+    const section = tree.children[0] as Element;
+    expect(section.attributes["xml:id"]).toBe("my-id");
+  });
+
+  it("frontmatter `xmlid` still works alongside `label`", () => {
+    const tree = parse(
+      "---\ndivision: section\nxmlid: sec-1\nlabel: sec-label\n---\n\n# Title",
+    );
+    const section = tree.children[0] as Element;
+    expect(section.attributes["xml:id"]).toBe("sec-1");
+    expect(section.attributes["label"]).toBe("sec-label");
+  });
+});
+
+describe("document roots (book / article / slideshow)", () => {
+  it("division: book wraps the document in <book> and maps # to chapter", () => {
+    const tree = parse(
+      "---\ndivision: book\n---\n\n# Chapter One\n\n## A Section\n\nText.",
+    );
+    expect(tree.children).toHaveLength(1);
+    const book = tree.children[0] as Element;
+    expect(elName(book)).toBe("book");
+    const chapter = book.children.find(
+      (c) => elName(c) === "chapter",
+    ) as Element;
+    expect(chapter).toBeDefined();
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
+  });
+
+  it("division: article wraps the document in <article> and maps # to section", () => {
+    const tree = parse(
+      "---\ndivision: article\n---\n\n# A Section\n\n## A Subsection\n\nText.",
+    );
+    const article = tree.children[0] as Element;
+    expect(elName(article)).toBe("article");
+    const section = article.children.find(
+      (c) => elName(c) === "section",
+    ) as Element;
+    expect(section).toBeDefined();
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
+  });
+
+  it("division: slideshow wraps the document in <slideshow> and maps # to section", () => {
+    const tree = parse(
+      "---\ndivision: slideshow\n---\n\n# Section One\n\nBody.\n\n# Section Two\n\nMore.",
+    );
+    const slideshow = tree.children[0] as Element;
+    expect(elName(slideshow)).toBe("slideshow");
+    const sections = slideshow.children.filter((c) => elName(c) === "section");
+    expect(sections).toHaveLength(2);
+    const firstSection = sections[0] as Element;
+    const title = firstSection.children[0] as Element;
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("Section One");
+  });
+
+  it("division: slideshow nests slides (##) inside sections (#)", () => {
+    const tree = parse(
+      "---\ndivision: slideshow\n---\n\n# Section One\n\n## Slide A\n\nText.\n\n## Slide B\n\nMore.",
+    );
+    const section = (tree.children[0] as Element).children.find(
+      (c) => elName(c) === "section",
+    ) as Element;
+    const slides = section.children.filter((c) => elName(c) === "slide");
+    expect(slides).toHaveLength(2);
+    const firstSlide = slides[0] as Element;
+    expect(elName(firstSlide.children[0])).toBe("title");
+    expect(textValue((firstSlide.children[0] as Element).children[0])).toBe(
+      "Slide A",
+    );
+  });
+
+  it("headings deeper than a slide (###) become paragraphs", () => {
+    const tree = parse(
+      "---\ndivision: slideshow\n---\n\n# Section\n\n## Slide\n\n### Deeper\n\nText.",
+    );
+    const section = (tree.children[0] as Element).children.find(
+      (c) => elName(c) === "section",
+    ) as Element;
+    const slide = section.children.find(
+      (c) => elName(c) === "slide",
+    ) as Element;
+    expect(slide.children.some((c) => elName(c) === "paragraphs")).toBe(true);
+  });
+
+  it("frontmatter attributes are applied to the root element, not its first child", () => {
+    const tree = parse(
+      "---\ndivision: book\nxmlid: my-book\n---\n\n# Chapter One\n\nText.",
+    );
+    const book = tree.children[0] as Element;
+    expect(book.attributes["xml:id"]).toBe("my-book");
+    const chapter = book.children.find(
+      (c) => elName(c) === "chapter",
+    ) as Element;
+    expect(chapter.attributes?.["xml:id"]).toBeUndefined();
+  });
+
+  it("documentRoot option wraps the document even without frontmatter", () => {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkDirective)
+      .use(remarkPretext, { documentRoot: "book" });
+    const md = "# Chapter One\n\nText.";
+    const tree = processor.runSync(processor.parse(md), {
+      value: md,
+    }) as unknown as Root;
+    const book = tree.children[0] as Element;
+    expect(elName(book)).toBe("book");
+    expect(book.children.some((c) => elName(c) === "chapter")).toBe(true);
+  });
 });
 
 describe("container directives", () => {
@@ -795,6 +910,45 @@ Task 2.
     );
 
     expect(warning).toBeDefined();
+  });
+});
+
+describe("plus include leaf directives", () => {
+  it("::section{ref} → empty plus:section element with ref", () => {
+    const tree = parse('::section{ref="ch-intro"}');
+    const include = tree.children[0] as Element;
+    expect(elName(include)).toBe("plus:section");
+    expect(include.attributes?.["ref"]).toBe("ch-intro");
+    expect(include.children).toHaveLength(0);
+  });
+
+  it("passes extra attributes through verbatim (no id→xml:id remap)", () => {
+    const tree = parse('::image{ref="fig-1" width="50%"}');
+    const include = tree.children[0] as Element;
+    expect(elName(include)).toBe("plus:image");
+    expect(include.attributes).toMatchObject({ ref: "fig-1", width: "50%" });
+  });
+
+  it("any kind becomes plus:KIND (converter is not gated on a name list)", () => {
+    const tree = parse('::doenet{ref="activity-3"}');
+    expect(elName(tree.children[0])).toBe("plus:doenet");
+  });
+
+  it("serializes to a self-referencing plus element", () => {
+    const tree = parse('::section{ref="ch-intro"}');
+    const xml = toXml(tree.children[0] as Element);
+    expect(xml).toContain("plus:section");
+    expect(xml).toContain('ref="ch-intro"');
+  });
+
+  it("include survives inside a section body", () => {
+    const tree = parse("## A\n\n::section{ref=\"sub-a\"}");
+    const section = tree.children[0] as Element;
+    const include = section.children.find(
+      (c) => elName(c) === "plus:section",
+    ) as Element;
+    expect(include).toBeDefined();
+    expect(include.attributes?.["ref"]).toBe("sub-a");
   });
 });
 

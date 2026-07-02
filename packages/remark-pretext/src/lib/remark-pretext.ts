@@ -25,7 +25,7 @@
 import type { Plugin } from 'unified';
 import type { Root as MdastRoot } from 'mdast';
 import type { Root } from 'xast';
-import type { TopLevelDivisionType } from '@pretextbook/ptxast';
+import type { RootDivisionType, TopLevelDivisionType } from '@pretextbook/ptxast';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkDirective from 'remark-directive';
@@ -34,6 +34,7 @@ import { applyMathDelimiters, applyMathTokens, tokenizeMathInMarkdown } from './
 import { normalizeDirectiveColons } from './directive-normalizer.js';
 import { normalizeIndentationDirectives } from './indentation-normalizer.js';
 import { extractFrontmatter } from './frontmatter.js';
+import { rootChildDivision } from '@pretextbook/ptxast';
 
 /** Options for the remark-pretext plugin. */
 export interface RemarkPretextOptions {
@@ -43,6 +44,13 @@ export interface RemarkPretextOptions {
    * `'chapter'` (matching historical behavior) when neither is set.
    */
   topLevelDivision?: TopLevelDivisionType;
+  /**
+   * Wraps the whole document in this root element (`book`/`article`/
+   * `slideshow`). Overrides any document root declared via the frontmatter
+   * `division:` field. When set, `topLevelDivision` is the division a depth-1
+   * heading maps to *inside* the root.
+   */
+  documentRoot?: RootDivisionType;
   /**
    * Attributes (`xml:id`, `label`, `component`) applied to the first
    * root-level division. Overrides any `xmlid:`/`label:`/`component:`
@@ -59,8 +67,11 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
     // from source text (no heuristic inference from parsed text nodes).
     if (typeof file?.value === 'string') {
       const frontmatter = extractFrontmatter(file.value);
+      const documentRoot = options?.documentRoot ?? frontmatter.documentRoot;
       const topLevelDivision =
-        options?.topLevelDivision ?? frontmatter.division ?? 'chapter';
+        options?.topLevelDivision ??
+        frontmatter.division ??
+        (documentRoot ? rootChildDivision(documentRoot) : 'chapter');
       const topLevelAttributes =
         options?.topLevelAttributes ?? frontmatter.attributes;
 
@@ -81,6 +92,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
       // pass tokenized source for delimiter detection
       return mdastToPtxast(reparsed, tokenized.markdown, {
         topLevelDivision,
+        documentRoot,
         topLevelAttributes,
       });
     }
@@ -88,7 +100,12 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
     // Fallback for parse+runSync(tree) usage where raw source text is unavailable.
     applyMathDelimiters(tree);
     return mdastToPtxast(tree, undefined, {
-      topLevelDivision: options?.topLevelDivision ?? 'chapter',
+      topLevelDivision:
+        options?.topLevelDivision ??
+        (options?.documentRoot
+          ? rootChildDivision(options.documentRoot)
+          : 'chapter'),
+      documentRoot: options?.documentRoot,
       topLevelAttributes: options?.topLevelAttributes,
     });
   };

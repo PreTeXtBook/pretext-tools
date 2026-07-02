@@ -36,16 +36,18 @@ import type {
   Blockquote as MdastBlockquote,
   Code,
 } from "mdast";
-import type { ContainerDirective } from "mdast-util-directive";
+import type { ContainerDirective, LeafDirective } from "mdast-util-directive";
 import type { Math as CustomMath } from "./math-parser.js";
+import { directiveToPlusInclude } from "./plus-include.js";
 import type { Root } from "xast";
 import type { Element } from "xast";
 import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
 import { buildDirectiveWithSpec } from "./directive-factory.js";
 import type { VisitContext, ConversionMessage } from "./context.js";
-import type { TopLevelDivisionType } from "@pretextbook/ptxast";
+import type { RootDivisionType, TopLevelDivisionType } from "@pretextbook/ptxast";
 import {
   divisionTypeAtRelativeDepth,
+  divisionTypeAtRootDepth,
   isTitlelessDivisionType,
 } from "@pretextbook/ptxast";
 
@@ -157,6 +159,10 @@ export interface ConversionResult {
 export interface MdastToPtxastOptions {
   /** The division type that a depth-1 heading (`#`) maps to. Defaults to `'chapter'`. */
   topLevelDivision?: TopLevelDivisionType;
+  /** When set, wrap the whole document in this root element
+   * (`book`/`article`/`slideshow`); `topLevelDivision` is then the division a
+   * depth-1 heading maps to inside the root. */
+  documentRoot?: RootDivisionType;
   /** Attributes (`xml:id`, `label`, `component`) applied to the first
    * root-level division built from the document, e.g. from frontmatter. */
   topLevelAttributes?: Record<string, string>;
@@ -188,12 +194,28 @@ export function mdastToPtxastWithDiagnostics(
     messages,
     source,
     topLevelDivision: options?.topLevelDivision ?? "chapter",
+    documentRoot: options?.documentRoot,
     topLevelAttributes: options?.topLevelAttributes,
     topLevelAttributesApplied: options?.topLevelAttributes
       ? { done: false }
       : undefined,
   };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
+
+  // A declared document root (`book`/`article`/`slideshow`) wraps the entire
+  // document. Its depth-1 headings have already been resolved to the root's
+  // outermost child division (`ctx.topLevelDivision`), so the body converts
+  // just like a normal document; we only wrap the result and hoist the
+  // frontmatter attributes onto the root element itself.
+  if (ctx.documentRoot) {
+    const attrs = takeTopLevelAttributes(ctx);
+    const bodyChildren = nestSections(nodes, ctx);
+    const wrapper = el(ctx.documentRoot, bodyChildren, attrs);
+    return {
+      tree: { type: "root", children: [wrapper] as Root["children"] },
+      messages,
+    };
+  }
 
   // `introduction`/`conclusion` have no `<title>` in the PreTeXt schema, so
   // they can't be produced from a heading like other divisions. Instead, the
@@ -349,10 +371,13 @@ function buildDivision(
   body: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
 ): Element {
-  const divType = divisionTypeAtRelativeDepth(
-    ctx.topLevelDivision,
-    heading.depth,
-  );
+  // Inside a document root, headings follow that root's hierarchy
+  // (`slideshow` in particular nests `section` → `slide`, not
+  // `section` → `subsection`); otherwise use the relative hierarchy anchored
+  // at `topLevelDivision`.
+  const divType = ctx.documentRoot
+    ? divisionTypeAtRootDepth(ctx.documentRoot, heading.depth)
+    : divisionTypeAtRelativeDepth(ctx.topLevelDivision, heading.depth);
   const titleEl = el("title", convertInlineNodes(heading.children, ctx));
   const attrs = getDivisionAttrs(heading, ctx);
   // Inside divisions, orphaned lists need wrapping (wrapOrphanedLists=true)
@@ -415,6 +440,7 @@ const blockHandlers: Record<
   code: (node, ctx) => convertCode(node as Code, ctx),
   containerDirective: (node, ctx) =>
     convertContainerDirective(node as ContainerDirective, ctx),
+  leafDirective: (node, ctx) => convertLeafDirective(node as LeafDirective, ctx),
 };
 
 function convertBlock(
@@ -508,6 +534,39 @@ function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
     return valueEl("m", node.value);
   }
   return convertDisplayMath(node, ctx);
+}
+
+// ---------------------------------------------------------------------------
+// Leaf directive converters
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a leaf directive (`::KIND{ref="id" key=value}`) into a PreTeXt Plus
+ * include element (`<plus:KIND ref="id" key=value/>`). Leaf directives are the
+ * include syntax for this markdown dialect — a reference to a modular section
+ * or asset, expanded by a later assembly step rather than transcluded here.
+ *
+ * Falls back to the unknown-block placeholder when the directive has no usable
+ * name (so nothing is silently dropped).
+ */
+function convertLeafDirective(
+  node: LeafDirective,
+  ctx: VisitContext,
+): Element | null {
+  const include = directiveToPlusInclude(node);
+  if (include) return include;
+  if (ctx.messages) {
+    ctx.messages.push({
+      type: "warning",
+      reason: `Unnamed leaf directive`,
+      category: "unknown-directive",
+    });
+  }
+  return todoBlock(
+    "unknown-directive",
+    `unnamed leaf directive`,
+    nodeSource(node, ctx),
+  );
 }
 
 // ---------------------------------------------------------------------------

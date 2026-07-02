@@ -6,7 +6,7 @@
  */
 
 import type { BlockContent, DefinitionContent, PhrasingContent } from 'mdast';
-import type { TopLevelDivisionType } from '@pretextbook/ptxast';
+import type { RootDivisionType, TopLevelDivisionType } from '@pretextbook/ptxast';
 
 export interface VisitContext {
   /** Parent node, if any. */
@@ -21,6 +21,10 @@ export interface VisitContext {
   source?: string;
   /** The division type that a depth-1 heading (`#`) maps to. */
   topLevelDivision: TopLevelDivisionType;
+  /** When set, the whole document is wrapped in this root element
+   * (`book`/`article`/`slideshow`) and `topLevelDivision` is the root's
+   * outermost child division. */
+  documentRoot?: RootDivisionType;
   /** Attributes (e.g. from frontmatter `xmlid`/`label`/`component`) to apply
    * to the first root-level division built from the document. */
   topLevelAttributes?: Record<string, string>;

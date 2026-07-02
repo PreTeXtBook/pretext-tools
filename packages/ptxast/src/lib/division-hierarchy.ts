@@ -44,7 +44,8 @@ export type ExtraDivisionType =
   | 'solutions'
   | 'reading-questions'
   | 'introduction'
-  | 'conclusion';
+  | 'conclusion'
+  | 'slide';
 
 export const EXTRA_DIVISION_TYPES: readonly ExtraDivisionType[] = [
   'worksheet',
@@ -57,6 +58,7 @@ export const EXTRA_DIVISION_TYPES: readonly ExtraDivisionType[] = [
   'reading-questions',
   'introduction',
   'conclusion',
+  'slide',
 ];
 
 export function isExtraDivisionType(value: string): value is ExtraDivisionType {
@@ -113,4 +115,68 @@ export function divisionTypeAtRelativeDepth(
   const startIndex = DIVISION_HIERARCHY.indexOf(topLevel);
   const index = startIndex + (depth - 1);
   return DIVISION_HIERARCHY[Math.min(index, DIVISION_HIERARCHY.length - 1)];
+}
+
+/**
+ * PreTeXt document roots that can wrap an entire document. Unlike the
+ * heading-producible divisions above, these are never chosen via heading
+ * depth: they wrap the whole document, and a depth-1 heading (`#`) becomes
+ * their outermost *child* division (see `rootChildDivision`).
+ */
+export type RootDivisionType = 'article' | 'book' | 'slideshow';
+
+export const ROOT_DIVISION_TYPES: readonly RootDivisionType[] = [
+  'article',
+  'book',
+  'slideshow',
+];
+
+export function isRootDivisionType(value: string): value is RootDivisionType {
+  return (ROOT_DIVISION_TYPES as readonly string[]).includes(value);
+}
+
+/**
+ * The division a depth-1 heading (`#`) maps to inside a given document root:
+ * `book` numbers chapters, `article` numbers sections, and `slideshow`
+ * contains sections that can contain slides. Deeper headings nest down from there via
+ * `divisionTypeAtRelativeDepth` (chapters nest sections, sections nest
+ * subsections, and slides — like other non-hierarchy divisions — clamp to
+ * `paragraphs`).
+ */
+export function rootChildDivision(
+  root: RootDivisionType,
+): TopLevelDivisionType {
+  return divisionTypeAtRootDepth(root, 1);
+}
+
+/**
+ * A slideshow has its own division hierarchy: depth-1 headings become
+ * `section`s, depth-2 headings become the `slide`s inside them, and anything
+ * deeper collapses to `paragraphs`. (It intentionally does not reuse the
+ * `section` → `subsection` chain of `DIVISION_HIERARCHY`.)
+ */
+const SLIDESHOW_HIERARCHY: readonly (DivisionType | ExtraDivisionType)[] = [
+  'section',
+  'slide',
+  'paragraphs',
+];
+
+/**
+ * Resolve the division type at heading `depth` (1-based) inside a given
+ * document root. `book` starts at `chapter`, `article` at `section` (both
+ * then following `DIVISION_HIERARCHY`), and `slideshow` follows its own
+ * `section` → `slide` → `paragraphs` chain.
+ */
+export function divisionTypeAtRootDepth(
+  root: RootDivisionType,
+  depth: number,
+): DivisionType | ExtraDivisionType {
+  if (root === 'slideshow') {
+    const index = Math.max(0, depth - 1);
+    return SLIDESHOW_HIERARCHY[
+      Math.min(index, SLIDESHOW_HIERARCHY.length - 1)
+    ];
+  }
+  const child = root === 'book' ? 'chapter' : 'section';
+  return divisionTypeAtRelativeDepth(child, depth);
 }
