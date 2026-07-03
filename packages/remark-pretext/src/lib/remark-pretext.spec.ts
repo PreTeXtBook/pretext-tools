@@ -311,9 +311,9 @@ describe("heading  section nesting", () => {
     expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
-  it("content before any heading is a direct child of root", () => {
+  it("content before any heading is wrapped in <introduction>", () => {
     const tree = parse("Intro text.\n\n## Section\n\nBody.");
-    expect(elName(tree.children[0])).toBe("p");
+    expect(elName(tree.children[0])).toBe("introduction");
     expect(elName(tree.children[1])).toBe("section");
   });
 
@@ -331,27 +331,24 @@ describe("heading  section nesting", () => {
     const tree = parse("# Chapter\n\nJust a paragraph.");
     const chapter = tree.children[0] as Element;
     expect(elName(chapter.children[1])).toBe("p");
-    expect(
-      chapter.children.some((c) => elName(c) === "introduction"),
-    ).toBe(false);
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
+      false,
+    );
   });
 
   it("no <introduction> is added when a subsection immediately follows the title", () => {
     const tree = parse("# Chapter\n\n## Sub\n\nBody.");
     const chapter = tree.children[0] as Element;
     expect(elName(chapter.children[1])).toBe("section");
-    expect(
-      chapter.children.some((c) => elName(c) === "introduction"),
-    ).toBe(false);
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
+      false,
+    );
   });
 });
 
 describe("relative top-level division", () => {
   /** Helper: parse markdown with explicit remarkPretext options. */
-  function parseWithOptions(
-    md: string,
-    options: RemarkPretextOptions,
-  ): Root {
+  function parseWithOptions(md: string, options: RemarkPretextOptions): Root {
     const processor = unified()
       .use(remarkParse)
       .use(remarkDirective)
@@ -371,9 +368,7 @@ describe("relative top-level division", () => {
     });
     const section = tree.children[0] as Element;
     expect(elName(section)).toBe("section");
-    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
-      true,
-    );
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
   it("topLevelDivision option supports part, nesting down to chapter/section", () => {
@@ -407,10 +402,9 @@ describe("relative top-level division", () => {
   });
 
   it("explicit option overrides frontmatter", () => {
-    const tree = parseWithOptions(
-      "---\ndivision: section\n---\n\n# Title",
-      { topLevelDivision: "part" },
-    );
+    const tree = parseWithOptions("---\ndivision: section\n---\n\n# Title", {
+      topLevelDivision: "part",
+    });
     expect(elName(tree.children[0])).toBe("part");
   });
 
@@ -445,9 +439,7 @@ describe("relative top-level division", () => {
       (c) => elName(c) === "section",
     ) as Element;
     expect(section).toBeDefined();
-    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
-      true,
-    );
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
   it("frontmatter xmlid/label/component become attributes on the top-level division", () => {
@@ -467,9 +459,19 @@ describe("relative top-level division", () => {
       "---\ndivision: section\nxmlid: my-id\n---\n\n# First\n\n# Second",
     );
     expect((tree.children[0] as Element).attributes["xml:id"]).toBe("my-id");
-    expect(
-      (tree.children[1] as Element).attributes["xml:id"],
-    ).toBeUndefined();
+    expect((tree.children[1] as Element).attributes["xml:id"]).toBeUndefined();
+  });
+
+  it("content before the first top-level heading is wrapped in <introduction>", () => {
+    const tree = parse("Intro text.\n\n# First\n\nBody.\n\n# Second\n\nBody2.");
+    expect(elName(tree.children[0])).toBe("introduction");
+    expect(elName(tree.children[1])).toBe("chapter");
+    expect(elName(tree.children[2])).toBe("chapter");
+  });
+
+  it("no <introduction> is added when the document starts with a heading", () => {
+    const tree = parse("# First\n\nBody.\n\n# Second\n\nBody2.");
+    expect(tree.children.some((c) => elName(c) === "introduction")).toBe(false);
   });
 
   it("explicit topLevelAttributes option overrides frontmatter attributes", () => {
@@ -498,18 +500,16 @@ describe("relative top-level division", () => {
     const tree = parse("---\ndivision: introduction\n---\n\n# Part A\n\nText.");
     const introduction = tree.children[0] as Element;
     expect(elName(introduction)).toBe("introduction");
-    expect(
-      introduction.children.some((c) => elName(c) === "paragraphs"),
-    ).toBe(true);
+    expect(introduction.children.some((c) => elName(c) === "paragraphs")).toBe(
+      true,
+    );
   });
 
   it("division: conclusion also wraps the document titlelessly", () => {
     const tree = parse("---\ndivision: conclusion\n---\n\nIn summary...");
     const conclusion = tree.children[0] as Element;
     expect(elName(conclusion)).toBe("conclusion");
-    expect(conclusion.children.some((c) => elName(c) === "title")).toBe(
-      false,
-    );
+    expect(conclusion.children.some((c) => elName(c) === "title")).toBe(false);
   });
 
   it("frontmatter attributes apply to the introduction/conclusion wrapper itself", () => {
@@ -521,9 +521,13 @@ describe("relative top-level division", () => {
   });
 
   it("frontmatter accepts `xml:id` as a synonym for `xmlid`", () => {
-    const tree = parse(
-      "---\ndivision: section\nxml:id: my-id\n---\n\n# Title",
-    );
+    const tree = parse("---\ndivision: section\nxml:id: my-id\n---\n\n# Title");
+    const section = tree.children[0] as Element;
+    expect(section.attributes["xml:id"]).toBe("my-id");
+  });
+
+  it("frontmatter accepts `id` as a synonym for `xmlid`", () => {
+    const tree = parse("---\ndivision: section\nid: my-id\n---\n\n# Title");
     const section = tree.children[0] as Element;
     expect(section.attributes["xml:id"]).toBe("my-id");
   });
@@ -564,6 +568,27 @@ describe("document roots (book / article / slideshow)", () => {
     ) as Element;
     expect(section).toBeDefined();
     expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
+  });
+
+  it("content before the first heading is wrapped in <introduction> inside a document root", () => {
+    const tree = parse(
+      "---\ndivision: article\n---\n\nIntro text.\n\n# A Section\n\nBody.",
+    );
+    const article = tree.children[0] as Element;
+    expect(elName(article)).toBe("article");
+    expect(elName(article.children[0])).toBe("introduction");
+    expect(elName(article.children[1])).toBe("section");
+  });
+
+  it("content before the first heading is wrapped in <introduction> after the root's own <title>", () => {
+    const tree = parse(
+      "---\ndivision: article\ntitle: My Title\n---\n\nIntro text.\n\n# A Section\n\nBody.",
+    );
+    const article = tree.children[0] as Element;
+    expect(elName(article)).toBe("article");
+    expect(elName(article.children[0])).toBe("title");
+    expect(elName(article.children[1])).toBe("introduction");
+    expect(elName(article.children[2])).toBe("section");
   });
 
   it("division: slideshow wraps the document in <slideshow> and maps # to section", () => {
@@ -633,6 +658,117 @@ describe("document roots (book / article / slideshow)", () => {
     const book = tree.children[0] as Element;
     expect(elName(book)).toBe("book");
     expect(book.children.some((c) => elName(c) === "chapter")).toBe(true);
+  });
+});
+
+describe("frontmatter title", () => {
+  it("title: sets the top-level division's title, and # starts the first subdivision", () => {
+    const tree = parse(
+      "---\ndivision: section\ntitle: Limits\n---\n\n# Part A\n\nText.",
+    );
+    const section = tree.children[0] as Element;
+    expect(elName(section)).toBe("section");
+    const title = section.children[0] as Element;
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("Limits");
+    const sub = section.children.find(
+      (c) => elName(c) === "subsection",
+    ) as Element;
+    expect(sub).toBeDefined();
+    const subTitle = sub.children[0] as Element;
+    expect(elName(subTitle)).toBe("title");
+    expect(textValue(subTitle.children[0])).toBe("Part A");
+  });
+
+  it("content before the first # becomes the division's <introduction>", () => {
+    const tree = parse(
+      "---\ndivision: section\ntitle: Limits\n---\n\nIntro text.\n\n# Part A\n\nBody.",
+    );
+    const section = tree.children[0] as Element;
+    expect(elName(section.children[0])).toBe("title");
+    expect(elName(section.children[1])).toBe("introduction");
+    expect(elName(section.children[2])).toBe("subsection");
+  });
+
+  it("without title:, # still sets the top-level division's title (legacy behavior)", () => {
+    const tree = parse("---\ndivision: section\n---\n\n# Part A\n\nText.");
+    const section = tree.children[0] as Element;
+    expect(elName(section)).toBe("section");
+    const title = section.children[0] as Element;
+    expect(textValue(title.children[0])).toBe("Part A");
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
+      false,
+    );
+  });
+
+  it("defaults to chapter division when only title: is given", () => {
+    const tree = parse("---\ntitle: My Chapter\n---\n\n# Sec\n\nText.");
+    const chapter = tree.children[0] as Element;
+    expect(elName(chapter)).toBe("chapter");
+    expect(textValue((chapter.children[0] as Element).children[0])).toBe(
+      "My Chapter",
+    );
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
+  });
+
+  it("nests two levels deep: # -> subsection, ## -> subsubsection", () => {
+    const tree = parse(
+      "---\ndivision: section\ntitle: Top\n---\n\n# Sub\n\n## Deeper\n\nText.",
+    );
+    const section = tree.children[0] as Element;
+    const sub = section.children.find(
+      (c) => elName(c) === "subsection",
+    ) as Element;
+    expect(sub).toBeDefined();
+    expect(sub.children.some((c) => elName(c) === "subsubsection")).toBe(true);
+  });
+
+  it("xmlid/label/component frontmatter attributes still apply to the top-level division", () => {
+    const tree = parse(
+      "---\ndivision: section\ntitle: Limits\nxmlid: sec-limits\n---\n\n# Part A",
+    );
+    const section = tree.children[0] as Element;
+    expect(section.attributes["xml:id"]).toBe("sec-limits");
+  });
+
+  it("title: on a document root (book) sets the root's own title; # is unaffected", () => {
+    const tree = parse(
+      "---\ndivision: book\ntitle: My Book\n---\n\n# Chapter One\n\nText.",
+    );
+    const book = tree.children[0] as Element;
+    expect(elName(book)).toBe("book");
+    const title = book.children[0] as Element;
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("My Book");
+    const chapter = book.children.find(
+      (c) => elName(c) === "chapter",
+    ) as Element;
+    expect(chapter).toBeDefined();
+    const chapterTitle = chapter.children[0] as Element;
+    expect(textValue(chapterTitle.children[0])).toBe("Chapter One");
+  });
+
+  it("explicit topLevelTitle option overrides frontmatter title:", () => {
+    const processor = unified()
+      .use(remarkParse)
+      .use(remarkDirective)
+      .use(remarkPretext, { topLevelTitle: "From Option" });
+    const md = "---\ntitle: From Frontmatter\n---\n\n# Sub";
+    const tree = processor.runSync(processor.parse(md), {
+      value: md,
+    }) as unknown as Root;
+    const chapter = tree.children[0] as Element;
+    expect(textValue((chapter.children[0] as Element).children[0])).toBe(
+      "From Option",
+    );
+  });
+
+  it("title: with quotes strips the surrounding quotes", () => {
+    const tree = parse('---\ntitle: "Quoted Title"\n---\n\n# Sub');
+    const chapter = tree.children[0] as Element;
+    expect(textValue((chapter.children[0] as Element).children[0])).toBe(
+      "Quoted Title",
+    );
   });
 });
 
@@ -970,7 +1106,7 @@ describe("plus include leaf directives", () => {
   });
 
   it("include survives inside a section body", () => {
-    const tree = parse("## A\n\n::section{ref=\"sub-a\"}");
+    const tree = parse('## A\n\n::section{ref="sub-a"}');
     const section = tree.children[0] as Element;
     const include = section.children.find(
       (c) => elName(c) === "plus:section",
@@ -992,9 +1128,9 @@ describe("plus include leaf directives", () => {
   it("a non-division leaf directive (e.g. ::image) does not trigger <introduction> wrapping", () => {
     const tree = parse('# Chapter\n\nIntro text.\n\n::image{ref="fig-1"}');
     const chapter = tree.children[0] as Element;
-    expect(
-      chapter.children.some((c) => elName(c) === "introduction"),
-    ).toBe(false);
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
+      false,
+    );
     expect(elName(chapter.children[1])).toBe("p");
   });
 });

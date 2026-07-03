@@ -86,6 +86,48 @@ There are two ways to change it:
    // → '<section><title>Title</title><subsection>...'
    ```
 
+### Title from frontmatter
+
+By default (no `title:` field), `#` supplies the top-level division's own
+title, as shown above. Adding a `title:` field to the frontmatter moves the
+title there instead — `#` then starts the top-level division's **first
+subdivision**, and every heading resolves one level deeper than usual:
+
+```markdown
+---
+division: section
+title: Limits
+---
+
+Some introductory text.
+
+# Part A
+
+A `<subsection>` titled "Part A".
+```
+
+```xml
+<section>
+  <title>Limits</title>
+  <introduction>
+    <p>Some introductory text.</p>
+  </introduction>
+  <subsection>
+    <title>Part A</title>
+    ...
+  </subsection>
+</section>
+```
+
+When `division:` names a document root (`book`/`article`/`slideshow`),
+`title:` sets the root element's own `<title>` instead, and `#` keeps its
+existing meaning (the root's outermost child division — unaffected by this
+field, since it was already one level below the root).
+
+Pass `topLevelTitle` to `remarkPretext` or `markdownToPretext` to set this
+explicitly instead; like `topLevelDivision`, it overrides frontmatter when
+both are present.
+
 ### Section-like divisions
 
 `division:` also accepts a set of section-like types that don't belong to

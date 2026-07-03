@@ -44,7 +44,10 @@ import type { Element } from "xast";
 import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
 import { buildDirectiveWithSpec } from "./directive-factory.js";
 import type { VisitContext, ConversionMessage } from "./context.js";
-import type { RootDivisionType, TopLevelDivisionType } from "@pretextbook/ptxast";
+import type {
+  RootDivisionType,
+  TopLevelDivisionType,
+} from "@pretextbook/ptxast";
 import {
   divisionTypeAtRelativeDepth,
   divisionTypeAtRootDepth,
@@ -167,6 +170,11 @@ export interface MdastToPtxastOptions {
   /** Attributes (`xml:id`, `label`, `component`) applied to the first
    * root-level division built from the document, e.g. from frontmatter. */
   topLevelAttributes?: Record<string, string>;
+  /** Title of the document's top-level division (or document root), e.g.
+   * from frontmatter `title`. When set for a non-root document, a depth-1
+   * heading (`#`) no longer supplies that title — it starts the first
+   * subdivision instead. */
+  topLevelTitle?: string;
 }
 
 /** Transform an mdast Root node into an xast Root node (backwards compatible). */
@@ -200,18 +208,33 @@ export function mdastToPtxastWithDiagnostics(
     topLevelAttributesApplied: options?.topLevelAttributes
       ? { done: false }
       : undefined,
+    topLevelTitle: options?.topLevelTitle,
   };
   const nodes = tree.children as Array<BlockContent | DefinitionContent>;
 
   // A declared document root (`book`/`article`/`slideshow`) wraps the entire
   // document. Its depth-1 headings have already been resolved to the root's
   // outermost child division (`ctx.topLevelDivision`), so the body converts
-  // just like a normal document; we only wrap the result and hoist the
-  // frontmatter attributes onto the root element itself.
+  // just like a normal document; we only wrap the result, hoist the
+  // frontmatter attributes onto the root element itself, and (if given) give
+  // the root its own `<title>` from `topLevelTitle`.
   if (ctx.documentRoot) {
     const attrs = takeTopLevelAttributes(ctx);
-    const bodyChildren = nestSections(nodes, ctx);
-    const wrapper = el(ctx.documentRoot, bodyChildren, attrs);
+    const titleEl = ctx.topLevelTitle
+      ? el("title", [text(ctx.topLevelTitle)])
+      : null;
+    // Content before the first depth-1 heading has no division of its own
+    // (the root's own <title>, if any, isn't a division boundary), so it's
+    // wrapped in an <introduction>, same as every other division-building
+    // path.
+    const { introduction, rest } = splitDivisionIntroduction(nodes, ctx);
+    const bodyChildren = nestSections(rest, ctx);
+    const children = [
+      ...(titleEl ? [titleEl] : []),
+      ...(introduction ? [introduction] : []),
+      ...bodyChildren,
+    ];
+    const wrapper = el(ctx.documentRoot, children, attrs);
     return {
       tree: { type: "root", children: [wrapper] as Root["children"] },
       messages,
@@ -223,19 +246,56 @@ export function mdastToPtxastWithDiagnostics(
   // whole document becomes their (titleless) body, wrapped in a single
   // top-level element; any headings inside become `paragraphs` divisions
   // (divisionTypeAtRelativeDepth already maps every depth to `paragraphs`
-  // for these two types).
+  // for these two types). `topLevelTitle` has no title slot to go in, so
+  // it's ignored here.
   if (isTitlelessDivisionType(ctx.topLevelDivision)) {
     const attrs = takeTopLevelAttributes(ctx);
     const bodyChildren = nestListsInParagraphs(
       nestSections(nodes, { ...ctx, depth: 1 }, true),
     );
     const wrapper = el(ctx.topLevelDivision, bodyChildren, attrs);
-    return { tree: { type: "root", children: [wrapper] as Root["children"] }, messages };
+    return {
+      tree: { type: "root", children: [wrapper] as Root["children"] },
+      messages,
+    };
   }
 
-  const children = nestSections(nodes, ctx);
+  // With a `topLevelTitle` (e.g. from frontmatter `title:`), the whole
+  // document is a single top-level division whose title comes from
+  // `topLevelTitle` rather than from a heading. Depth-1 headings (`#`) start
+  // its first subdivision instead, so every heading depth resolves one level
+  // deeper than usual (`headingDepthOffset`).
+  if (ctx.topLevelTitle) {
+    const attrs = takeTopLevelAttributes(ctx);
+    const titleEl = el("title", [text(ctx.topLevelTitle)]);
+    const childCtx: VisitContext = {
+      ...ctx,
+      depth: ctx.depth + 1,
+      headingDepthOffset: (ctx.headingDepthOffset ?? 0) + 1,
+    };
+    const { introduction, rest } = splitDivisionIntroduction(nodes, childCtx);
+    const innerChildren = nestListsInParagraphs(
+      nestSections(rest, childCtx, true),
+    );
+    const children = introduction
+      ? [titleEl, introduction, ...innerChildren]
+      : [titleEl, ...innerChildren];
+    const wrapper = el(ctx.topLevelDivision, children, attrs);
+    return {
+      tree: { type: "root", children: [wrapper] as Root["children"] },
+      messages,
+    };
+  }
+
+  // No document root and no top-level title: depth-1 headings become
+  // sibling top-level divisions directly. Content before the first one has
+  // no division of its own, so — just like content before a subdivision
+  // inside a division (`buildDivision`) — it's wrapped in an <introduction>.
+  const { introduction, rest } = splitDivisionIntroduction(nodes, ctx);
+  const children = nestSections(rest, ctx);
+  const allChildren = introduction ? [introduction, ...children] : children;
   return {
-    tree: { type: "root", children: children as Root["children"] },
+    tree: { type: "root", children: allChildren as Root["children"] },
     messages,
   };
 }
@@ -376,9 +436,10 @@ function buildDivision(
   // (`slideshow` in particular nests `section` → `slide`, not
   // `section` → `subsection`); otherwise use the relative hierarchy anchored
   // at `topLevelDivision`.
+  const effectiveDepth = heading.depth + (ctx.headingDepthOffset ?? 0);
   const divType = ctx.documentRoot
-    ? divisionTypeAtRootDepth(ctx.documentRoot, heading.depth)
-    : divisionTypeAtRelativeDepth(ctx.topLevelDivision, heading.depth);
+    ? divisionTypeAtRootDepth(ctx.documentRoot, effectiveDepth)
+    : divisionTypeAtRelativeDepth(ctx.topLevelDivision, effectiveDepth);
   const titleEl = el("title", convertInlineNodes(heading.children, ctx));
   const attrs = getDivisionAttrs(heading, ctx);
   const childCtx = { ...ctx, depth: ctx.depth + 1 };
@@ -488,7 +549,8 @@ const blockHandlers: Record<
   code: (node, ctx) => convertCode(node as Code, ctx),
   containerDirective: (node, ctx) =>
     convertContainerDirective(node as ContainerDirective, ctx),
-  leafDirective: (node, ctx) => convertLeafDirective(node as LeafDirective, ctx),
+  leafDirective: (node, ctx) =>
+    convertLeafDirective(node as LeafDirective, ctx),
 };
 
 function convertBlock(
