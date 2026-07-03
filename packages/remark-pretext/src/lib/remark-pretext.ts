@@ -57,6 +57,14 @@ export interface RemarkPretextOptions {
    * fields declared in the markdown's frontmatter.
    */
   topLevelAttributes?: Record<string, string>;
+  /**
+   * Title of the document's top-level division (or, when `documentRoot` is
+   * set, the root's own title). Overrides any `title:` field declared in the
+   * markdown's frontmatter. When set for a non-root document, a depth-1
+   * heading (`#`) no longer supplies that title — it starts the first
+   * subdivision instead.
+   */
+  topLevelTitle?: string;
 }
 
 const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function (
@@ -74,6 +82,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
         (documentRoot ? rootChildDivision(documentRoot) : 'chapter');
       const topLevelAttributes =
         options?.topLevelAttributes ?? frontmatter.attributes;
+      const topLevelTitle = options?.topLevelTitle ?? frontmatter.title;
 
       // Pipeline: indentation→colons→directive-normalize→math-tokenize→reparse
       const indentNormalized = normalizeIndentationDirectives(frontmatter.body);
@@ -94,6 +103,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
         topLevelDivision,
         documentRoot,
         topLevelAttributes,
+        topLevelTitle,
       });
     }
 
@@ -107,6 +117,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> = function
           : 'chapter'),
       documentRoot: options?.documentRoot,
       topLevelAttributes: options?.topLevelAttributes,
+      topLevelTitle: options?.topLevelTitle,
     });
   };
 };

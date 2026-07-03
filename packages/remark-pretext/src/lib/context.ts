@@ -31,6 +31,16 @@ export interface VisitContext {
   /** Mutable: set once `topLevelAttributes` has been applied to a division,
    * shared by reference across the recursive conversion of this document. */
   topLevelAttributesApplied?: { done: boolean };
+  /** The title of the document's top-level division (or document root), e.g.
+   * from frontmatter `title`. When set for a non-root document, depth-1
+   * headings no longer supply the top-level title — they start the first
+   * subdivision instead (see `headingDepthOffset`). */
+  topLevelTitle?: string;
+  /** Added to a heading's raw depth when resolving its division type. Set to
+   * `1` when `topLevelTitle` supplies the top-level division's title itself,
+   * so a depth-1 heading (`#`) resolves one level deeper (the first
+   * subdivision) instead of the top-level division. */
+  headingDepthOffset?: number;
 }
 
 export interface ConversionMessage {
