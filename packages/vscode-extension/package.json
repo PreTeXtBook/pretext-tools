@@ -20,9 +20,6 @@
     "workspaceContains:project.ptx"
   ],
   "main": "./out/extension.js",
-  "extensionDependencies": [
-    "redhat.vscode-xml"
-  ],
   "contributes": {
     "languages": [
       {

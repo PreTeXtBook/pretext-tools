@@ -27,6 +27,7 @@ npm test
 # Run tests for a single package
 npm run test -w @pretextbook/completions
 npm run test -w prettier-plugin-pretext
+npm run test -w @pretextbook/format
 
 # Run a specific test file
 npm exec vitest run packages/format/src/lib/format.spec.ts
@@ -45,6 +46,8 @@ npm run refresh:schemas
 
 **LSP debugger:** The LSP server auto-attaches on port 6009 when launched via the compound config. Set breakpoints in `packages/vscode-extension/src/lsp-server/`.
 
+**What `npm test` actually runs:** the root `test` script only covers `completions`, `prettier-plugin-pretext`, and a fixed list of "reliability" spec files (`remark-pretext`, `ptxast-util-to-mdast`, `latex-pretext`). It does **not** run `format`'s or `ptxast`'s own Vitest suites, nor `vscode-extension`'s integration tests — run those with `npm run test -w <package>` directly. `vscode-extension`'s test script (`vscode-test`) launches a real VS Code instance and is also runnable from the editor via the "Extension Tests" debug configuration.
+
 ## Architecture
 
 ### Packages
@@ -54,11 +57,11 @@ npm run refresh:schemas
 | `vscode-extension` (`pretext-tools`) | Main VS Code extension: extension host, LSP client, commands, webview | esbuild → `out/extension.js` + `out/lsp-server.js` |
 | `visual-editor` | React/TipTap WYSIWYG editor (VS Code webview UI) | Vite |
 | `prettier-plugin-pretext` | Prettier plugin for PreTeXt XML | esbuild (ESM + CJS) |
-| `completions` | Completion/intellisense engine (consumed by LSP server) | None — exports raw `.ts` source |
+| `completions` | Completion/intellisense engine (consumed by LSP server) | None — exports raw `.ts` source directly (`main`/`types` point at `src/index.ts`) |
 | `format` | PreTeXt document formatter library | Vite (ESM + CJS) |
-| `latex-pretext` | LaTeX-to-PreTeXt conversion via `unified-latex` | None |
-| `ptxast` | TypeScript types for the PreTeXt AST | tsc |
-| `remark-pretext`, `ptxast-util-*` | AST conversion utilities | tsc |
+| `latex-pretext` | LaTeX-to-PreTeXt conversion via `unified-latex` | Vite (ESM + CJS, via `vite-plugin-dts`) |
+| `ptxast` | TypeScript types for the PreTeXt AST | Vite (ESM + CJS, via `vite-plugin-dts`) |
+| `remark-pretext`, `ptxast-util-to-mdast` | AST conversion utilities (Markdown ⇄ PreTeXt AST) | Vite |
 | `playground` | Dev-only web playground for testing conversions | Vite |
 
 `extension/` (not a package) — extension manifest, TextMate grammar, snippets, and static assets that ship with the published extension.
@@ -75,7 +78,7 @@ The extension spawns a **separate LSP server process** via Node IPC (not stdio):
 
 `npm run build` enforces this dependency order:
 
-1. **Utils** (`build:utils`): `ptxast` → `remark-pretext` → `ptxast-util-*`
+1. **Utils** (`build:utils`): `ptxast` → `remark-pretext` → `ptxast-util-to-mdast`
 2. **Libs** (`build:libs`): `format`, `latex-pretext`, `completions` (includes schema refresh), `visual-editor`
 3. **Extension** (`build`): `vscode-extension` (bundles everything via esbuild)
 
