@@ -1,5 +1,11 @@
 # @pretextbook/remark-pretext
 
+## 0.0.10
+
+### Patch Changes
+
+- 4acf9c0: Lots of updates
+
 ## 0.0.9
 
 ### Patch Changes
