@@ -11,6 +11,7 @@ import {
   DocumentSymbol,
   CodeActionKind,
   TextDocumentPositionParams,
+  Diagnostic,
 } from "vscode-languageserver/node";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import {
@@ -36,6 +37,17 @@ import path from "path";
 
 //Get path to schema:
 export const schemaDir = path.join(__dirname, "..", "assets", "schema");
+
+import {
+  scheduleValidation,
+  clearValidation,
+  shouldValidate,
+  loadValidationGrammar,
+} from "./validation";
+
+/** Publish diagnostics for a given document URI. */
+const publishDiagnostics = (uri: string, diagnostics: Diagnostic[]) =>
+  connection.sendDiagnostics({ uri, diagnostics });
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
@@ -131,6 +143,9 @@ connection.onInitialized(() => {
     getAst(path.join(schemaDir, "publication-schema.rng")),
   );
   projectSchema = new Schema(getAst(path.join(schemaDir, "project-ptx.rng")));
+
+  // Load the precompiled RELAX NG grammar used for schema validation.
+  loadValidationGrammar(globalSettings.schema?.versionName);
 
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
@@ -237,6 +252,13 @@ connection.onDidChangeConfiguration((change) => {
           pretextSchema = await initializeSchema(schemaConfig);
           globalSettings.schema = schemaConfig;
           console.log("Schema set to", schemaConfig);
+          // Reload the validation grammar and re-validate open documents.
+          loadValidationGrammar(schemaConfig.versionName);
+          for (const doc of documents.all()) {
+            if (shouldValidate(doc)) {
+              scheduleValidation(doc, publishDiagnostics);
+            }
+          }
         }
       });
   }
@@ -255,6 +277,7 @@ connection.onDidChangeConfiguration((change) => {
 documents.onDidClose((e) => {
   console.log("closed", e.document.uri);
   clearDocumentInfo(e.document.uri);
+  clearValidation(e.document.uri, publishDiagnostics);
 });
 
 // The content of a text document has changed. This event is emitted
@@ -273,6 +296,9 @@ documents.onDidChangeContent(async (change) => {
       uri: change.document.uri,
       diagnostics: parseErrors,
     });
+  } else if (shouldValidate(change.document)) {
+    // Validate ordinary PreTeXt source files against the RELAX NG schema.
+    scheduleValidation(change.document, publishDiagnostics);
   }
 });
 

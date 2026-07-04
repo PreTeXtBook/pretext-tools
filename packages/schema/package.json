@@ -1,0 +1,57 @@
+{
+  "name": "@pretextbook/schema",
+  "version": "0.0.1",
+  "description": "RELAX NG validation and context-aware completions for PreTeXt documents",
+  "author": "Oscar Levin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/schema#readme",
+  "private": false,
+  "type": "module",
+  "main": "./index.cjs",
+  "module": "./index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js",
+      "require": "./index.cjs",
+      "default": "./index.js"
+    },
+    "./compile": {
+      "types": "./compile.d.ts",
+      "import": "./compile.js",
+      "require": "./compile.cjs",
+      "default": "./compile.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "*.js",
+    "*.cjs",
+    "*.d.ts",
+    "*.d.cts",
+    "assets",
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "compile-grammar": "node ./scripts/compile-grammar.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "salve-annos": "^1.2.4",
+    "saxes": "^6.0.0",
+    "vscode-languageserver-types": "^3.17.5",
+    "xregexp": "^4.4.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

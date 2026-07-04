@@ -16,6 +16,8 @@ import {
 import { isProjectPtx } from "../projectPtx/is-project-ptx";
 import { Schema } from "../schema";
 import { getPretextCompletions } from "@pretextbook/completions";
+import { getCompletions as getSchemaCompletions } from "@pretextbook/schema";
+import { getValidationGrammar } from "../validation";
 
 const completionCache: CompletionItem[] = [];
 
@@ -50,6 +52,24 @@ export async function getCompletions(
   });
 
   if (!completionItems || completionItems.length === 0) {
+    // Fall back to content-model-aware completions from the RELAX NG grammar in
+    // contexts the primary engine doesn't cover (e.g. deeply nested elements).
+    if (!isProjectPtx(uri) && !isPublicationPtx(doc)) {
+      const grammar = getValidationGrammar();
+      if (grammar) {
+        const schemaItems = getSchemaCompletions({
+          text: doc.getText(),
+          position: pos,
+          grammar,
+        });
+        if (schemaItems.length > 0) {
+          return schemaItems.map((item, i) => {
+            completionCache[i] = item as CompletionItem;
+            return { label: item.label, kind: item.kind, data: i };
+          });
+        }
+      }
+    }
     return null;
   }
 
