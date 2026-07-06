@@ -18,6 +18,16 @@ import {
 
 /** The XML namespace URI used for xmlns:* declarations. */
 const XMLNS_NS = "http://www.w3.org/2000/xmlns/";
+/** The XML namespace URI for `xml:*` attributes (e.g. `xml:id`). */
+const XML_NS = "http://www.w3.org/XML/1998/namespace";
+/**
+ * Elements whose listed attributes hold an `xml:id` reference. Checked against
+ * the set of `xml:id`s declared anywhere in the (XInclude-merged) document.
+ */
+const REFERENCE_ATTRIBUTES: Record<string, string[]> = {
+  xref: ["ref", "first", "last"],
+  fragref: ["ref"],
+};
 
 interface WalkerLike {
   fireEvent(name: string, params: string[]): false | unknown[];
@@ -78,6 +88,19 @@ function driveValidation(
     xmlns: true,
     position: true,
   });
+
+  // `xml:id` uniqueness and `ref`/`xref`/`fragref` target checks: these are not
+  // expressed in the RELAX NG schema (xml:id is a plain untyped attribute
+  // there), so we track them ourselves alongside the walker-driven validation.
+  // Reference targets may point forward, so target-existence is checked once
+  // the whole (merged) document has been seen.
+  const declaredIds = new Set<string>();
+  const pendingRefs: Array<{
+    value: string;
+    loc: { uri: string; range: Range };
+    parent?: string;
+    ancestors?: string[];
+  }> = [];
 
   let depth = 0;
   // The chain of currently-open element local names, outermost first. The
@@ -161,7 +184,9 @@ function driveValidation(
     // "element not allowed here" error reports its true parent. Then push it so
     // its attributes (and later, content) are attributed to this element.
     fire("enterStartTag", [node.uri ?? "", node.local ?? node.name], tagLoc);
-    stack.push(node.local ?? node.name);
+    const elementName = node.local ?? node.name;
+    stack.push(elementName);
+    const refAttrs = REFERENCE_ATTRIBUTES[elementName];
     for (const attrName of Object.keys(node.attributes)) {
       const attr = node.attributes[attrName] as {
         uri?: string;
@@ -172,6 +197,29 @@ function driveValidation(
       };
       if (attr.prefix === "xmlns" || attr.name === "xmlns" || attr.uri === XMLNS_NS) {
         continue;
+      }
+      const attrLocal = attr.local ?? attr.name;
+      if (attr.uri === XML_NS && attrLocal === "id") {
+        if (declaredIds.has(attr.value)) {
+          errors.push({
+            kind: "duplicate-id",
+            message: `The xml:id "${attr.value}" is already used elsewhere in this document.`,
+            name: attr.value,
+            parent: elementName,
+            ancestors: [...stack],
+            uri: tagLoc.uri,
+            range: tagLoc.range,
+          });
+        } else {
+          declaredIds.add(attr.value);
+        }
+      } else if (refAttrs?.includes(attrLocal)) {
+        pendingRefs.push({
+          value: attr.value,
+          loc: tagLoc,
+          parent: elementName,
+          ancestors: [...stack],
+        });
       }
       fire("attributeName", [attr.uri ?? "", attr.local ?? attr.name], tagLoc);
       fire("attributeValue", [attr.value], tagLoc);
@@ -243,6 +291,20 @@ function driveValidation(
     const lastLine = Math.max(0, countLines(text) - 1);
     const loc = rangeFrom(lastLine, 0, 1);
     record(endRet, loc);
+  }
+
+  for (const ref of pendingRefs) {
+    if (!declaredIds.has(ref.value)) {
+      errors.push({
+        kind: "dangling-reference",
+        message: `No element with xml:id "${ref.value}" exists in this document.`,
+        name: ref.value,
+        parent: ref.parent,
+        ancestors: ref.ancestors,
+        uri: ref.loc.uri,
+        range: ref.loc.range,
+      });
+    }
   }
 
   return errors;

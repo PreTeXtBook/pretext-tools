@@ -1,4 +1,5 @@
 import { SaxesParser } from "saxes";
+import { DefaultNameResolver } from "salve-annos";
 import type {
   CompletionContext,
   CompletionItem,
@@ -32,6 +33,7 @@ interface WalkerLike {
   fireEvent(name: string, params: string[]): false | unknown[];
   possible(): Iterable<PossibleEvent>;
   possibleAttributes?(): Iterable<PossibleEvent>;
+  clone(): WalkerLike;
 }
 
 interface PossibleEvent {
@@ -54,7 +56,7 @@ interface NameObj {
  * attribute name (inside an open start tag).
  */
 export function getCompletions(context: CompletionContext): CompletionItem[] {
-  const { text, position, grammar } = context;
+  const { text, position, grammar, uri } = context;
   const offset = positionToOffset(text, position);
   const prefix = text.slice(0, offset);
 
@@ -64,7 +66,7 @@ export function getCompletions(context: CompletionContext): CompletionItem[] {
 
   if (!insideTag) {
     // In element content: offer child elements of the current open element.
-    return elementCompletions(grammar, prefix, "");
+    return elementCompletions(grammar, prefix, "", uri);
   }
 
   const tagText = prefix.slice(lastLt);
@@ -82,7 +84,7 @@ export function getCompletions(context: CompletionContext): CompletionItem[] {
 
   if (!/\s/.test(afterName)) {
     // Still typing the element name.
-    return elementCompletions(grammar, prefix.slice(0, lastLt), tagName);
+    return elementCompletions(grammar, prefix.slice(0, lastLt), tagName, uri);
   }
 
   // Typing an attribute (or its value). Offer attribute names for this element.
@@ -96,6 +98,7 @@ export function getCompletions(context: CompletionContext): CompletionItem[] {
     tagName,
     tagText,
     attrPartial,
+    uri,
   );
 }
 
@@ -103,8 +106,9 @@ function elementCompletions(
   grammar: Grammar,
   cleanPrefix: string,
   partial: string,
+  uri: string | undefined,
 ): CompletionItem[] {
-  const walker = buildWalker(grammar, cleanPrefix);
+  const walker = getWalker(grammar, cleanPrefix, uri);
   if (!walker) {
     return [];
   }
@@ -118,13 +122,15 @@ function attributeCompletions(
   tagName: string,
   tagText: string,
   partial: string,
+  uri: string | undefined,
 ): CompletionItem[] {
-  const walker = buildWalker(grammar, cleanPrefix);
-  if (!walker) {
+  const cached = getWalker(grammar, cleanPrefix, uri);
+  if (!cached) {
     return [];
   }
-  // Enter the element being typed, and replay any attributes already present so
-  // the offered set excludes them.
+  // Enter the element being typed on a clone, so the cached walker (which only
+  // reflects the document text actually written so far) is left untouched.
+  const walker = cached.clone();
   const ret = walker.fireEvent("enterStartTag", ["", tagName]);
   if (Array.isArray(ret)) {
     // Element not valid here; no meaningful attribute suggestions.
@@ -144,61 +150,144 @@ function attributeCompletions(
   return toItems(names, partial, Kind.Property);
 }
 
-/** Parse `cleanPrefix` into a walker positioned inside the innermost open element. */
-function buildWalker(grammar: Grammar, cleanPrefix: string): WalkerLike | null {
-  const walker = grammar.newWalker() as WalkerLike;
-  const parser = new SaxesParser<{ xmlns: true; position: true }>({
-    xmlns: true,
-    position: true,
-  });
-  let depth = 0;
-  let failed = false;
+/**
+ * A parser+walker pair driven incrementally through a document prefix. Kept
+ * alive across completion requests (keyed by document URI) so that, when the
+ * next request's prefix is just an extension of this one (the common case
+ * while typing), only the new tail needs to be fed in rather than re-parsing
+ * the whole document from the start.
+ */
+class WalkerSession {
+  readonly grammar: Grammar;
+  readonly walker: WalkerLike;
+  private readonly parser: SaxesParser<{ xmlns: true; position: true }>;
+  prefix = "";
+  private depth = 0;
+  private failed = false;
 
-  const fire = (name: string, params: string[]) => {
-    if (failed) {
-      return;
-    }
-    walker.fireEvent(name, params); // ignore errors: we only want walker state
-  };
+  constructor(grammar: Grammar) {
+    this.grammar = grammar;
+    // A concrete resolver (rather than the default `undefined`) is required for
+    // `walker.clone()` to work, which `attributeCompletions` relies on.
+    this.walker = grammar.newWalker(new DefaultNameResolver()) as WalkerLike;
+    this.parser = new SaxesParser<{ xmlns: true; position: true }>({
+      xmlns: true,
+      position: true,
+    });
 
-  parser.on("opentag", (node) => {
-    depth++;
-    fire("enterStartTag", [node.uri ?? "", node.local ?? node.name]);
-    for (const key of Object.keys(node.attributes)) {
-      const attr = node.attributes[key] as {
-        uri?: string;
-        prefix?: string;
-        local?: string;
-        name: string;
-        value: string;
-      };
-      if (attr.prefix === "xmlns" || attr.name === "xmlns" || attr.uri === XMLNS_NS) {
-        continue;
+    const fire = (name: string, params: string[]) => {
+      if (this.failed) {
+        return;
       }
-      fire("attributeName", [attr.uri ?? "", attr.local ?? attr.name]);
-      fire("attributeValue", [attr.value]);
-    }
-    fire("leaveStartTag", []);
-  });
-  parser.on("closetag", (node) => {
-    fire("endTag", [node.uri ?? "", node.local ?? node.name]);
-    depth = Math.max(0, depth - 1);
-  });
-  parser.on("text", (t) => {
-    if (depth > 0 && t.length > 0) {
-      fire("text", [t]);
-    }
-  });
-  parser.on("error", () => {
-    failed = true;
-  });
+      this.walker.fireEvent(name, params); // ignore errors: we only want walker state
+    };
 
-  try {
-    parser.write(cleanPrefix);
-  } catch {
-    // Incomplete trailing token is expected; state up to here is still usable.
+    this.parser.on("opentag", (node) => {
+      this.depth++;
+      fire("enterStartTag", [node.uri ?? "", node.local ?? node.name]);
+      for (const key of Object.keys(node.attributes)) {
+        const attr = node.attributes[key] as {
+          uri?: string;
+          prefix?: string;
+          local?: string;
+          name: string;
+          value: string;
+        };
+        if (
+          attr.prefix === "xmlns" ||
+          attr.name === "xmlns" ||
+          attr.uri === XMLNS_NS
+        ) {
+          continue;
+        }
+        fire("attributeName", [attr.uri ?? "", attr.local ?? attr.name]);
+        fire("attributeValue", [attr.value]);
+      }
+      fire("leaveStartTag", []);
+    });
+    this.parser.on("closetag", (node) => {
+      fire("endTag", [node.uri ?? "", node.local ?? node.name]);
+      this.depth = Math.max(0, this.depth - 1);
+    });
+    this.parser.on("text", (t) => {
+      if (this.depth > 0 && t.length > 0) {
+        fire("text", [t]);
+      }
+    });
+    this.parser.on("error", () => {
+      this.failed = true;
+    });
   }
-  return walker;
+
+  /** Feed additional text (assumed to directly follow what's already fed). */
+  feed(text: string): void {
+    try {
+      this.parser.write(text);
+    } catch {
+      // Incomplete trailing token is expected; state up to here is still usable.
+    }
+    this.prefix += text;
+  }
+}
+
+const MAX_CACHED_SESSIONS = 20;
+/** One in-progress {@link WalkerSession} per document URI, most-recently-used last. */
+const sessionCache = new Map<string, WalkerSession>();
+
+function touchCache(uri: string, session: WalkerSession): void {
+  sessionCache.delete(uri);
+  sessionCache.set(uri, session);
+  if (sessionCache.size > MAX_CACHED_SESSIONS) {
+    const oldest = sessionCache.keys().next().value;
+    if (oldest !== undefined) {
+      sessionCache.delete(oldest);
+    }
+  }
+}
+
+/**
+ * Get a walker positioned at the end of `cleanPrefix`, reusing and extending
+ * the cached session for `uri` when `cleanPrefix` is an extension of what was
+ * already fed to it (e.g. the user typed further without editing earlier
+ * text). Falls back to building a fresh session — same cost as before this
+ * cache existed — whenever there's no usable cache entry.
+ */
+function getWalker(
+  grammar: Grammar,
+  cleanPrefix: string,
+  uri: string | undefined,
+): WalkerLike | null {
+  if (uri) {
+    const cached = sessionCache.get(uri);
+    if (
+      cached &&
+      cached.grammar === grammar &&
+      cleanPrefix.startsWith(cached.prefix)
+    ) {
+      const delta = cleanPrefix.slice(cached.prefix.length);
+      if (delta.length > 0) {
+        cached.feed(delta);
+      }
+      touchCache(uri, cached);
+      return cached.walker;
+    }
+  }
+
+  const session = new WalkerSession(grammar);
+  session.feed(cleanPrefix);
+  if (uri) {
+    touchCache(uri, session);
+  }
+  return session.walker;
+}
+
+/** Clear cached completion walker state for a document (e.g. on close). */
+export function clearCompletionCache(uri?: string): void {
+  if (uri) {
+    sessionCache.delete(uri);
+  } else {
+    sessionCache.clear();
+  }
 }
 
 function collectNames(

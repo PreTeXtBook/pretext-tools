@@ -1,5 +1,5 @@
 export { validateDocument } from "./validate";
-export { getCompletions } from "./completions";
+export { getCompletions, clearCompletionCache } from "./completions";
 export { loadGrammarFromJSON } from "./grammar";
 export {
   applyRules,

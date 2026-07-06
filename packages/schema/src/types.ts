@@ -13,7 +13,7 @@ export type { Diagnostic, CompletionItem, Range, Position };
  * directly.
  */
 export interface Grammar {
-  newWalker(): unknown;
+  newWalker(nameResolver?: unknown): unknown;
 }
 
 /**
@@ -30,6 +30,8 @@ export type SchemaErrorKind =
   | "xinclude-missing"
   | "xinclude-circular"
   | "well-formedness"
+  | "duplicate-id"
+  | "dangling-reference"
   | "other";
 
 /**
@@ -124,4 +126,10 @@ export interface CompletionContext {
   position: Position;
   /** The compiled grammar to consult. */
   grammar: Grammar;
+  /**
+   * URI of the document, used to cache and incrementally extend walker state
+   * across repeated completion requests on the same (growing) document.
+   * Completions still work without it; caching is simply skipped.
+   */
+  uri?: string;
 }

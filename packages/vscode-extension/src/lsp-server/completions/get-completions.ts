@@ -61,6 +61,7 @@ export async function getCompletions(
           text: doc.getText(),
           position: pos,
           grammar,
+          uri,
         });
         if (schemaItems.length > 0) {
           return schemaItems.map((item, i) => {

@@ -80,6 +80,14 @@ export const defaultRuleset: Ruleset = {
       id: "well-formedness",
       match: (e) => e.kind === "well-formedness",
     },
+    {
+      id: "duplicate-id",
+      match: (e) => e.kind === "duplicate-id",
+    },
+    {
+      id: "dangling-reference",
+      match: (e) => e.kind === "dangling-reference",
+    },
   ],
 };
 

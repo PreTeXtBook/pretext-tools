@@ -29,6 +29,7 @@ import {
   getCompletions,
   getCompletionDetails,
 } from "./completions/get-completions";
+import { clearCompletionCache } from "@pretextbook/schema";
 //import { formatDocument, formatRange } from "./formatter";
 import { formatDocument, formatRange, formatText } from "./formatter-ptx";
 import { getReferences, updateReferences } from "./completions/utils";
@@ -290,6 +291,7 @@ documents.onDidClose((e) => {
   console.log("closed", e.document.uri);
   clearDocumentInfo(e.document.uri);
   clearValidation(e.document.uri, publishDiagnostics);
+  clearCompletionCache(e.document.uri);
 });
 
 // The content of a text document has changed. This event is emitted

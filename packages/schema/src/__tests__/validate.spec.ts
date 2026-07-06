@@ -135,6 +135,84 @@ describe("validateDocument", () => {
     ).toThrow(/abort/i);
   });
 
+  it("reports a duplicate xml:id", () => {
+    const doc = `<pretext>
+  <article xml:id="dup">
+    <title>Hi</title>
+    <p xml:id="dup">Body.</p>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    const dupDiag = result.diagnostics.find((d) => d.code === "duplicate-id");
+    expect(dupDiag).toBeDefined();
+    expect(dupDiag!.message).toMatch(/dup/);
+  });
+
+  it("does not flag distinct xml:ids", () => {
+    const doc = `<pretext>
+  <article xml:id="a">
+    <title>Hi</title>
+    <p xml:id="b">Body.</p>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("reports a dangling xref target", () => {
+    const doc = `<pretext>
+  <article xml:id="art">
+    <title>Hi</title>
+    <p>See <xref ref="nope"/> for details.</p>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    const diag = result.diagnostics.find(
+      (d) => d.code === "dangling-reference",
+    );
+    expect(diag).toBeDefined();
+    expect(diag!.message).toMatch(/nope/);
+  });
+
+  it("resolves a forward xref target within the same document", () => {
+    const doc = `<pretext>
+  <article xml:id="art">
+    <title>Hi</title>
+    <p>See <xref ref="p2"/> for details.</p>
+    <p xml:id="p2">Body.</p>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("resolves a fragref target against a fragment's xml:id", () => {
+    const doc = `<pretext>
+  <fragment xml:id="frag1">
+    <title>Frag</title>
+    <code>1 + 1</code>
+  </fragment>
+  <fragment xml:id="frag2">
+    <title>Frag 2</title>
+    <fragref ref="frag1"/>
+  </fragment>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    expect(
+      result.diagnostics.filter((d) => d.code === "dangling-reference"),
+    ).toEqual([]);
+  });
+
   it("produces the same grammar whether compiled or loaded from JSON", async () => {
     const compiled = await compileRngToGrammar(
       path.resolve(

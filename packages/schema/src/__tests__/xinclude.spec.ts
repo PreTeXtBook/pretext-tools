@@ -65,4 +65,58 @@ describe("validateDocument with xi:include", () => {
     // <notallowed> is on line 5 of ch1.ptx (0-based line 4).
     expect(notAllowed!.range.start.line).toBe(4);
   });
+
+  it("resolves an xref target declared in an included file", () => {
+    const reader = (p: string) => {
+      if (p.endsWith("ch1.ptx")) {
+        return `<chapter xml:id="ch1"><title>Chapter One</title><p xml:id="target">Body.</p></chapter>`;
+      }
+      return undefined;
+    };
+    const source = `<pretext>
+  <book xml:id="bk">
+    <title>Book</title>
+    <chapter xml:id="c0">
+      <title>Intro</title>
+      <p>See <xref ref="target"/>.</p>
+    </chapter>
+    <xi:include href="ch1.ptx" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </book>
+</pretext>`;
+    const result = validateDocument(source, testGrammar(), {
+      uri: mainUri,
+      readFile: reader,
+    });
+    expect(
+      result.diagnostics.filter((d) => d.code === "dangling-reference"),
+    ).toEqual([]);
+  });
+
+  it("reports a dangling xref target across included files", () => {
+    const reader = (p: string) => {
+      if (p.endsWith("ch1.ptx")) {
+        return `<chapter xml:id="ch1"><title>Chapter One</title><p>Body.</p></chapter>`;
+      }
+      return undefined;
+    };
+    const source = `<pretext>
+  <book xml:id="bk">
+    <title>Book</title>
+    <chapter xml:id="c0">
+      <title>Intro</title>
+      <p>See <xref ref="nope"/>.</p>
+    </chapter>
+    <xi:include href="ch1.ptx" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </book>
+</pretext>`;
+    const result = validateDocument(source, testGrammar(), {
+      uri: mainUri,
+      readFile: reader,
+    });
+    const diag = result.diagnostics.find(
+      (d) => d.code === "dangling-reference",
+    );
+    expect(diag).toBeDefined();
+    expect(diag!.message).toMatch(/nope/);
+  });
 });
