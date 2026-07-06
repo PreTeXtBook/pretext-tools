@@ -607,6 +607,13 @@ function isBlockChild(child: ElementContent): boolean {
   // <c> is in verbatimTags (inline code) but is always rendered inline, never as a
   // structural block, so it must be excluded before the verbatimTags check below.
   if (name === "c") return false;
+  // Some tag names are reused for both a block-level environment (with content,
+  // e.g. the root <pretext> document or a <webwork> exercise) and an inline macro
+  // (empty/self-closing, e.g. the <pretext/> logo or an embedded <webwork/>
+  // problem reference). An empty element is always the inline-macro usage, so it
+  // should flow with the surrounding text like <latex/> rather than force a line
+  // break.
+  if (isEmptyElement(child)) return false;
   // verbatimTags is included alongside blockTags because structural verbatim elements
   // (<pre>, <program>, etc.) break the inline flow of a <p> just like block elements do.
   return (

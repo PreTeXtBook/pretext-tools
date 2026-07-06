@@ -2906,14 +2906,11 @@ TEST_CASE( "Test the add function" ) {
     <p>
       Runestone uses a YouTube API that broadcasts events when a reader
       interacts with a video. In this way, Runestone can record video-watching
-      as an activity. As
-      <pretext/>
-      output we concede better behavior on small screens ( <q>responsiveness</q>
-      ) to enable this feature in a Runestone version. A <attr>label</attr>
-      attribute is necessary for persistence in the Runestone database. Various
-      <pretext/>
-      features, such as playlists, are not yet supported <mdash/> make a
-      request.
+      as an activity. As <pretext/> output we concede better behavior on small
+      screens ( <q>responsiveness</q> ) to enable this feature in a Runestone
+      version. A <attr>label</attr> attribute is necessary for persistence in
+      the Runestone database. Various <pretext/> features, such as playlists,
+      are not yet supported <mdash/> make a request.
     </p>
 
     <video xml:id="yt-list-vars" label="youtube-list-vars" youtube="X1-UNHUajfk" width="60%" margins="5% 35%" preview="yt-list-variables.png">
@@ -5083,10 +5080,9 @@ TEST_CASE( "Test the add function" ) {
       <p>
         This section has <term>fill-in-the-blank</term> ( <init>FITB</init> )
         exercises that use an old syntax. They were designed for projects
-        transitioning from Runestone's ReST syntax to
-        <pretext/>.
-        So they are really only here for testing, and not for any sort of
-        documentation. They will not receive support or enhancements.
+        transitioning from Runestone's ReST syntax to <pretext/>. So they are
+        really only here for testing, and not for any sort of documentation.
+        They will not receive support or enhancements.
         <foreign>Caveat emptor</foreign>.
       </p>
     </introduction>
@@ -7387,10 +7383,9 @@ TEST_CASE( "Test the add function" ) {
       These are examples that use the
       <url href="https://cssplice.org/slcp/index.html" visual="cssplice.org/slcp">SPLICE</url>
       protocol for communicating with a server, such as Runestone. They are all
-      integrated into this
-      <pretext/>
-      book as an <tag>interactive</tag> that uses an <attr>iframe</attr>
-      attribute to embed an iframe from some other server.
+      integrated into this <pretext/> book as an <tag>interactive</tag> that
+      uses an <attr>iframe</attr> attribute to embed an iframe from some other
+      server.
     </p>
 
     <p>
