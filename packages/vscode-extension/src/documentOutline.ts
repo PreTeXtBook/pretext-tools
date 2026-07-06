@@ -52,10 +52,7 @@ class OutlineNode {
 /**
  * Maps PreTeXt element tags to display icons and labels.
  */
-const ELEMENT_CONFIG: Record<
-  string,
-  { icon: string; label: string }
-> = {
+const ELEMENT_CONFIG: Record<string, { icon: string; label: string }> = {
   book: { icon: "book", label: "Book" },
   article: { icon: "book", label: "Article" },
   frontmatter: { icon: "info", label: "Front Matter" },
@@ -89,9 +86,7 @@ const CONTAINER_TAGS = new Set([
  * TreeDataProvider that parses a .ptx file and provides the document
  * structure as a tree for the VS Code sidebar.
  */
-export class PretextDocumentOutlineProvider
-  implements TreeDataProvider<OutlineNode>
-{
+export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineNode> {
   private _onDidChangeTreeData = new EventEmitter<
     OutlineNode | undefined | null
   >();
@@ -249,9 +244,7 @@ export class PretextDocumentOutlineProvider
 
       // Check for opening tags
       for (const tag of OUTLINE_TAGS) {
-        const openPattern = new RegExp(
-          `<${tag}(?:\\s|>|/)`,
-        );
+        const openPattern = new RegExp(`<${tag}(?:\\s|>|/)`);
         const openMatch = openPattern.exec(line);
         if (!openMatch) {
           continue;
@@ -308,17 +301,13 @@ export class PretextDocumentOutlineProvider
       .join("\n");
 
     // Single-line title: <title>Text Here</title>
-    const singleLine = searchWindow.match(
-      /<title>(.*?)<\/title>/,
-    );
+    const singleLine = searchWindow.match(/<title>(.*?)<\/title>/);
     if (singleLine) {
       return this.cleanText(singleLine[1]);
     }
 
     // Multi-line title: <title>\nText Here\n</title>
-    const multiLine = searchWindow.match(
-      /<title>\s*([\s\S]*?)\s*<\/title>/,
-    );
+    const multiLine = searchWindow.match(/<title>\s*([\s\S]*?)\s*<\/title>/);
     if (multiLine) {
       return this.cleanText(multiLine[1]);
     }
@@ -334,9 +323,7 @@ export class PretextDocumentOutlineProvider
       .slice(startLine, Math.min(startLine + 10, lines.length))
       .join("\n");
 
-    const match = searchWindow.match(
-      /<caption>([\s\S]*?)<\/caption>/,
-    );
+    const match = searchWindow.match(/<caption>([\s\S]*?)<\/caption>/);
     if (match) {
       const text = this.cleanText(match[1]);
       // Truncate long captions

@@ -9,13 +9,17 @@ import { documents } from "./state";
 import { globalSettings } from "./main";
 import { formatPretext } from "@pretextbook/format";
 
-function getOptions(editorOptions?: { tabSize: number; insertSpaces: boolean }) {
+function getOptions(editorOptions?: {
+  tabSize: number;
+  insertSpaces: boolean;
+}) {
   return {
     breakSentences: globalSettings.formatter.breakSentences,
     breakLines: globalSettings.formatter.blankLines,
     breakLongAttributes: globalSettings.formatter.breakLongAttributes,
     tabSize: editorOptions?.tabSize ?? globalSettings.editor.tabSize,
-    insertSpaces: editorOptions?.insertSpaces ?? globalSettings.editor.insertSpaces,
+    insertSpaces:
+      editorOptions?.insertSpaces ?? globalSettings.editor.insertSpaces,
     printWidth: globalSettings.formatter.printWidth,
   };
 }
