@@ -1,5 +1,11 @@
 # @pretextbook/format
 
+## 0.2.1
+
+### Patch Changes
+
+- dc17330: Schema and formatting improvements
+
 ## 0.2.0
 
 ### Minor Changes
