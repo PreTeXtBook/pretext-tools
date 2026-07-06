@@ -1,6 +1,7 @@
 import type {
   Diagnostic,
   DiagnosticSeverityValue,
+  Rule,
   Ruleset,
   SchemaError,
 } from "./types";
@@ -22,6 +23,13 @@ export const defaultRuleset: Ruleset = {
   source: "pretext",
   defaultSeverity: Severity.Error,
   rules: [
+    {
+      id: "element-me-removed",
+      match: (e) => e.kind === "element-not-allowed" && e.name === "me",
+      message: () =>
+        `<me> should be replaced with <md> (without any <mrow>).`,
+      severity: Severity.Warning,
+    },
     {
       id: "element-not-allowed",
       match: (e) => e.kind === "element-not-allowed",
@@ -73,6 +81,46 @@ export const defaultRuleset: Ruleset = {
       match: (e) => e.kind === "well-formedness",
     },
   ],
+};
+
+/**
+ * Extra rules layered on top of the {@link defaultRuleset} in "relaxed"
+ * validation mode. Each entry suppresses a schema violation that PreTeXt authors
+ * commonly and legitimately hit but the stable schema does not (yet) permit.
+ *
+ * These are prepended before the generic pass-through rules so their `suppress`
+ * wins (rule matching stops at the first match). Add new relaxations here.
+ */
+export const relaxedRules: Rule[] = [
+  {
+    // <document-id> is used by some publishers / build pipelines inside
+    // <docinfo> but isn't in the stable schema yet.
+    id: "allow-document-id",
+    match: (e) =>
+      e.kind === "element-not-allowed" &&
+      e.name === "document-id" &&
+      e.parent === "docinfo",
+    suppress: true,
+  },
+  {
+    // <blurb> inside <docinfo> (short description used by some output formats).
+    id: "allow-blurb",
+    match: (e) =>
+      e.kind === "element-not-allowed" &&
+      e.name === "blurb" &&
+      e.parent === "docinfo",
+    suppress: true,
+  },
+];
+
+/**
+ * The relaxed ruleset: the {@link defaultRuleset} with {@link relaxedRules}
+ * taking precedence, so the listed violations are silently ignored. Selected
+ * when the user opts into relaxed schema validation.
+ */
+export const relaxedRuleset: Ruleset = {
+  ...defaultRuleset,
+  rules: [...relaxedRules, ...defaultRuleset.rules],
 };
 
 function formatList(names: string[]): string {

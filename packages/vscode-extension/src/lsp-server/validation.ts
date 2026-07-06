@@ -6,8 +6,11 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   validateDocument,
   loadGrammarFromJSON,
+  defaultRuleset,
+  relaxedRuleset,
   type Grammar,
   type FileReader,
+  type Ruleset,
 } from "@pretextbook/schema";
 import { schemaDir } from "./main";
 import { documents } from "./state";
@@ -15,6 +18,18 @@ import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import { isPublicationPtx } from "./completions/utils";
 
 let grammar: Grammar | undefined;
+
+/** The active ruleset: the strict default, or the relaxed one when opted in. */
+let ruleset: Ruleset = defaultRuleset;
+
+/**
+ * Select the validation ruleset from the `pretext-tools.schema.validationMode`
+ * setting. `"Relaxed"` suppresses a curated set of harmless violations; anything
+ * else (including undefined) uses the strict default ruleset.
+ */
+export function setValidationMode(mode: string | undefined): void {
+  ruleset = mode === "Relaxed" ? relaxedRuleset : defaultRuleset;
+}
 
 /**
  * Load the precompiled RELAX NG grammar used for schema validation. Prefers the
@@ -128,6 +143,7 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
       uri,
       signal: controller.signal,
       readFile: makeReadFile(),
+      ruleset,
     });
 
     const currentTargets = new Set(Object.keys(result.diagnosticsByUri));

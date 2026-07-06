@@ -1,7 +1,13 @@
 export { validateDocument } from "./validate";
 export { getCompletions } from "./completions";
 export { loadGrammarFromJSON } from "./grammar";
-export { applyRules, defaultRuleset, Severity } from "./rules";
+export {
+  applyRules,
+  defaultRuleset,
+  relaxedRuleset,
+  relaxedRules,
+  Severity,
+} from "./rules";
 export {
   resolveXIncludes,
   defaultFileReader,

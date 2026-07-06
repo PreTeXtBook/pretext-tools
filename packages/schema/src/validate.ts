@@ -80,6 +80,12 @@ function driveValidation(
   });
 
   let depth = 0;
+  // The chain of currently-open element local names, outermost first. The
+  // offending element of an `enterStartTag` error is intentionally *not* on the
+  // stack yet (so its parent is the stack top), while an element is on the stack
+  // while its attributes and content are validated (so attribute/text errors see
+  // the owning element as their parent).
+  const stack: string[] = [];
   // Start position (0-based line/char) and length of the tag currently being
   // entered, captured at `opentagstart` for precise element/attribute ranges.
   let tagStart: { line: number; char: number; length: number } | null = null;
@@ -112,9 +118,17 @@ function driveValidation(
   };
 
   const record = (raw: unknown[], loc: { uri: string; range: Range }) => {
+    const ancestors = stack.length ? [...stack] : undefined;
+    const parent = stack.length ? stack[stack.length - 1] : undefined;
     for (const err of raw) {
       const norm = normalizeError(err);
-      errors.push({ ...norm, uri: loc.uri, range: loc.range });
+      errors.push({
+        ...norm,
+        parent,
+        ancestors,
+        uri: loc.uri,
+        range: loc.range,
+      });
     }
   };
 
@@ -143,7 +157,11 @@ function driveValidation(
     };
     const tagLoc = rangeFrom(start.line, start.char, start.char + start.length);
 
+    // Fire `enterStartTag` while this element is not yet on the stack, so an
+    // "element not allowed here" error reports its true parent. Then push it so
+    // its attributes (and later, content) are attributed to this element.
     fire("enterStartTag", [node.uri ?? "", node.local ?? node.name], tagLoc);
+    stack.push(node.local ?? node.name);
     for (const attrName of Object.keys(node.attributes)) {
       const attr = node.attributes[attrName] as {
         uri?: string;
@@ -165,7 +183,10 @@ function driveValidation(
     const line0 = parser.line - 1;
     const char = Math.max(0, parser.column - 1);
     const loc = rangeFrom(line0, Math.max(0, char - 1), char);
+    // Keep this element on the stack while `endTag` fires (so an "element not
+    // finished" error is attributed to it), then pop it.
     fire("endTag", [node.uri ?? "", node.local ?? node.name], loc);
+    stack.pop();
     depth = Math.max(0, depth - 1);
   });
 
@@ -192,6 +213,8 @@ function driveValidation(
     errors.push({
       kind: "well-formedness",
       message: e.message,
+      parent: stack.length ? stack[stack.length - 1] : undefined,
+      ancestors: stack.length ? [...stack] : undefined,
       uri: loc.uri,
       range: {
         start: { line: loc.line, character: loc.char },

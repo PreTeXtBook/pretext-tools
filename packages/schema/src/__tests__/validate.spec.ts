@@ -44,6 +44,32 @@ describe("validateDocument", () => {
     expect(diag.range.start.character).toBeGreaterThanOrEqual(4);
   });
 
+  it("attaches parent/ancestor context to errors", () => {
+    const doc = `<pretext>
+  <article xml:id="a">
+    <title>Hi</title>
+    <notathing>oops</notathing>
+    <p>ok</p>
+  </article>
+</pretext>`;
+    // A rule that echoes the captured context into the diagnostic message so we
+    // can assert on it (parent/ancestors live on the raw SchemaError).
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+      ruleset: {
+        rules: [
+          {
+            id: "echo",
+            match: (e) => e.kind === "element-not-allowed",
+            message: (e) => `parent=${e.parent} ancestors=${e.ancestors?.join(">")}`,
+          },
+        ],
+      },
+    });
+    const diag = result.diagnostics[0];
+    expect(diag.message).toBe("parent=article ancestors=pretext>article");
+  });
+
   it("reports a disallowed attribute", () => {
     const doc = `<pretext>
   <article xml:id="a">

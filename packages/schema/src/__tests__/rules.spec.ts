@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { applyRules, defaultRuleset, Severity } from "../rules";
+import {
+  applyRules,
+  defaultRuleset,
+  relaxedRuleset,
+  Severity,
+} from "../rules";
 import type { Ruleset, SchemaError } from "../types";
 
 const baseRange = {
@@ -69,6 +74,43 @@ describe("applyRules", () => {
     };
     const [diag] = applyRules([err({ name: "bar" })], ruleset);
     expect(diag.message).toBe("custom: bar");
+  });
+
+  it("suggests <md> for a removed <me> element", () => {
+    const [diag] = applyRules(
+      [err({ name: "me" })],
+      defaultRuleset,
+    );
+    expect(diag.code).toBe("element-me-removed");
+    expect(diag.message).toMatch(/<md>/);
+  });
+
+  it("suppresses <document-id>/<blurb> inside <docinfo> under the relaxed ruleset", () => {
+    const diags = applyRules(
+      [
+        err({ kind: "element-not-allowed", name: "document-id", parent: "docinfo" }),
+        err({ kind: "element-not-allowed", name: "blurb", parent: "docinfo" }),
+      ],
+      relaxedRuleset,
+    );
+    expect(diags).toEqual([]);
+  });
+
+  it("still reports <document-id> outside <docinfo> under the relaxed ruleset", () => {
+    const [diag] = applyRules(
+      [err({ kind: "element-not-allowed", name: "document-id", parent: "section" })],
+      relaxedRuleset,
+    );
+    expect(diag.code).toBe("element-not-allowed");
+  });
+
+  it("still reports other violations under the relaxed ruleset", () => {
+    const [diag] = applyRules(
+      [err({ kind: "element-not-allowed", name: "bogus" })],
+      relaxedRuleset,
+    );
+    expect(diag.code).toBe("element-not-allowed");
+    expect(diag.message).toMatch(/<bogus> is not allowed/);
   });
 
   it("supports multiple rules firing on different errors", () => {

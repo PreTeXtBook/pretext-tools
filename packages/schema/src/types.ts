@@ -46,6 +46,19 @@ export interface SchemaError {
   ns?: string;
   /** Names offered as alternatives (e.g. for choice errors). */
   alternatives?: string[];
+  /**
+   * Local name of the immediate enclosing element at the point of the error.
+   * For a misplaced child element this is the element it appears inside; for an
+   * invalid attribute it is the element carrying the attribute. Undefined at the
+   * document root (e.g. unexpected-end errors).
+   */
+  parent?: string;
+  /**
+   * The chain of open elements at the point of the error, outermost first and
+   * ending with {@link parent}. Enables context-aware rules (e.g. only relax an
+   * element when it appears inside a specific ancestor).
+   */
+  ancestors?: string[];
   /** Location of the error in the (mapped-back) source document. */
   range: Range;
   /** URI of the document the error belongs to (after XInclude mapping). */

@@ -43,6 +43,7 @@ import {
   clearValidation,
   shouldValidate,
   loadValidationGrammar,
+  setValidationMode,
 } from "./validation";
 
 /** Publish diagnostics for a given document URI. */
@@ -125,6 +126,7 @@ connection.onInitialized(() => {
         if (schemaConfig) {
           pretextSchema = await initializeSchema(schemaConfig);
           globalSettings.schema = schemaConfig;
+          setValidationMode(schemaConfig.validationMode);
           console.log("Schema set to: ", schemaConfig);
           // Use the schemaConfig as needed
         } else {
@@ -169,6 +171,7 @@ interface LspSettings {
   schema: {
     versionName: string;
     customPath: string;
+    validationMode: "Strict" | "Relaxed";
   };
   formatter: {
     breakSentences: boolean;
@@ -189,7 +192,7 @@ const tabSizeConfigSection = "editor.tabSize";
 const insertSpacesConfigSection = "editor.insertSpaces";
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 const defaultSettings: LspSettings = {
-  schema: { versionName: "Stable", customPath: "" },
+  schema: { versionName: "Stable", customPath: "", validationMode: "Strict" },
   formatter: {
     blankLines: "some",
     breakSentences: true,
@@ -245,19 +248,28 @@ connection.onDidChangeConfiguration((change) => {
     connection.workspace
       .getConfiguration(schemaConfigSection)
       .then(async (schemaConfig) => {
-        if (
-          schemaConfig &&
-          globalSettings.schema.versionName !== schemaConfig.versionName
-        ) {
+        if (!schemaConfig) {
+          return;
+        }
+        const versionChanged =
+          globalSettings.schema.versionName !== schemaConfig.versionName;
+        const modeChanged =
+          globalSettings.schema.validationMode !== schemaConfig.validationMode;
+        if (!versionChanged && !modeChanged) {
+          return;
+        }
+        if (versionChanged) {
           pretextSchema = await initializeSchema(schemaConfig);
-          globalSettings.schema = schemaConfig;
-          console.log("Schema set to", schemaConfig);
-          // Reload the validation grammar and re-validate open documents.
+          // Reload the validation grammar for the new schema version.
           loadValidationGrammar(schemaConfig.versionName);
-          for (const doc of documents.all()) {
-            if (shouldValidate(doc)) {
-              scheduleValidation(doc, publishDiagnostics);
-            }
+        }
+        globalSettings.schema = schemaConfig;
+        setValidationMode(schemaConfig.validationMode);
+        console.log("Schema set to", schemaConfig);
+        // Re-validate open documents against the new schema / ruleset.
+        for (const doc of documents.all()) {
+          if (shouldValidate(doc)) {
+            scheduleValidation(doc, publishDiagnostics);
           }
         }
       });
