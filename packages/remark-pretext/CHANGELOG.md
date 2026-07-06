@@ -1,5 +1,13 @@
 # @pretextbook/remark-pretext
 
+## 0.0.11
+
+### Patch Changes
+
+- dc17330: Schema and formatting improvements
+- Updated dependencies [dc17330]
+  - @pretextbook/ptxast@0.0.8
+
 ## 0.0.10
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @pretextbook/ptxast
 
+## 0.0.8
+
+### Patch Changes
+
+- dc17330: Schema and formatting improvements
+
 ## 0.0.7
 
 ### Patch Changes
