@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- New live preview with inverse search and more.
+- Native schema validation with improved error messages.
+
 ## [0.38.1] - 2026-05-31
 
 ## [0.38.0] - 2026-05-27
