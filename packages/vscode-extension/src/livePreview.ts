@@ -78,8 +78,8 @@ export async function cmdLivePreview(): Promise<void> {
     await openFilePreview(currentTarget, currentProjectPath, ".brf");
   } else if (currentTarget === "epub") {
     // If an EPUB viewer extension is installed, open in VS Code; otherwise open externally
-    const hasEpubViewer = extensions.all.some(
-      (ext) => ext.id.toLowerCase().includes("epub"),
+    const hasEpubViewer = extensions.all.some((ext) =>
+      ext.id.toLowerCase().includes("epub"),
     );
     if (hasEpubViewer) {
       await openFilePreview(currentTarget, currentProjectPath, ".epub");
@@ -119,21 +119,29 @@ async function openFileExternally(
 
     await new Promise<boolean>((resolve) => {
       const fullCommand = cli.cmd() + " build " + target;
-      pretextOutputChannel.appendLine(`[External Preview] Running: ${fullCommand}`);
+      pretextOutputChannel.appendLine(
+        `[External Preview] Running: ${fullCommand}`,
+      );
       const buildProcess = spawn(fullCommand, [], {
         cwd: projectPath,
         shell: true,
       });
       buildProcess.stdout?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
-        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
       });
       buildProcess.stderr?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
-        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
       });
       buildProcess.on("close", (code) => {
-        pretextOutputChannel.appendLine(`[External Preview] Build exited with code ${code}`);
+        pretextOutputChannel.appendLine(
+          `[External Preview] Build exited with code ${code}`,
+        );
         resolve(true);
       });
     });
@@ -198,14 +206,20 @@ async function openFilePreview(
       });
       buildProcess.stdout?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
-        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
       });
       buildProcess.stderr?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
-        if (text.trim()) { pretextOutputChannel.appendLine(text); }
+        if (text.trim()) {
+          pretextOutputChannel.appendLine(text);
+        }
       });
       buildProcess.on("close", (code) => {
-        pretextOutputChannel.appendLine(`[File Preview] Build exited with code ${code}`);
+        pretextOutputChannel.appendLine(
+          `[File Preview] Build exited with code ${code}`,
+        );
         resolve(true);
       });
     });
@@ -228,12 +242,13 @@ async function openFilePreview(
   }
 
   const filePath = path.join(outputDir, outputFile);
-  pretextOutputChannel.appendLine(
-    `[File Preview] Opening: ${filePath}`,
-  );
+  pretextOutputChannel.appendLine(`[File Preview] Opening: ${filePath}`);
 
   const fileUri = Uri.file(filePath);
-  await commands.executeCommand("vscode.open", fileUri, { viewColumn: ViewColumn.Beside, preview: true });
+  await commands.executeCommand("vscode.open", fileUri, {
+    viewColumn: ViewColumn.Beside,
+    preview: true,
+  });
 
   // Set up file watcher for auto-rebuild
   if (fileWatcher) {
@@ -303,7 +318,10 @@ function triggerFileBuildAndReopen(
       );
       utils.updateStatusBarItem(ptxSBItem, "success");
       const fileUri = Uri.file(filePath);
-      commands.executeCommand("vscode.open", fileUri, { viewColumn: ViewColumn.Beside, preview: true });
+      commands.executeCommand("vscode.open", fileUri, {
+        viewColumn: ViewColumn.Beside,
+        preview: true,
+      });
     } else {
       pretextOutputChannel.appendLine(
         `[File Preview] Build failed (code ${code}).`,
@@ -376,14 +394,16 @@ async function startViewServer(
     }
 
     if (!hasOutput) {
-      window.showErrorMessage(
-        "PreTeXt build produced no HTML output. Check the output log for details.",
-        "Show Log",
-      ).then((choice) => {
-        if (choice === "Show Log") {
-          pretextOutputChannel.show();
-        }
-      });
+      window
+        .showErrorMessage(
+          "PreTeXt build produced no HTML output. Check the output log for details.",
+          "Show Log",
+        )
+        .then((choice) => {
+          if (choice === "Show Log") {
+            pretextOutputChannel.show();
+          }
+        });
       utils.updateStatusBarItem(ptxSBItem, "ready");
       return;
     }
@@ -394,7 +414,8 @@ async function startViewServer(
   }
 
   // Use --restart-server to ensure we get a fresh server (handles stale servers)
-  const fullCommand = cli.cmd() + " view --no-launch --restart-server " + target;
+  const fullCommand =
+    cli.cmd() + " view --no-launch --restart-server " + target;
 
   pretextOutputChannel.appendLine(`Running: ${fullCommand}`);
   utils.updateStatusBarItem(ptxSBItem, "building");
@@ -410,10 +431,14 @@ async function startViewServer(
   function checkForServerUrl(text: string): void {
     outputBuffer += text;
     // Look for the target-specific URL
-    const targetUrlMatch = outputBuffer.match(/(?:will be available|Opening browser).*?(https?:\/\/[^\s]*\/output\/[^\s]+)/);
+    const targetUrlMatch = outputBuffer.match(
+      /(?:will be available|Opening browser).*?(https?:\/\/[^\s]*\/output\/[^\s]+)/,
+    );
     if (targetUrlMatch && !serverUrl) {
       serverUrl = targetUrlMatch[1];
-      pretextOutputChannel.appendLine(`[Live Preview] Server ready at: ${serverUrl}`);
+      pretextOutputChannel.appendLine(
+        `[Live Preview] Server ready at: ${serverUrl}`,
+      );
       utils.updateStatusBarItem(ptxSBItem, "success");
       injectInverseSearchScript(projectPath, target);
       openPreviewPanel(serverUrl, target);
@@ -443,14 +468,16 @@ async function startViewServer(
       pretextOutputChannel.appendLine(
         `[Live Preview] ERROR: Server exited without providing a URL. Accumulated output:\n${outputBuffer.substring(0, 1000)}`,
       );
-      window.showErrorMessage(
-        "PreTeXt server failed to start. Check the output log.",
-        "Show Log",
-      ).then((choice) => {
-        if (choice === "Show Log") {
-          pretextOutputChannel.show();
-        }
-      });
+      window
+        .showErrorMessage(
+          "PreTeXt server failed to start. Check the output log.",
+          "Show Log",
+        )
+        .then((choice) => {
+          if (choice === "Show Log") {
+            pretextOutputChannel.show();
+          }
+        });
     }
     serverUrl = undefined;
     viewProcess = undefined;
@@ -476,7 +503,12 @@ function openPreviewPanel(url: string, target: string): void {
 
   // Handle messages from the webview
   currentPanel.webview.onDidReceiveMessage(
-    (message: { command: string; id?: string; url?: string; text?: string }) => {
+    (message: {
+      command: string;
+      id?: string;
+      url?: string;
+      text?: string;
+    }) => {
       pretextOutputChannel.appendLine(
         `[Extension] Received webview message: ${JSON.stringify(message)}`,
       );
@@ -528,87 +560,87 @@ function openPreviewPanel(url: string, target: string): void {
 function getWebviewContent(url: string): string {
   const escapedUrl = url.replace(/'/g, "\\'");
   return [
-    '<!DOCTYPE html>',
+    "<!DOCTYPE html>",
     '<html lang="en">',
-    '<head>',
+    "<head>",
     '    <meta charset="UTF-8">',
     '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
-    '    <title>PreTeXt Preview</title>',
-    '    <style>',
-    '        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--vscode-editor-background); }',
-    '        #toolbar { height: 32px; background: var(--vscode-editorGroupHeader-tabsBackground); border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; padding: 0 8px; font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); }',
-    '        #toolbar button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; margin-right: 4px; cursor: pointer; font-size: 12px; border-radius: 2px; }',
-    '        #toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }',
-    '        #status { margin-left: auto; opacity: 0.7; }',
-    '        iframe { width: 100%; height: calc(100% - 33px); border: none; }',
-    '    </style>',
-    '</head>',
-    '<body>',
+    "    <title>PreTeXt Preview</title>",
+    "    <style>",
+    "        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--vscode-editor-background); }",
+    "        #toolbar { height: 32px; background: var(--vscode-editorGroupHeader-tabsBackground); border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; padding: 0 8px; font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); }",
+    "        #toolbar button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; margin-right: 4px; cursor: pointer; font-size: 12px; border-radius: 2px; }",
+    "        #toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }",
+    "        #status { margin-left: auto; opacity: 0.7; }",
+    "        iframe { width: 100%; height: calc(100% - 33px); border: none; }",
+    "    </style>",
+    "</head>",
+    "<body>",
     '    <div id="toolbar">',
     '        <button id="btn-refresh" title="Refresh preview">&#x21bb; Refresh</button>',
     '        <button id="btn-browser" title="Open in external browser">&#x2197; Browser</button>',
     '        <span id="status">Live Preview (click to jump to source)</span>',
-    '    </div>',
+    "    </div>",
     '    <iframe id="preview" src="' + url + '"></iframe>',
-    '    <script>',
-    '        (function() {',
-    '            var vscode = acquireVsCodeApi();',
+    "    <script>",
+    "        (function() {",
+    "            var vscode = acquireVsCodeApi();",
     '            var iframe = document.getElementById("preview");',
     '            var statusEl = document.getElementById("status");',
     '            var previewUrl = "' + escapedUrl + '";',
-    '',
+    "",
     '            document.getElementById("btn-refresh").addEventListener("click", function() {',
-    '                iframe.src = previewUrl;',
+    "                iframe.src = previewUrl;",
     '                statusEl.textContent = "Refreshing...";',
     '                setTimeout(function() { statusEl.textContent = "Live Preview (click to jump to source)"; }, 2000);',
-    '            });',
-    '',
+    "            });",
+    "",
     '            document.getElementById("btn-browser").addEventListener("click", function() {',
     '                vscode.postMessage({ command: "openExternal", url: previewUrl });',
-    '            });',
-    '',
-    '            // Listen for messages from BOTH the extension and the iframe',
+    "            });",
+    "",
+    "            // Listen for messages from BOTH the extension and the iframe",
     '            window.addEventListener("message", function(event) {',
-    '                var message = event.data;',
-    '                if (!message || !message.command) { return; }',
-    '',
+    "                var message = event.data;",
+    "                if (!message || !message.command) { return; }",
+    "",
     '                if (message.command === "refresh") {',
-    '                    iframe.src = previewUrl;',
+    "                    iframe.src = previewUrl;",
     '                    statusEl.textContent = "Refreshing...";',
     '                    setTimeout(function() { statusEl.textContent = "Live Preview (click to jump to source)"; }, 2000);',
-    '                }',
-    '',
+    "                }",
+    "",
     '                if (message.command === "scrollTo" && message.id) {',
     '                    console.log("[WebviewWrapper] scrollTo:", message.id);',
-    '                    try {',
+    "                    try {",
     '                        iframe.contentWindow.postMessage({ command: "scrollTo", id: message.id }, "*");',
-    '                    } catch(e) {',
+    "                    } catch(e) {",
     '                        console.log("[WebviewWrapper] postMessage to iframe failed, using hash:", e);',
     '                        var u = previewUrl.split("#")[0] + "#" + message.id;',
-    '                        iframe.src = u;',
-    '                    }',
-    '                }',
-    '',
-    '                // Navigate to a specific HTML page and scroll to an element',
+    "                        iframe.src = u;",
+    "                    }",
+    "                }",
+    "",
+    "                // Navigate to a specific HTML page and scroll to an element",
     '                if (message.command === "navigateAndScroll" && message.file && message.id) {',
     '                    console.log("[WebviewWrapper] navigateAndScroll:", message.file, message.id);',
     '                    var baseUrl = previewUrl.endsWith("/") ? previewUrl : previewUrl + "/";',
     '                    var targetUrl = baseUrl + message.file + "#" + message.id;',
     '                    console.log("[WebviewWrapper] Loading:", targetUrl);',
-    '                    iframe.src = targetUrl;',
-    '                }',
-    '',
-    '                // Inverse search: the iframe sends this via window.parent.postMessage',
+    "                    iframe.src = targetUrl;",
+    "                }",
+    "",
+    "                // Inverse search: the iframe sends this via window.parent.postMessage",
     '                if (message.command === "jumpToSource" && message.id) {',
     '                    console.log("[WebviewWrapper] received jumpToSource for id:", message.id, "text:", message.text);',
     '                    vscode.postMessage({ command: "jumpToSource", id: message.id, text: message.text || "" });',
-    '                }',
-    '            });',
-    '        })();',
-    '    </script>',
-    '</body>',
-    '</html>',
-  ].join('\n');
+    "                }",
+    "            });",
+    "        })();",
+    "    </script>",
+    "</body>",
+    "</html>",
+  ].join("\n");
 }
 
 /**
@@ -628,78 +660,78 @@ function injectInverseSearchScript(projectPath: string, target: string): void {
 
   const scriptTag = [
     '<script data-pretext-tools-inverse-search="true">',
-    '(function() {',
-    '  if (window.__pretextInverseSearchInjected) return;',
-    '  window.__pretextInverseSearchInjected = true;',
-    '  var lastHighlighted = null;',
-    '',
-    '  function findIdAncestor(el) {',
-    '    while (el && el !== document.body && el !== document.documentElement) {',
-    '      if (el.id && el.id.length > 0) return el;',
-    '      el = el.parentElement;',
-    '    }',
-    '    return null;',
-    '  }',
-    '',
-    '  // Hover highlight',
+    "(function() {",
+    "  if (window.__pretextInverseSearchInjected) return;",
+    "  window.__pretextInverseSearchInjected = true;",
+    "  var lastHighlighted = null;",
+    "",
+    "  function findIdAncestor(el) {",
+    "    while (el && el !== document.body && el !== document.documentElement) {",
+    "      if (el.id && el.id.length > 0) return el;",
+    "      el = el.parentElement;",
+    "    }",
+    "    return null;",
+    "  }",
+    "",
+    "  // Hover highlight",
     '  document.addEventListener("mouseover", function(e) {',
-    '    var target = findIdAncestor(e.target);',
-    '    if (lastHighlighted && lastHighlighted !== target) {',
+    "    var target = findIdAncestor(e.target);",
+    "    if (lastHighlighted && lastHighlighted !== target) {",
     '      lastHighlighted.style.outline = "";',
-    '    }',
-    '    if (target) {',
+    "    }",
+    "    if (target) {",
     '      target.style.outline = "2px solid rgba(0,122,204,0.4)";',
-    '      lastHighlighted = target;',
-    '    }',
-    '  });',
-    '',
+    "      lastHighlighted = target;",
+    "    }",
+    "  });",
+    "",
     '  document.addEventListener("mouseout", function(e) {',
-    '    if (lastHighlighted) {',
+    "    if (lastHighlighted) {",
     '      lastHighlighted.style.outline = "";',
-    '      lastHighlighted = null;',
-    '    }',
-    '  });',
-    '',
-    '  // Forward search: parent webview sends scrollTo messages',
+    "      lastHighlighted = null;",
+    "    }",
+    "  });",
+    "",
+    "  // Forward search: parent webview sends scrollTo messages",
     '  window.addEventListener("message", function(event) {',
-    '    var msg = event.data;',
+    "    var msg = event.data;",
     '    if (msg && msg.command === "scrollTo" && msg.id) {',
     '      console.log("[ForwardSearch] scrollTo:", msg.id);',
-    '      var el = document.getElementById(msg.id);',
-    '      if (el) {',
+    "      var el = document.getElementById(msg.id);",
+    "      if (el) {",
     '        el.scrollIntoView({ behavior: "instant", block: "center" });',
     '        el.style.outline = "3px solid #007acc";',
     '        setTimeout(function() { el.style.outline = ""; }, 2000);',
-    '      } else {',
+    "      } else {",
     '        console.log("[ForwardSearch] element not found:", msg.id);',
-    '      }',
-    '    }',
-    '  });',
-    '',
-    '  // Single click anywhere — find nearest ancestor with an id and jump',
+    "      }",
+    "    }",
+    "  });",
+    "",
+    "  // Single click anywhere — find nearest ancestor with an id and jump",
     '  document.addEventListener("click", function(e) {',
     '    if (e.target.tagName === "A" || e.target.closest("a")) return;',
-    '    var target = findIdAncestor(e.target);',
-    '    if (target) {',
-    '      e.preventDefault();',
+    "    var target = findIdAncestor(e.target);",
+    "    if (target) {",
+    "      e.preventDefault();",
     '      target.style.outline = "3px solid #d4a017";',
     '      setTimeout(function() { target.style.outline = ""; }, 1500);',
-    '      // Extract a text snippet from the clicked element for text-based search',
+    "      // Extract a text snippet from the clicked element for text-based search",
     '      var textSnippet = "";',
     '      var clickedEl = e.target.closest(".para, p, div.para") || e.target;',
-    '      if (clickedEl) {',
+    "      if (clickedEl) {",
     '        textSnippet = (clickedEl.textContent || "").trim().substring(0, 80);',
-    '      }',
-    '      window.parent.postMessage({',
+    "      }",
+    "      window.parent.postMessage({",
     '        command: "jumpToSource",',
-    '        id: target.id,',
-    '        text: textSnippet',
+    "        id: target.id,",
+    "        text: textSnippet",
     '      }, "*");',
-    '    }',
-    '  }, true);',
-    '})();',
-    '</script>',
-  ].join('\n');
+    "    }",
+    "  }, true);",
+    "})();",
+    "</script>",
+  ].join("\n");
 
   // Find all .html files in the output directory
   let htmlFiles: string[];
@@ -715,7 +747,7 @@ function injectInverseSearchScript(projectPath: string, target: string): void {
     try {
       let content = fs.readFileSync(filePath, "utf-8");
       // Don't inject twice
-      if (content.includes('data-pretext-tools-inverse-search')) {
+      if (content.includes("data-pretext-tools-inverse-search")) {
         continue;
       }
       // Inject before </body>
@@ -772,10 +804,7 @@ function setupFileWatcher(target: string, projectPath: string): void {
 /**
  * Run `pretext build <target>`, then refresh the preview on success.
  */
-function triggerBuildAndRefresh(
-  target: string,
-  projectPath: string,
-): void {
+function triggerBuildAndRefresh(target: string, projectPath: string): void {
   if (buildInProgress) {
     return;
   }
@@ -816,14 +845,16 @@ function triggerBuildAndRefresh(
         `[Live Preview] Build failed (code ${code}).`,
       );
       utils.updateStatusBarItem(ptxSBItem, "ready");
-      window.showWarningMessage(
-        "PreTeXt build failed. Check the output log for details.",
-        "Show Log",
-      ).then((choice) => {
-        if (choice === "Show Log") {
-          pretextOutputChannel.show();
-        }
-      });
+      window
+        .showWarningMessage(
+          "PreTeXt build failed. Check the output log for details.",
+          "Show Log",
+        )
+        .then((choice) => {
+          if (choice === "Show Log") {
+            pretextOutputChannel.show();
+          }
+        });
     }
   });
 }
@@ -845,9 +876,7 @@ export function cmdForwardSearch(): void {
   const editor = window.activeTextEditor;
   if (!editor || !currentPanel) {
     if (!currentPanel) {
-      window.showInformationMessage(
-        "Open a live preview first (Ctrl+Alt+L).",
-      );
+      window.showInformationMessage("Open a live preview first (Ctrl+Alt+L).");
     }
     return;
   }
@@ -861,13 +890,16 @@ export function cmdForwardSearch(): void {
   const contextEnd = Math.min(fullText.length, offset + 300);
   const rawContext = fullText.substring(offset, contextEnd);
   // Strip XML tags completely
-  const plainContext = rawContext.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  const plainContext = rawContext
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   // Extract distinctive words (5+ chars to avoid common short words like
   // "the", "and", "this"). Also skip XML-ish words.
   const skipWords = new Set(["xmlns", "pretext", "include"]);
   const words = plainContext
-    .replace(/[^a-zA-Z\s-]/g, " ")  // keep hyphens for compound words
+    .replace(/[^a-zA-Z\s-]/g, " ") // keep hyphens for compound words
     .split(/\s+/)
     .filter((w) => w.length >= 5 && !skipWords.has(w.toLowerCase()));
 
@@ -923,7 +955,9 @@ export function cmdForwardSearch(): void {
       );
       currentPanel.webview.postMessage({ command: "scrollTo", id: lastId });
     } else {
-      window.showInformationMessage("Could not find matching content in preview.");
+      window.showInformationMessage(
+        "Could not find matching content in preview.",
+      );
     }
   }
 }
@@ -932,7 +966,9 @@ export function cmdForwardSearch(): void {
  * Search all HTML output files for the given words and return the
  * nearest element ID that contains them.
  */
-function findHtmlIdByText(words: string[]): { id: string; file: string } | undefined {
+function findHtmlIdByText(
+  words: string[],
+): { id: string; file: string } | undefined {
   if (!currentProjectPath || !currentTarget) {
     return undefined;
   }
@@ -940,9 +976,9 @@ function findHtmlIdByText(words: string[]): { id: string; file: string } | undef
   const htmlDir = path.join(currentProjectPath, "output", currentTarget);
   let htmlFiles: string[];
   try {
-    htmlFiles = fs.readdirSync(htmlDir).filter(
-      (f) => f.endsWith(".html") && f !== "index.html",
-    );
+    htmlFiles = fs
+      .readdirSync(htmlDir)
+      .filter((f) => f.endsWith(".html") && f !== "index.html");
   } catch {
     return undefined;
   }
@@ -1021,11 +1057,13 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   // (PreTeXt uses label for HTML id generation when present)
 
   pretextOutputChannel.appendLine(
-    `[Inverse Search] Looking for: ${idsToTry.join(", ")}${textSnippet ? " | text: \"" + textSnippet.substring(0, 40) + "...\"" : ""}`,
+    `[Inverse Search] Looking for: ${idsToTry.join(", ")}${textSnippet ? ' | text: "' + textSnippet.substring(0, 40) + '..."' : ""}`,
   );
 
   // Use lastPtxEditor since the webview has focus (activeTextEditor is undefined)
-  const editor = window.activeTextEditor?.document.fileName.match(/\.(ptx|xml)$/)
+  const editor = window.activeTextEditor?.document.fileName.match(
+    /\.(ptx|xml)$/,
+  )
     ? window.activeTextEditor
     : lastPtxEditor;
 
@@ -1153,9 +1191,9 @@ function getParaIndexFromHtml(suffixedId: string, parentId: string): number {
   // Find the HTML file (usually the main content file, not index.html)
   let htmlFiles: string[];
   try {
-    htmlFiles = fs.readdirSync(htmlDir).filter(
-      (f) => f.endsWith(".html") && f !== "index.html",
-    );
+    htmlFiles = fs
+      .readdirSync(htmlDir)
+      .filter((f) => f.endsWith(".html") && f !== "index.html");
   } catch {
     return -1;
   }
@@ -1233,7 +1271,9 @@ function jumpToNthPara(
   // Find the end of this block: next <section, <subsection, or <subsubsection
   // (not figures/tables/equations which are children of the block)
   const afterBlock = text.substring(searchStart + 1);
-  const nextSectionMatch = afterBlock.match(/<(?:section|subsection|subsubsection|paragraphs)\s/);
+  const nextSectionMatch = afterBlock.match(
+    /<(?:section|subsection|subsubsection|paragraphs)\s/,
+  );
   const searchEnd = nextSectionMatch
     ? searchStart + 1 + nextSectionMatch.index!
     : text.length;
@@ -1298,7 +1338,8 @@ function jumpToNthChild(
   // PreTeXt counts ALL direct children, including <p>, <figure>, <table>,
   // <me>, <men>, <md>, <mdn>, <tabular>, <ol>, <ul>, <dl>.
   // The heading itself is child #1, so suffix -2 is the first <p> after it.
-  const childRegex = /<(p|figure|table|tabular|me|men|md|mdn|ol|ul|dl|image)\b/g;
+  const childRegex =
+    /<(p|figure|table|tabular|me|men|md|mdn|ol|ul|dl|image)\b/g;
   let count = 1; // Start at 1 (the heading/block itself)
   let match: RegExpExecArray | null;
   while ((match = childRegex.exec(blockText)) !== null) {
@@ -1369,9 +1410,15 @@ function refineSearchByText(
 
   // Try progressively longer word sequences to find a unique match
   // Start with 3-4 consecutive long words
-  for (let windowSize = Math.min(4, words.length); windowSize >= 2; windowSize--) {
+  for (
+    let windowSize = Math.min(4, words.length);
+    windowSize >= 2;
+    windowSize--
+  ) {
     for (let start = 0; start <= words.length - windowSize; start++) {
-      const phrase = words.slice(start, start + windowSize).join("\\s+(?:<[^>]*>\\s*)*");
+      const phrase = words
+        .slice(start, start + windowSize)
+        .join("\\s+(?:<[^>]*>\\s*)*");
       const phraseRegex = new RegExp(phrase, "i");
       const phraseMatch = phraseRegex.exec(blockText);
       if (phraseMatch) {

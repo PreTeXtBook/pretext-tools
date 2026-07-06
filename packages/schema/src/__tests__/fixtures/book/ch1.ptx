@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<chapter xml:id="ch1">
+  <title>Chapter One</title>
+  <p>Some valid text.</p>
+  <notallowed>this element is not valid here</notallowed>
+</chapter>

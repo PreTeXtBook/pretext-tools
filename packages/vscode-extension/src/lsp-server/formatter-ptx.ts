@@ -9,13 +9,17 @@ import { documents } from "./state";
 import { globalSettings } from "./main";
 import { formatPretext } from "@pretextbook/format";
 
-function getOptions() {
+function getOptions(editorOptions?: {
+  tabSize: number;
+  insertSpaces: boolean;
+}) {
   return {
     breakSentences: globalSettings.formatter.breakSentences,
     breakLines: globalSettings.formatter.blankLines,
     breakLongAttributes: globalSettings.formatter.breakLongAttributes,
-    tabSize: globalSettings.editor.tabSize,
-    insertSpaces: globalSettings.editor.insertSpaces,
+    tabSize: editorOptions?.tabSize ?? globalSettings.editor.tabSize,
+    insertSpaces:
+      editorOptions?.insertSpaces ?? globalSettings.editor.insertSpaces,
     printWidth: globalSettings.formatter.printWidth,
   };
 }
@@ -36,7 +40,7 @@ export async function formatDocument(
 
   console.log("formatting with pretext-tools formatter.");
   try {
-    let formatted = formatPretext(origText, getOptions());
+    let formatted = formatPretext(origText, getOptions(params.options));
     return [{ newText: formatted, range: replacementRange }];
   } catch (e) {
     console.log("Could not format document", e);
@@ -66,7 +70,7 @@ export async function formatRange(
     console.log(
       origText.slice(doc.offsetAt(range.start), doc.offsetAt(range.end)),
     );
-    let formatted = formatPretext(rangeSlice, getOptions());
+    let formatted = formatPretext(rangeSlice, getOptions(params.options));
     console.log("formatted", formatted);
     return [{ newText: formatted, range }];
   } catch (e) {

@@ -11,6 +11,7 @@ import {
   DocumentSymbol,
   CodeActionKind,
   TextDocumentPositionParams,
+  Diagnostic,
 } from "vscode-languageserver/node";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import {
@@ -28,6 +29,7 @@ import {
   getCompletions,
   getCompletionDetails,
 } from "./completions/get-completions";
+import { clearCompletionCache } from "@pretextbook/schema";
 //import { formatDocument, formatRange } from "./formatter";
 import { formatDocument, formatRange, formatText } from "./formatter-ptx";
 import { getReferences, updateReferences } from "./completions/utils";
@@ -36,6 +38,18 @@ import path from "path";
 
 //Get path to schema:
 export const schemaDir = path.join(__dirname, "..", "assets", "schema");
+
+import {
+  scheduleValidation,
+  clearValidation,
+  shouldValidate,
+  loadValidationGrammar,
+  setValidationMode,
+} from "./validation";
+
+/** Publish diagnostics for a given document URI. */
+const publishDiagnostics = (uri: string, diagnostics: Diagnostic[]) =>
+  connection.sendDiagnostics({ uri, diagnostics });
 
 let hasConfigurationCapability = false;
 let hasWorkspaceFolderCapability = false;
@@ -113,6 +127,7 @@ connection.onInitialized(() => {
         if (schemaConfig) {
           pretextSchema = await initializeSchema(schemaConfig);
           globalSettings.schema = schemaConfig;
+          setValidationMode(schemaConfig.validationMode);
           console.log("Schema set to: ", schemaConfig);
           // Use the schemaConfig as needed
         } else {
@@ -131,6 +146,9 @@ connection.onInitialized(() => {
     getAst(path.join(schemaDir, "publication-schema.rng")),
   );
   projectSchema = new Schema(getAst(path.join(schemaDir, "project-ptx.rng")));
+
+  // Load the precompiled RELAX NG grammar used for schema validation.
+  loadValidationGrammar(globalSettings.schema?.versionName);
 
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
@@ -154,6 +172,7 @@ interface LspSettings {
   schema: {
     versionName: string;
     customPath: string;
+    validationMode: "Strict" | "Relaxed";
   };
   formatter: {
     breakSentences: boolean;
@@ -174,7 +193,7 @@ const tabSizeConfigSection = "editor.tabSize";
 const insertSpacesConfigSection = "editor.insertSpaces";
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 const defaultSettings: LspSettings = {
-  schema: { versionName: "Stable", customPath: "" },
+  schema: { versionName: "Stable", customPath: "", validationMode: "Strict" },
   formatter: {
     blankLines: "some",
     breakSentences: true,
@@ -230,13 +249,29 @@ connection.onDidChangeConfiguration((change) => {
     connection.workspace
       .getConfiguration(schemaConfigSection)
       .then(async (schemaConfig) => {
-        if (
-          schemaConfig &&
-          globalSettings.schema.versionName !== schemaConfig.versionName
-        ) {
+        if (!schemaConfig) {
+          return;
+        }
+        const versionChanged =
+          globalSettings.schema.versionName !== schemaConfig.versionName;
+        const modeChanged =
+          globalSettings.schema.validationMode !== schemaConfig.validationMode;
+        if (!versionChanged && !modeChanged) {
+          return;
+        }
+        if (versionChanged) {
           pretextSchema = await initializeSchema(schemaConfig);
-          globalSettings.schema = schemaConfig;
-          console.log("Schema set to", schemaConfig);
+          // Reload the validation grammar for the new schema version.
+          loadValidationGrammar(schemaConfig.versionName);
+        }
+        globalSettings.schema = schemaConfig;
+        setValidationMode(schemaConfig.validationMode);
+        console.log("Schema set to", schemaConfig);
+        // Re-validate open documents against the new schema / ruleset.
+        for (const doc of documents.all()) {
+          if (shouldValidate(doc)) {
+            scheduleValidation(doc, publishDiagnostics);
+          }
         }
       });
   }
@@ -255,6 +290,8 @@ connection.onDidChangeConfiguration((change) => {
 documents.onDidClose((e) => {
   console.log("closed", e.document.uri);
   clearDocumentInfo(e.document.uri);
+  clearValidation(e.document.uri, publishDiagnostics);
+  clearCompletionCache(e.document.uri);
 });
 
 // The content of a text document has changed. This event is emitted
@@ -273,6 +310,9 @@ documents.onDidChangeContent(async (change) => {
       uri: change.document.uri,
       diagnostics: parseErrors,
     });
+  } else if (shouldValidate(change.document)) {
+    // Validate ordinary PreTeXt source files against the RELAX NG schema.
+    scheduleValidation(change.document, publishDiagnostics);
   }
 });
 

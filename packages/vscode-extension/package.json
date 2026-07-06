@@ -469,6 +469,20 @@
             "default": "",
             "markdownDescription": "Provide a path to your custom schema file.  This will override the schema version setting."
           },
+          "pretext-tools.schema.validationMode": {
+            "order": 3,
+            "type": "string",
+            "default": "Strict",
+            "enum": [
+              "Strict",
+              "Relaxed"
+            ],
+            "markdownEnumDescriptions": [
+              "Report every violation of the PreTeXt schema (default).",
+              "Ignore a curated list of harmless violations (such as `<document-id>` and `<blurb>` inside `<docinfo>`) while still reporting genuine schema errors."
+            ],
+            "markdownDescription": "Choose how strictly to validate against the PreTeXt schema.  **Relaxed** suppresses a small set of common, harmless violations that the stable schema does not yet allow; **Strict** reports everything."
+          },
           "pretext-tools.pythonPath": {
             "order": 20,
             "type": "string",
@@ -585,6 +599,7 @@
     "@pretextbook/latex-pretext": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
+    "@pretextbook/schema": "*",
     "@pretextbook/visual-editor": "*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <book xml:id="bk">
+    <title>A Modular Book</title>
+    <xi:include href="ch1.ptx" xmlns:xi="http://www.w3.org/2001/XInclude" />
+  </book>
+</pretext>
