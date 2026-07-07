@@ -62,13 +62,44 @@ npm run test -w @pretextbook/schema         # Vitest
 npm run test:reliability                    # Conversion reliability matrix (remark-pretext, etc.)
 ```
 
-## CI
+## CI/CD Setup
 
-`.github/workflows/pull-request-tests.yml` runs three jobs:
+The GitHub Actions workflow (`.github/workflows/pull-request-tests.yml`) automatically runs on every PR and push to main:
 
-1. **Checks** — formatting, schema checks, reliability matrix
-2. **vscode-extension-unit** — Vitest unit tests (depends on `npm run build:deps`)
-3. **vscode-extension-integration** — VS Code integration tests with `xvfb-run` (depends on `npm run build`)
+### Jobs and Timeouts
+
+| Job | Timeout | What it does |
+|---|---|---|
+| **checks** | 30m | Formatting (Prettier), schema artifacts, utility builds, reliability matrix |
+| **vscode-extension-unit** | 15m | Vitest unit tests (41 tests across 7 files) |
+| **vscode-extension-integration** | 20m | VS Code instance tests with `xvfb-run` (4 tests) |
+| **test-results** | — | Depends on all three above; reports unified pass/fail status |
+
+### Key Features
+
+- **Concurrency control**: Pushes to the same branch cancel previous runs (avoids redundant CI on force-push)
+- **Clear PR checks**: The `test-results` job provides a single pass/fail signal visible in PR UI — drill down into individual job logs for details
+- **Timeouts**: Prevents hanging on slow network or system load (VS Code download can take a while on first run)
+- **Headless display**: Integration tests use `xvfb-run -a` for a virtual X display (no GUI available in CI)
+
+### Example PR Check Status
+
+When you push to a PR, GitHub shows:
+- ✅ checks (formatting + reliability)
+- ✅ vscode-extension-unit (41 tests)
+- ✅ vscode-extension-integration (4 tests)
+- ✅ test-results (summary)
+
+If any fail, the PR is blocked until fixed.
+
+### Local Pre-Push Checks
+
+Before pushing, run locally to catch issues early:
+```bash
+npm run lint                           # Format + linting
+npm run test:unit -w pretext-tools     # Unit tests (fast)
+npm run test:integration -w pretext-tools  # Integration tests (slow, needs display)
+```
 
 ## Common Issues
 
