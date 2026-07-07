@@ -35,9 +35,7 @@ import { formatDocument, formatRange, formatText } from "./formatter-ptx";
 import { getReferences, updateReferences } from "./completions/utils";
 import { getAst, initializeSchema, Schema } from "./schema";
 import path from "path";
-
-//Get path to schema:
-export const schemaDir = path.join(__dirname, "..", "assets", "schema");
+import { schemaDir } from "./paths";
 
 import {
   scheduleValidation,

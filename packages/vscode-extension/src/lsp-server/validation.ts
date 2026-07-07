@@ -12,7 +12,7 @@ import {
   type FileReader,
   type Ruleset,
 } from "@pretextbook/schema";
-import { schemaDir } from "./main";
+import { schemaDir } from "./paths";
 import { documents } from "./state";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import { isPublicationPtx } from "./completions/utils";

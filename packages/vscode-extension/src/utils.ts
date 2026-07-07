@@ -4,6 +4,11 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { SpellCheckScope } from "./types";
 import { cli } from "./cli";
+import {
+  getProjectFolder,
+  stripColorCodes,
+  buildSpellCheckIgnorePatterns,
+} from "./pure-utils";
 
 export let currentPanel: vscode.WebviewPanel | undefined;
 
@@ -145,23 +150,6 @@ function getWebviewContent(scriptUri: vscode.Uri): string {
 </html>`;
 }
 
-/**
- * Looks up the directory tree for a directory that contains a "project.ptx" folder, and returns that path, or null if no such folder exists.
- * @param path: the path of the directory to start looking in
- * @returns null if no project.ptx files is found above `path` or the path of the first parent that contains a project.ptx.
- */
-function getProjectFolder(dirPath: string): string | null {
-  console.log("Checking for project.ptx in: ", dirPath);
-  if (dirPath === path.dirname(dirPath)) {
-    console.log("Reached root directory, no project.ptx found.");
-    return null;
-  } else if (fs.existsSync(path.join(dirPath, "project.ptx"))) {
-    return dirPath;
-  } else {
-    return getProjectFolder(path.dirname(dirPath));
-  }
-}
-
 async function installPretext(progress: vscode.Progress<{}>) {
   // Here we will attempt to pip install pretext, upgraded to the most recent version.  This will happen if pretext is not found, or if a user requests it through a command.
 
@@ -226,34 +214,7 @@ function setSpellCheckConfig() {
     "Current value of spellCheck.checkErrorsInsideScope is",
     spellCheckScopes,
   );
-  let ignorePatterns: string[] = [];
-  if (spellCheckScopes) {
-    if (spellCheckScopes.comments === "Ignore") {
-      ignorePatterns.push("<!--.*?-->");
-    }
-    if (spellCheckScopes.inlineMath === "Ignore") {
-      ignorePatterns.push("<m>.*?</m>");
-    }
-    if (spellCheckScopes.displayMath === "Ignore") {
-      ignorePatterns.push(
-        "<(me|men|md|mdn)>(.|\n|\r|\n\r)*?</(me|men|md|mdn)>",
-      );
-    }
-    if (spellCheckScopes.inlineCode === "Ignore") {
-      ignorePatterns.push("<c>.*?</c>");
-    }
-    if (spellCheckScopes.blockCode === "Ignore") {
-      ignorePatterns.push(
-        "<(program|sage|pre)>(.|\n|\r|\n\r)*?</(program|sage|pre)>",
-      );
-    }
-    if (spellCheckScopes.latexImage === "Ignore") {
-      ignorePatterns.push("<latex-image>(.|\n|\r|\n\r)*?</latex-image>");
-    }
-    if (spellCheckScopes.tags === "Ignore") {
-      ignorePatterns.push("<[^!].*?>");
-    }
-  }
+  const ignorePatterns = buildSpellCheckIgnorePatterns(spellCheckScopes);
   // Get current languageSettings for cSpell and update those for pretext
   let languageSettings: any = cSpellConfig.get("languageSettings");
   for (let dicts of languageSettings) {
@@ -353,12 +314,6 @@ function setupTerminal(
   }
   terminal.show();
   return terminal;
-}
-
-function stripColorCodes(input: string): string {
-  // ANSI color code regex
-  const regex = /\x1B\[[0-9;]*m/g;
-  return input.replace(regex, "");
 }
 
 /**

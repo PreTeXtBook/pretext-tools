@@ -47,6 +47,8 @@ npm test
 npm run test -w @pretextbook/completions
 ```
 
+See [**Testing Guide**](docs/TESTING.md) for detailed instructions on running unit and integration tests for the VS Code extension, understanding the two-layer test architecture, and troubleshooting common issues.
+
 ### Linting
 
 ```bash

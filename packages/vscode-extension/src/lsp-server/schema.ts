@@ -3,7 +3,7 @@ import fs from "fs";
 import { fromXml } from "xast-util-from-xml";
 import { CONTINUE, SKIP, visit } from "unist-util-visit";
 import deepmerge from "deepmerge";
-import { schemaDir } from "./main";
+import { schemaDir } from "./paths";
 
 type SchemaGroup = {
   [key: string]: {
