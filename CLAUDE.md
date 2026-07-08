@@ -37,32 +37,39 @@ npm run lint
 
 # Refresh PreTeXt RNG schemas from upstream
 npm run refresh:schemas
+
+# Refresh vendored PreTeXt XSL stylesheets (pretext-html package) from upstream
+npm run refresh:xsl
 ```
 
 **Running the extension locally (VS Code):**
+
 1. `npm run build:dev` for an initial build
 2. Press F5 to launch the "Run Extension + LSP" compound configuration
 3. Reload the extension window to pick up TypeScript recompilation
 
 **LSP debugger:** The LSP server auto-attaches on port 6009 when launched via the compound config. Set breakpoints in `packages/vscode-extension/src/lsp-server/`.
 
-**What `npm test` actually runs:** the root `test` script only covers `completions`, `prettier-plugin-pretext`, and a fixed list of "reliability" spec files (`remark-pretext`, `ptxast-util-to-mdast`, `latex-pretext`). It does **not** run `format`'s or `ptxast`'s own Vitest suites, nor `vscode-extension`'s integration tests — run those with `npm run test -w <package>` directly. `vscode-extension`'s test script (`vscode-test`) launches a real VS Code instance and is also runnable from the editor via the "Extension Tests" debug configuration.
+**What `npm test` actually runs:** the root `test` script only covers `completions`, `prettier-plugin-pretext`, `schema`, `pretext-html`, `vscode-extension` unit specs, and a fixed list of "reliability" spec files (`remark-pretext`, `ptxast-util-to-mdast`, `latex-pretext`). It does **not** run `format`'s or `ptxast`'s own Vitest suites, nor `vscode-extension`'s integration tests — run those with `npm run test -w <package>` directly. `vscode-extension`'s test script (`vscode-test`) launches a real VS Code instance and is also runnable from the editor via the "Extension Tests" debug configuration.
+
+**JSPI note (`pretext-html`):** `@pretextbook/pretext-html` runs libxslt as WebAssembly and needs the `--experimental-wasm-jspi` Node flag, which is banned in `NODE_OPTIONS`. Its vitest config passes the flag via `test.execArgv`; its CLI (`cli.mjs`) re-launches itself with the flag; the VS Code extension forks `out/instant-preview-worker.mjs` with the flag in `execArgv`.
 
 ## Architecture
 
 ### Packages
 
-| Package | Role | Build tool |
-|---|---|---|
-| `vscode-extension` (`pretext-tools`) | Main VS Code extension: extension host, LSP client, commands, webview | esbuild → `out/extension.js` + `out/lsp-server.js` |
-| `visual-editor` | React/TipTap WYSIWYG editor (VS Code webview UI) | Vite |
-| `prettier-plugin-pretext` | Prettier plugin for PreTeXt XML | esbuild (ESM + CJS) |
-| `completions` | Completion/intellisense engine (consumed by LSP server) | None — exports raw `.ts` source directly (`main`/`types` point at `src/index.ts`) |
-| `format` | PreTeXt document formatter library | Vite (ESM + CJS) |
-| `latex-pretext` | LaTeX-to-PreTeXt conversion via `unified-latex` | Vite (ESM + CJS, via `vite-plugin-dts`) |
-| `ptxast` | TypeScript types for the PreTeXt AST | Vite (ESM + CJS, via `vite-plugin-dts`) |
-| `remark-pretext`, `ptxast-util-to-mdast` | AST conversion utilities (Markdown ⇄ PreTeXt AST) | Vite |
-| `playground` | Dev-only web playground for testing conversions | Vite |
+| Package                                  | Role                                                                                                                                                                                                    | Build tool                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `vscode-extension` (`pretext-tools`)     | Main VS Code extension: extension host, LSP client, commands, webview                                                                                                                                   | esbuild → `out/extension.js` + `out/lsp-server.js`                                |
+| `visual-editor`                          | React/TipTap WYSIWYG editor (VS Code webview UI)                                                                                                                                                        | Vite                                                                              |
+| `prettier-plugin-pretext`                | Prettier plugin for PreTeXt XML                                                                                                                                                                         | esbuild (ESM + CJS)                                                               |
+| `completions`                            | Completion/intellisense engine (consumed by LSP server)                                                                                                                                                 | None — exports raw `.ts` source directly (`main`/`types` point at `src/index.ts`) |
+| `format`                                 | PreTeXt document formatter library                                                                                                                                                                      | Vite (ESM + CJS)                                                                  |
+| `latex-pretext`                          | LaTeX-to-PreTeXt conversion via `unified-latex`                                                                                                                                                         | Vite (ESM + CJS, via `vite-plugin-dts`)                                           |
+| `pretext-html`                           | PreTeXt→HTML in pure JS: official XSLT via `libxslt-wasm`; powers the extension's Instant Preview; vendored `assets/xsl/` + generated `assets/preview-html.xsl` (regenerate with `npm run refresh:xsl`) | Vite (ESM only; needs Node `--experimental-wasm-jspi`)                            |
+| `ptxast`                                 | TypeScript types for the PreTeXt AST                                                                                                                                                                    | Vite (ESM + CJS, via `vite-plugin-dts`)                                           |
+| `remark-pretext`, `ptxast-util-to-mdast` | AST conversion utilities (Markdown ⇄ PreTeXt AST)                                                                                                                                                       | Vite                                                                              |
+| `playground`                             | Dev-only web playground for testing conversions                                                                                                                                                         | Vite                                                                              |
 
 `extension/` (not a package) — extension manifest, TextMate grammar, snippets, and static assets that ship with the published extension.
 

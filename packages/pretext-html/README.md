@@ -1,0 +1,132 @@
+# @pretextbook/pretext-html
+
+Convert [PreTeXt](https://pretextbook.org) documents to HTML in pure
+JavaScript — no Python, no PreTeXt installation. This runs the **official,
+unmodified PreTeXt XSLT stylesheets** with
+[libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm), a WebAssembly
+build of libxml2/libxslt/libexslt (the same C libraries the Python CLI uses
+via lxml), so the HTML matches a real `pretext build`.
+
+The output is a single, standalone HTML page: PreTeXt's _portable HTML_ mode
+is forced on, so theme css/js and MathJax load from public CDNs and the whole
+document is rendered as one page. This is what powers the "Instant Preview"
+in the PreTeXt-tools VS Code extension, and it is published so other tools
+(e.g. pretext.plus) can render previews the same way.
+
+## Usage
+
+### CLI
+
+```sh
+npx @pretextbook/pretext-html source/main.ptx \
+  --project-dir . \
+  --publication publication/publication.ptx \
+  -o preview.html
+```
+
+HTML goes to stdout (or `--output`); diagnostics (`PTX:WARNING`, `PTX:ERROR`,
+deprecation notices) go to stderr. Run `pretext-html --help` for all options.
+
+The CLI relaunches itself with `--experimental-wasm-jspi` automatically (see
+[Requirements](#requirements)).
+
+### API (Node)
+
+```js
+import { renderHtml } from "@pretextbook/pretext-html";
+
+const { html } = await renderHtml({
+  sourcePath: "source/main.ptx", // root document
+  projectDir: ".", // directory the transform may read from
+  publicationPath: "publication/publication.ptx", // optional
+  stringParams: {}, // optional extra XSLT stringparams
+});
+```
+
+- `sourceContent` lets you render unsaved editor text (with `sourcePath` still
+  anchoring relative `xi:include`s).
+- The user's publication file is respected, except
+  `<html><platform portable="yes"/></html>` is always forced — that is what
+  makes single-page in-memory output possible.
+- The compiled stylesheet is cached per `xslDir` (~1s to compile, then
+  ~100ms–1s per render depending on document size).
+
+## Requirements
+
+- **Node ≥ 22** launched with **`--experimental-wasm-jspi`** (WebAssembly
+  stack switching). The flag is not allowed in `NODE_OPTIONS`; it must be on
+  the command line. The `pretext-html` CLI re-executes itself with the flag;
+  API users must supply it themselves (in tests, vitest's `execArgv` option
+  works — see `vite.config.mts`).
+- Network access _for the rendered page_ (theme css/js and MathJax come from
+  `cdn.jsdelivr.net`). The transform itself runs fully offline.
+
+## How it works
+
+1. **Vendored stylesheets** — `assets/xsl/` is a snapshot of the upstream
+   [`pretext/xsl`](https://github.com/PreTeXtBook/pretext/tree/master/xsl)
+   tree (GPL-licensed; see `assets/xsl/LICENSE-pretext`). Refresh with
+   `npm run refresh:xsl` from the monorepo root.
+2. **Generated wrapper** — `assets/preview-html.xsl` imports `pretext-html.xsl`
+   and overrides the `file-wrap` template with a verbatim copy minus its
+   `<exsl:document>` wrapper, so the complete page (head, theme links,
+   masthead, content) lands on the main result tree instead of on disk. All
+   other file-writing templates are stubbed. The wrapper is **generated** by
+   `scripts/refresh-xsl.mjs`, which also audits every `exsl:document` site
+   reachable from `pretext-html.xsl` and fails if upstream adds a writer we
+   don't cover.
+3. **Virtual-host fetch shim** — the WASM build has no filesystem
+   (`FILESYSTEM=0`); every resource load (stylesheet imports, `document()`
+   calls, the publication file) goes through the global `fetch`. We mount
+   fake origins like `http://mnt1.ptx.invalid` backed by local directories
+   and in-memory strings — no HTTP server involved.
+4. **JS XInclude** — `xi:include` is resolved in JavaScript before parsing
+   (libxml2's own XInclude pass cannot suspend in the current WASM build).
+   Supports nested includes, `parse="text"`, and `xi:fallback`; `xpointer` is
+   not supported.
+
+## Limitations (current WASM build)
+
+| Limitation                                                 | Cause                                             | Fix                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| Whole-book documents crash ("memory access out of bounds") | ~64KB WASM stack vs. libxslt's per-node recursion | Rebuild libxslt-wasm with `STACK_SIZE=8MB`                                  |
+| No multi-file output (`exsl:document`)                     | Compiled with `FILESYSTEM=0`                      | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
+| Node only, JSPI flag required                              | Loader fetches resources mid-transform via JSPI   | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
+| No generated images (latex-image, sageplot, …)             | Produced by the Python toolchain, not XSLT        | Out of scope; run `pretext generate` and the preview will pick the files up |
+| `xi:include` with `xpointer` unsupported                   | JS resolver stands in for libxml2's               | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+
+Missing generated assets degrade gracefully: the transform serves a stub for
+missing files, PreTeXt emits its usual `PTX:ERROR` advice, and the preview
+renders without the image.
+
+## Forking libxslt-wasm (phase 2)
+
+The limitations above are compile flags, not architecture. When ready:
+
+1. Fork [jeremy-code/libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm)
+   (MIT). The Emscripten build configuration is in its `Makefile`/build
+   scripts.
+2. Change the Emscripten link flags:
+   - `-sFILESYSTEM=1` — enables `exsl:document` writes into in-memory MEMFS,
+     readable back from JS; unlocks real multi-file builds.
+   - `-sSTACK_SIZE=8388608` (8MB, matching native defaults) and
+     `-sALLOW_MEMORY_GROWTH=1` — fixes whole-book stack overflows.
+3. Add `xmlXIncludeProcessFlags` to the JSPI exports list (the
+   `Asyncify`/JSPI `exportPattern` — see `ASYNCIFY_EXPORTS` in the build) so
+   native XInclude can suspend for fetches; then the JS resolver in
+   `src/xinclude.ts` can be retired (or kept as a fallback).
+4. Optional, to drop the JSPI requirement entirely (needed for
+   Firefox/Safari/browser use): preload `assets/xsl/` into MEMFS at module
+   init so no fetch ever happens mid-transform, and switch the entity loader
+   to synchronous MEMFS reads.
+5. Publish as `@pretextbook/libxslt-wasm` (or vendor the artifacts) and swap
+   the dependency in this package's `package.json`. Everything else —
+   wrapper stylesheet, mounts, API — stays the same.
+
+## Development
+
+```sh
+npm run build -w @pretextbook/pretext-html    # vite build to dist/
+npm run test -w @pretextbook/pretext-html     # vitest (JSPI via execArgv)
+npm run refresh:xsl                            # re-vendor xsl + regenerate wrapper (from repo root)
+```

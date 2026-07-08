@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--********************************************************************
+Copyright 2014-2021 Robert A. Beezer
+
+This file is part of PreTeXt.
+
+PreTeXt is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 or version 3 of the
+License (at your option).
+
+PreTeXt is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
+*********************************************************************-->
+
+<!-- See  xsl/localizations/README.md  for an explanation of this file -->
+
+<!-- en-US, English (United States) -->
+<!-- Robert A. Beezer, beezer@pugetsound.edu, 2014-08-11   -->
+
+<!-- RULES for keeping a translation in sync with this en-US file,    -->
+<!-- which is the template.  (Comments here are documentation; see    -->
+<!-- also  README.md.)                                                -->
+<!--                                                                  -->
+<!-- * Provide the same "localization" elements in the same order     -->
+<!--   as en-US.  Strip the comments from any two files and the       -->
+<!--   lists of string-ids should be identical and identically        -->
+<!--   ordered.                                                       -->
+<!-- * For a string you do not translate, leave the en-US line in     -->
+<!--   place, commented out, one element per comment line, indented   -->
+<!--   to match, so it is easy to find and fill in later.             -->
+<!-- * Keep the short heading comments that label groups of strings   -->
+<!--   (e.g. "AXIOM-LIKE blocks", "Various").  Do not copy the        -->
+<!--   longer explanatory comments; that documentation lives only     -->
+<!--   in en-US.                                                      -->
+<!-- * Do add comments of your own that record tricky translation     -->
+<!--   choices.  Those are kept.                                      -->
+
+<!-- Every localization should specify the direction of the language, -->
+<!-- there is no assumed default.  Left-to-right is "ltr" and         -->
+<!-- right-to-left is "rtl".  Provide these exactly as written since  -->
+<!-- they can migrate untouched into output (e.g. HTML).              -->
+
+<!-- Every localization should specify two "styles" for how       -->
+<!-- primary/outer quote marks are given (double quotes in        -->
+<!-- English) and how secondary/inner quote marks are given       -->
+<!-- (single quotes in English).  Here are the extant styles      -->
+<!-- and crude Unicode versions of how they might look:           -->
+<!--                                                              -->
+<!--     english-single          ‘word’                           -->
+<!--     english-double          “word”                           -->
+<!--     angle-single            ‹word›                           -->
+<!--     angle-double            «word»                           -->
+<!--     angle-single-space      ‹ word ›                         -->
+<!--     angle-double-space      « word »                         -->
+<!--     down-up-single          ‚word’                           -->
+<!--     down-up-double          „word”                           -->
+<!--                                                              -->
+<!-- Maintainers: please use the  pretext-dev  group to discuss   -->
+<!-- what is best for your language.  If a style exists, then it  -->
+<!-- is just a simple edit of the default English values.  New    -->
+<!-- styles require Unicode values and LaTeX macros to be         -->
+<!-- implemented, work which RAB can do easily.  Examples in the  -->
+<!-- sample article can be updated with new languages/countries,  -->
+<!-- or created with iconic quotes from the specific language.    -->
+<!-- The table at Wikipedia is not a bad thing to consult, even   -->
+<!-- if it seems to have some inaccuracies.                       -->
+<!--                                                              -->
+<!--     https://en.wikipedia.org/wiki/Quotation_mark             -->
+
+<locale language="en-US" direction="ltr"
+        quote-primary="english-double" quote-secondary="english-single">
+
+    <!-- THEOREM-LIKE blocks -->
+    <!-- Environments which have proofs, plus proofs themselves -->
+    <localization string-id='theorem'>Theorem</localization>
+    <localization string-id='corollary'>Corollary</localization>
+    <localization string-id='lemma'>Lemma</localization>
+    <localization string-id='algorithm'>Algorithm</localization>
+    <localization string-id='proposition'>Proposition</localization>
+    <localization string-id='claim'>Claim</localization>
+    <localization string-id='fact'>Fact</localization>
+    <localization string-id='identity'>Identity</localization>
+    <!-- PROOF-LIKE -->
+    <!-- We know these five names for PROOF-LIKE have subtle shades of meaning. -->
+    <!-- Provide a good translation for "proof" itself, and do your best with   -->
+    <!-- the others.  It is highly likely authors will rename one or more of    -->
+    <!-- the others.                                                            -->
+    <localization string-id='proof'>Proof</localization>
+    <localization string-id='argument'>Argument</localization>
+    <localization string-id='justification'>Justification</localization>
+    <localization string-id='reasoning'>Reasoning</localization>
+    <localization string-id='explanation'>Explanation</localization>
+    <!-- used for a (logical) portion of a proof -->
+    <localization string-id='case'>Case</localization>
+    <!-- Components of the narrative -->
+    <!-- Mathematical statements without proofs -->
+    <!-- AXIOM-LIKE blocks -->
+    <localization string-id='axiom'>Axiom</localization>
+    <localization string-id='conjecture'>Conjecture</localization>
+    <localization string-id='principle'>Principle</localization>
+    <localization string-id='heuristic'>Heuristic</localization>
+    <localization string-id='hypothesis'>Hypothesis</localization>
+    <localization string-id='assumption'>Assumption</localization>
+    <!-- Definitions -->
+    <localization string-id='definition'>Definition</localization>
+    <!--Mathematics -->
+    <!-- "equation" is a string signaling one line of displayed mathematics         -->
+    <!-- "displaymath" is a string signaling several lines of displayed mathematics -->
+    <!-- The first is for elements like "me", "men", and "mrow"                     -->
+    <!-- The second is for elements like "md" and "mdn"                             -->
+    <localization string-id='equation'>Equation</localization>
+    <localization string-id='displaymath'>Display Mathematics</localization>
+    <!-- Types of documents, mostly for informational messages -->
+    <localization string-id='volume'>Volume</localization>
+    <localization string-id='book'>Book</localization>
+    <localization string-id='article'>Article</localization>
+    <localization string-id='letter'>Letter</localization>
+    <localization string-id='slideshow'>Slideshow</localization>
+    <localization string-id='memo'>Memo</localization>
+    <localization string-id='presentation'>Presentation</localization>
+    <!-- Parts of a document -->
+    <!-- "part" will also be used for a "stage" of a WeBWorK problem -->
+    <localization string-id='frontmatter'>Front Matter</localization>
+    <localization string-id='part'>Part</localization>
+    <localization string-id='chapter'>Chapter</localization>
+    <localization string-id='appendix'>Appendix</localization>
+    <!-- Next is the plural of Appendix, used to identify a group of appendix -->
+    <localization string-id='appendices'>Appendices</localization>
+    <localization string-id='section'>Section</localization>
+    <localization string-id='subsection'>Subsection</localization>
+    <localization string-id='subsubsection'>Subsubsection</localization>
+    <!-- A "slide" is a screenful of a presentation (Powerpoint, Beamer) -->
+    <localization string-id='slide'>Slide</localization>
+    <localization string-id='introduction'>Introduction</localization>
+    <localization string-id='conclusion'>Conclusion</localization>
+    <localization string-id='exercises'>Exercises</localization>
+    <localization string-id='worksheet'>Worksheet</localization>
+    <localization string-id='handout'>Handout</localization>
+    <localization string-id='reading-questions'>Reading Questions</localization>
+    <localization string-id='solutions'>Solutions</localization>
+    <localization string-id='glossary'>Glossary</localization>
+    <localization string-id='references'>References</localization>
+    <localization string-id='backmatter'>Back Matter</localization>
+    <!-- paragraph is deprecated, getting plural correct is not super critical, just in messages -->
+    <localization string-id='paragraphs'>Paragraphs</localization>
+    <localization string-id='subparagraph'>Subparagraph</localization>
+    <!-- Adjustments to titles of divisions -->
+    <!-- When the a "worksheet" or "exercises" is marked as being  -->
+    <!-- "group work" the default title gets prefaced with "Group". -->
+    <localization string-id='group'>Group</localization>
+    <!-- Components of the narrative -->
+    <!-- REMARK-LIKE blocks -->
+    <!-- "note" is used within "biblio", likely to change -->
+    <localization string-id='remark'>Remark</localization>
+    <localization string-id='convention'>Convention</localization>
+    <localization string-id='note'>Note</localization>
+    <localization string-id='observation'>Observation</localization>
+    <localization string-id='warning'>Warning</localization>
+    <localization string-id='insight'>Insight</localization>
+    <!-- COMPUTATION-LIKE blocks -->
+    <localization string-id='computation'>Computation</localization>
+    <localization string-id='technology'>Technology</localization>
+    <localization string-id='data'>Data</localization>
+    <!-- ASIDE-LIKE blocks -->
+    <localization string-id='aside'>Aside</localization>
+    <localization string-id='biographical'>Biographical Aside</localization>
+    <localization string-id='historical'>Historical Aside</localization>
+    <!-- EXAMPLE-LIKE blocks -->
+    <localization string-id='example'>Example</localization>
+    <localization string-id='question'>Question</localization>
+    <localization string-id='problem'>Problem</localization>
+    <!-- PROJECT-LIKE blocks -->
+    <localization string-id='project'>Project</localization>
+    <localization string-id='activity'>Activity</localization>
+    <localization string-id='exploration'>Exploration</localization>
+    <localization string-id='task'>Task</localization>
+    <localization string-id='investigation'>Investigation</localization>
+    <!-- assemblages are collections of minimally structured material -->
+    <localization string-id='assemblage'>Assemblage</localization>
+    <localization string-id='poem'>Poem</localization>
+    <!-- Objectives is the block, objective is a list item within -->
+    <localization string-id='objectives'>Objectives</localization>
+    <localization string-id='objective'>Objective</localization>
+    <!-- Outcomes is the block, outcome is a list item within (different) -->
+    <!-- These two words need to be different, to avoid ambiguous cross-references -->
+    <localization string-id='outcomes'>Outcomes</localization>
+    <localization string-id='outcome'>Outcome</localization>
+    <!-- "Open" means unsolved, a research question/problem -->
+    <localization string-id='openquestion'>Open Question</localization>
+    <localization string-id='openproblem'>Open Problem</localization>
+    <localization string-id='openconjecture'>Open Conjecture</localization>
+    <!-- "discussion" on open problems -->
+    <localization string-id='context'>Context</localization>
+    <localization string-id='discussion'>Discussion</localization>
+    <localization string-id='opinion'>Opinion</localization>
+    <localization string-id='status'>Status</localization>
+    <localization string-id='suggestion'>Suggestion</localization>
+    <!--  -->
+    <localization string-id='figure'>Figure</localization>
+    <localization string-id='table'>Table</localization>
+    <localization string-id='listing'>Listing</localization>
+    <localization string-id='fn'>Footnote</localization>
+    <localization string-id='contributor'>Contributor</localization>
+    <!-- Lists and their items -->
+    <localization string-id='list'>List</localization>
+    <localization string-id='li'>Item</localization>
+    <!-- A term (word) defined in a glossary item -->
+    <localization string-id='gi'>Term</localization>
+    <!-- A regular paragraph, not the old sectioning structure -->
+    <localization string-id='p'>Paragraph</localization>
+    <localization string-id='blockquote'>Quotation</localization>
+    <!-- The "pre" element is short for "preformatted text".  PreTeXt uses it -->
+    <!-- more as paragraph, rendered in monospace, with newlines respected. -->
+    <localization string-id='pre'>Code Block</localization>
+    <!-- Literate programming, a chunk of computer code -->
+    <localization string-id='fragment'>Fragment</localization>
+    <!-- Parts of an exercise and its solution -->
+    <!-- An "exercise", at any level, within an "exercises" division is a          -->
+    <!-- "divisional" exercise and the string employed is 'divisionalexercise'.    -->
+    <!-- An "exercise" whose parent is a division (chapter, section, etc) we       -->
+    <!-- call an "inline exercise" and the string employed is 'inlineexercise'.    -->
+    <!-- And an "exercise" in a "worksheet" is a 'worksheetexercise'.              -->
+    <!-- And an "exercise" in a "reading-questions" is a 'readingquestion'.         -->
+    <!-- It is important to use different translations so that a text with         -->
+    <!-- different types of exercises do not have ambiguous cross-references       -->
+    <!-- (there is an example of this at the start of one of the later             -->
+    <!-- sections of the sample article).                                          -->
+    <!--                                                                           -->
+    <!-- In English, an "Exercise" is something you do that has a beneficial       -->
+    <!-- outcome, such as "I am going to the gym to exercise."  A "Checkpoint"     -->
+    <!-- is something you must do before you do something else.  Another use of    -->
+    <!-- the term is a location on a roadway where you must stop for the      -->
+    <!-- police to do an inspection. A worksheet is a collection of activities or  -->
+    <!-- problems, typically printed on paper, which might be used in a classroom. -->
+    <localization string-id='divisionalexercise'>Exercise</localization>
+    <localization string-id='inlineexercise'>Checkpoint</localization>
+    <localization string-id='worksheetexercise'>Worksheet Exercise</localization>
+    <localization string-id='readingquestion'>Reading Question</localization>
+    <localization string-id='webwork'>WeBWorK</localization>
+    <localization string-id='hint'>Hint</localization>
+    <localization string-id='answer'>Answer</localization>
+    <localization string-id='solution'>Solution</localization>
+    <!-- A subdivision of an "exercises" section -->
+    <localization string-id='subexercises'>Subexercises</localization>
+    <!-- A group of divisional exercises (with introduction and conclusion) -->
+    <localization string-id='exercisegroup'>Exercise Group</localization>
+    <!-- Bibliographic items (note is distinct from sidebar "Annotations" below) -->
+    <localization string-id='biblio'>Bibliographic Entry</localization>
+    <!-- Front matter components -->
+    <localization string-id='toc'>Contents</localization>
+    <localization string-id='abstract'>Abstract</localization>
+    <localization string-id='preface'>Preface</localization>
+    <localization string-id='acknowledgement'>Acknowledgements</localization>
+    <localization string-id='biography'>Author Biography</localization>
+    <!-- singular and plural titles for biography subdivision -->
+    <localization string-id='about-author'>About the Author</localization>
+    <localization string-id='about-authors'>About the Authors</localization>
+    <localization string-id='foreword'>Foreword</localization>
+    <localization string-id='dedication'>Dedication</localization>
+    <localization string-id='colophon'>Colophon</localization>
+    <!-- Runestone Activities -->
+    <!-- These terms will appear in student activity/engagement -->
+    <!-- reports for an instructor of a Runestone course.       -->
+    <!-- Normally they will not be apparent to a reader.        -->
+    <localization string-id='video'>Video</localization>
+    <localization string-id='program'>Program</localization>
+    <!-- Runestone Exercises -->
+    <!-- These terms will appear in static versions of  -->
+    <!-- Runestone exercises, such as a True/False question. -->
+    <localization string-id='true'>True</localization>
+    <localization string-id='false'>False</localization>
+    <localization string-id='or'>Or</localization>
+    <localization string-id='either'>Either</localization>
+    <localization string-id='uncategorized'>Uncategorized</localization>
+    <localization string-id='query'>Query</localization>
+    <!-- "ActiveCode" and "CodeLens" are Runestone-constructs -->
+    <!-- and so really *should not* be translated.            -->
+    <localization string-id='program-activecode'>ActiveCode</localization>
+    <localization string-id='scratch-activecode'>Scratch ActiveCode</localization>
+    <localization string-id='program-codelens'>CodeLens</localization>
+    <!-- Back matter components -->
+    <!-- index-part is deprecated, but not abandoned          -->
+    <!-- NB: repurpose translations, maybe move appendix here -->
+    <localization string-id='index'>Index</localization>
+    <localization string-id='jump-to'>Jump to:</localization>
+    <!-- Parts of the Index -->
+    <localization string-id='see'>See</localization>
+    <localization string-id='also'>See also</localization>
+    <!-- Notation List headings/foot -->
+    <localization string-id='symbol'>Symbol</localization>
+    <localization string-id='description'>Description</localization>
+    <localization string-id='location'>Location</localization>
+    <localization string-id='page'>Page</localization>
+    <localization string-id='continued'>Continued on next page</localization>
+    <!-- Navigation Interface elements -->
+    <!-- Assistive "skip to content" link -->
+    <localization string-id='skip-to-content'>Skip to main content</localization>
+    <localization string-id='previous'>Previous</localization>
+    <localization string-id='up'>Up</localization>
+    <localization string-id='next'>Next</localization>
+    <!-- Keep these short, so buttons are not overly wide, 4 characters maximum -->
+    <localization string-id='previous-short'>Prev</localization>
+    <localization string-id='up-short'>Up</localization>
+    <localization string-id='next-short'>Next</localization>
+    <localization string-id='top'>Top</localization>
+    <!-- NB: Use toc from above for both headings and navigation sidebar-->
+    <localization string-id='annotations'>Annotations</localization>
+    <localization string-id='feedback'>Feedback</localization>
+    <!-- This phrase should suggest that PreTeXt is the source -->
+    <!-- language that makes a particular output possible      -->
+    <localization string-id='authored'>Authored in PreTeXt</localization>
+    <!-- Search Results display/dialog -->
+    <!-- The result of a search as part of HTML output will throw up       -->
+    <!-- an overlay window with the search results.  "Search Results"      -->
+    <!-- is like a heading.  It renders like "Search Results: algorithm".  -->
+    <!-- When a reader uses a term that produces no results (perhaps they  -->
+    <!-- misspell the search term) then they get a message to that effect. -->
+    <!-- Capitalize "Search Results" - used as a heading, no punctuation   -->
+    <localization string-id='search-book'>Search Book</localization>
+    <localization string-id='search-results-heading'>Search Results</localization>
+    <!-- Short phrase, no punctuation -->
+    <localization string-id='no-search-results'>No results</localization>
+   <!-- Parts of memos and letters -->
+    <localization string-id='to'>To</localization>
+    <localization string-id='from'>From</localization>
+    <localization string-id='subject'>Subject</localization>
+    <localization string-id='date'>Date</localization>
+    <localization string-id='cc'>cc</localization>
+    <localization string-id='enclosure'>encl</localization>
+    <!-- Various -->
+    <localization string-id='todo'>To Do</localization>
+    <localization string-id='editor'>Editor</localization>
+    <localization string-id='edition'>Edition</localization>
+    <localization string-id='website'>Website</localization>
+    <localization string-id='copyright'>Copyright</localization>
+    <localization string-id='keywords'>Keywords</localization>
+    <!-- HTML clickables (lowercase strings to click on) -->
+    <localization string-id='permalink'>permalink</localization>
+    <localization string-id='incontext'>In Context</localization>
+    <!-- Static representations of audio, video, and interactive  -->
+    <!-- elements link to the HTML version.  "standalone" is for  -->
+    <!-- the dedicated page, "embed" is for the embeddable iframe -->
+    <localization string-id='standalone'>Standalone</localization>
+    <localization string-id='embed'>Embed</localization>
+    <localization string-id='embed-this-page'>Embed this page</localization>
+    <localization string-id='copy'>Copy</localization>
+    <localization string-id='profile'>Profile</localization>
+    <!-- A permalink icon in HTML output will have a tooltip (on hover) -->
+    <!-- that says something like                                       -->
+    <!--                                                                -->
+    <!--    Copy heading and permalink for Theorem 5.8 The Chain Rule   -->
+    <!--    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                              -->
+    <!--                                                                -->
+    <!-- The indicated portion will be localized.  "heading" might be   -->
+    <!-- replaced by "description" if that is easier to translate.      -->
+    <localization string-id='permalink-tooltip'>Copy heading and permalink for</localization>
+    <localization string-id='calculator'>Calculator</localization>
+    <!-- Sage Cell evaluate button      -->
+    <!-- eg, "Evaluate (Maxima)"        -->
+    <!-- 2017-05-14: 'code' is obsolete -->
+    <!-- This needs to be defined to *something* (always)       -->
+    <!-- else whatever crud ends up on the button kills the cell -->
+    <localization string-id='evaluate'>Evaluate</localization>
+    <!-- <localization string-id='code'>Code</localization> -->
+    <!-- How to run an interactive widget, sliders, checkboxes, etc -->
+    <localization string-id='instructions'>Instructions</localization>
+    <!-- Interactive exercise feedback messages                   -->
+    <!-- These might be part of a feedback message for submitting -->
+    <!-- an answer, e.g. "Correct!" or "Correct: 50%".            -->
+    <localization string-id='correct'>Correct</localization>
+    <localization string-id='incorrect'>Incorrect</localization>
+    <!-- To signal that a reader left an answer blank             -->
+    <localization string-id='blank'>Blank</localization>
+    <!-- Submit or check responses                                -->
+    <localization string-id='submit'>Submit</localization>
+    <localization string-id='check-responses'>Check Responses</localization>
+    <!-- Reveal correct answers                                   -->
+    <localization string-id='reveal'>Reveal</localization>
+    <!-- Randomize parameters for a randomizable exercise         -->
+    <localization string-id='randomize'>Randomize</localization>
+    <!-- Activate an interactive (from a static preview)          -->
+    <localization string-id='activate'>Activate</localization>
+    <!-- Reset an interactive to its original state               -->
+    <localization string-id='reset'>Reset</localization>
+    <!-- Describe an array of fill-in-the-blanks, say for a matrix -->
+    <localization string-id='array'>array</localization>
+    <!-- "paper size" toggle title                                -->
+    <localization string-id="papersize">Paper size</localization>
+    <!-- Additional printing options -->
+    <localization string-id="printing-options">Additional printing options</localization>
+    <!-- "hide hint/answer/solutions" toggle title                         -->
+    <localization string-id="hide-hints">Hide hints</localization>
+    <localization string-id="hide-answers">Hide answers</localization>
+    <localization string-id="hide-solutions">Hide solutions</localization>
+    <!-- "header/footer" toggle title                         -->
+    <localization string-id="print-header">Print headers</localization>
+    <localization string-id="print-footer">Print footers</localization>
+    <localization string-id="first-page">First page</localization>
+    <localization string-id="running">Running</localization>
+    <!-- "highlight workspace" toggle title                         -->
+    <localization string-id="highlight-workspace">Highlight workspace</localization>
+    <!-- Print page button text                                   -->
+    <localization string-id='print'>Print</localization>
+    <!-- Print preview tooltip/title text                         -->
+    <localization string-id='print-preview'>Print preview</localization>
+    <!-- Close something interactive                              -->
+    <localization string-id='close'>Close</localization>
+    <localization string-id='open-new-tab'>Open in new tab</localization>
+    <!-- Readability menu items, HTML only, utilized by Javascript -->
+    <localization string-id='readability-settings'>Readability settings</localization>
+    <localization string-id='readability-line-height'>Line height</localization>
+    <localization string-id='readability-content-font-size'>Content font size</localization>
+    <localization string-id='readability-theme'>Theme</localization>
+    <localization string-id='readability-theme-system'>System</localization>
+    <localization string-id='readability-theme-light'>Light</localization>
+    <localization string-id='readability-theme-dark'>Dark</localization>
+    <localization string-id='readability-assistive-technologies'>Assistive technologies</localization>
+    <localization string-id='readability-expose-permalinks'>Expose permalinks</localization>
+    <localization string-id='reset-all'>Reset All</localization>
+</locale>
