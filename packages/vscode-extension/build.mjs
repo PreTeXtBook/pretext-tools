@@ -69,8 +69,8 @@ const buildOptionsLSP = {
   plugins: [esbuildProblemMatcherPlugin],
 };
 
-// The instant-preview worker is a separate forked process (it needs the
-// --experimental-wasm-jspi Node flag). ESM output because the bundled
+// The instant-preview worker is a separate forked process (WebAssembly JSPI
+// may need a process-level flag). ESM output because the bundled
 // libxslt-wasm glue uses top-level await; the .wasm binary itself is copied
 // next to the bundle by copy-vscode-extension-assets.mjs and located at
 // runtime via `new URL("libxslt.wasm", import.meta.url)`.
