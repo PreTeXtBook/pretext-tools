@@ -16,6 +16,11 @@ const schemaUrls = [
   "https://raw.githubusercontent.com/PreTeXtBook/pretext-cli/refs/heads/main/schema/project-ptx.rng",
   "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/publication-schema.rng",
   "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pretext.rng",
+  // pf-adapter.rng, pf-preamble-adapter.rng, and pf_schema.rng are required by pretext.rng
+  // via <externalRef> and <include> elements for PreFigure diagram support.
+  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf-adapter.rng",
+  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf-preamble-adapter.rng",
+  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf_schema.rng",
   "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pretext-dev.rng",
 ];
 

@@ -44,6 +44,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "abstract": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -60,9 +61,16 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:id"
     ]
   },
+  "accessed": {
+    "elements": [
+      "date"
+    ],
+    "attributes": []
+  },
   "acknowledgement": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -82,7 +90,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -129,6 +136,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -161,7 +169,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -281,6 +289,7 @@ export const defaultDevSchema: CompletionSchema = {
   "algorithm": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -307,7 +316,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -459,6 +468,7 @@ export const defaultDevSchema: CompletionSchema = {
   "answer": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -483,7 +493,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -495,6 +504,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -533,6 +543,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -568,7 +581,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -586,6 +598,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "backmatter",
       "biographical",
@@ -624,6 +637,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -659,7 +675,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -766,6 +781,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "aside": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -780,13 +796,13 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "assemblage": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -803,7 +819,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -818,7 +833,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -939,6 +953,20 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "audio": {
+    "elements": [],
+    "attributes": [
+      "component",
+      "end",
+      "href",
+      "label",
+      "margins",
+      "source",
+      "start",
+      "width",
+      "xml:id"
+    ]
+  },
   "author": {
     "elements": [
       "abbr",
@@ -990,6 +1018,7 @@ export const defaultDevSchema: CompletionSchema = {
       "midpoint",
       "minus",
       "n",
+      "name",
       "natural",
       "nb",
       "nbsp",
@@ -1062,7 +1091,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1081,7 +1109,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1107,6 +1134,7 @@ export const defaultDevSchema: CompletionSchema = {
   "biblio": {
     "elements": [
       "abbr",
+      "accessed",
       "acro",
       "ad",
       "alert",
@@ -1119,6 +1147,8 @@ export const defaultDevSchema: CompletionSchema = {
       "c",
       "ca",
       "chord",
+      "collection-title",
+      "container-title",
       "copyleft",
       "copyright",
       "custom",
@@ -1127,8 +1157,10 @@ export const defaultDevSchema: CompletionSchema = {
       "dblprime",
       "degree",
       "delete",
+      "DOI",
       "doubleflat",
       "doublesharp",
+      "edition",
       "editor",
       "eg",
       "ellipsis",
@@ -1139,12 +1171,17 @@ export const defaultDevSchema: CompletionSchema = {
       "fillin",
       "flat",
       "foreign",
+      "genre",
       "ibid",
       "icon",
       "idx",
       "ie",
       "init",
       "insert",
+      "ISBN",
+      "ISSN",
+      "issue",
+      "issued",
       "journal",
       "kbd",
       "langle",
@@ -1163,7 +1200,10 @@ export const defaultDevSchema: CompletionSchema = {
       "ndash",
       "note",
       "number",
+      "number-of-pages",
       "obelus",
+      "page",
+      "page-first",
       "pages",
       "permille",
       "pf",
@@ -1176,6 +1216,8 @@ export const defaultDevSchema: CompletionSchema = {
       "prime",
       "ps",
       "publisher",
+      "publisher-place",
+      "pubnote",
       "pubtitle",
       "q",
       "quantity",
@@ -1204,7 +1246,9 @@ export const defaultDevSchema: CompletionSchema = {
       "title",
       "today",
       "trademark",
+      "translator",
       "url",
+      "URL",
       "var",
       "viz",
       "volume",
@@ -1224,6 +1268,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "biographical": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -1238,7 +1283,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1246,6 +1290,7 @@ export const defaultDevSchema: CompletionSchema = {
   "biography": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1265,7 +1310,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1280,7 +1324,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1301,7 +1344,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1424,6 +1466,7 @@ export const defaultDevSchema: CompletionSchema = {
   "case": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1448,7 +1491,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "direction",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1458,7 +1500,8 @@ export const defaultDevSchema: CompletionSchema = {
       "cline"
     ],
     "attributes": [
-      "latexsep"
+      "latexsep",
+      "showspaces"
     ]
   },
   "cell": {
@@ -1493,6 +1536,7 @@ export const defaultDevSchema: CompletionSchema = {
       "etc",
       "fillin",
       "flat",
+      "fn",
       "foreign",
       "icon",
       "ie",
@@ -1575,6 +1619,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -1612,6 +1657,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -1646,7 +1694,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1678,6 +1725,7 @@ export const defaultDevSchema: CompletionSchema = {
   "claim": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1704,7 +1752,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -1726,8 +1774,48 @@ export const defaultDevSchema: CompletionSchema = {
       "width"
     ]
   },
+  "collection-title": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
   "colophon": {
     "elements": [
+      "audio",
       "blockquote",
       "colophon-items",
       "console",
@@ -1754,6 +1842,7 @@ export const defaultDevSchema: CompletionSchema = {
   "computation": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1777,7 +1866,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1789,6 +1877,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -1820,6 +1909,9 @@ export const defaultDevSchema: CompletionSchema = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -1845,7 +1937,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1860,7 +1951,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1876,6 +1966,76 @@ export const defaultDevSchema: CompletionSchema = {
       "margins",
       "prompt",
       "width"
+    ]
+  },
+  "container-title": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "context": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
     ]
   },
   "contributor": {
@@ -1903,6 +2063,7 @@ export const defaultDevSchema: CompletionSchema = {
   "convention": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1926,7 +2087,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1947,6 +2107,7 @@ export const defaultDevSchema: CompletionSchema = {
   "corollary": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1973,7 +2134,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -2097,6 +2258,7 @@ export const defaultDevSchema: CompletionSchema = {
   "data": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -2120,7 +2282,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -2284,7 +2445,11 @@ export const defaultDevSchema: CompletionSchema = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "day",
+      "month",
+      "year"
+    ]
   },
   "dblbrackets": {
     "elements": [
@@ -2399,7 +2564,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -2414,7 +2578,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -2660,6 +2824,37 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "discussion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "division": {
     "elements": [],
     "attributes": [
@@ -2689,19 +2884,27 @@ export const defaultDevSchema: CompletionSchema = {
       "math-package",
       "numbering",
       "parsons",
+      "pf:prefigure-preamble",
       "programs",
       "rename"
     ],
     "attributes": [
-      "xml:base",
       "xml:lang"
     ]
+  },
+  "DOI": {
+    "elements": [],
+    "attributes": []
   },
   "doubleflat": {
     "elements": [],
     "attributes": []
   },
   "doublesharp": {
+    "elements": [],
+    "attributes": []
+  },
+  "dropping-particle": {
     "elements": [],
     "attributes": []
   },
@@ -2716,6 +2919,7 @@ export const defaultDevSchema: CompletionSchema = {
       "email",
       "institution",
       "location",
+      "name",
       "personname"
     ],
     "attributes": []
@@ -3044,6 +3248,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3073,7 +3278,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3082,6 +3287,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3115,7 +3321,6 @@ export const defaultDevSchema: CompletionSchema = {
       "label",
       "number",
       "workspace",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3132,7 +3337,6 @@ export const defaultDevSchema: CompletionSchema = {
       "cols",
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3152,7 +3356,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3161,6 +3364,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3193,7 +3397,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3201,6 +3405,7 @@ export const defaultDevSchema: CompletionSchema = {
   "fact": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3227,13 +3432,18 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
   },
+  "family": {
+    "elements": [],
+    "attributes": []
+  },
   "feedback": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -3248,6 +3458,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "figure": {
     "elements": [
+      "audio",
       "caption",
       "idx",
       "image",
@@ -3261,7 +3472,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3519,10 +3729,13 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "genre": {
+    "elements": [],
+    "attributes": []
   },
   "genus": {
     "elements": [],
@@ -3531,6 +3744,7 @@ export const defaultDevSchema: CompletionSchema = {
   "gi": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3549,10 +3763,13 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "given": {
+    "elements": [],
+    "attributes": []
   },
   "glossary": {
     "elements": [
@@ -3566,7 +3783,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3671,6 +3887,7 @@ export const defaultDevSchema: CompletionSchema = {
   "headnote": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3696,7 +3913,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3704,6 +3920,7 @@ export const defaultDevSchema: CompletionSchema = {
   "hint": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3728,13 +3945,13 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "historical": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -3749,7 +3966,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3768,7 +3984,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3786,6 +4001,7 @@ export const defaultDevSchema: CompletionSchema = {
   "identity": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3812,7 +4028,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3966,7 +4182,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4127,6 +4342,7 @@ export const defaultDevSchema: CompletionSchema = {
   "insight": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -4150,7 +4366,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4289,19 +4504,6 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
-  "interlude": {
-    "elements": [
-      "blockquote",
-      "console",
-      "image",
-      "p",
-      "pre",
-      "program",
-      "tabular",
-      "video"
-    ],
-    "attributes": []
-  },
   "intertext": {
     "elements": [
       "abbr",
@@ -4409,6 +4611,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -4440,6 +4643,9 @@ export const defaultDevSchema: CompletionSchema = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -4465,7 +4671,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4474,6 +4679,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -4506,7 +4712,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -4515,6 +4721,24 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "input",
       "output"
+    ],
+    "attributes": []
+  },
+  "ISBN": {
+    "elements": [],
+    "attributes": []
+  },
+  "ISSN": {
+    "elements": [],
+    "attributes": []
+  },
+  "issue": {
+    "elements": [],
+    "attributes": []
+  },
+  "issued": {
+    "elements": [
+      "date"
     ],
     "attributes": []
   },
@@ -4639,6 +4863,7 @@ export const defaultDevSchema: CompletionSchema = {
   "lemma": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -4665,7 +4890,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -4685,6 +4910,7 @@ export const defaultDevSchema: CompletionSchema = {
       "articletitle",
       "aside",
       "attr",
+      "audio",
       "bc",
       "biographical",
       "blockquote",
@@ -4802,7 +5028,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4925,7 +5150,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4952,10 +5176,13 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "literal": {
+    "elements": [],
+    "attributes": []
   },
   "location": {
     "elements": [
@@ -5191,6 +5418,18 @@ export const defaultDevSchema: CompletionSchema = {
       "pc"
     ]
   },
+  "name": {
+    "elements": [
+      "dropping-particle",
+      "family",
+      "given",
+      "literal",
+      "non-dropping-particle",
+      "static-ordering",
+      "suffix"
+    ],
+    "attributes": []
+  },
   "natural": {
     "elements": [],
     "attributes": []
@@ -5204,6 +5443,10 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": []
   },
   "ndash": {
+    "elements": [],
+    "attributes": []
+  },
+  "non-dropping-particle": {
     "elements": [],
     "attributes": []
   },
@@ -5221,6 +5464,7 @@ export const defaultDevSchema: CompletionSchema = {
   "note": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5244,12 +5488,15 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "number": {
+    "elements": [],
+    "attributes": []
+  },
+  "number-of-pages": {
     "elements": [],
     "attributes": []
   },
@@ -5276,7 +5523,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5284,6 +5530,7 @@ export const defaultDevSchema: CompletionSchema = {
   "observation": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5307,7 +5554,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5320,6 +5566,106 @@ export const defaultDevSchema: CompletionSchema = {
       "cols",
       "component",
       "marker"
+    ]
+  },
+  "openconjecture": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "openproblem": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "openquestion": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "opinion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
     ]
   },
   "outcomes": {
@@ -5335,7 +5681,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5454,6 +5799,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
+      "workspace",
       "xml:id"
     ]
   },
@@ -5464,6 +5810,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -5494,6 +5841,9 @@ export const defaultDevSchema: CompletionSchema = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "paragraphs",
       "poem",
@@ -5518,6 +5868,10 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "page-first": {
+    "elements": [],
+    "attributes": []
+  },
   "pages": {
     "elements": [],
     "attributes": [
@@ -5532,6 +5886,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -5563,6 +5918,9 @@ export const defaultDevSchema: CompletionSchema = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -5588,7 +5946,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5610,7 +5967,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5677,6 +6033,10 @@ export const defaultDevSchema: CompletionSchema = {
       "label"
     ]
   },
+  "pf:prefigure-preamble": {
+    "elements": [],
+    "attributes": []
+  },
   "pg-code": {
     "elements": [],
     "attributes": []
@@ -5719,7 +6079,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "halign",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5732,6 +6091,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "postlude": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5759,6 +6119,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "aside",
       "attribution",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5779,7 +6140,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5790,6 +6150,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "prelude": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5827,7 +6188,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5836,6 +6196,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -5865,7 +6226,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -5884,6 +6245,7 @@ export const defaultDevSchema: CompletionSchema = {
       "autorun",
       "chatcodes",
       "codelens",
+      "codetailor",
       "compile-also",
       "compiler-args",
       "component",
@@ -5923,6 +6285,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -5955,13 +6318,14 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
   },
   "prompt": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5976,6 +6340,7 @@ export const defaultDevSchema: CompletionSchema = {
   "proof": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "case",
@@ -6000,7 +6365,9 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "ref",
+      "text",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6008,6 +6375,7 @@ export const defaultDevSchema: CompletionSchema = {
   "proposition": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -6034,7 +6402,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6045,6 +6413,84 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "publisher": {
     "elements": [],
+    "attributes": []
+  },
+  "publisher-place": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "pubnote": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
     "attributes": []
   },
   "pubtitle": {
@@ -6259,6 +6705,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -6288,7 +6735,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6314,7 +6761,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6332,7 +6778,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6344,6 +6789,7 @@ export const defaultDevSchema: CompletionSchema = {
   "remark": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -6367,7 +6813,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6523,11 +6968,13 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": [
       "component",
+      "landscape",
       "margins",
       "valign",
       "valigns",
       "width",
-      "widths"
+      "widths",
+      "xml:id"
     ]
   },
   "scaledeg": {
@@ -6548,6 +6995,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -6585,6 +7033,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -6619,7 +7070,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7033,6 +7483,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "sidebyside": {
     "elements": [
+      "audio",
       "console",
       "dl",
       "exercise",
@@ -7048,12 +7499,12 @@ export const defaultDevSchema: CompletionSchema = {
       "stack",
       "table",
       "tabular",
-      "task",
       "ul",
       "video"
     ],
     "attributes": [
       "component",
+      "landscape",
       "margins",
       "valign",
       "valigns",
@@ -7068,6 +7519,7 @@ export const defaultDevSchema: CompletionSchema = {
   "solution": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7092,7 +7544,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7113,7 +7564,6 @@ export const defaultDevSchema: CompletionSchema = {
       "inline",
       "label",
       "project",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7224,6 +7674,7 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "stack": {
     "elements": [
+      "audio",
       "console",
       "dl",
       "image",
@@ -7346,7 +7797,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7354,6 +7804,7 @@ export const defaultDevSchema: CompletionSchema = {
   "statement": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7376,6 +7827,41 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "static-ordering": {
+    "elements": [],
+    "attributes": []
+  },
+  "status": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "stdin": {
     "elements": [],
     "attributes": []
@@ -7394,7 +7880,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7406,6 +7891,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -7443,6 +7929,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -7477,7 +7966,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7489,6 +7977,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -7524,6 +8013,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -7557,7 +8049,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7662,6 +8153,41 @@ export const defaultDevSchema: CompletionSchema = {
       "xref"
     ],
     "attributes": []
+  },
+  "suffix": {
+    "elements": [],
+    "attributes": []
+  },
+  "suggestion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
   },
   "support": {
     "elements": [
@@ -7787,7 +8313,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7799,6 +8324,7 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": [
       "bottom",
+      "break",
       "component",
       "halign",
       "left",
@@ -7822,10 +8348,13 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
       "console",
+      "context",
+      "discussion",
       "figure",
       "hint",
       "historical",
@@ -7834,6 +8363,7 @@ export const defaultDevSchema: CompletionSchema = {
       "introduction",
       "list",
       "listing",
+      "opinion",
       "p",
       "pre",
       "program",
@@ -7842,6 +8372,8 @@ export const defaultDevSchema: CompletionSchema = {
       "sidebyside",
       "solution",
       "statement",
+      "status",
+      "suggestion",
       "table",
       "tabular",
       "task",
@@ -7852,7 +8384,6 @@ export const defaultDevSchema: CompletionSchema = {
       "component",
       "label",
       "workspace",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7869,6 +8400,7 @@ export const defaultDevSchema: CompletionSchema = {
   "technology": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7892,7 +8424,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -8012,6 +8543,7 @@ export const defaultDevSchema: CompletionSchema = {
   "theorem": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -8038,7 +8570,7 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -8187,6 +8719,12 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [],
     "attributes": []
   },
+  "translator": {
+    "elements": [
+      "name"
+    ],
+    "attributes": []
+  },
   "ul": {
     "elements": [
       "li"
@@ -8303,6 +8841,10 @@ export const defaultDevSchema: CompletionSchema = {
       "visual"
     ]
   },
+  "URL": {
+    "elements": [],
+    "attributes": []
+  },
   "usage": {
     "elements": [
       "m"
@@ -8356,6 +8898,7 @@ export const defaultDevSchema: CompletionSchema = {
   "warning": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -8379,7 +8922,6 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -8418,6 +8960,7 @@ export const defaultDevSchema: CompletionSchema = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -8452,6 +8995,9 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "page",
@@ -8482,12 +9028,14 @@ export const defaultDevSchema: CompletionSchema = {
     "attributes": [
       "bottom",
       "component",
+      "courseid",
       "label",
       "left",
       "margin",
       "right",
+      "series",
+      "seriescode",
       "top",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
