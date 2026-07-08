@@ -1,9 +1,9 @@
 import { window, workspace } from "vscode";
 import { Project, Target } from "./types";
 import { getProjectFolder } from "./utils";
+import { parseTargetsFromManifest } from "./project-manifest";
 import * as path from "path";
 import * as fs from "fs";
-import { parseString } from "xml2js";
 import { cli } from "./cli";
 
 const DEFAULTMANIFEST = "project.ptx";
@@ -119,31 +119,8 @@ function getTargets({
   console.log("Project manifest is ", projectManifest);
   if (fs.existsSync(projectManifest)) {
     // Parse the project.ptx xml and look for target elements
-    // Return an array of Target objects
-    let contents = fs.readFileSync(projectManifest, "utf8");
-    // Parse the XML content
-    let targets: Target[] = [];
-    parseString(contents, (err, result) => {
-      if (err) {
-        console.error("Error parsing XML: ", err);
-        return;
-      }
-
-      if (
-        result.project &&
-        result.project.targets &&
-        result.project.targets[0].target
-      ) {
-        targets = result.project.targets[0].target.map((t: any) => {
-          return {
-            // The attributes of the target element are given as the children of the $ property
-            name: t.$.name,
-            path: projectRoot,
-            standalone: (t.$.standalone && t.$.standalone !== "no") || false,
-          };
-        });
-      }
-    });
+    const contents = fs.readFileSync(projectManifest, "utf8");
+    const targets = parseTargetsFromManifest(contents, projectRoot);
     console.log("Targets are ", targets);
     return targets;
   }

@@ -588,9 +588,12 @@
     "copy-assets": "node ../../scripts/copy-vscode-extension-assets.mjs",
     "test-compile": "tsc -p ./ --noEmit",
     "typecheck": "tsc -p ./ --noEmit",
-    "pretest": "npm run esbuild && npm run lint",
+    "compile-tests": "tsc -p tsconfig.test.json",
+    "pretest:integration": "npm run esbuild && npm run copy-assets && npm run compile-tests && npm run lint",
+    "test:integration": "vscode-test",
+    "test:unit": "vitest run",
     "lint": "eslint src --ext ts",
-    "test": "vscode-test",
+    "test": "npm run test:unit",
     "package": "npm run esbuild -- --production"
   },
   "dependencies": {

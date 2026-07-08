@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project ptx-version="2">
+  <targets>
+    <target name="web">
+      <source>source/main.ptx</source>
+    </target>
+    <target name="print" format="pdf">
+      <source>source/main.ptx</source>
+    </target>
+  </targets>
+</project>

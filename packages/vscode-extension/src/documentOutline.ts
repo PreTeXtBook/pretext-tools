@@ -26,6 +26,7 @@ import {
   workspace,
   Disposable,
 } from "vscode";
+import { ELEMENT_CONFIG, OutlineItem, parseOutline } from "./outline-parser";
 
 /**
  * Check if a filename is a PreTeXt source file (.ptx or .xml).
@@ -48,39 +49,6 @@ class OutlineNode {
     public readonly uri: Uri,
   ) {}
 }
-
-/**
- * Maps PreTeXt element tags to display icons and labels.
- */
-const ELEMENT_CONFIG: Record<string, { icon: string; label: string }> = {
-  book: { icon: "book", label: "Book" },
-  article: { icon: "book", label: "Article" },
-  frontmatter: { icon: "info", label: "Front Matter" },
-  backmatter: { icon: "info", label: "Back Matter" },
-  chapter: { icon: "symbol-class", label: "Chapter" },
-  section: { icon: "symbol-class", label: "Section" },
-  subsection: { icon: "symbol-method", label: "Subsection" },
-  subsubsection: { icon: "symbol-field", label: "Subsubsection" },
-  paragraphs: { icon: "symbol-text", label: "Paragraphs" },
-  references: { icon: "references", label: "References" },
-  appendix: { icon: "symbol-class", label: "Appendix" },
-};
-
-// Only these tags appear in the outline — section headings and structural containers
-const OUTLINE_TAGS = new Set(Object.keys(ELEMENT_CONFIG));
-
-// Tags that can contain other outline-relevant elements
-const CONTAINER_TAGS = new Set([
-  "book",
-  "article",
-  "frontmatter",
-  "backmatter",
-  "chapter",
-  "section",
-  "subsection",
-  "subsubsection",
-  "appendix",
-]);
 
 /**
  * TreeDataProvider that parses a .ptx file and provides the document
@@ -196,154 +164,26 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
   /**
    * Parse a .ptx document into a tree of OutlineNodes.
    *
-   * Uses a simple line-by-line regex approach (not a full XML parser)
-   * to handle potentially malformed/incomplete XML that the user is
-   * actively editing. This is intentionally tolerant of errors.
+   * The parsing itself lives in the vscode-free `outline-parser` module; here
+   * we just attach the document `Uri` to each parsed item so the tree items can
+   * navigate back to the source.
    */
   private parseDocument(document: TextDocument): OutlineNode[] {
-    const text = document.getText();
-    const uri = document.uri;
-    const roots: OutlineNode[] = [];
-
-    // Stack to track nesting: each entry is [tag, node]
-    const stack: Array<{ tag: string; node: OutlineNode }> = [];
-
-    // Regex to find opening and closing tags of interest
-    // We process line by line for simplicity and error tolerance
-    const lines = text.split("\n");
-    let inComment = false;
-
-    for (let lineNum = 0; lineNum < lines.length; lineNum++) {
-      const line = lines[lineNum];
-
-      // Skip XML comments (simple heuristic — not perfect but good enough)
-      if (line.includes("<!--")) {
-        inComment = true;
-      }
-      if (inComment) {
-        if (line.includes("-->")) {
-          inComment = false;
-        }
-        continue;
-      }
-
-      // Check for closing tags — pop the stack
-      for (const tag of OUTLINE_TAGS) {
-        const closePattern = new RegExp(`</${tag}\\s*>`);
-        if (closePattern.test(line)) {
-          // Pop until we find the matching open tag
-          while (stack.length > 0) {
-            const top = stack[stack.length - 1];
-            stack.pop();
-            if (top.tag === tag) {
-              break;
-            }
-          }
-        }
-      }
-
-      // Check for opening tags
-      for (const tag of OUTLINE_TAGS) {
-        const openPattern = new RegExp(`<${tag}(?:\\s|>|/)`);
-        const openMatch = openPattern.exec(line);
-        if (!openMatch) {
-          continue;
-        }
-
-        // Extract xml:id if present (might be on this line or the next few)
-        let xmlId = "";
-        const idMatch = line.match(/xml:id=["']([^"']+)["']/);
-        if (idMatch) {
-          xmlId = idMatch[1];
-        }
-
-        // Extract title — look for <title>...</title> in the next few lines
-        const displayTitle = this.extractTitle(lines, lineNum);
-
-        const node = new OutlineNode(
-          tag,
-          displayTitle,
-          xmlId,
-          lineNum,
-          openMatch.index,
-          [],
-          uri,
-        );
-
-        // Add to parent's children or to roots
-        if (stack.length > 0) {
-          const parent = stack[stack.length - 1];
-          parent.node.children.push(node);
-        } else {
-          roots.push(node);
-        }
-
-        // If this tag can contain children, push it onto the stack
-        if (CONTAINER_TAGS.has(tag)) {
-          stack.push({ tag, node });
-        }
-
-        // Only match the first outline tag per line
-        break;
-      }
-    }
-
-    return roots;
+    const items = parseOutline(document.getText());
+    return items.map((item) => this.toNode(item, document.uri));
   }
 
-  /**
-   * Extract the text content of a <title>...</title> element
-   * starting from the given line. Looks ahead up to 5 lines.
-   */
-  private extractTitle(lines: string[], startLine: number): string {
-    const searchWindow = lines
-      .slice(startLine, Math.min(startLine + 8, lines.length))
-      .join("\n");
-
-    // Single-line title: <title>Text Here</title>
-    const singleLine = searchWindow.match(/<title>(.*?)<\/title>/);
-    if (singleLine) {
-      return this.cleanText(singleLine[1]);
-    }
-
-    // Multi-line title: <title>\nText Here\n</title>
-    const multiLine = searchWindow.match(/<title>\s*([\s\S]*?)\s*<\/title>/);
-    if (multiLine) {
-      return this.cleanText(multiLine[1]);
-    }
-
-    return "";
-  }
-
-  /**
-   * Extract the text content of a <caption>...</caption> element.
-   */
-  private extractCaption(lines: string[], startLine: number): string {
-    const searchWindow = lines
-      .slice(startLine, Math.min(startLine + 10, lines.length))
-      .join("\n");
-
-    const match = searchWindow.match(/<caption>([\s\S]*?)<\/caption>/);
-    if (match) {
-      const text = this.cleanText(match[1]);
-      // Truncate long captions
-      if (text.length > 60) {
-        return text.substring(0, 57) + "...";
-      }
-      return text;
-    }
-
-    return "";
-  }
-
-  /**
-   * Clean extracted text: strip XML tags, collapse whitespace.
-   */
-  private cleanText(text: string): string {
-    return text
-      .replace(/<[^>]+>/g, "") // Remove XML tags
-      .replace(/\s+/g, " ") // Collapse whitespace
-      .trim();
+  /** Recursively convert a parsed {@link OutlineItem} into a `vscode` OutlineNode. */
+  private toNode(item: OutlineItem, uri: Uri): OutlineNode {
+    return new OutlineNode(
+      item.tag,
+      item.title,
+      item.xmlId,
+      item.line,
+      item.character,
+      item.children.map((child) => this.toNode(child, uri)),
+      uri,
+    );
   }
 
   /**

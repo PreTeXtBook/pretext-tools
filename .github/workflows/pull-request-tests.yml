@@ -6,9 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -18,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Check formatting
+      - name: Check formatting (Prettier)
         run: npx prettier -c $(git ls-files "packages/vscode-extension/*.ts")
 
       - name: Check schema generated artifacts
@@ -29,3 +34,59 @@ jobs:
 
       - name: Run conversion reliability matrix
         run: npm run test:reliability
+
+  test-results:
+    name: Test Results
+    runs-on: ubuntu-latest
+    needs: [checks, vscode-extension-unit, vscode-extension-integration]
+    if: always()
+    steps:
+      - name: Check test status
+        run: |
+          if [ "${{ needs.checks.result }}" = "failure" ] || \
+             [ "${{ needs.vscode-extension-unit.result }}" = "failure" ] || \
+             [ "${{ needs.vscode-extension-integration.result }}" = "failure" ]; then
+            echo "::error::One or more test jobs failed"
+            exit 1
+          fi
+          echo "✓ All tests passed"
+
+  vscode-extension-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      # The extension's unit tests import @pretextbook/schema, so the library
+      # packages must be built before Vitest can resolve it.
+      - name: Build dependency packages
+        run: npm run build:deps
+
+      - name: Run extension unit tests (Vitest)
+        run: npm run test:unit -w pretext-tools
+
+  vscode-extension-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      # Assemble the runnable extension under dist/vscode-extension.
+      - name: Build extension
+        run: npm run build
+
+      # VS Code needs a display; xvfb-run provides a headless one.
+      - name: Run extension integration tests (VS Code)
+        run: xvfb-run -a npm run test:integration -w pretext-tools

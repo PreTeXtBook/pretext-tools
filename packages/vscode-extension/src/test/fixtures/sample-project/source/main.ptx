@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <book xml:id="test-book">
+    <title>A Test Book</title>
+    <chapter xml:id="ch-intro">
+      <title>Introduction</title>
+      <section xml:id="sec-hello">
+        <title>Hello</title>
+        <p>Some text with math <m>x^2</m>.</p>
+      </section>
+    </chapter>
+  </book>
+</pretext>
