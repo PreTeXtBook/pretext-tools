@@ -362,6 +362,13 @@
             "default": true,
             "markdownDescription": "Automatically rebuild the instant preview when a `.ptx` file is saved."
           },
+          "pretext-tools.instantPreview.nodePath": {
+            "order": 4,
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "markdownDescription": "Path to a Node.js (version 22+) executable for the instant preview worker. Only used when VS Code's built-in runtime lacks WebAssembly JSPI support; leave empty to use `node` from your PATH."
+          },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
             "type": "string",

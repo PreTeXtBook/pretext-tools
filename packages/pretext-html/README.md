@@ -58,6 +58,11 @@ const { html } = await renderHtml({
   the command line. The `pretext-html` CLI re-executes itself with the flag;
   API users must supply it themselves (in tests, vitest's `execArgv` option
   works — see `vite.config.mts`).
+- Runtimes with V8 ≥ 13.7 (Chromium/Electron ≥ 137, and eventually Node
+  itself) ship JSPI **enabled by default and reject the flag** as a bad
+  option. Feature-detect with `"Suspending" in WebAssembly` (exported as
+  `isJspiAvailable()`) before adding the flag rather than assuming it is
+  needed.
 - Network access _for the rendered page_ (theme css/js and MathJax come from
   `cdn.jsdelivr.net`). The transform itself runs fully offline.
 
