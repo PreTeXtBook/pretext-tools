@@ -1,0 +1,214 @@
+/**
+ * JavaScript XInclude resolution.
+ *
+ * The libxslt-wasm build cannot run libxml2's own XInclude pass:
+ * `xmlXIncludeProcessFlags` is not on the compile-time list of
+ * JSPI-"promising" exports, so it traps with a SuspendError as soon as it
+ * fetches an included file. (Fixable in a rebuild of libxslt-wasm; see the
+ * package README.) Until then we resolve `<xi:include>` elements here, in JS,
+ * before handing the document to the parser.
+ *
+ * Supported: `href` includes of well-formed XML files (recursively) and
+ * `parse="text"` includes; `<xi:fallback>` when the target is missing.
+ * Not supported: `xpointer` (rejected with a clear error).
+ */
+
+import { readFile } from "node:fs/promises";
+import * as path from "node:path";
+import { fromXml } from "xast-util-from-xml";
+import { toXml } from "xast-util-to-xml";
+import type { Element, Root, RootContent, Text } from "xast";
+
+const XINCLUDE_NS = "http://www.w3.org/2001/XInclude";
+const MAX_DEPTH = 64;
+
+interface ResolveContext {
+  /** Includes must stay inside this directory. */
+  projectDir: string;
+  /** Chain of files currently being processed, for cycle/err reporting. */
+  stack: string[];
+}
+
+/**
+ * Return `sourceContent` with every xi:include replaced by the contents of
+ * the referenced files. `sourcePath` anchors relative hrefs; `projectDir`
+ * bounds which files may be included.
+ */
+export async function resolveXIncludes(
+  sourceContent: string,
+  sourcePath: string,
+  projectDir: string,
+): Promise<string> {
+  if (!sourceContent.includes("include")) {
+    return sourceContent; // fast path: nothing that could be an include
+  }
+  const tree = fromXml(sourceContent);
+  const context: ResolveContext = {
+    projectDir: path.resolve(projectDir),
+    stack: [path.resolve(sourcePath)],
+  };
+  const changed = await resolveInTree(
+    tree,
+    path.dirname(path.resolve(sourcePath)),
+    { "": "" },
+    context,
+  );
+  return changed ? toXml(tree) : sourceContent;
+}
+
+/** Prefix → namespace URI bindings in scope. */
+type NsBindings = Record<string, string>;
+
+function bindingsWithElement(
+  bindings: NsBindings,
+  element: Element,
+): NsBindings {
+  let extended = bindings;
+  for (const [attr, value] of Object.entries(element.attributes)) {
+    if (attr === "xmlns" || attr.startsWith("xmlns:")) {
+      if (extended === bindings) {
+        extended = { ...bindings };
+      }
+      extended[attr === "xmlns" ? "" : attr.slice(6)] = value ?? "";
+    }
+  }
+  return extended;
+}
+
+function isXInclude(element: Element, bindings: NsBindings): boolean {
+  const colon = element.name.indexOf(":");
+  const prefix = colon === -1 ? "" : element.name.slice(0, colon);
+  const local = colon === -1 ? element.name : element.name.slice(colon + 1);
+  return local === "include" && bindings[prefix] === XINCLUDE_NS;
+}
+
+async function resolveInTree(
+  parent: Root | Element,
+  baseDir: string,
+  bindings: NsBindings,
+  context: ResolveContext,
+): Promise<boolean> {
+  let changed = false;
+  for (let i = 0; i < parent.children.length; i++) {
+    const child = parent.children[i];
+    if (child.type !== "element") {
+      continue;
+    }
+    const childBindings = bindingsWithElement(bindings, child);
+    if (isXInclude(child, childBindings)) {
+      const replacement = await expandInclude(
+        child,
+        baseDir,
+        childBindings,
+        context,
+      );
+      parent.children.splice(i, 1, ...replacement);
+      i += replacement.length - 1;
+      changed = true;
+    } else if (await resolveInTree(child, baseDir, childBindings, context)) {
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+async function expandInclude(
+  include: Element,
+  baseDir: string,
+  bindings: NsBindings,
+  context: ResolveContext,
+): Promise<RootContent[]> {
+  const currentFile = context.stack[context.stack.length - 1];
+  if (include.attributes["xpointer"]) {
+    throw new Error(
+      `xi:include with xpointer is not supported by the JS preview build ` +
+        `(in ${currentFile})`,
+    );
+  }
+  const href = include.attributes["href"];
+  if (!href) {
+    throw new Error(`xi:include without href (in ${currentFile})`);
+  }
+
+  // hrefs are URIs: percent-decode before touching the filesystem (but stay
+  // lenient about raw values that are not valid URI encodings).
+  let decodedHref = href;
+  try {
+    decodedHref = decodeURIComponent(href);
+  } catch {
+    // use the raw value
+  }
+  const target = path.resolve(baseDir, decodedHref);
+  if (
+    target !== context.projectDir &&
+    !target.startsWith(context.projectDir + path.sep)
+  ) {
+    throw new Error(
+      `xi:include escapes the project directory: ${href} (in ${currentFile})`,
+    );
+  }
+  if (context.stack.includes(target)) {
+    throw new Error(
+      `Circular xi:include: ${[...context.stack, target].join(" -> ")}`,
+    );
+  }
+  if (context.stack.length >= MAX_DEPTH) {
+    throw new Error(`xi:include nesting exceeds ${MAX_DEPTH} levels`);
+  }
+
+  let content: string;
+  try {
+    content = await readFile(target, "utf8");
+  } catch {
+    const fallback = findFallback(include, bindings);
+    if (fallback) {
+      await resolveInTree(fallback, baseDir, bindings, context);
+      return fallback.children;
+    }
+    throw new Error(`xi:include target not found: ${href} (in ${currentFile})`);
+  }
+
+  if (include.attributes["parse"] === "text") {
+    const text: Text = { type: "text", value: content };
+    return [text];
+  }
+
+  let subtree: Root;
+  try {
+    subtree = fromXml(content);
+  } catch (error) {
+    throw new Error(
+      `Could not parse xi:include target ${target} as XML: ` +
+        `${error instanceof Error ? error.message : error}. ` +
+        `(Included files must be well-formed, with a single root element.)`,
+    );
+  }
+  context.stack.push(target);
+  try {
+    await resolveInTree(subtree, path.dirname(target), { "": "" }, context);
+  } finally {
+    context.stack.pop();
+  }
+  // Splice in the elements (skipping prolog comments/PIs), mirroring
+  // libxml2's behavior of replacing the include with the document element.
+  return subtree.children.filter((node) => node.type === "element");
+}
+
+function findFallback(
+  include: Element,
+  bindings: NsBindings,
+): Element | undefined {
+  for (const child of include.children) {
+    if (child.type !== "element") {
+      continue;
+    }
+    const childBindings = bindingsWithElement(bindings, child);
+    const colon = child.name.indexOf(":");
+    const prefix = colon === -1 ? "" : child.name.slice(0, colon);
+    const local = colon === -1 ? child.name : child.name.slice(colon + 1);
+    if (local === "fallback" && childBindings[prefix] === XINCLUDE_NS) {
+      return child;
+    }
+  }
+  return undefined;
+}

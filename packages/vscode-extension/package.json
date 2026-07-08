@@ -198,6 +198,13 @@
         "description": "Open a live side-by-side HTML preview that auto-refreshes on save."
       },
       {
+        "command": "pretext-tools.instantPreview",
+        "title": "Instant Preview (no PreTeXt install needed)",
+        "icon": "$(zap)",
+        "category": "PreTeXt",
+        "description": "Render the current project to HTML instantly with the built-in XSLT engine (experimental; no PreTeXt installation required)."
+      },
+      {
         "command": "pretext-tools.forwardSearch",
         "title": "Forward Search (scroll preview to cursor)",
         "category": "PreTeXt",
@@ -348,6 +355,12 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Automatically rebuild and refresh the live preview when a `.ptx` file is saved."
+          },
+          "pretext-tools.instantPreview.autoRefresh": {
+            "order": 4,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Automatically rebuild the instant preview when a `.ptx` file is saved."
           },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
@@ -608,6 +621,7 @@
     "@pretextbook/format": "*",
     "@pretextbook/import": "*",
     "@pretextbook/latex-pretext": "*",
+    "@pretextbook/pretext-html": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
     "@pretextbook/schema": "*",

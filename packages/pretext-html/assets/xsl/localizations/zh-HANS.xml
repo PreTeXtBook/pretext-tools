@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!--********************************************************************
+Copyright 2014-2021 Robert A. Beezer
+
+This file is part of PreTeXt.
+
+PreTeXt is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 2 or version 3 of the
+License (at your option).
+
+PreTeXt is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
+*********************************************************************-->
+
+<!-- See  xsl/localizations/README.md  for an explanation of this file -->
+
+<!-- zh-HANS, Chinese Simplified (China) -->
+<!-- Hongqi Wang, whq_nuaa@qq.com, 2024-01-03   -->
+
+<locale language="zh-HANS" direction="ltr">
+    <!-- THEOREM-LIKE blocks -->
+    <localization string-id='theorem'>定理</localization>
+    <localization string-id='corollary'>推论</localization>
+    <localization string-id='lemma'>引理</localization>
+    <localization string-id='algorithm'>算法</localization>
+    <localization string-id='proposition'>命题</localization>
+    <localization string-id='claim'>断言</localization>
+    <localization string-id='fact'>事实</localization>
+    <localization string-id='identity'>恒等</localization>
+    <!-- PROOF-LIKE -->
+    <localization string-id='proof'>证明</localization>
+    <localization string-id='argument'>论证</localization>
+    <localization string-id='justification'>论证</localization>
+    <localization string-id='reasoning'>推理</localization>
+    <localization string-id='explanation'>解释</localization>
+    <localization string-id='case'>情形</localization>
+    <!-- Components of the narrative -->
+    <!-- Mathematical statements without proofs -->
+    <!-- AXIOM-LIKE blocks -->
+    <localization string-id='axiom'>公理</localization>
+    <localization string-id='conjecture'>猜想</localization>
+    <localization string-id='principle'>原理</localization>
+    <localization string-id='heuristic'>启发</localization>
+    <localization string-id='hypothesis'>假设</localization>
+    <localization string-id='assumption'>假设</localization>
+    <!-- Definitions -->
+    <localization string-id='definition'>定义</localization>
+    <!-- Mathematics -->
+    <!-- <localization string-id='equation'>Equation</localization> -->
+    <!-- <localization string-id='displaymath'>Display Mathematics</localization> -->
+    <!-- Types of documents, mostly for informational messages -->
+    <localization string-id='volume'>卷册</localization>
+    <localization string-id='book'>书籍</localization>
+    <localization string-id='article'>论文</localization>
+    <localization string-id='letter'>书札</localization>
+    <localization string-id='slideshow'>幻灯片</localization>
+    <localization string-id='memo'>备忘录</localization>
+    <localization string-id='presentation'>演示文稿</localization>
+    <!-- Parts of a document -->
+    <localization string-id='frontmatter'>前置页</localization>
+    <localization string-id='part'>部分</localization>
+    <localization string-id='chapter'>章</localization>
+    <localization string-id='appendix'>附录</localization>
+    <localization string-id='appendices'>附录</localization>
+    <localization string-id='section'>节</localization>
+    <localization string-id='subsection'>子节</localization>
+    <localization string-id='subsubsection'>子子节</localization>
+    <localization string-id='slide'>幻灯片</localization>
+    <localization string-id='introduction'>绪言</localization>
+    <localization string-id='conclusion'>结论</localization>
+    <localization string-id='exercises'>练习</localization>
+    <localization string-id='worksheet'>工作单</localization>
+    <!-- <localization string-id='handout'>Handout</localization> -->
+    <localization string-id='reading-questions'>问题</localization>
+    <localization string-id='solutions'>解答</localization>
+    <localization string-id='glossary'>术语</localization>
+    <localization string-id='references'>参考文献</localization>
+    <localization string-id='backmatter'>后置页</localization>
+    <localization string-id='paragraphs'>段落</localization>
+    <localization string-id='subparagraph'>子段落</localization>
+    <!-- Adjustments to titles of divisions -->
+    <!-- <localization string-id='group'>Group</localization> -->
+    <!-- Components of the narrative -->
+    <!-- REMARK-LIKE blocks -->
+    <localization string-id='remark'>备注</localization>
+    <localization string-id='convention'>约定</localization>
+    <localization string-id='note'>备注</localization>
+    <localization string-id='observation'>观察</localization>
+    <localization string-id='warning'>警告</localization>
+    <localization string-id='insight'>洞察</localization>
+    <!-- COMPUTATION-LIKE blocks -->
+    <localization string-id='computation'>计算</localization>
+    <localization string-id='technology'>技术</localization>
+    <localization string-id='data'>数据</localization>
+    <!-- ASIDE-LIKE blocks -->
+    <localization string-id='aside'>旁注</localization>
+    <localization string-id='biographical'>传记旁注</localization>
+    <localization string-id='historical'>历史旁注</localization>
+    <!-- EXAMPLE-LIKE blocks -->
+    <localization string-id='example'>例</localization>
+    <localization string-id='question'>问题</localization>
+    <localization string-id='problem'>问题</localization>
+    <!-- PROJECT-LIKE blocks -->
+    <localization string-id='project'>工程</localization>
+    <localization string-id='activity'>活动</localization>
+    <localization string-id='exploration'>探究</localization>
+    <localization string-id='task'>任务</localization>
+    <localization string-id='investigation'>调查</localization>
+    <localization string-id='assemblage'>集</localization>
+    <localization string-id='poem'>诗</localization>
+    <localization string-id='objectives'>目标清单</localization>
+    <localization string-id='objective'>目标</localization>
+    <localization string-id='outcomes'>成果清单</localization>
+    <localization string-id='outcome'>成果</localization>
+    <localization string-id='openquestion'>开放问题</localization>
+    <localization string-id='openproblem'>开放问题</localization>
+    <localization string-id='openconjecture'>开放猜想</localization>
+    <localization string-id='context'>上下文</localization>
+    <localization string-id='discussion'>讨论</localization>
+    <localization string-id='opinion'>见解</localization>
+    <localization string-id='status'>状态</localization>
+    <localization string-id='suggestion'>建议</localization>
+    <localization string-id='figure'>图</localization>
+    <localization string-id='table'>表</localization>
+    <localization string-id='listing'>清单</localization>
+    <localization string-id='fn'>脚注</localization>
+    <localization string-id='contributor'>贡献者</localization>
+    <!-- Lists and their items -->
+    <localization string-id='list'>列表</localization>
+    <localization string-id='li'>项</localization>
+    <localization string-id='gi'>术语</localization>
+    <localization string-id='p'>段落</localization>
+    <localization string-id='blockquote'>引用</localization>
+    <localization string-id='pre'>代码块</localization>
+    <localization string-id='fragment'>代码片段</localization>
+    <!-- Parts of an exercise and its solution -->
+    <localization string-id='divisionalexercise'>练习</localization>
+    <localization string-id='inlineexercise'>检查点</localization>
+    <localization string-id='worksheetexercise'>工作单练习</localization>
+    <localization string-id='readingquestion'>问题</localization>
+    <localization string-id='webwork'>WeBWorK</localization>
+    <localization string-id='hint'>提示</localization>
+    <localization string-id='answer'>答案</localization>
+    <localization string-id='solution'>解答</localization>
+    <localization string-id='subexercises'>子练习</localization>
+    <localization string-id='exercisegroup'>练习组</localization>
+    <localization string-id='biblio'>书目项</localization>
+    <!-- Front matter components -->
+    <localization string-id='toc'>目录</localization>
+    <localization string-id='abstract'>摘要</localization>
+    <localization string-id='preface'>前言</localization>
+    <localization string-id='acknowledgement'>致谢</localization>
+    <localization string-id='biography'>作者简介</localization>
+    <localization string-id='about-author'>关于作者</localization>
+    <localization string-id='about-authors'>关于作者</localization>
+    <localization string-id='foreword'>前言</localization>
+    <localization string-id='dedication'>致谢</localization>
+    <localization string-id='colophon'>版权</localization>
+    <!-- Runestone Activities -->
+    <localization string-id='video'>Video</localization>
+    <localization string-id='program'>Program</localization>
+    <!-- Runestone Exercises -->
+    <!-- <localization string-id='true'>True</localization> -->
+    <!-- <localization string-id='false'>False</localization> -->
+    <!-- <localization string-id='or'>Or</localization> -->
+    <!-- <localization string-id='either'>Either</localization> -->
+    <!-- <localization string-id='uncategorized'>Uncategorized</localization> -->
+    <!-- <localization string-id='query'>Query</localization> -->
+    <localization string-id='program-activecode'>ActiveCode</localization>
+    <!-- <localization string-id='scratch-activecode'>Scratch ActiveCode</localization> -->
+    <localization string-id='program-codelens'>CodeLens</localization>
+    <!-- Back matter components -->
+    <localization string-id='index'>索引</localization>
+    <localization string-id='jump-to'>跳转:</localization>
+    <!-- Parts of the Index -->
+    <localization string-id='see'>见</localization>
+    <localization string-id='also'>另见</localization>
+    <!-- Notation List headings/foot -->
+    <localization string-id='symbol'>符号</localization>
+    <localization string-id='description'>描述</localization>
+    <localization string-id='location'>位置</localization>
+    <localization string-id='page'>页</localization>
+    <localization string-id='continued'>续</localization>
+    <!-- Navigation Interface elements -->
+    <localization string-id='skip-to-content'>主要内容</localization>
+    <localization string-id='previous'>向前</localization>
+    <localization string-id='up'>向上</localization>
+    <localization string-id='next'>向后</localization>
+    <localization string-id='previous-short'>向前</localization>
+    <localization string-id='up-short'>向上</localization>
+    <localization string-id='next-short'>向后</localization>
+    <!-- <localization string-id='top'>Top</localization> -->
+    <localization string-id='annotations'>注释</localization>
+    <localization string-id='feedback'>反馈</localization>
+    <localization string-id='authored'>PreTeXt写就</localization>
+    <!-- Search Results display/dialog -->
+    <!-- <localization string-id='search-book'>Search Book</localization> -->
+    <localization string-id='search-results-heading'>搜索结果</localization>
+    <localization string-id='no-search-results'>没有结果</localization>
+    <!-- Parts of memos and letters -->
+    <localization string-id='to'>致</localization>
+    <localization string-id='from'>来自</localization>
+    <localization string-id='subject'>主题</localization>
+    <localization string-id='date'>日期</localization>
+    <localization string-id='cc'>抄送</localization>
+    <localization string-id='enclosure'>附件</localization>
+    <!-- Various -->
+    <localization string-id='todo'>待办</localization>
+    <localization string-id='editor'>编辑器</localization>
+    <localization string-id='edition'>版本</localization>
+    <localization string-id='website'>网站</localization>
+    <localization string-id='copyright'>版权</localization>
+    <!-- <localization string-id='keywords'>Keywords</localization> -->
+    <!-- HTML clickables (lowercase strings to click on) -->
+    <localization string-id='permalink'>永久链接</localization>
+    <localization string-id='incontext'>文中</localization>
+    <!-- <localization string-id='standalone'>Standalone</localization> -->
+    <!-- <localization string-id='embed'>Embed</localization> -->
+    <!-- <localization string-id='embed-this-page'>Embed this page</localization> -->
+    <!-- <localization string-id='copy'>Copy</localization> -->
+    <!-- <localization string-id='profile'>Profile</localization> -->
+    <!-- <localization string-id='permalink-tooltip'>Copy heading and permalink for</localization> -->
+    <!-- <localization string-id='calculator'>Calculator</localization> -->
+    <localization string-id='evaluate'>求解</localization>
+    <!-- <localization string-id='code'>Code</localization> -->
+    <localization string-id='instructions'>说明</localization>
+    <localization string-id='correct'>正确</localization>
+    <localization string-id='incorrect'>错误</localization>
+    <localization string-id='blank'>空白</localization>
+    <localization string-id='submit'>提交</localization>
+    <localization string-id='check-responses'>校验</localization>
+    <localization string-id='reveal'>显示</localization>
+    <localization string-id='randomize'>随机</localization>
+    <localization string-id='activate'>激活</localization>
+    <localization string-id='reset'>重置</localization>
+    <localization string-id='array'>数组</localization>
+    <!-- <localization string-id="papersize">Paper size</localization> -->
+    <!-- <localization string-id="printing-options">Additional printing options</localization> -->
+    <!-- <localization string-id="hide-hints">Hide hints</localization> -->
+    <!-- <localization string-id="hide-answers">Hide answers</localization> -->
+    <!-- <localization string-id="hide-solutions">Hide solutions</localization> -->
+    <!-- <localization string-id="print-header">Print headers</localization> -->
+    <!-- <localization string-id="print-footer">Print footers</localization> -->
+    <!-- <localization string-id="first-page">First page</localization> -->
+    <!-- <localization string-id="running">Running</localization> -->
+    <!-- <localization string-id="highlight-workspace">Highlight workspace</localization> -->
+    <localization string-id='print'>打印</localization>
+    <!-- <localization string-id='print-preview'>Print preview</localization> -->
+    <!-- <localization string-id='close'>Close</localization> -->
+    <!-- <localization string-id='open-new-tab'>Open in new tab</localization> -->
+    <!-- Readability menu items, HTML only, utilized by Javascript -->
+    <!-- <localization string-id='readability-settings'>Readability settings</localization> -->
+    <!-- <localization string-id='readability-line-height'>Line height</localization> -->
+    <!-- <localization string-id='readability-content-font-size'>Content font size</localization> -->
+    <!-- <localization string-id='readability-theme'>Theme</localization> -->
+    <!-- <localization string-id='readability-theme-system'>System</localization> -->
+    <!-- <localization string-id='readability-theme-light'>Light</localization> -->
+    <!-- <localization string-id='readability-theme-dark'>Dark</localization> -->
+    <!-- <localization string-id='readability-assistive-technologies'>Assistive technologies</localization> -->
+    <!-- <localization string-id='readability-expose-permalinks'>Expose permalinks</localization> -->
+    <!-- <localization string-id='reset-all'>Reset All</localization> -->
+</locale>

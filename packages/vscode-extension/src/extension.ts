@@ -19,6 +19,7 @@ import {
   cmdForwardSearch,
   disposeLivePreview,
 } from "./livePreview";
+import { cmdInstantPreview, disposeInstantPreview } from "./instantPreview";
 import {
   PretextDocumentOutlineProvider,
   cmdOutlineJumpToLine,
@@ -136,6 +137,9 @@ export async function activate(context: ExtensionContext) {
       cmdViewVisualEditor,
     ),
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    commands.registerCommand("pretext-tools.instantPreview", () =>
+      cmdInstantPreview(context.extensionPath),
+    ),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand(
       "pretext-tools.outlineJumpToLine",
@@ -203,6 +207,7 @@ export async function activate(context: ExtensionContext) {
 // this method is called when your extension is deactivated
 export function deactivate() {
   disposeLivePreview();
+  disposeInstantPreview();
   lspDeactivate();
   if (pretextTerminal) {
     pretextTerminal.dispose();
