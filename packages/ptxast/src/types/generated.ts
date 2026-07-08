@@ -41,6 +41,7 @@ export const ptxSchemaElementChildren = {
   },
   "abstract": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -57,9 +58,16 @@ export const ptxSchemaElementChildren = {
       "xml:id"
     ]
   },
+  "accessed": {
+    "elements": [
+      "date"
+    ],
+    "attributes": []
+  },
   "acknowledgement": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -79,7 +87,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -126,6 +133,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -158,7 +166,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -278,6 +286,7 @@ export const ptxSchemaElementChildren = {
   "algorithm": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -304,7 +313,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -456,6 +465,7 @@ export const ptxSchemaElementChildren = {
   "answer": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -480,7 +490,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -492,6 +501,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -530,6 +540,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -565,7 +578,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -583,6 +595,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "backmatter",
       "biographical",
@@ -621,6 +634,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -656,7 +672,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -763,6 +778,7 @@ export const ptxSchemaElementChildren = {
   },
   "aside": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -777,13 +793,13 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "assemblage": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -800,7 +816,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -815,7 +830,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -936,6 +950,20 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "audio": {
+    "elements": [],
+    "attributes": [
+      "component",
+      "end",
+      "href",
+      "label",
+      "margins",
+      "source",
+      "start",
+      "width",
+      "xml:id"
+    ]
+  },
   "author": {
     "elements": [
       "abbr",
@@ -987,6 +1015,7 @@ export const ptxSchemaElementChildren = {
       "midpoint",
       "minus",
       "n",
+      "name",
       "natural",
       "nb",
       "nbsp",
@@ -1059,7 +1088,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1078,7 +1106,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1104,6 +1131,7 @@ export const ptxSchemaElementChildren = {
   "biblio": {
     "elements": [
       "abbr",
+      "accessed",
       "acro",
       "ad",
       "alert",
@@ -1116,6 +1144,8 @@ export const ptxSchemaElementChildren = {
       "c",
       "ca",
       "chord",
+      "collection-title",
+      "container-title",
       "copyleft",
       "copyright",
       "custom",
@@ -1124,8 +1154,10 @@ export const ptxSchemaElementChildren = {
       "dblprime",
       "degree",
       "delete",
+      "DOI",
       "doubleflat",
       "doublesharp",
+      "edition",
       "editor",
       "eg",
       "ellipsis",
@@ -1136,12 +1168,17 @@ export const ptxSchemaElementChildren = {
       "fillin",
       "flat",
       "foreign",
+      "genre",
       "ibid",
       "icon",
       "idx",
       "ie",
       "init",
       "insert",
+      "ISBN",
+      "ISSN",
+      "issue",
+      "issued",
       "journal",
       "kbd",
       "langle",
@@ -1160,7 +1197,10 @@ export const ptxSchemaElementChildren = {
       "ndash",
       "note",
       "number",
+      "number-of-pages",
       "obelus",
+      "page",
+      "page-first",
       "pages",
       "permille",
       "pf",
@@ -1173,6 +1213,8 @@ export const ptxSchemaElementChildren = {
       "prime",
       "ps",
       "publisher",
+      "publisher-place",
+      "pubnote",
       "pubtitle",
       "q",
       "quantity",
@@ -1201,7 +1243,9 @@ export const ptxSchemaElementChildren = {
       "title",
       "today",
       "trademark",
+      "translator",
       "url",
+      "URL",
       "var",
       "viz",
       "volume",
@@ -1221,6 +1265,7 @@ export const ptxSchemaElementChildren = {
   },
   "biographical": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -1235,7 +1280,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1243,6 +1287,7 @@ export const ptxSchemaElementChildren = {
   "biography": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1262,7 +1307,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1277,7 +1321,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1298,7 +1341,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1421,6 +1463,7 @@ export const ptxSchemaElementChildren = {
   "case": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1445,7 +1488,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "direction",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1455,7 +1497,8 @@ export const ptxSchemaElementChildren = {
       "cline"
     ],
     "attributes": [
-      "latexsep"
+      "latexsep",
+      "showspaces"
     ]
   },
   "cell": {
@@ -1490,6 +1533,7 @@ export const ptxSchemaElementChildren = {
       "etc",
       "fillin",
       "flat",
+      "fn",
       "foreign",
       "icon",
       "ie",
@@ -1572,6 +1616,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -1609,6 +1654,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -1643,7 +1691,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1675,6 +1722,7 @@ export const ptxSchemaElementChildren = {
   "claim": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1701,7 +1749,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -1723,8 +1771,48 @@ export const ptxSchemaElementChildren = {
       "width"
     ]
   },
+  "collection-title": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
   "colophon": {
     "elements": [
+      "audio",
       "blockquote",
       "colophon-items",
       "console",
@@ -1751,6 +1839,7 @@ export const ptxSchemaElementChildren = {
   "computation": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1774,7 +1863,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1786,6 +1874,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -1817,6 +1906,9 @@ export const ptxSchemaElementChildren = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -1842,7 +1934,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1857,7 +1948,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1873,6 +1963,76 @@ export const ptxSchemaElementChildren = {
       "margins",
       "prompt",
       "width"
+    ]
+  },
+  "container-title": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "context": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
     ]
   },
   "contributor": {
@@ -1900,6 +2060,7 @@ export const ptxSchemaElementChildren = {
   "convention": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1923,7 +2084,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -1944,6 +2104,7 @@ export const ptxSchemaElementChildren = {
   "corollary": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -1970,7 +2131,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -2094,6 +2255,7 @@ export const ptxSchemaElementChildren = {
   "data": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -2117,7 +2279,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -2281,7 +2442,11 @@ export const ptxSchemaElementChildren = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "day",
+      "month",
+      "year"
+    ]
   },
   "dblbrackets": {
     "elements": [
@@ -2396,7 +2561,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -2411,7 +2575,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -2657,6 +2821,37 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "discussion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "division": {
     "elements": [],
     "attributes": [
@@ -2686,19 +2881,27 @@ export const ptxSchemaElementChildren = {
       "math-package",
       "numbering",
       "parsons",
+      "pf:prefigure-preamble",
       "programs",
       "rename"
     ],
     "attributes": [
-      "xml:base",
       "xml:lang"
     ]
+  },
+  "DOI": {
+    "elements": [],
+    "attributes": []
   },
   "doubleflat": {
     "elements": [],
     "attributes": []
   },
   "doublesharp": {
+    "elements": [],
+    "attributes": []
+  },
+  "dropping-particle": {
     "elements": [],
     "attributes": []
   },
@@ -2713,6 +2916,7 @@ export const ptxSchemaElementChildren = {
       "email",
       "institution",
       "location",
+      "name",
       "personname"
     ],
     "attributes": []
@@ -3041,6 +3245,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3070,7 +3275,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3079,6 +3284,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3112,7 +3318,6 @@ export const ptxSchemaElementChildren = {
       "label",
       "number",
       "workspace",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3129,7 +3334,6 @@ export const ptxSchemaElementChildren = {
       "cols",
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3149,7 +3353,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3158,6 +3361,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -3190,7 +3394,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3198,6 +3402,7 @@ export const ptxSchemaElementChildren = {
   "fact": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3224,13 +3429,18 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
   },
+  "family": {
+    "elements": [],
+    "attributes": []
+  },
   "feedback": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -3245,6 +3455,7 @@ export const ptxSchemaElementChildren = {
   },
   "figure": {
     "elements": [
+      "audio",
       "caption",
       "idx",
       "image",
@@ -3258,7 +3469,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3516,10 +3726,13 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "genre": {
+    "elements": [],
+    "attributes": []
   },
   "genus": {
     "elements": [],
@@ -3528,6 +3741,7 @@ export const ptxSchemaElementChildren = {
   "gi": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3546,10 +3760,13 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "given": {
+    "elements": [],
+    "attributes": []
   },
   "glossary": {
     "elements": [
@@ -3563,7 +3780,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3668,6 +3884,7 @@ export const ptxSchemaElementChildren = {
   "headnote": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3693,7 +3910,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3701,6 +3917,7 @@ export const ptxSchemaElementChildren = {
   "hint": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3725,13 +3942,13 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "historical": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "idx",
@@ -3746,7 +3963,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3765,7 +3981,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -3783,6 +3998,7 @@ export const ptxSchemaElementChildren = {
   "identity": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -3809,7 +4025,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -3963,7 +4179,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4124,6 +4339,7 @@ export const ptxSchemaElementChildren = {
   "insight": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -4147,7 +4363,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4286,19 +4501,6 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
-  "interlude": {
-    "elements": [
-      "blockquote",
-      "console",
-      "image",
-      "p",
-      "pre",
-      "program",
-      "tabular",
-      "video"
-    ],
-    "attributes": []
-  },
   "intertext": {
     "elements": [
       "abbr",
@@ -4406,6 +4608,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -4437,6 +4640,9 @@ export const ptxSchemaElementChildren = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -4462,7 +4668,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4471,6 +4676,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -4503,7 +4709,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -4512,6 +4718,24 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "input",
       "output"
+    ],
+    "attributes": []
+  },
+  "ISBN": {
+    "elements": [],
+    "attributes": []
+  },
+  "ISSN": {
+    "elements": [],
+    "attributes": []
+  },
+  "issue": {
+    "elements": [],
+    "attributes": []
+  },
+  "issued": {
+    "elements": [
+      "date"
     ],
     "attributes": []
   },
@@ -4636,6 +4860,7 @@ export const ptxSchemaElementChildren = {
   "lemma": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -4662,7 +4887,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -4682,6 +4907,7 @@ export const ptxSchemaElementChildren = {
       "articletitle",
       "aside",
       "attr",
+      "audio",
       "bc",
       "biographical",
       "blockquote",
@@ -4799,7 +5025,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4922,7 +5147,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -4949,10 +5173,13 @@ export const ptxSchemaElementChildren = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
+  },
+  "literal": {
+    "elements": [],
+    "attributes": []
   },
   "location": {
     "elements": [
@@ -5188,6 +5415,18 @@ export const ptxSchemaElementChildren = {
       "pc"
     ]
   },
+  "name": {
+    "elements": [
+      "dropping-particle",
+      "family",
+      "given",
+      "literal",
+      "non-dropping-particle",
+      "static-ordering",
+      "suffix"
+    ],
+    "attributes": []
+  },
   "natural": {
     "elements": [],
     "attributes": []
@@ -5201,6 +5440,10 @@ export const ptxSchemaElementChildren = {
     "attributes": []
   },
   "ndash": {
+    "elements": [],
+    "attributes": []
+  },
+  "non-dropping-particle": {
     "elements": [],
     "attributes": []
   },
@@ -5218,6 +5461,7 @@ export const ptxSchemaElementChildren = {
   "note": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5241,12 +5485,15 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
   },
   "number": {
+    "elements": [],
+    "attributes": []
+  },
+  "number-of-pages": {
     "elements": [],
     "attributes": []
   },
@@ -5273,7 +5520,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5281,6 +5527,7 @@ export const ptxSchemaElementChildren = {
   "observation": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5304,7 +5551,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5317,6 +5563,106 @@ export const ptxSchemaElementChildren = {
       "cols",
       "component",
       "marker"
+    ]
+  },
+  "openconjecture": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "openproblem": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "openquestion": {
+    "elements": [
+      "conclusion",
+      "context",
+      "discussion",
+      "idx",
+      "introduction",
+      "opinion",
+      "postlude",
+      "prelude",
+      "statement",
+      "status",
+      "suggestion",
+      "task",
+      "title"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
+  "opinion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
     ]
   },
   "outcomes": {
@@ -5332,7 +5678,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5451,6 +5796,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
+      "workspace",
       "xml:id"
     ]
   },
@@ -5461,6 +5807,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -5491,6 +5838,9 @@ export const ptxSchemaElementChildren = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "paragraphs",
       "poem",
@@ -5515,6 +5865,10 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "page-first": {
+    "elements": [],
+    "attributes": []
+  },
   "pages": {
     "elements": [],
     "attributes": [
@@ -5529,6 +5883,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -5560,6 +5915,9 @@ export const ptxSchemaElementChildren = {
       "listing",
       "note",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "p",
       "poem",
       "pre",
@@ -5585,7 +5943,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5607,7 +5964,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5674,6 +6030,10 @@ export const ptxSchemaElementChildren = {
       "label"
     ]
   },
+  "pf:prefigure-preamble": {
+    "elements": [],
+    "attributes": []
+  },
   "pg-code": {
     "elements": [],
     "attributes": []
@@ -5716,7 +6076,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "halign",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5729,6 +6088,7 @@ export const ptxSchemaElementChildren = {
   },
   "postlude": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5756,6 +6116,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "aside",
       "attribution",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -5776,7 +6137,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5787,6 +6147,7 @@ export const ptxSchemaElementChildren = {
   },
   "prelude": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5824,7 +6185,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -5833,6 +6193,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -5862,7 +6223,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -5881,6 +6242,7 @@ export const ptxSchemaElementChildren = {
       "autorun",
       "chatcodes",
       "codelens",
+      "codetailor",
       "compile-also",
       "compiler-args",
       "component",
@@ -5920,6 +6282,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -5952,13 +6315,14 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
   },
   "prompt": {
     "elements": [
+      "audio",
       "blockquote",
       "console",
       "image",
@@ -5973,6 +6337,7 @@ export const ptxSchemaElementChildren = {
   "proof": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "case",
@@ -5997,7 +6362,9 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "ref",
+      "text",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6005,6 +6372,7 @@ export const ptxSchemaElementChildren = {
   "proposition": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -6031,7 +6399,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6042,6 +6410,84 @@ export const ptxSchemaElementChildren = {
   },
   "publisher": {
     "elements": [],
+    "attributes": []
+  },
+  "publisher-place": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "pubnote": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
     "attributes": []
   },
   "pubtitle": {
@@ -6256,6 +6702,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
@@ -6285,7 +6732,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -6311,7 +6758,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6329,7 +6775,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6341,6 +6786,7 @@ export const ptxSchemaElementChildren = {
   "remark": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -6364,7 +6810,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -6520,11 +6965,13 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": [
       "component",
+      "landscape",
       "margins",
       "valign",
       "valigns",
       "width",
-      "widths"
+      "widths",
+      "xml:id"
     ]
   },
   "scaledeg": {
@@ -6545,6 +6992,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -6582,6 +7030,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -6616,7 +7067,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7030,6 +7480,7 @@ export const ptxSchemaElementChildren = {
   },
   "sidebyside": {
     "elements": [
+      "audio",
       "console",
       "dl",
       "exercise",
@@ -7045,12 +7496,12 @@ export const ptxSchemaElementChildren = {
       "stack",
       "table",
       "tabular",
-      "task",
       "ul",
       "video"
     ],
     "attributes": [
       "component",
+      "landscape",
       "margins",
       "valign",
       "valigns",
@@ -7065,6 +7516,7 @@ export const ptxSchemaElementChildren = {
   "solution": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7089,7 +7541,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7110,7 +7561,6 @@ export const ptxSchemaElementChildren = {
       "inline",
       "label",
       "project",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7221,6 +7671,7 @@ export const ptxSchemaElementChildren = {
   },
   "stack": {
     "elements": [
+      "audio",
       "console",
       "dl",
       "image",
@@ -7343,7 +7794,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7351,6 +7801,7 @@ export const ptxSchemaElementChildren = {
   "statement": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7373,6 +7824,41 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "static-ordering": {
+    "elements": [],
+    "attributes": []
+  },
+  "status": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "stdin": {
     "elements": [],
     "attributes": []
@@ -7391,7 +7877,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7403,6 +7888,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -7440,6 +7926,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -7474,7 +7963,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7486,6 +7974,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "author",
       "axiom",
       "biographical",
@@ -7521,6 +8010,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "paragraphs",
@@ -7554,7 +8046,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7659,6 +8150,41 @@ export const ptxSchemaElementChildren = {
       "xref"
     ],
     "attributes": []
+  },
+  "suffix": {
+    "elements": [],
+    "attributes": []
+  },
+  "suggestion": {
+    "elements": [
+      "aside",
+      "audio",
+      "biographical",
+      "blockquote",
+      "console",
+      "figure",
+      "historical",
+      "idx",
+      "image",
+      "list",
+      "listing",
+      "p",
+      "pre",
+      "program",
+      "sage",
+      "sbsgroup",
+      "sidebyside",
+      "table",
+      "tabular",
+      "title",
+      "video"
+    ],
+    "attributes": [
+      "component",
+      "label",
+      "xml:id",
+      "xml:lang"
+    ]
   },
   "support": {
     "elements": [
@@ -7784,7 +8310,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "label",
       "landscape",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7796,6 +8321,7 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": [
       "bottom",
+      "break",
       "component",
       "halign",
       "left",
@@ -7819,10 +8345,13 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "answer",
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "conclusion",
       "console",
+      "context",
+      "discussion",
       "figure",
       "hint",
       "historical",
@@ -7831,6 +8360,7 @@ export const ptxSchemaElementChildren = {
       "introduction",
       "list",
       "listing",
+      "opinion",
       "p",
       "pre",
       "program",
@@ -7839,6 +8369,8 @@ export const ptxSchemaElementChildren = {
       "sidebyside",
       "solution",
       "statement",
+      "status",
+      "suggestion",
       "table",
       "tabular",
       "task",
@@ -7849,7 +8381,6 @@ export const ptxSchemaElementChildren = {
       "component",
       "label",
       "workspace",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -7866,6 +8397,7 @@ export const ptxSchemaElementChildren = {
   "technology": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -7889,7 +8421,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -8009,6 +8540,7 @@ export const ptxSchemaElementChildren = {
   "theorem": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -8035,7 +8567,7 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
+      "workspace",
       "xml:id",
       "xml:lang"
     ]
@@ -8184,6 +8716,12 @@ export const ptxSchemaElementChildren = {
     "elements": [],
     "attributes": []
   },
+  "translator": {
+    "elements": [
+      "name"
+    ],
+    "attributes": []
+  },
   "ul": {
     "elements": [
       "li"
@@ -8300,6 +8838,10 @@ export const ptxSchemaElementChildren = {
       "visual"
     ]
   },
+  "URL": {
+    "elements": [],
+    "attributes": []
+  },
   "usage": {
     "elements": [
       "m"
@@ -8353,6 +8895,7 @@ export const ptxSchemaElementChildren = {
   "warning": {
     "elements": [
       "aside",
+      "audio",
       "biographical",
       "blockquote",
       "console",
@@ -8376,7 +8919,6 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "component",
       "label",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -8415,6 +8957,7 @@ export const ptxSchemaElementChildren = {
       "aside",
       "assemblage",
       "assumption",
+      "audio",
       "axiom",
       "biographical",
       "blockquote",
@@ -8449,6 +8992,9 @@ export const ptxSchemaElementChildren = {
       "note",
       "objectives",
       "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
       "outcomes",
       "p",
       "page",
@@ -8479,12 +9025,14 @@ export const ptxSchemaElementChildren = {
     "attributes": [
       "bottom",
       "component",
+      "courseid",
       "label",
       "left",
       "margin",
       "right",
+      "series",
+      "seriescode",
       "top",
-      "xml:base",
       "xml:id",
       "xml:lang"
     ]
@@ -8701,6 +9249,7 @@ export const ptxCuratedElementNames = [] as const;
 export const ptxUnmodeledSchemaElementNames = [
   "abbr",
   "abstract",
+  "accessed",
   "acknowledgement",
   "acro",
   "activity",
@@ -8723,6 +9272,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "asymptote-preamble",
   "attr",
   "attribution",
+  "audio",
   "author",
   "author-biographies",
   "axiom",
@@ -8748,12 +9298,15 @@ export const ptxUnmodeledSchemaElementNames = [
   "cline",
   "code",
   "col",
+  "collection-title",
   "colophon",
   "colophon-items",
   "computation",
   "conclusion",
   "conjecture",
   "console",
+  "container-title",
+  "context",
   "contributor",
   "contributors",
   "convention",
@@ -8775,11 +9328,14 @@ export const ptxUnmodeledSchemaElementNames = [
   "delete",
   "department",
   "description",
+  "discussion",
   "division",
   "dl",
   "docinfo",
+  "DOI",
   "doubleflat",
   "doublesharp",
+  "dropping-particle",
   "edition",
   "editor",
   "eg",
@@ -8796,6 +9352,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "exercises",
   "exploration",
   "fact",
+  "family",
   "feedback",
   "figure",
   "fillin",
@@ -8805,8 +9362,10 @@ export const ptxUnmodeledSchemaElementNames = [
   "fragment",
   "fragref",
   "frontmatter",
+  "genre",
   "genus",
   "gi",
+  "given",
   "glossary",
   "h",
   "headnote",
@@ -8831,11 +9390,14 @@ export const ptxUnmodeledSchemaElementNames = [
   "insight",
   "institution",
   "instruction",
-  "interlude",
   "intertext",
   "introduction",
   "investigation",
   "iotest",
+  "ISBN",
+  "ISSN",
+  "issue",
+  "issued",
   "journal",
   "kbd",
   "keyword",
@@ -8852,6 +9414,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "list",
   "list-of",
   "listing",
+  "literal",
   "location",
   "lq",
   "lsq",
@@ -8869,23 +9432,31 @@ export const ptxUnmodeledSchemaElementNames = [
   "minus",
   "mrow",
   "n",
+  "name",
   "natural",
   "nb",
   "nbsp",
   "ndash",
+  "non-dropping-particle",
   "notation",
   "notation-list",
   "note",
   "number",
+  "number-of-pages",
   "numbering",
   "obelus",
   "objectives",
   "observation",
   "ol",
+  "openconjecture",
+  "openproblem",
+  "openquestion",
+  "opinion",
   "outcomes",
   "output",
   "p",
   "page",
+  "page-first",
   "pages",
   "paragraphs",
   "parsons",
@@ -8895,6 +9466,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "personname",
   "pf",
   "pf:prefigure",
+  "pf:prefigure-preamble",
   "pg-code",
   "pg-macros",
   "phonomark",
@@ -8922,6 +9494,8 @@ export const ptxUnmodeledSchemaElementNames = [
   "proposition",
   "ps",
   "publisher",
+  "publisher-place",
+  "pubnote",
   "pubtitle",
   "q",
   "quantity",
@@ -8962,11 +9536,15 @@ export const ptxUnmodeledSchemaElementNames = [
   "stale",
   "stanza",
   "statement",
+  "static-ordering",
+  "status",
   "stdin",
   "subexercises",
   "subsection",
   "subsubsection",
   "subtitle",
+  "suffix",
+  "suggestion",
   "support",
   "swungdash",
   "table",
@@ -8989,9 +9567,11 @@ export const ptxUnmodeledSchemaElementNames = [
   "today",
   "track",
   "trademark",
+  "translator",
   "ul",
   "unit",
   "url",
+  "URL",
   "usage",
   "var",
   "video",
@@ -9012,7 +9592,7 @@ export type GeneratedPtxElementName = keyof typeof ptxSchemaElementChildren;
 export type GeneratedPtxCuratedElementName = typeof ptxCuratedElementNames[number];
 export type GeneratedPtxUnmodeledSchemaElementName =
   typeof ptxUnmodeledSchemaElementNames[number];
-export type GeneratedPtxAttributeName = "acc" | "add-files" | "admit" | "alignat-columns" | "alignment" | "answer" | "answer-variable" | "archive" | "aspect" | "authority" | "auto-evaluate" | "autorun" | "base" | "bass" | "bottom" | "bps" | "break" | "category" | "characters" | "chatcodes" | "codelens" | "cols" | "colspan" | "compile-also" | "compiler-args" | "component" | "continuation" | "copy" | "corresponding" | "database" | "decorative" | "default" | "detail" | "direction" | "divisional" | "divisions" | "doctest" | "download" | "element" | "elements" | "empty" | "end" | "evaluator" | "exp" | "extra-compiler-args" | "filename" | "fill" | "finish" | "first" | "form" | "from" | "halign" | "header" | "hidecode" | "highlight-lines" | "href" | "include" | "indent" | "inline" | "interactive" | "interpreter-args" | "kind" | "label" | "landscape" | "language" | "last" | "latex-name" | "latexsep" | "left" | "length" | "line" | "line-numbers" | "linenumbers" | "linker-args" | "listing" | "margin" | "margins" | "marker" | "mathjax-name" | "mode" | "musescore" | "musescoreuser" | "name" | "ncbi" | "number" | "octave" | "parentheses" | "part" | "pc" | "pg-name" | "play-at" | "prefix" | "preview" | "primary" | "project" | "prompt" | "provisional" | "ref" | "right" | "root" | "rotate" | "row-headers" | "rows" | "scope" | "seed" | "sortby" | "source" | "start" | "starting-step" | "suspended" | "tag" | "text" | "timelimit" | "timeout" | "tolerance" | "top" | "type" | "url" | "valign" | "valigns" | "variant" | "vimeo" | "visible" | "visual" | "width" | "widths" | "workspace" | "xml:base" | "xml:id" | "xml:lang" | "youtube" | "youtubeplaylist";
+export type GeneratedPtxAttributeName = "acc" | "add-files" | "admit" | "alignat-columns" | "alignment" | "answer" | "answer-variable" | "archive" | "aspect" | "authority" | "auto-evaluate" | "autorun" | "base" | "bass" | "bottom" | "bps" | "break" | "category" | "characters" | "chatcodes" | "codelens" | "codetailor" | "cols" | "colspan" | "compile-also" | "compiler-args" | "component" | "continuation" | "copy" | "corresponding" | "courseid" | "database" | "day" | "decorative" | "default" | "detail" | "direction" | "divisional" | "divisions" | "doctest" | "download" | "element" | "elements" | "empty" | "end" | "evaluator" | "exp" | "extra-compiler-args" | "filename" | "fill" | "finish" | "first" | "form" | "from" | "halign" | "header" | "hidecode" | "highlight-lines" | "href" | "include" | "indent" | "inline" | "interactive" | "interpreter-args" | "kind" | "label" | "landscape" | "language" | "last" | "latex-name" | "latexsep" | "left" | "length" | "line" | "line-numbers" | "linenumbers" | "linker-args" | "listing" | "margin" | "margins" | "marker" | "mathjax-name" | "mode" | "month" | "musescore" | "musescoreuser" | "name" | "ncbi" | "number" | "octave" | "parentheses" | "part" | "pc" | "pg-name" | "play-at" | "prefix" | "preview" | "primary" | "project" | "prompt" | "provisional" | "ref" | "right" | "root" | "rotate" | "row-headers" | "rows" | "scope" | "seed" | "series" | "seriescode" | "showspaces" | "sortby" | "source" | "start" | "starting-step" | "suspended" | "tag" | "text" | "timelimit" | "timeout" | "tolerance" | "top" | "type" | "url" | "valign" | "valigns" | "variant" | "vimeo" | "visible" | "visual" | "width" | "widths" | "workspace" | "xml:id" | "xml:lang" | "year" | "youtube" | "youtubeplaylist";
 export type GeneratedPtxChildElementName<
   ElementName extends GeneratedPtxElementName,
 > = (typeof ptxSchemaElementChildren)[ElementName]["elements"][number];
