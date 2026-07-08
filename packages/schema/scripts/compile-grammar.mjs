@@ -11,7 +11,32 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath, pathToFileURL } from "url";
+import { createRequire } from "module";
 import { convertRNGToPattern, writeTreeToJSON } from "salve-annos";
+
+// salve-annos bug workaround: InternalSimplifier.parse is passed to step1 as a
+// Parser callback (filePath: URL) => Promise<Element>, but the implementation
+// expects three arguments (filePath, schemaResource, schemaText). When step1
+// calls parse(url) for externalRef/include elements, schemaText is undefined,
+// causing a crash. Patch the prototype to load the resource when schemaText is
+// not supplied.
+const _require = createRequire(import.meta.url);
+const internal = _require(
+  "salve-annos/lib/salve/conversion/schema-simplifiers/internal.js",
+);
+const origParse = internal.InternalSimplifier.prototype.parse;
+internal.InternalSimplifier.prototype.parse = async function patchedParse(
+  filePath,
+  schemaResource,
+  schemaText,
+) {
+  if (schemaText === undefined) {
+    const res = await this.options.resourceLoader.load(filePath);
+    schemaResource = res;
+    schemaText = await res.getText();
+  }
+  return origParse.call(this, filePath, schemaResource, schemaText);
+};
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(scriptDir, "../../..");
