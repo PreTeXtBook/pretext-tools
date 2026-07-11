@@ -171,6 +171,12 @@
         "category": "PreTeXt"
       },
       {
+        "command": "pretext-tools.importProject",
+        "title": "Import Project from LaTeX/Markdown/PreTeXt",
+        "category": "PreTeXt",
+        "description": "Convert an existing LaTeX, Markdown, or PreTeXt file or archive into a new PreTeXt project."
+      },
+      {
         "command": "pretext-tools.view",
         "title": "View",
         "icon": "$(open-preview)",
@@ -579,7 +585,7 @@
     "build": "npm run build:all",
     "build:dev": "npm run esbuild && npm run build:webview && npm run copy-assets",
     "build:watch": "npm run watch:all",
-    "build:webview": "vite build --config vite.webview.config.mts",
+    "build:webview": "vite build --config vite.webview.config.mts && vite build --config vite.webview-import.config.mts",
     "esbuild-base": "node build.mjs",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
@@ -599,6 +605,7 @@
   "dependencies": {
     "@pretextbook/completions": "*",
     "@pretextbook/format": "*",
+    "@pretextbook/import": "*",
     "@pretextbook/latex-pretext": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",

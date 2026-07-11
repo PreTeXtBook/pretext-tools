@@ -17,6 +17,7 @@
     "out",
     "dist",
     "src/webview",
+    "src/webview-import",
     "*.config.mts",
     "*.config.ts"
   ],

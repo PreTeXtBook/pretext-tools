@@ -46,6 +46,19 @@
   gap: 10px;
 }
 
+.page-link {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+  border: 1px solid var(--overlay);
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.page-link:hover {
+  border-color: var(--accent);
+}
+
 .toolbar-right label {
   color: var(--subtext);
   font-size: 12px;
