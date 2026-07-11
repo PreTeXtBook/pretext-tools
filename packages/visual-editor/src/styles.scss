@@ -40,7 +40,7 @@
   text-align: left;
   overflow-y: scroll;
   padding-bottom: 3em;
-  font-family: "Noto Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'Noto Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
 .editor-panel {
@@ -157,7 +157,7 @@
   }
 
   .c {
-    font-family: "JetBrainsMono", monospace;
+    font-family: 'JetBrainsMono', monospace;
     background-color: var(--code-bg);
     color: var(--text-primary);
   }
@@ -238,7 +238,7 @@
   pre {
     //background: #0d0d0d;
     //color: #111111;
-    font-family: "JetBrainsMono", monospace;
+    font-family: 'JetBrainsMono', monospace;
     padding: 0.75rem 1rem;
 
     code {
@@ -358,14 +358,14 @@
   }
 
   ul::after {
-    content: "ul";
+    content: 'ul';
     display: block;
     text-align: right;
     font-size: 50%;
   }
 
   ol::after {
-    content: "ol";
+    content: 'ol';
     display: block;
     text-align: right;
     font-size: 50%;

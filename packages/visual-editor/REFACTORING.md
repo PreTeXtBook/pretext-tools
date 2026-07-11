@@ -60,11 +60,11 @@ npm run build:webview
 The pretext-plus-editor can now import the visual editor like this:
 
 ```tsx
-import { VisualEditor } from "@pretextbook/visual-editor";
-import "@pretextbook/visual-editor/styles";
+import { VisualEditor } from '@pretextbook/visual-editor';
+import '@pretextbook/visual-editor/styles';
 
 function MyEditor() {
-  const [content, setContent] = useState("<pretext>...</pretext>");
+  const [content, setContent] = useState('<pretext>...</pretext>');
 
   return <VisualEditor content={content} onChange={setContent} />;
 }

@@ -27,12 +27,12 @@ import {
   detectSourceFormat,
   convertSourceToPretext,
   importProjectFromFiles,
-} from "@pretextbook/import";
+} from '@pretextbook/import';
 
 const format = detectSourceFormat(rawInput);
 const result = convertSourceToPretext(rawInput, format);
 
-if ("pretextError" in result) {
+if ('pretextError' in result) {
   console.error(result.pretextError);
 } else {
   console.log(result.pretextSource);
@@ -41,13 +41,13 @@ if ("pretextError" in result) {
 
 // Multi-file project import (file paths -> source text):
 const project = importProjectFromFiles({
-  "main.tex": "\\documentclass{article}\\begin{document}Hi.\\end{document}",
+  'main.tex': '\\documentclass{article}\\begin{document}Hi.\\end{document}',
 });
-if ("outputFiles" in project) {
+if ('outputFiles' in project) {
   // Standard PreTeXt project layout, keyed by path:
-  console.log(project.outputFiles["source/main.ptx"]);
-  console.log(project.outputFiles["project.ptx"]);
-  console.log(project.outputFiles["publication/publication.ptx"]);
+  console.log(project.outputFiles['source/main.ptx']);
+  console.log(project.outputFiles['project.ptx']);
+  console.log(project.outputFiles['publication/publication.ptx']);
 }
 ```
 
@@ -61,7 +61,7 @@ with `xi:include` references. Chapter filenames use `ch-<xml:id>.ptx` when an
 
 ```ts
 importProjectFromFiles(files, {
-  documentKind: "book", // override auto-detect
+  documentKind: 'book', // override auto-detect
   splitSections: true,
 });
 ```
@@ -69,10 +69,10 @@ importProjectFromFiles(files, {
 ## Upload pipeline
 
 ```ts
-import { handleImportUploadFile } from "@pretextbook/import";
+import { handleImportUploadFile } from '@pretextbook/import';
 
 const result = await handleImportUploadFile(file);
-if ("pretextError" in result) {
+if ('pretextError' in result) {
   console.error(result.pretextError);
 } else {
   // Text files (the converted PreTeXt project + routed .bib auxiliaries)
@@ -101,10 +101,7 @@ files into `source/`.
 ## React Components
 
 ```tsx
-import {
-  ImportSourceForm,
-  ImportUploadPanel,
-} from "@pretextbook/import/react";
+import { ImportSourceForm, ImportUploadPanel } from '@pretextbook/import/react';
 
 function ImportPanel() {
   return (

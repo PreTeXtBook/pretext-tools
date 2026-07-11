@@ -1,6 +1,6 @@
-import { fromXml } from "xast-util-from-xml";
-import type { Root, Element, ElementContent, RootContent } from "xast";
-import type { Plugin } from "unified";
+import { fromXml } from 'xast-util-from-xml';
+import type { Root, Element, ElementContent, RootContent } from 'xast';
+import type { Plugin } from 'unified';
 import {
   blockTags,
   lineEndTags,
@@ -8,10 +8,10 @@ import {
   parTags,
   smartParTags,
   verbatimTags,
-} from "./docStructure";
+} from './docStructure';
 
 export interface FormatOptions {
-  breakLines?: "few" | "some" | "many";
+  breakLines?: 'few' | 'some' | 'many';
   breakSentences?: boolean;
   /** Wrap long block start-tag attributes onto separate lines. */
   breakLongAttributes?: boolean;
@@ -23,20 +23,20 @@ export interface FormatOptions {
 
 interface Ctx {
   ind: string; // one indent unit (e.g. "  "); caller repeats it per depth level
-  blankLines: "few" | "some" | "many";
+  blankLines: 'few' | 'some' | 'many';
   breakSentences: boolean;
   breakLongAttributes: boolean;
   printWidth: number;
 }
 
 function makeCtx(options?: FormatOptions): Ctx {
-  const blankLines = options?.breakLines ?? "some";
+  const blankLines = options?.breakLines ?? 'some';
   const tabSize = options?.tabSize ?? 2;
   const insertSpaces = options?.insertSpaces ?? true;
   const breakSentences = options?.breakSentences ?? false;
   const breakLongAttributes = options?.breakLongAttributes ?? false;
   const printWidth = options?.printWidth ?? 80;
-  const ind = insertSpaces ? " ".repeat(tabSize) : "\t";
+  const ind = insertSpaces ? ' '.repeat(tabSize) : '\t';
   return { ind, blankLines, breakSentences, breakLongAttributes, printWidth };
 }
 
@@ -51,15 +51,19 @@ export function serializeXast(tree: Root, options?: FormatOptions): string {
   const ctx = makeCtx(options);
   const lines: string[] = [];
   // First remove the dummy root if present (see formatPretext) so it doesn't interfere with formatting decisions, but keep its children.
-  if (tree.children.length === 1 && tree.children[0].type === "element" && tree.children[0].name === "tmp-root") {
+  if (
+    tree.children.length === 1 &&
+    tree.children[0].type === 'element' &&
+    tree.children[0].name === 'tmp-root'
+  ) {
     tree = { ...tree, children: tree.children[0].children };
   }
   for (const child of tree.children) {
     appendNode(child, lines, 0, ctx);
   }
   const result = applyBlankLines(lines, ctx);
-  while (result.length > 0 && result[result.length - 1] === "") result.pop();
-  return result.join("\n");
+  while (result.length > 0 && result[result.length - 1] === '') result.pop();
+  return result.join('\n');
 }
 
 /** Unified compiler plugin: formats the xast tree produced by the pipeline. */
@@ -73,8 +77,8 @@ export function formatPretext(text: string, options?: FormatOptions): string {
   let tree: Root;
   // If the input contains an xml declaration, it must be preserved verbatim at the top of the output; the serializer doesn't handle it as a normal processing instruction node since it must always come first. So we extract it before parsing and prepend it back to the final output.
   let xmlDecl: string | null = null;
-  if (text.startsWith("<?xml")) {
-    const declEndIdx = text.indexOf("?>");
+  if (text.startsWith('<?xml')) {
+    const declEndIdx = text.indexOf('?>');
     if (declEndIdx !== -1) {
       const endIdx = declEndIdx + 2;
       xmlDecl = text.slice(0, endIdx);
@@ -87,11 +91,11 @@ export function formatPretext(text: string, options?: FormatOptions): string {
   try {
     tree = fromXml(text);
   } catch {
-    console.warn("Input is not well-formed XML; returning original text.");
+    console.warn('Input is not well-formed XML; returning original text.');
     //strip the dummy root before returning, since it was only needed for parsing and would be confusing to include in the output.
-    text = text.replace(/<tmp-root>(.*?)<\/tmp-root>/s, "$1");
+    text = text.replace(/<tmp-root>(.*?)<\/tmp-root>/s, '$1');
     if (xmlDecl) {
-      text = xmlDecl + "\n\n" + text;
+      text = xmlDecl + '\n\n' + text;
     }
     return text;
   }
@@ -99,19 +103,18 @@ export function formatPretext(text: string, options?: FormatOptions): string {
   let result = serializeXast(tree, options);
   // Add back the XML declaration if it was present in the input, ensuring it's followed by a blank line for readability.
   if (xmlDecl) {
-    result = xmlDecl + "\n\n" + result;
+    result = xmlDecl + '\n\n' + result;
   }
   return result;
 }
 
-
-// General strategy: recursively walk the tree depth-first, building an array of output lines as we go. 
-// Each node is dispatched to an appender function based on its tag name and role in the document structure, 
+// General strategy: recursively walk the tree depth-first, building an array of output lines as we go.
+// Each node is dispatched to an appender function based on its tag name and role in the document structure,
 // which handles indentation and line breaks according to the formatting rules for that category of node.
 // So we flow through appendNode → appendElement → appendPar/appendMixedPar/appendBlock/appendVerbatim/appendLineEnd, depending on the node type and tag,
 // and these call appendNode or another appender recursively on their children as needed.
 
-// After the tree is fully serialized into an array of lines, 
+// After the tree is fully serialized into an array of lines,
 // a post-processing pass inserts blank lines according to the breakLines option, and the array is joined into the final output string.
 
 // ─── Node dispatch ────────────────────────────────────────────────────────────
@@ -123,27 +126,25 @@ function appendNode(
   ctx: Ctx,
 ): void {
   switch (node.type) {
-    case "instruction":
-      out.push(`<?${node.name}${node.value ? " " + node.value : ""}?>`);
+    case 'instruction':
+      out.push(`<?${node.name}${node.value ? ' ' + node.value : ''}?>`);
       break;
-    case "doctype":
+    case 'doctype':
       out.push(`<!DOCTYPE ${node.name}>`);
       break;
-    case "comment":
+    case 'comment':
       out.push(`${ctx.ind.repeat(depth)}<!--${node.value}-->`);
       break;
-    case "cdata":
-      out.push(
-        `${ctx.ind.repeat(depth)}<![CDATA[${node.value}]]>`,
-      );
+    case 'cdata':
+      out.push(`${ctx.ind.repeat(depth)}<![CDATA[${node.value}]]>`);
       break;
-    case "text": {
+    case 'text': {
       // Whitespace-only text between tags is dropped; non-empty text is re-indented.
       const v = node.value.trim();
       if (v) out.push(`${ctx.ind.repeat(depth)}${escText(v)}`);
       break;
     }
-    case "element":
+    case 'element':
       appendElement(node, out, depth, ctx);
       break;
   }
@@ -186,7 +187,7 @@ function appendVerbatim(
 ): void {
   // If the element contains child elements (e.g. <program><input>...</input></program>),
   // fall back to block formatting — the children will be verbatim-handled individually.
-  if (node.children.some((c) => c.type === "element")) {
+  if (node.children.some((c) => c.type === 'element')) {
     appendBlock(node, out, depth, ctx);
     return;
   }
@@ -200,17 +201,17 @@ function appendVerbatim(
   // trailing spaces), while still escaping text-node XML entities.
   const raw = node.children
     .map((c) => {
-      if (c.type === "text") return escText(c.value);
-      if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
-      return "";
+      if (c.type === 'text') return escText(c.value);
+      if (c.type === 'cdata') return `<![CDATA[${c.value}]]>`;
+      return '';
     })
-    .join("");
-    const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
-    if (trailingNewlineWithWhitespace) {
-      // Strip any trailing whitespace after the final newline so the closing tag
-      // gets the correct indentation.
-      const trimmedRaw = raw.replace(/\n[ \t]*$/, "\n");
-      out.push(`${ind}${openTag(node)}${trimmedRaw}${ind}</${node.name}>`);
+    .join('');
+  const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
+  if (trailingNewlineWithWhitespace) {
+    // Strip any trailing whitespace after the final newline so the closing tag
+    // gets the correct indentation.
+    const trimmedRaw = raw.replace(/\n[ \t]*$/, '\n');
+    out.push(`${ind}${openTag(node)}${trimmedRaw}${ind}</${node.name}>`);
   } else {
     // Otherwise, render the whole verbatim element on one line. Any internal newlines will be preserved as literal \n characters in the text content, and any trailing spaces will be preserved because the closing tag is on the same line.
     out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
@@ -260,14 +261,19 @@ function appendSmartPar(
   const childInd = ctx.ind.repeat(depth + 1);
 
   // Try single-line: join all tokens and check if the whole rendered line fits.
-  const singleLine = `${ind}${openTag(node)}${tokens.join(" ")}</${node.name}>`;
+  const singleLine = `${ind}${openTag(node)}${tokens.join(' ')}</${node.name}>`;
   if (ctx.printWidth === 0 || singleLine.length <= ctx.printWidth) {
     out.push(singleLine);
     return;
   }
   // Doesn't fit — reflow in par format (open tag, wrapped content, close tag).
   out.push(`${ind}${openTag(node)}`);
-  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+  for (const line of reflowTokens(
+    tokens,
+    ctx.printWidth,
+    childInd.length,
+    ctx.breakSentences,
+  )) {
     out.push(`${childInd}${line}`);
   }
   out.push(`${ind}</${node.name}>`);
@@ -289,7 +295,12 @@ function appendPar(
   }
   out.push(`${ind}${openTag(node)}`);
   const tokens = collectTokens(node.children);
-  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+  for (const line of reflowTokens(
+    tokens,
+    ctx.printWidth,
+    childInd.length,
+    ctx.breakSentences,
+  )) {
     out.push(`${childInd}${line}`);
   }
   out.push(`${ind}</${node.name}>`);
@@ -324,8 +335,8 @@ function appendMixedPar(
       // Fuse any immediately-following punctuation (e.g. the "." after </md>) onto
       // the closing tag line rather than letting it appear as a dangling token on
       // the next line.
-      let punctuation = "";
-      if (i < children.length && children[i].type === "text") {
+      let punctuation = '';
+      if (i < children.length && children[i].type === 'text') {
         const textVal: string = (children[i] as any).value;
         const m = /^(\s*)([.,;:!?])/.exec(textVal);
         if (m) {
@@ -353,7 +364,12 @@ function appendMixedPar(
       }
       const tokens = collectTokens(run);
       if (tokens.length > 0) {
-        for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+        for (const line of reflowTokens(
+          tokens,
+          ctx.printWidth,
+          childInd.length,
+          ctx.breakSentences,
+        )) {
           out.push(`${childInd}${line}`);
         }
       }
@@ -380,7 +396,11 @@ function appendBlock(
   // Special case: any node whose only meaningful child is xi:include stays on one line.
   // e.g. <outernode><xi:include href="..."/></outernode>
   const mc = meaningfulChildren(node);
-  if (mc.length === 1 && mc[0].type === "element" && (mc[0] as Element).name === "xi:include") {
+  if (
+    mc.length === 1 &&
+    mc[0].type === 'element' &&
+    (mc[0] as Element).name === 'xi:include'
+  ) {
     const el = mc[0] as Element;
     const startLines = startTagLines(node, depth, ctx);
     if (startLines.length === 1) {
@@ -420,30 +440,30 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
 
     // Always insert a blank line after the XML declaration.
     if (i === 0 && /^<\?xml(?:\s|\?>)/.test(cur)) {
-      result.push("");
+      result.push('');
       continue;
     }
 
-    if (ctx.blankLines === "few") continue;
+    if (ctx.blankLines === 'few') continue;
 
-    if (ctx.blankLines === "some") {
+    if (ctx.blankLines === 'some') {
       // Blank before section/environment opening tags (the most common readable spacing).
-      if (cur.startsWith("</") && next !== null && next.startsWith("<")) {
+      if (cur.startsWith('</') && next !== null && next.startsWith('<')) {
         const nextTag = /^<([^\s>/]+)/.exec(next)?.[1];
-        if (nextTag && newlineTags.includes(nextTag)) result.push("");
-      } else if (/^<title[\s>]/.test(cur) && cur.includes("</title>")) {
+        if (nextTag && newlineTags.includes(nextTag)) result.push('');
+      } else if (/^<title[\s>]/.test(cur) && cur.includes('</title>')) {
         // Blank after a complete single-line <title>...</title>.
         // Don't fire for the opening tag of a multi-line expanded title — that
         // would inject a blank line between the open tag and the title text.
-        result.push("");
+        result.push('');
       }
-    } else if (ctx.blankLines === "many") {
+    } else if (ctx.blankLines === 'many') {
       // Blank after every closing tag, or between consecutive opening tags.
       if (
-        cur.startsWith("</") ||
-        (cur.startsWith("<") && next !== null && next.startsWith("<"))
+        cur.startsWith('</') ||
+        (cur.startsWith('<') && next !== null && next.startsWith('<'))
       ) {
-        result.push("");
+        result.push('');
       }
     }
   }
@@ -456,13 +476,13 @@ function applyBlankLines(lines: string[], ctx: Ctx): string[] {
 function inlineSerialize(children: ElementContent[]): string {
   return children
     .map((c) => {
-      if (c.type === "text") return escText(c.value);
-      if (c.type === "element") return inlineEl(c);
-      if (c.type === "comment") return `<!--${c.value}-->`;
-      if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
-      return "";
+      if (c.type === 'text') return escText(c.value);
+      if (c.type === 'element') return inlineEl(c);
+      if (c.type === 'comment') return `<!--${c.value}-->`;
+      if (c.type === 'cdata') return `<![CDATA[${c.value}]]>`;
+      return '';
     })
-    .join("");
+    .join('');
 }
 
 function inlineEl(node: Element): string {
@@ -477,7 +497,7 @@ function collectTokens(children: ElementContent[]): string[] {
   // inline elements treated as opaque single tokens.
   const tokens: string[] = [];
   for (const c of children) {
-    if (c.type === "text") {
+    if (c.type === 'text') {
       const words: string[] = c.value
         .split(/\s+/)
         .filter((w: string) => w.length > 0);
@@ -492,9 +512,9 @@ function collectTokens(children: ElementContent[]): string[] {
           tokens.push(w);
         }
       }
-    } else if (c.type === "element") {
+    } else if (c.type === 'element') {
       tokens.push(inlineEl(c));
-    } else if (c.type === "comment") {
+    } else if (c.type === 'comment') {
       tokens.push(`<!--${c.value}-->`);
     }
   }
@@ -510,23 +530,24 @@ function reflowTokens(
   if (tokens.length === 0) return [];
   // 0 means no width limit; otherwise floor at 20 so deeply-nested content
   // doesn't produce a zero/negative target when the indent exceeds printWidth.
-  const width = printWidth === 0 ? Infinity : Math.max(20, printWidth - indentLen);
+  const width =
+    printWidth === 0 ? Infinity : Math.max(20, printWidth - indentLen);
   const lines: string[] = [];
-  let cur = "";
+  let cur = '';
 
   for (let i = 0; i < tokens.length; i++) {
     const tok = tokens[i];
-    if (cur === "") {
+    if (cur === '') {
       cur = tok;
     } else if (cur.length + 1 + tok.length <= width) {
-      cur += " " + tok;
+      cur += ' ' + tok;
     } else {
       lines.push(cur);
       cur = tok;
     }
     if (breakSentences && /[.!?]$/.test(tok) && i < tokens.length - 1) {
       lines.push(cur);
-      cur = "";
+      cur = '';
     }
   }
   if (cur) lines.push(cur);
@@ -546,14 +567,16 @@ function selfClose(node: Element): string {
 }
 
 function buildAttrs(node: Element): string {
-  return buildAttrList(node).join(" ");
+  return buildAttrList(node).join(' ');
 }
 
 function buildAttrList(node: Element): string[] {
-  return Object.entries(node.attributes || {})
-    // v == null (loose equality) covers both null and undefined that can appear
-    // in Object.entries output for boolean/valueless XML attributes.
-    .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
+  return (
+    Object.entries(node.attributes || {})
+      // v == null (loose equality) covers both null and undefined that can appear
+      // in Object.entries output for boolean/valueless XML attributes.
+      .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
+  );
 }
 
 function startTagLines(
@@ -564,17 +587,21 @@ function startTagLines(
 ): string[] {
   const ind = ctx.ind.repeat(depth);
   const attrs = buildAttrList(node);
-  const close = selfClosing ? "/>" : ">";
+  const close = selfClosing ? '/>' : '>';
   if (attrs.length === 0) {
     return [`${ind}<${node.name}${close}`];
   }
 
-  const singleLine = `${ind}<${node.name} ${attrs.join(" ")}${close}`;
-  if (!ctx.breakLongAttributes || ctx.printWidth === 0 || singleLine.length <= ctx.printWidth) {
+  const singleLine = `${ind}<${node.name} ${attrs.join(' ')}${close}`;
+  if (
+    !ctx.breakLongAttributes ||
+    ctx.printWidth === 0 ||
+    singleLine.length <= ctx.printWidth
+  ) {
     return [singleLine];
   }
 
-  const continuationIndent = `${ind}${" ".repeat(node.name.length + 2)}`;
+  const continuationIndent = `${ind}${' '.repeat(node.name.length + 2)}`;
   const lines = [`${ind}<${node.name} ${attrs[0]}`];
   for (const attr of attrs.slice(1)) {
     lines.push(`${continuationIndent}${attr}`);
@@ -588,25 +615,23 @@ function startTagLines(
 function isEmptyElement(node: Element): boolean {
   // The XML parser always emits text nodes for whitespace between tags, so "empty"
   // means every child is a whitespace-only text node.
-  return node.children.every(
-    (c) => c.type === "text" && c.value.trim() === "",
-  );
+  return node.children.every((c) => c.type === 'text' && c.value.trim() === '');
 }
 
 function meaningfulChildren(node: Element): ElementContent[] {
   // Strip the whitespace-only text nodes the parser emits between elements so
   // the serializer only sees structurally significant children.
   return node.children.filter(
-    (c) => !(c.type === "text" && c.value.trim() === ""),
+    (c) => !(c.type === 'text' && c.value.trim() === ''),
   );
 }
 
 function isBlockChild(child: ElementContent): boolean {
-  if (child.type !== "element") return false;
+  if (child.type !== 'element') return false;
   const name = child.name;
   // <c> is in verbatimTags (inline code) but is always rendered inline, never as a
   // structural block, so it must be excluded before the verbatimTags check below.
-  if (name === "c") return false;
+  if (name === 'c') return false;
   // Some tag names are reused for both a block-level environment (with content,
   // e.g. the root <pretext> document or a <webwork> exercise) and an inline macro
   // (empty/self-closing, e.g. the <pretext/> logo or an embedded <webwork/>
@@ -629,12 +654,9 @@ function hasBlockChildren(node: Element): boolean {
 // ─── Text escaping ────────────────────────────────────────────────────────────
 // The functions above will usually be passed a tree that was produced by parsing xml, so there would not be any special characters.  However, other libraries might forget to escape these, so we include them here just in case.
 function escText(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function escAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;");
+  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }

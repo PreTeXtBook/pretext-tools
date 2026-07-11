@@ -44,7 +44,9 @@ describe('math-parser - splitTextWithMath', () => {
 
 describe('math-parser - tokenizeMathInMarkdown', () => {
   it('tokenizes inline math outside code spans', () => {
-    const { markdown, tokens } = tokenizeMathInMarkdown('Let $x^2$ be a value.');
+    const { markdown, tokens } = tokenizeMathInMarkdown(
+      'Let $x^2$ be a value.',
+    );
     expect(tokens.size).toBe(1);
     const [token, math] = [...tokens.entries()][0];
     expect(markdown).toContain(token);
@@ -75,7 +77,9 @@ describe('math-parser - tokenizeMathInMarkdown', () => {
   });
 
   it('handles mixed code spans and math', () => {
-    const { markdown, tokens } = tokenizeMathInMarkdown('Use `$a$` and also $b^2$.');
+    const { markdown, tokens } = tokenizeMathInMarkdown(
+      'Use `$a$` and also $b^2$.',
+    );
     // Only the second $ expression should be tokenized
     expect(tokens.size).toBe(1);
     const [, math] = [...tokens.entries()][0];

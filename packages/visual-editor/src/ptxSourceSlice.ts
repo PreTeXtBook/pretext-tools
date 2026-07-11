@@ -1,5 +1,5 @@
-import { createSlice } from "@reduxjs/toolkit";
-import { defaultContent } from "./defaultContent";
+import { createSlice } from '@reduxjs/toolkit';
+import { defaultContent } from './defaultContent';
 
 const initialState = {
   value: defaultContent,
@@ -7,7 +7,7 @@ const initialState = {
 };
 
 const ptxSourceSlice = createSlice({
-  name: "ptxSource",
+  name: 'ptxSource',
   initialState,
   reducers: {
     //Functions that modify the state

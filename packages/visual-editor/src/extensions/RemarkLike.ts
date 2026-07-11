@@ -1,26 +1,26 @@
-import { Extension, Node, mergeAttributes } from "@tiptap/core";
-import { ReactNodeViewRenderer } from "@tiptap/react";
-import { TheoremLikeComponent } from "../components/TheoremLike";
-import { generateInputRules } from "../utils";
+import { Extension, Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { TheoremLikeComponent } from '../components/TheoremLike';
+import { generateInputRules } from '../utils';
 
 const RemarkLikeElements = [
-  "convention",
-  "insight",
-  "note",
-  "observation",
-  "remark",
-  "warning",
+  'convention',
+  'insight',
+  'note',
+  'observation',
+  'remark',
+  'warning',
 ];
 
 const RemarkLike = Extension.create({
-  name: "remarkLike",
+  name: 'remarkLike',
 
   addExtensions() {
     return RemarkLikeElements.map((element) =>
       Node.create({
         name: element,
-        content: "title? BasicBlock+",
-        group: "block remarkLike",
+        content: 'title? BasicBlock+',
+        group: 'block remarkLike',
         selectable: true,
         draggable: true,
         parseHTML() {
@@ -32,7 +32,7 @@ const RemarkLike = Extension.create({
         },
         renderHTML({ HTMLAttributes }) {
           return [
-            "article",
+            'article',
             mergeAttributes(
               { class: `${element} remark-like`, label: element },
               HTMLAttributes,

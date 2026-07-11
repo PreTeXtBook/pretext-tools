@@ -1,10 +1,10 @@
 /**
  * Custom remark plugin for parsing math delimiters.
- * 
+ *
  * Supports:
  * - Display math: `$$...$$` (block or inline) and `\[...\]` (LaTeX)
  * - Inline math: `$...$` and `\(...\)` (LaTeX)
- * 
+ *
  * Creates 'math' nodes with optional 'meta' field to distinguish display from inline.
  */
 
@@ -50,7 +50,10 @@ export interface MathTokenizationResult {
   tokens: Map<string, Math>;
 }
 
-function findNextDelimiter(text: string, pos: number): {
+function findNextDelimiter(
+  text: string,
+  pos: number,
+): {
   index: number;
   pattern: DelimiterPattern;
   content: string;
@@ -70,8 +73,8 @@ function findNextDelimiter(text: string, pos: number): {
 
     if (pattern.open === '$') {
       if (
-        (index > 0 && text[index - 1] === '$')
-        || (index + 1 < text.length && text[index + 1] === '$')
+        (index > 0 && text[index - 1] === '$') ||
+        (index + 1 < text.length && text[index + 1] === '$')
       ) {
         continue;
       }
@@ -92,7 +95,10 @@ function findNextDelimiter(text: string, pos: number): {
  * `end` is the index of the first character AFTER the region, or `null` if no
  * code region exists.
  */
-function findNextCodeRegion(text: string, fromPos: number): { start: number; end: number } | null {
+function findNextCodeRegion(
+  text: string,
+  fromPos: number,
+): { start: number; end: number } | null {
   let p = fromPos;
 
   while (p < text.length) {
@@ -130,7 +136,9 @@ function findNextCodeRegion(text: string, fromPos: number): { start: number; end
   return null;
 }
 
-export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult {
+export function tokenizeMathInMarkdown(
+  markdown: string,
+): MathTokenizationResult {
   const tokens = new Map<string, Math>();
   let out = '';
   let pos = 0;
@@ -163,7 +171,11 @@ export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult
       meta: next.pattern.isDisplay ? 'display' : 'inline',
     });
 
-    pos = next.index + next.pattern.open.length + next.content.length + next.pattern.close.length;
+    pos =
+      next.index +
+      next.pattern.open.length +
+      next.content.length +
+      next.pattern.close.length;
     id += 1;
   }
 
@@ -173,7 +185,7 @@ export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult
 /**
  * Find math in a string and split into text and math nodes.
  * Returns array of alternating Text and Math nodes.
- * 
+ *
  * Order matters: we check longer/more specific delimiters first.
  */
 export function splitTextWithMath(text: string): (Text | Math)[] {
@@ -206,13 +218,20 @@ export function splitTextWithMath(text: string): (Text | Math)[] {
       meta: nextMatch.pattern.isDisplay ? 'display' : 'inline',
     });
 
-    pos = nextMatch.index + nextMatch.pattern.open.length + nextMatch.content.length + nextMatch.pattern.close.length;
+    pos =
+      nextMatch.index +
+      nextMatch.pattern.open.length +
+      nextMatch.content.length +
+      nextMatch.pattern.close.length;
   }
 
   return result.length === 0 ? [{ type: 'text', value: text }] : result;
 }
 
-function splitTextWithMathTokens(text: string, tokens: Map<string, Math>): (Text | Math)[] {
+function splitTextWithMathTokens(
+  text: string,
+  tokens: Map<string, Math>,
+): (Text | Math)[] {
   const result: (Text | Math)[] = [];
   let lastIndex = 0;
   TOKEN_RE.lastIndex = 0;
@@ -290,4 +309,3 @@ const remarkMath: Plugin<[], Root> = () => {
 };
 
 export default remarkMath;
-

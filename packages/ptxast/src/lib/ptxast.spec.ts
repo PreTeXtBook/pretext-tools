@@ -121,33 +121,57 @@ describe('guard soundness', () => {
 
   it('isP accepts a valid xast p node', () => {
     expect(isP(p([]))).toBe(true);
-    expect(isP({ type: 'element', name: 'p', attributes: {}, children: [] })).toBe(true);
+    expect(
+      isP({ type: 'element', name: 'p', attributes: {}, children: [] }),
+    ).toBe(true);
   });
 
   it('isM rejects non-element and wrong-name nodes', () => {
     expect(isM({ type: 'm' })).toBe(false);
-    expect(isM({ type: 'element', name: 'me', attributes: {}, children: [] })).toBe(false);
+    expect(
+      isM({ type: 'element', name: 'me', attributes: {}, children: [] }),
+    ).toBe(false);
   });
 
   it('isM accepts a valid xast m node', () => {
     expect(isM(m('x^2'))).toBe(true);
-    expect(isM({ type: 'element', name: 'm', attributes: {}, children: [] })).toBe(true);
+    expect(
+      isM({ type: 'element', name: 'm', attributes: {}, children: [] }),
+    ).toBe(true);
   });
 
   it('isXref rejects nodes without attributes.ref', () => {
     expect(isXref({ type: 'xref' })).toBe(false);
-    expect(isXref({ type: 'element', name: 'xref', attributes: {}, children: [] })).toBe(false);
-    expect(isXref({ type: 'element', name: 'xref', attributes: { ref: undefined }, children: [] })).toBe(false);
+    expect(
+      isXref({ type: 'element', name: 'xref', attributes: {}, children: [] }),
+    ).toBe(false);
+    expect(
+      isXref({
+        type: 'element',
+        name: 'xref',
+        attributes: { ref: undefined },
+        children: [],
+      }),
+    ).toBe(false);
   });
 
   it('isXref accepts a valid xref node', () => {
     expect(isXref(xref('thm-main'))).toBe(true);
-    expect(isXref({ type: 'element', name: 'xref', attributes: { ref: 'thm-main' }, children: [] })).toBe(true);
+    expect(
+      isXref({
+        type: 'element',
+        name: 'xref',
+        attributes: { ref: 'thm-main' },
+        children: [],
+      }),
+    ).toBe(true);
   });
 
   it('isSection rejects nodes without name:section', () => {
     expect(isSection({ type: 'section' })).toBe(false);
-    expect(isSection({ type: 'element', name: 'p', attributes: {}, children: [] })).toBe(false);
+    expect(
+      isSection({ type: 'element', name: 'p', attributes: {}, children: [] }),
+    ).toBe(false);
   });
 
   it('isPtxText rejects nodes without value', () => {
@@ -262,10 +286,13 @@ describe('builders', () => {
   });
 
   it('example() with solution', () => {
-    const node = example([
-      p([text('Show that 2 is even.')]),
-      solution([p([text('2 = 2 * 1, which is even.')])]),
-    ], { 'xml:id': 'ex-two-even' });
+    const node = example(
+      [
+        p([text('Show that 2 is even.')]),
+        solution([p([text('2 = 2 * 1, which is even.')])]),
+      ],
+      { 'xml:id': 'ex-two-even' },
+    );
     expect(node.type).toBe('element');
     expect(node.name).toBe('example');
     expect(node.children).toHaveLength(2);
@@ -275,10 +302,13 @@ describe('builders', () => {
   });
 
   it('definition() produces correct name', () => {
-    const node = definition([
-      title([text('Prime Number')]),
-      statement([p([text('An integer p > 1 is prime if...')])]),
-    ], { 'xml:id': 'def-prime' });
+    const node = definition(
+      [
+        title([text('Prime Number')]),
+        statement([p([text('An integer p > 1 is prime if...')])]),
+      ],
+      { 'xml:id': 'def-prime' },
+    );
     expect(node.type).toBe('element');
     expect(node.name).toBe('definition');
   });

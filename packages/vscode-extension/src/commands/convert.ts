@@ -1,32 +1,32 @@
-import { Range, window, workspace } from "vscode";
-import { markdownToPretext as md2ptx } from "md2ptx";
-import { pretextOutputChannel } from "../ui";
-import { convertToPretext } from "../importFiles";
+import { Range, window, workspace } from 'vscode';
+import { markdownToPretext as md2ptx } from 'md2ptx';
+import { pretextOutputChannel } from '../ui';
+import { convertToPretext } from '../importFiles';
 // @ts-expect-error frankenmarkup does not publish types.
-import { FlexTeXtConvert } from "frankenmarkup";
-import { lspFormatText } from "../lsp-client/main";
-import { fromXml } from "xast-util-from-xml";
-import { toXml } from "xast-util-to-xml";
-import { SKIP, visit } from "unist-util-visit";
-import { fromMarkdown } from "mdast-util-from-markdown";
-import { latexToPretext } from "@pretextbook/latex-pretext";
-import { markdownToPretext } from "@pretextbook/remark-pretext";
-import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
-import type { PtxRoot } from "@pretextbook/ptxast";
-import type { Element } from "xast";
+import { FlexTeXtConvert } from 'frankenmarkup';
+import { lspFormatText } from '../lsp-client/main';
+import { fromXml } from 'xast-util-from-xml';
+import { toXml } from 'xast-util-to-xml';
+import { SKIP, visit } from 'unist-util-visit';
+import { fromMarkdown } from 'mdast-util-from-markdown';
+import { latexToPretext } from '@pretextbook/latex-pretext';
+import { markdownToPretext } from '@pretextbook/remark-pretext';
+import { collectPtxSchemaViolations } from '@pretextbook/ptxast';
+import type { PtxRoot } from '@pretextbook/ptxast';
+import type { Element } from 'xast';
 
 export function cmdConvertFile() {
-  pretextOutputChannel.append("Converting selected file to PreTeXt");
+  pretextOutputChannel.append('Converting selected file to PreTeXt');
   // show quick pick to select whether to convert with pandoc or plastex
   window
-    .showQuickPick(["plastex", "pandoc"], {
-      placeHolder: "Select a converter",
+    .showQuickPick(['plastex', 'pandoc'], {
+      placeHolder: 'Select a converter',
     })
     .then((qpSelection) => {
-      if (qpSelection === "pandoc") {
-        convertToPretext("pandoc");
-      } else if (qpSelection === "plastex") {
-        convertToPretext("plastex");
+      if (qpSelection === 'pandoc') {
+        convertToPretext('pandoc');
+      } else if (qpSelection === 'plastex') {
+        convertToPretext('plastex');
       }
     });
 }
@@ -34,7 +34,7 @@ export function cmdConvertFile() {
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
   if (!editor) {
-    pretextOutputChannel.appendLine("No active editor found to convert text.");
+    pretextOutputChannel.appendLine('No active editor found to convert text.');
     return;
   }
   const selection = editor.selection;
@@ -46,39 +46,39 @@ export async function cmdConvertText() {
   let convertedText: string;
 
   pretextOutputChannel.appendLine(
-    "Converting selected text to PreTeXt format.",
+    'Converting selected text to PreTeXt format.',
   );
   const experimentalFeaturesEnabled = workspace
-    .getConfiguration("pretext-tools")
-    .get<boolean>("experimentalFeatures", false);
+    .getConfiguration('pretext-tools')
+    .get<boolean>('experimentalFeatures', false);
   const conversionOptions = [
-    "LaTeX-style PreTeXt",
-    "Markdown-style PreTeXt",
+    'LaTeX-style PreTeXt',
+    'Markdown-style PreTeXt',
     ...(experimentalFeaturesEnabled
-      ? ["Mixed Markup", "Legacy Markdown Converter"]
+      ? ['Mixed Markup', 'Legacy Markdown Converter']
       : []),
   ];
   window
     .showQuickPick(conversionOptions, {
-      placeHolder: "Which format is the selected text?",
+      placeHolder: 'Which format is the selected text?',
     })
     .then(async (qpSelection) => {
       if (!qpSelection) {
         return;
       }
       switch (qpSelection) {
-        case "LaTeX-style PreTeXt":
+        case 'LaTeX-style PreTeXt':
           convertedText = await cmdLatexToPretext(initialText, selectionRange);
           break;
-        case "Markdown-style PreTeXt":
+        case 'Markdown-style PreTeXt':
           convertedText = await cmdConvertPMDToPretextExperimental(initialText);
           break;
-        case "Mixed Markup":
+        case 'Mixed Markup':
           convertedText = await cmdConvertPMDToPretext(initialText);
           break;
-        case "Legacy Markdown Converter":
+        case 'Legacy Markdown Converter':
           convertedText = await validateAndFormatConvertedPretext(
-            "Legacy Markdown Converter",
+            'Legacy Markdown Converter',
             await md2ptx(initialText),
           );
           break;
@@ -89,7 +89,7 @@ export async function cmdConvertText() {
         const baseIndent =
           editor.document
             .lineAt(selectionRange.start.line)
-            .text.match(/^(\s*)/)?.[1] ?? "";
+            .text.match(/^(\s*)/)?.[1] ?? '';
         if (baseIndent) {
           convertedText = reindentForContext(
             convertedText,
@@ -115,11 +115,11 @@ function reindentForContext(
   skipFirst: boolean,
 ): string {
   return text
-    .split("\n")
+    .split('\n')
     .map((line, i) =>
       i === 0 && skipFirst ? line : line ? baseIndent + line : line,
     )
-    .join("\n");
+    .join('\n');
 }
 
 async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
@@ -128,11 +128,11 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   // Remove the starting <p> tag if we selected text in the middle of a line.
   const pTagMatch = newText.match(/^<p>/);
   if (pTagMatch && selectionRange.start.character > 0) {
-    newText = newText.replace(/^<p>/, "");
+    newText = newText.replace(/^<p>/, '');
   }
 
   // Validate the final XML that will be formatted/inserted.
-  appendConversionValidation("LaTeX-style PreTeXt", newText);
+  appendConversionValidation('LaTeX-style PreTeXt', newText);
 
   // Split consecutive tags with a space if present before formatting.
   return formatConvertedPretext(newText);
@@ -141,7 +141,7 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
 function convertWithUnified(text: string) {
   const converted = latexToPretext(text);
 
-  pretextOutputChannel.append("Converting selected text to PreTeXt.\n");
+  pretextOutputChannel.append('Converting selected text to PreTeXt.\n');
   if (converted.messages) {
     for (const message of converted.messages) {
       pretextOutputChannel.appendLine(message.message);
@@ -154,21 +154,21 @@ function convertWithUnified(text: string) {
 async function cmdConvertPMDToPretext(initialText: string) {
   const newText = FlexTeXtConvert(initialText);
   return validateAndFormatConvertedPretext(
-    "PreTeXt Markdown (Experimental)",
+    'PreTeXt Markdown (Experimental)',
     newText,
   );
 }
 
 async function cmdConvertPMDToPretextExperimental(initialText: string) {
   pretextOutputChannel.appendLine(
-    "Markdown-style PreTeXt ptxast conversion is experimental. Use with care.",
+    'Markdown-style PreTeXt ptxast conversion is experimental. Use with care.',
   );
   const newText = markdownToPretext(initialText);
-  return validateAndFormatConvertedPretext("Markdown-style PreTeXt", newText);
+  return validateAndFormatConvertedPretext('Markdown-style PreTeXt', newText);
 }
 
 function formatConvertedPretext(xml: string) {
-  return lspFormatText(xml.replace(/(>)(<)/g, "$1 $2"));
+  return lspFormatText(xml.replace(/(>)(<)/g, '$1 $2'));
 }
 
 async function validateAndFormatConvertedPretext(
@@ -187,13 +187,13 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
     // whose children are the actual fragment nodes.
     const wrapped = fromXml(`<root>${xml}</root>`);
     const wrapperElement = wrapped.children.find(
-      (c): c is Element => c.type === "element",
+      (c): c is Element => c.type === 'element',
     );
     const fragmentRoot: PtxRoot = {
-      type: "root",
+      type: 'root',
       children: wrapperElement
         ? wrapperElement.children
-        : (wrapped.children as PtxRoot["children"]),
+        : (wrapped.children as PtxRoot['children']),
     };
     const violations = collectPtxSchemaViolations(fragmentRoot);
     if (violations.length === 0) {
@@ -227,7 +227,7 @@ function appendConversionValidation(sourceLabel: string, xml: string) {
 export async function cmdExperimentConvert() {
   const editor = window.activeTextEditor;
   if (!editor) {
-    pretextOutputChannel.appendLine("No active editor found to convert text.");
+    pretextOutputChannel.appendLine('No active editor found to convert text.');
     return;
   }
   const selection = editor.selection;
@@ -240,19 +240,19 @@ export async function cmdExperimentConvert() {
 
   // Prompt user to select a conversion method
   pretextOutputChannel.appendLine(
-    "Experimental conversion functions are designed for testing and may not work as expected.",
+    'Experimental conversion functions are designed for testing and may not work as expected.',
   );
   window
     .showQuickPick([
       {
-        label: "Use mdast",
-        description: "Preprocess selected text with Markdown AST",
-        function: "useMdast",
+        label: 'Use mdast',
+        description: 'Preprocess selected text with Markdown AST',
+        function: 'useMdast',
       },
       {
-        label: "Use xast",
-        description: "Convert selected text to PreTeXt format",
-        function: "useXast",
+        label: 'Use xast',
+        description: 'Convert selected text to PreTeXt format',
+        function: 'useXast',
       },
     ])
     .then(async (selection) => {
@@ -260,10 +260,10 @@ export async function cmdExperimentConvert() {
         return;
       }
       switch (selection.function) {
-        case "useMdast":
+        case 'useMdast':
           convertedText = await convertPmdWithMdast(initialText);
           break;
-        case "useXast":
+        case 'useXast':
           convertedText = await convertPmdWithXast(initialText);
           break;
       }
@@ -280,40 +280,40 @@ export async function cmdExperimentConvert() {
 async function convertPmdWithMdast(initialText: string) {
   // Remove leading and trailing whitespace
   const trimmedText = initialText.trim();
-  console.log("initialText is", trimmedText);
+  console.log('initialText is', trimmedText);
 
   // Converte to mdast:
   const tree = fromMarkdown(trimmedText);
 
-  console.log("mdast before: ", tree);
+  console.log('mdast before: ', tree);
 
   //const convertedText = toXml(tree);
 
   // Convert the text using FlexTeXtConvert
   //const convertedText = FlexTeXtConvert(trimmedText);
   const convertedText = initialText;
-  console.log("converted text is", convertedText);
+  console.log('converted text is', convertedText);
 
   // Format the converted text
   return lspFormatText(convertedText);
 }
 
 async function convertPmdWithXast(initialText: string) {
-  console.log("initialText is", initialText);
+  console.log('initialText is', initialText);
 
   const tree = fromXml(`<root>${initialText}</root>`);
 
-  console.log("xast before: ", tree);
+  console.log('xast before: ', tree);
 
   visit(tree, (node, index, parent) => {
-    if (node.type === "text") {
+    if (node.type === 'text') {
       const converted = FlexTeXtConvert(node.value);
 
-      console.log("converted text is", converted);
+      console.log('converted text is', converted);
 
       const subtree = fromXml(converted);
       // replace the node with the subtree
-      if (typeof index !== "number" || !parent) {
+      if (typeof index !== 'number' || !parent) {
         return;
       }
 
@@ -322,11 +322,11 @@ async function convertPmdWithXast(initialText: string) {
     }
   });
 
-  console.log("xast after: ", tree);
+  console.log('xast after: ', tree);
   // Convert the resulting tree back to XML
   let newXml = toXml(tree);
 
-  console.log("back to xml: ", newXml);
+  console.log('back to xml: ', newXml);
   // strip the <root> and </root> tags
   const rootTagMatch = newXml.match(/^<root>\s*([\s\S]*?)\s*<\/root>$/);
   if (rootTagMatch) {

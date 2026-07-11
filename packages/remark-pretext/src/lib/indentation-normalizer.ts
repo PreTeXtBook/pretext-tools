@@ -51,41 +51,41 @@ interface DirectiveOpen {
  * Detect if a line is a directive marker (e.g., "Theorem[Title]{#id}:")
  * Returns the label if it is, null otherwise.
  * Only accepts directive names that exist in DIRECTIVE_SPEC_TABLE.
- * 
+ *
  * Attributes must follow the pattern: [optional title] {optional attributes}
  * or be empty. Reject arbitrary trailing text like "Proof by contradiction:".
  */
 function parseIndentationDirective(line: string): string | null {
   const trimmed = line.trim();
-  
+
   // Must end with colon
   if (!trimmed.endsWith(':')) return null;
-  
+
   // Remove trailing colon
   const withoutColon = trimmed.slice(0, -1);
-  
+
   // Must start with a word character (directive name)
   if (!/^[a-zA-Z]/.test(withoutColon)) return null;
-  
+
   // Extract directive name (word characters, hyphens, underscores)
   // Attributes must be either empty or follow pattern: [...]+ {...}+
   const match = withoutColon.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(.*)$/);
   if (!match) return null;
-  
+
   const [, directiveName, attributes] = match;
-  
+
   // Validate attributes: must be empty or contain only bracket/brace syntax
   // Reject lines like "Proof by contradiction:" where there's arbitrary text after the directive name
   if (attributes && !/^(\[[^\]]*\]|\{[^}]*\})*$/.test(attributes)) {
     // There's trailing text that isn't [...]/{...} syntax
     return null;
   }
-  
+
   // Validate against DIRECTIVE_SPEC_TABLE (single source of truth)
   if (!DIRECTIVE_SPEC_TABLE[directiveName.toLowerCase()]) {
     return null;
   }
-  
+
   // Return the full label (directive + attributes, without colon)
   return withoutColon;
 }
@@ -113,7 +113,7 @@ function getIndentLevel(line: string): number {
  */
 function hasIndentedBody(lines: string[], currentIndex: number): boolean {
   const currentIndent = getIndentLevel(lines[currentIndex]);
-  
+
   // Look ahead for the next non-blank line
   for (let i = currentIndex + 1; i < lines.length; i++) {
     if (!isBlankLine(lines[i])) {
@@ -121,7 +121,7 @@ function hasIndentedBody(lines: string[], currentIndex: number): boolean {
       return nextIndent > currentIndent;
     }
   }
-  
+
   // No indented body found
   return false;
 }
@@ -180,12 +180,15 @@ export function normalizeIndentationDirectives(markdown: string): string {
         // Opening a new fence
         stack.inCodeFence = true;
         stack.codeFenceMarker = marker;
-      } else if (stack.codeFenceMarker && trimmedLine.startsWith(stack.codeFenceMarker)) {
+      } else if (
+        stack.codeFenceMarker &&
+        trimmedLine.startsWith(stack.codeFenceMarker)
+      ) {
         // Closing the fence
         stack.inCodeFence = false;
         stack.codeFenceMarker = null;
       }
-      
+
       // Output fence lines: if inside a directive, keep original indentation
       // remark-directive will handle dedenting the body
       output.push(line);
@@ -211,7 +214,8 @@ export function normalizeIndentationDirectives(markdown: string): string {
       // Only treat as directive if there's actually an indented body following
       // Close any directives that are at or deeper than this indentation level
       while (stack.openDirectives.length > 0) {
-        const topDirective = stack.openDirectives[stack.openDirectives.length - 1];
+        const topDirective =
+          stack.openDirectives[stack.openDirectives.length - 1];
         if (topDirective.indentLevel < indentLevel) {
           // This directive is a parent; keep it open
           break;
@@ -226,13 +230,15 @@ export function normalizeIndentationDirectives(markdown: string): string {
       // Extract directive name and lowercase it for output
       // directiveLabel is like "Theorem[...]" or "theorem[...]" etc.
       const nameMatch = directiveLabel.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(.*)/);
-      const lowercaseLabel = nameMatch ? nameMatch[1].toLowerCase() + (nameMatch[2] || '') : directiveLabel;
+      const lowercaseLabel = nameMatch
+        ? nameMatch[1].toLowerCase() + (nameMatch[2] || '')
+        : directiveLabel;
 
       // Compute colon count for the new directive
       // It should be max(children's colons) + 1
       // Children are directives opened at deeper indent levels
-      const colonCount = (stack.openDirectives.length * 1) + 3; // 3 is the base
-      
+      const colonCount = stack.openDirectives.length * 1 + 3; // 3 is the base
+
       // Open the new directive with colon syntax (lowercase directive name)
       output.push(':'.repeat(colonCount) + lowercaseLabel);
       stack.openDirectives.push({
@@ -249,7 +255,8 @@ export function normalizeIndentationDirectives(markdown: string): string {
       // (outdenting beyond the current directive's level)
       while (
         stack.openDirectives.length > 0 &&
-        indentLevel <= stack.openDirectives[stack.openDirectives.length - 1].indentLevel
+        indentLevel <=
+          stack.openDirectives[stack.openDirectives.length - 1].indentLevel
       ) {
         const closing = stack.openDirectives.pop();
         if (closing) {
@@ -261,7 +268,8 @@ export function normalizeIndentationDirectives(markdown: string): string {
       // content doesn't appear indented to the remark parser (which would
       // otherwise interpret 4-space lines as indented code blocks).
       if (stack.openDirectives.length > 0) {
-        const topDirective = stack.openDirectives[stack.openDirectives.length - 1];
+        const topDirective =
+          stack.openDirectives[stack.openDirectives.length - 1];
         if (topDirective.bodyBaseIndent < 0) {
           topDirective.bodyBaseIndent = indentLevel;
         }

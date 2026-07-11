@@ -1,7 +1,7 @@
-import type { CleaningWarning } from "./clean/warnings";
-import type { DocumentKind } from "./layout/document-kind";
+import type { CleaningWarning } from './clean/warnings';
+import type { DocumentKind } from './layout/document-kind';
 
-export type SourceFormat = "latex" | "markdown" | "pretext";
+export type SourceFormat = 'latex' | 'markdown' | 'pretext';
 
 export interface ConversionContext {
   sourceFormat: SourceFormat;
@@ -23,14 +23,14 @@ export type ConvertedPretextResult =
   | ConvertedPretextSuccess
   | ConvertedPretextError;
 
-export type UploadStatusType = "loading" | "success" | "error";
+export type UploadStatusType = 'loading' | 'success' | 'error';
 
 export type UploadSourceType =
-  | "tex"
-  | "markdown"
-  | "pretext"
-  | "zip"
-  | "tar.gz";
+  | 'tex'
+  | 'markdown'
+  | 'pretext'
+  | 'zip'
+  | 'tar.gz';
 
 export interface UploadStatusMessage {
   type: UploadStatusType;
@@ -42,7 +42,7 @@ export interface UploadStatusMessage {
  * name. Only the types the import pipeline currently emits are listed; the
  * pretext-plus editor accepts many more.
  */
-export type ImportedDivisionType = "book" | "article" | "chapter" | "section";
+export type ImportedDivisionType = 'book' | 'article' | 'chapter' | 'section';
 
 /**
  * One division record in the intermediate model (SPEC §4.1): a flat pool of
@@ -105,7 +105,7 @@ export interface PlusDivisionRecord {
 export interface PlusAssetRecord {
   id: string;
   ref: string;
-  kind: "file";
+  kind: 'file';
   /** → `short_description` and the multipart upload filename. */
   fileName: string;
   data: Uint8Array;

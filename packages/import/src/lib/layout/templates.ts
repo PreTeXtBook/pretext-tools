@@ -5,7 +5,7 @@ export interface ProjectTemplateOptions {
 }
 
 export function renderProjectPtx(options: ProjectTemplateOptions): string {
-  const { mainSource, publication, outputBase = "output" } = options;
+  const { mainSource, publication, outputBase = 'output' } = options;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <project ptx-version="2">
   <targets>

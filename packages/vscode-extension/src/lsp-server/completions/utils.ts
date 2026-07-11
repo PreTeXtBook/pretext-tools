@@ -1,6 +1,6 @@
-import * as fs from "fs";
-import { Snippets } from "../../types";
-import { elementChildren } from "../../constants";
+import * as fs from 'fs';
+import { Snippets } from '../../types';
+import { elementChildren } from '../../constants';
 import {
   CompletionItem,
   CompletionItemKind,
@@ -8,15 +8,15 @@ import {
   InsertTextFormat,
   Range,
   Position,
-} from "vscode-languageserver/node";
-import { documents } from "../state";
-import { TextDocument } from "vscode-languageserver-textdocument";
-import path from "path";
+} from 'vscode-languageserver/node';
+import { documents } from '../state';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import path from 'path';
 
 export async function readJsonFile(relativePath: string): Promise<any> {
   try {
     // Set the absolute path to the snippets file:
-    const data = fs.readFileSync(relativePath, "utf-8");
+    const data = fs.readFileSync(relativePath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error(`Error reading file from disk: ${error}`);
@@ -92,7 +92,7 @@ export function getCurrentTag(
   // Now walk through list of all tags, creating a stack of open tags and removing closed tags from the stack.
   let openTagStack: string[] = [];
   for (let tag of allTags) {
-    if (tag.startsWith("/")) {
+    if (tag.startsWith('/')) {
       const lastOpenTag = openTagStack.pop();
       if (lastOpenTag !== tag.slice(1)) {
         console.error(
@@ -105,7 +105,7 @@ export function getCurrentTag(
   }
 
   const currentTag = openTagStack.pop();
-  console.log("Current XML Element: ", currentTag);
+  console.log('Current XML Element: ', currentTag);
   return currentTag;
 }
 
@@ -127,12 +127,12 @@ export async function getSnippetCompletionItems(
   const uri = params.textDocument.uri;
   const position = params.position;
   const document = documents.get(uri);
-  const labels = ["source", "xsl", "publication", "pubfile"];
+  const labels = ['source', 'xsl', 'publication', 'pubfile'];
   let completionItems: CompletionItem[] = [];
   for (let elem of labels) {
     console.log(elem);
     if (elem in snippets) {
-      console.log("found");
+      console.log('found');
       const snippetCompletion: CompletionItem = {
         label: snippets[elem].prefix,
         kind: kind,
@@ -142,17 +142,17 @@ export async function getSnippetCompletionItems(
   }
   for (let [key, value] of Object.entries(snippets)) {
     if (node) {
-      if (trigger === "@") {
+      if (trigger === '@') {
         if (
           node in elementChildren &&
-          !elementChildren[node].attributes.includes(key.split(" ")[0])
+          !elementChildren[node].attributes.includes(key.split(' ')[0])
         ) {
           continue;
         }
-      } else if (trigger === "<") {
+      } else if (trigger === '<') {
         if (
           node in elementChildren &&
-          !elementChildren[node].elements.includes(key.split(" ")[0])
+          !elementChildren[node].elements.includes(key.split(' ')[0])
         ) {
           continue;
         }
@@ -168,7 +168,7 @@ export async function getSnippetCompletionItems(
       document &&
       document.getText(rangeInLine(position, -1, 0)) === trigger
     ) {
-      console.log("trigger detected");
+      console.log('trigger detected');
       range = rangeInLine(position, -1, 0);
     } else {
       range = rangeInLine(position);
@@ -184,8 +184,8 @@ export async function getSnippetCompletionItems(
     snippetCompletion.textEdit = { newText: value.body, range: range };
     if (value.retrigger) {
       snippetCompletion.command = {
-        title: "Suggest",
-        command: "editor.action.triggerSuggest",
+        title: 'Suggest',
+        command: 'editor.action.triggerSuggest',
       };
     }
     // condition on the label existing to avoid "default" completion.
@@ -194,7 +194,7 @@ export async function getSnippetCompletionItems(
     }
   }
   // Also add a closing tag for the current node, since we have turned off this feature from redhat.vscode-xml.
-  if (node && trigger === "<") {
+  if (node && trigger === '<') {
     const closeTagCompletion: CompletionItem = {
       label: `/${node}>`,
       kind: kind,
@@ -208,20 +208,20 @@ export async function getSnippetCompletionItems(
 }
 
 function getMainFile() {
-  const pwd = "./";
+  const pwd = './';
   // Default source directory is ./source
-  let sourceDir = path.join(pwd, "source");
+  let sourceDir = path.join(pwd, 'source');
   // Set default main file to main.ptx
-  let mainFile = path.join(sourceDir, "main.ptx");
+  let mainFile = path.join(sourceDir, 'main.ptx');
   // Check if project.ptx exists and if so, use that to find main file
-  let project = path.join(pwd, "project.ptx");
+  let project = path.join(pwd, 'project.ptx');
   if (fs.existsSync(project)) {
-    console.log("Found project.ptx");
+    console.log('Found project.ptx');
     const text = fs.readFileSync(project).toString();
     // Determine whether v1 or v2:
     let regexVersion = /<project\s(.*?)ptx-version="2"/;
     if (regexVersion.test(text)) {
-      console.log("project.ptx is version 2");
+      console.log('project.ptx is version 2');
       let regexProject = /<project\s(.*?)source="(.*?)"/;
       let regexTarget = /<target\s(.*?)source="(.*?)"/;
       let projectSourceMatch = regexProject.exec(text);
@@ -231,14 +231,14 @@ function getMainFile() {
         if (targetSourceMatch) {
           mainFile = path.join(sourceDir, targetSourceMatch[2]);
         } else {
-          mainFile = path.join(sourceDir, "main.ptx"); // default
+          mainFile = path.join(sourceDir, 'main.ptx'); // default
         }
       } else if (targetSourceMatch) {
         // No project source, so use default set above.
         mainFile = path.join(sourceDir, targetSourceMatch[2]);
       }
     } else {
-      console.log("project.ptx is legacy version");
+      console.log('project.ptx is legacy version');
       let regexTarget = /<source>(.*?)<\/source>/;
       let targetSourceMatch = regexTarget.exec(text);
       if (targetSourceMatch) {
@@ -246,13 +246,13 @@ function getMainFile() {
       }
     }
   }
-  console.log("Checking for main source file: ", mainFile);
+  console.log('Checking for main source file: ', mainFile);
   if (fs.existsSync(mainFile)) {
-    console.log("Found main source file", mainFile);
+    console.log('Found main source file', mainFile);
     return mainFile;
   } else {
-    console.log("main source file not found");
-    return "";
+    console.log('main source file not found');
+    return '';
   }
 }
 
@@ -278,11 +278,11 @@ export function getReferences(): LabelArray {
         let regex = /<xi:include\s+href="([^"]+)"/g;
         let matches = [...text.matchAll(regex)];
         newFiles = newFiles.concat(
-          matches.map((match) => path.join(file, "..", match[1])),
+          matches.map((match) => path.join(file, '..', match[1])),
         );
         regex = /<(\w*?)\s(.*?)xml:id="([^"]+?)"/g;
         matches = [...text.matchAll(regex)];
-        const posixFile = file.replace(/\\/g, "/");
+        const posixFile = file.replace(/\\/g, '/');
         references = references.concat(
           matches.map((match) => [match[3], match[1], posixFile]),
         );
@@ -291,7 +291,7 @@ export function getReferences(): LabelArray {
     files = newFiles;
     depth++;
   }
-  console.log("Finished collecting references, reached depth of ", depth);
+  console.log('Finished collecting references, reached depth of ', depth);
   return references;
 }
 
@@ -299,25 +299,25 @@ export function updateReferences(
   document: TextDocument,
   references: LabelArray = [],
 ) {
-  console.log("Updating references");
+  console.log('Updating references');
   // Look through the specified file collect all labels contained as xml:id attributes.
   // This can then be used to update the current list of references every time a file is saved.
   let fileContents = document.getText();
   let regex = /<(\w*?)\s(.*?)xml:id="([^"]+)"/g;
   let matches = [...fileContents.matchAll(regex)];
-  const rootDir = fs.realpathSync(".");
-  console.log("Root directory: ", rootDir);
+  const rootDir = fs.realpathSync('.');
+  console.log('Root directory: ', rootDir);
   const currentFile = document.uri;
-  console.log("Current file: ", currentFile);
+  console.log('Current file: ', currentFile);
   const posixFile = path.posix.relative(rootDir, currentFile);
-  console.log("Current file: ", posixFile);
+  console.log('Current file: ', posixFile);
   // Remove all (old) labels from the current file:
   references = references.filter((label) => label[2] !== posixFile);
   // Add all (new) labels from the current file:
   references = references.concat(
     matches.map((match) => [match[3], match[1], posixFile]),
   );
-  console.log("Done updating labels");
+  console.log('Done updating labels');
   return references;
 }
 

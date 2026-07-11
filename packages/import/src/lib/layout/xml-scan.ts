@@ -21,15 +21,21 @@ function parseAttributes(attrString: string): Record<string, string> {
   let m: RegExpExecArray | null;
   ATTR_RE.lastIndex = 0;
   while ((m = ATTR_RE.exec(attrString)) !== null) {
-    result[m[1]] = m[2] ?? m[3] ?? "";
+    result[m[1]] = m[2] ?? m[3] ?? '';
   }
   return result;
 }
 
 type Token =
-  | { kind: "open"; name: string; attrs: string; pos: number; end: number }
-  | { kind: "close"; name: string; pos: number; end: number }
-  | { kind: "selfclose"; name: string; attrs: string; pos: number; end: number };
+  | { kind: 'open'; name: string; attrs: string; pos: number; end: number }
+  | { kind: 'close'; name: string; pos: number; end: number }
+  | {
+      kind: 'selfclose';
+      name: string;
+      attrs: string;
+      pos: number;
+      end: number;
+    };
 
 // Scan all element tags, skipping comments / CDATA / PIs / DOCTYPE.
 function tokenize(source: string): Token[] {
@@ -37,27 +43,27 @@ function tokenize(source: string): Token[] {
   let i = 0;
   const len = source.length;
   while (i < len) {
-    const lt = source.indexOf("<", i);
+    const lt = source.indexOf('<', i);
     if (lt < 0) break;
 
-    if (source.startsWith("<!--", lt)) {
-      const close = source.indexOf("-->", lt + 4);
+    if (source.startsWith('<!--', lt)) {
+      const close = source.indexOf('-->', lt + 4);
       i = close < 0 ? len : close + 3;
       continue;
     }
-    if (source.startsWith("<![CDATA[", lt)) {
-      const close = source.indexOf("]]>", lt + 9);
+    if (source.startsWith('<![CDATA[', lt)) {
+      const close = source.indexOf(']]>', lt + 9);
       i = close < 0 ? len : close + 3;
       continue;
     }
-    if (source.startsWith("<?", lt)) {
-      const close = source.indexOf("?>", lt + 2);
+    if (source.startsWith('<?', lt)) {
+      const close = source.indexOf('?>', lt + 2);
       i = close < 0 ? len : close + 2;
       continue;
     }
-    if (source.startsWith("<!", lt)) {
+    if (source.startsWith('<!', lt)) {
       // declaration like <!DOCTYPE ...>
-      const close = source.indexOf(">", lt + 2);
+      const close = source.indexOf('>', lt + 2);
       i = close < 0 ? len : close + 1;
       continue;
     }
@@ -65,7 +71,7 @@ function tokenize(source: string): Token[] {
     // Regular tag. Find the matching '>' but allow '>' inside attribute values.
     let j = lt + 1;
     let isClose = false;
-    if (source[j] === "/") {
+    if (source[j] === '/') {
       isClose = true;
       j += 1;
     }
@@ -94,7 +100,7 @@ function tokenize(source: string): Token[] {
         j += 1;
         continue;
       }
-      if (c === ">") {
+      if (c === '>') {
         break;
       }
       j += 1;
@@ -103,15 +109,15 @@ function tokenize(source: string): Token[] {
 
     const tagEnd = j + 1;
     const beforeGt = source.slice(attrStart, j);
-    const selfClosing = !isClose && beforeGt.trimEnd().endsWith("/");
-    const attrs = selfClosing ? beforeGt.replace(/\/\s*$/, "") : beforeGt;
+    const selfClosing = !isClose && beforeGt.trimEnd().endsWith('/');
+    const attrs = selfClosing ? beforeGt.replace(/\/\s*$/, '') : beforeGt;
 
     if (isClose) {
-      tokens.push({ kind: "close", name, pos: lt, end: tagEnd });
+      tokens.push({ kind: 'close', name, pos: lt, end: tagEnd });
     } else if (selfClosing) {
-      tokens.push({ kind: "selfclose", name, attrs, pos: lt, end: tagEnd });
+      tokens.push({ kind: 'selfclose', name, attrs, pos: lt, end: tagEnd });
     } else {
-      tokens.push({ kind: "open", name, attrs, pos: lt, end: tagEnd });
+      tokens.push({ kind: 'open', name, attrs, pos: lt, end: tagEnd });
     }
     i = tagEnd;
   }
@@ -130,7 +136,7 @@ export function findTopLevelElements(
   let currentOpen: Token | null = null;
 
   for (const tok of tokens) {
-    if (tok.kind === "selfclose") {
+    if (tok.kind === 'selfclose') {
       if (depth === 0 && tok.name === name) {
         out.push({
           name,
@@ -138,14 +144,14 @@ export function findTopLevelElements(
           startTagEnd: tok.end,
           contentEnd: tok.end,
           end: tok.end,
-          inner: "",
+          inner: '',
           outer: source.slice(tok.pos, tok.end),
           attributes: parseAttributes(tok.attrs),
         });
       }
       continue;
     }
-    if (tok.kind === "open") {
+    if (tok.kind === 'open') {
       if (depth === 0 && tok.name === name && !currentOpen) {
         currentOpen = tok;
       }
@@ -164,9 +170,7 @@ export function findTopLevelElements(
         end: tok.end,
         inner: source.slice(currentOpen.end, tok.pos),
         outer: source.slice(currentOpen.pos, tok.end),
-        attributes: parseAttributes(
-          (currentOpen as { attrs: string }).attrs,
-        ),
+        attributes: parseAttributes((currentOpen as { attrs: string }).attrs),
       });
       currentOpen = null;
     }
@@ -193,7 +197,7 @@ export function findAnyElement(
   let targetOpenDepth = -1;
 
   for (const tok of tokens) {
-    if (tok.kind === "selfclose") {
+    if (tok.kind === 'selfclose') {
       if (!targetOpen && tok.name === name) {
         return {
           name,
@@ -201,14 +205,14 @@ export function findAnyElement(
           startTagEnd: tok.end,
           contentEnd: tok.end,
           end: tok.end,
-          inner: "",
+          inner: '',
           outer: source.slice(tok.pos, tok.end),
           attributes: parseAttributes(tok.attrs),
         };
       }
       continue;
     }
-    if (tok.kind === "open") {
+    if (tok.kind === 'open') {
       if (!targetOpen && tok.name === name) {
         targetOpen = tok;
         targetOpenDepth = depth;
@@ -218,11 +222,7 @@ export function findAnyElement(
     }
     depth -= 1;
     if (depth < 0) depth = 0;
-    if (
-      targetOpen &&
-      tok.name === name &&
-      depth === targetOpenDepth
-    ) {
+    if (targetOpen && tok.name === name && depth === targetOpenDepth) {
       const attrs = (targetOpen as { attrs: string }).attrs;
       return {
         name,

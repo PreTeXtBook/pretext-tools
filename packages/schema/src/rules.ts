@@ -4,7 +4,7 @@ import type {
   Rule,
   Ruleset,
   SchemaError,
-} from "./types";
+} from './types';
 
 /** Numeric DiagnosticSeverity values (mirrors vscode-languageserver-types). */
 export const Severity = {
@@ -20,38 +20,37 @@ export const Severity = {
  * errors into friendlier prose.
  */
 export const defaultRuleset: Ruleset = {
-  source: "pretext",
+  source: 'pretext',
   defaultSeverity: Severity.Error,
   rules: [
     {
-      id: "element-me-removed",
-      match: (e) => e.kind === "element-not-allowed" && e.name === "me",
-      message: () =>
-        `<me> should be replaced with <md> (without any <mrow>).`,
+      id: 'element-me-removed',
+      match: (e) => e.kind === 'element-not-allowed' && e.name === 'me',
+      message: () => `<me> should be replaced with <md> (without any <mrow>).`,
       severity: Severity.Warning,
     },
     {
-      id: "element-not-allowed",
-      match: (e) => e.kind === "element-not-allowed",
+      id: 'element-not-allowed',
+      match: (e) => e.kind === 'element-not-allowed',
       message: (e) =>
-        `<${e.name ?? "element"}> is not allowed here.` +
+        `<${e.name ?? 'element'}> is not allowed here.` +
         (e.alternatives && e.alternatives.length
           ? ` Expected one of: ${formatList(e.alternatives)}.`
-          : ""),
+          : ''),
     },
     {
-      id: "attribute-not-allowed",
-      match: (e) => e.kind === "attribute-not-allowed",
+      id: 'attribute-not-allowed',
+      match: (e) => e.kind === 'attribute-not-allowed',
       message: (e) =>
-        `The attribute "${e.name ?? ""}" is not allowed on this element.`,
+        `The attribute "${e.name ?? ''}" is not allowed on this element.`,
     },
     {
-      id: "attribute-value-invalid",
-      match: (e) => e.kind === "attribute-value-invalid",
+      id: 'attribute-value-invalid',
+      match: (e) => e.kind === 'attribute-value-invalid',
     },
     {
-      id: "choice-not-satisfied",
-      match: (e) => e.kind === "choice-not-satisfied",
+      id: 'choice-not-satisfied',
+      match: (e) => e.kind === 'choice-not-satisfied',
       message: (e) =>
         e.alternatives && e.alternatives.length
           ? `Missing required content. Expected one of: ${formatList(
@@ -60,37 +59,37 @@ export const defaultRuleset: Ruleset = {
           : e.message,
     },
     {
-      id: "text-not-allowed",
-      match: (e) => e.kind === "text-not-allowed",
-      message: () => "Text is not allowed here.",
+      id: 'text-not-allowed',
+      match: (e) => e.kind === 'text-not-allowed',
+      message: () => 'Text is not allowed here.',
     },
     {
-      id: "unexpected-end",
-      match: (e) => e.kind === "unexpected-end",
+      id: 'unexpected-end',
+      match: (e) => e.kind === 'unexpected-end',
     },
     {
-      id: "xinclude-missing",
-      match: (e) => e.kind === "xinclude-missing",
+      id: 'xinclude-missing',
+      match: (e) => e.kind === 'xinclude-missing',
     },
     {
-      id: "xinclude-circular",
-      match: (e) => e.kind === "xinclude-circular",
+      id: 'xinclude-circular',
+      match: (e) => e.kind === 'xinclude-circular',
     },
     {
-      id: "well-formedness",
-      match: (e) => e.kind === "well-formedness",
+      id: 'well-formedness',
+      match: (e) => e.kind === 'well-formedness',
     },
     {
-      id: "duplicate-id",
-      match: (e) => e.kind === "duplicate-id",
+      id: 'duplicate-id',
+      match: (e) => e.kind === 'duplicate-id',
     },
     {
-      id: "duplicate-label",
-      match: (e) => e.kind === "duplicate-label",
+      id: 'duplicate-label',
+      match: (e) => e.kind === 'duplicate-label',
     },
     {
-      id: "dangling-reference",
-      match: (e) => e.kind === "dangling-reference",
+      id: 'dangling-reference',
+      match: (e) => e.kind === 'dangling-reference',
     },
   ],
 };
@@ -107,20 +106,20 @@ export const relaxedRules: Rule[] = [
   {
     // <document-id> is used by some publishers / build pipelines inside
     // <docinfo> but isn't in the stable schema yet.
-    id: "allow-document-id",
+    id: 'allow-document-id',
     match: (e) =>
-      e.kind === "element-not-allowed" &&
-      e.name === "document-id" &&
-      e.parent === "docinfo",
+      e.kind === 'element-not-allowed' &&
+      e.name === 'document-id' &&
+      e.parent === 'docinfo',
     suppress: true,
   },
   {
     // <blurb> inside <docinfo> (short description used by some output formats).
-    id: "allow-blurb",
+    id: 'allow-blurb',
     match: (e) =>
-      e.kind === "element-not-allowed" &&
-      e.name === "blurb" &&
-      e.parent === "docinfo",
+      e.kind === 'element-not-allowed' &&
+      e.name === 'blurb' &&
+      e.parent === 'docinfo',
     suppress: true,
   },
 ];
@@ -141,7 +140,7 @@ function formatList(names: string[]): string {
   if (unique.length > shown.length) {
     shown.push(`… (${unique.length - shown.length} more)`);
   }
-  return shown.join(", ");
+  return shown.join(', ');
 }
 
 /**
@@ -153,7 +152,7 @@ export function applyRules(
   ruleset: Ruleset = defaultRuleset,
 ): Diagnostic[] {
   const defaultSeverity = ruleset.defaultSeverity ?? Severity.Error;
-  const source = ruleset.source ?? "pretext";
+  const source = ruleset.source ?? 'pretext';
   const diagnostics: Diagnostic[] = [];
 
   for (const error of errors) {
@@ -171,7 +170,10 @@ export function applyRules(
       // constructor throws on it, and since a document's diagnostics are
       // converted as one batch client-side, a single empty message can
       // silently drop *every* diagnostic for that file.
-      message: message.trim().length > 0 ? message : `${error.kind} (no message provided).`,
+      message:
+        message.trim().length > 0
+          ? message
+          : `${error.kind} (no message provided).`,
     });
   }
 

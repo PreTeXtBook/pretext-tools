@@ -1,9 +1,9 @@
 /**
  * Generic directive builder factory.
- * 
+ *
  * Applies semantic rules from DirectiveSpec uniformly to all directives.
  * Pattern mirrors unified-latex-to-pretext's envFactory approach.
- * 
+ *
  * This is the key insight: instead of separate buildTheoremLike(),
  * buildProofLike(), buildRemarkLike() functions, we have ONE function
  * that respects the spec's requiresStatement flag.
@@ -77,12 +77,12 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
 
 /**
  * Generic factory function: applies semantic rules from spec.
- * 
+ *
  * Handles:
  * - Statement wrapping for theorem-like elements
  * - Task nesting with introduction wrapping (exercise/project/task)
  * - Proof/solution sibling extraction
- * 
+ *
  * @param spec Semantic specification for this directive type
  * @param attrs HTML/XML attributes for the element
  * @param titleEl Optional <title> element (extracted from first paragraph if present)
@@ -90,7 +90,7 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
  * @param ctx Visitor context
  * @param convertBlock Callback to recursively convert block children
  * @param convertDirective Callback to recursively convert nested directives
- * 
+ *
  * @returns XAST element for this directive
  */
 export function buildDirectiveWithSpec(
@@ -99,8 +99,14 @@ export function buildDirectiveWithSpec(
   titleEl: Element | null,
   children: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  convertBlock: (child: BlockContent | DefinitionContent, ctx: VisitContext) => Element | null,
-  convertDirective: (node: ContainerDirective, ctx: VisitContext) => Element | null,
+  convertBlock: (
+    child: BlockContent | DefinitionContent,
+    ctx: VisitContext,
+  ) => Element | null,
+  convertDirective: (
+    node: ContainerDirective,
+    ctx: VisitContext,
+  ) => Element | null,
 ): Element {
   const result: Element[] = [];
 
@@ -113,7 +119,7 @@ export function buildDirectiveWithSpec(
   if (spec.hasNestedTasks) {
     // Find first task node
     const firstTaskIndex = children.findIndex(isTaskNode);
-    
+
     if (firstTaskIndex !== -1) {
       // Tasks exist: separate intro content, task nodes, and post-task content
       const taskIndexes: number[] = [];
@@ -161,7 +167,7 @@ export function buildDirectiveWithSpec(
         const introChildren = nestListsInParagraphs(
           introContent
             .map((child) => convertBlock(child, ctx))
-            .filter((n): n is Element => n !== null)
+            .filter((n): n is Element => n !== null),
         );
         if (introChildren.length > 0) {
           result.push(el('introduction', introChildren));
@@ -178,7 +184,7 @@ export function buildDirectiveWithSpec(
         const conclusionChildren = nestListsInParagraphs(
           conclusionNodes
             .map((child) => convertBlock(child, ctx))
-            .filter((n): n is Element => n !== null)
+            .filter((n): n is Element => n !== null),
         );
         if (conclusionChildren.length > 0) {
           result.push(el('conclusion', conclusionChildren));
@@ -193,11 +199,25 @@ export function buildDirectiveWithSpec(
     } else {
       // No tasks found: fall back to statement/direct content logic
       // (will be handled in next rule)
-      handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+      handleContentWithoutTasks(
+        result,
+        spec,
+        children,
+        ctx,
+        convertBlock,
+        convertDirective,
+      );
     }
   } else {
     // No nested task support: handle normally
-    handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+    handleContentWithoutTasks(
+      result,
+      spec,
+      children,
+      ctx,
+      convertBlock,
+      convertDirective,
+    );
   }
 
   return el(spec.type, result, attrs);
@@ -212,8 +232,14 @@ function handleContentWithoutTasks(
   spec: DirectiveSpec,
   children: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  convertBlock: (child: BlockContent | DefinitionContent, ctx: VisitContext) => Element | null,
-  convertDirective: (node: ContainerDirective, ctx: VisitContext) => Element | null,
+  convertBlock: (
+    child: BlockContent | DefinitionContent,
+    ctx: VisitContext,
+  ) => Element | null,
+  convertDirective: (
+    node: ContainerDirective,
+    ctx: VisitContext,
+  ) => Element | null,
 ): void {
   // Rule 2A: Apply requiresStatement rule
   if (spec.requiresStatement) {
@@ -238,7 +264,7 @@ function handleContentWithoutTasks(
       const statementChildren = nestListsInParagraphs(
         bodyContent
           .map((child) => convertBlock(child, ctx))
-          .filter((n): n is Element => n !== null)
+          .filter((n): n is Element => n !== null),
       );
       if (statementChildren.length > 0) {
         result.push(el('statement', statementChildren));
@@ -252,7 +278,7 @@ function handleContentWithoutTasks(
     const converted = nestListsInParagraphs(
       children
         .map((child) => convertBlock(child, ctx))
-        .filter((n): n is Element => n !== null)
+        .filter((n): n is Element => n !== null),
     );
     result.push(...converted);
   }

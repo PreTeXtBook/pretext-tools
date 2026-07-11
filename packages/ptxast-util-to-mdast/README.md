@@ -11,7 +11,10 @@ npm install @pretextbook/ptxast-util-to-mdast
 ## Use
 
 ```ts
-import { ptxastToMdast, ptxastToMarkdown } from '@pretextbook/ptxast-util-to-mdast';
+import {
+  ptxastToMdast,
+  ptxastToMarkdown,
+} from '@pretextbook/ptxast-util-to-mdast';
 
 // Convert a ptxast root to mdast
 const mdast = ptxastToMdast(ptxRoot);

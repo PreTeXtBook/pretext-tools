@@ -1,11 +1,11 @@
-const baseConfig = require("../../.eslintrc.json");
+const baseConfig = require('../../.eslintrc.json');
 
 module.exports = [
   ...baseConfig,
   {
-    files: ["**/*.json"],
+    files: ['**/*.json'],
     languageOptions: {
-      parser: require("jsonc-eslint-parser"),
+      parser: require('jsonc-eslint-parser'),
     },
   },
 ];

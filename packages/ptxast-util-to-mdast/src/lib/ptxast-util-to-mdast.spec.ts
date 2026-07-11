@@ -10,10 +10,27 @@ import { ptxastToMarkdown } from './ptxast-util-to-mdast.js';
 import type { Root } from 'xast';
 import { fromXml } from 'xast-util-from-xml';
 import {
-  text, em, alert, c, m, me, men,
-  p, ol, ul, li, title,
-  section, subsection, chapter,
-  theorem, definition, remark, example, proof, statement,
+  text,
+  em,
+  alert,
+  c,
+  m,
+  me,
+  men,
+  p,
+  ol,
+  ul,
+  li,
+  title,
+  section,
+  subsection,
+  chapter,
+  theorem,
+  definition,
+  remark,
+  example,
+  proof,
+  statement,
 } from '@pretextbook/ptxast';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
@@ -48,7 +65,10 @@ function nodeNameCounts(root: Root): Map<string, number> {
     };
     if (!current || typeof current !== 'object') continue;
     if (current.type === 'element' && typeof current.name === 'string') {
-      counts.set(current.name as string, (counts.get(current.name as string) ?? 0) + 1);
+      counts.set(
+        current.name as string,
+        (counts.get(current.name as string) ?? 0) + 1,
+      );
     }
     if (Array.isArray(current.children)) {
       for (let i = current.children.length - 1; i >= 0; i -= 1) {
@@ -73,7 +93,7 @@ function elRaw(
   return { type: 'element', name, attributes, children } as unknown as Element;
 }
 
-//  Plain text & paragraphs 
+//  Plain text & paragraphs
 
 describe('paragraphs and inline', () => {
   it('converts a simple paragraph', () => {
@@ -105,13 +125,16 @@ describe('paragraphs and inline', () => {
   });
 });
 
-//  Display math 
+//  Display math
 
 describe('display math', () => {
   it('converts me to display math block', () => {
     const xast = root(me('a^2 + b^2 = c^2'));
     const result = ptxastToMdast(xast);
-    expect(result.children[0]).toMatchObject({ type: 'math', value: 'a^2 + b^2 = c^2' });
+    expect(result.children[0]).toMatchObject({
+      type: 'math',
+      value: 'a^2 + b^2 = c^2',
+    });
     expect(md(xast)).toContain('$$');
     expect(md(xast)).toContain('a^2 + b^2 = c^2');
   });
@@ -123,8 +146,16 @@ describe('display math', () => {
 
   it('converts md value form to display math block', () => {
     // Single-line md: text child
-    const xast = root({ type: 'element', name: 'md', attributes: {}, children: [{ type: 'text', value: 'a=b' }] } as Element);
-    expect(ptxastToMdast(xast).children[0]).toMatchObject({ type: 'math', value: 'a=b' });
+    const xast = root({
+      type: 'element',
+      name: 'md',
+      attributes: {},
+      children: [{ type: 'text', value: 'a=b' }],
+    } as Element);
+    expect(ptxastToMdast(xast).children[0]).toMatchObject({
+      type: 'math',
+      value: 'a=b',
+    });
   });
 
   it('converts mdn mrow-children form to display math block', () => {
@@ -133,8 +164,18 @@ describe('display math', () => {
       name: 'mdn',
       attributes: {},
       children: [
-        { type: 'element' as const, name: 'mrow', attributes: {}, children: [{ type: 'text' as const, value: 'a=b' }] },
-        { type: 'element' as const, name: 'mrow', attributes: {}, children: [{ type: 'text' as const, value: 'c=d' }] },
+        {
+          type: 'element' as const,
+          name: 'mrow',
+          attributes: {},
+          children: [{ type: 'text' as const, value: 'a=b' }],
+        },
+        {
+          type: 'element' as const,
+          name: 'mrow',
+          attributes: {},
+          children: [{ type: 'text' as const, value: 'c=d' }],
+        },
       ],
     };
     const xast = root(mdn as Element);
@@ -157,24 +198,36 @@ describe('lists', () => {
   });
 
   it('converts ol to ordered list', () => {
-    const xast = root(ol([li([p([text('First')])]), li([p([text('Second')])])]));
+    const xast = root(
+      ol([li([p([text('First')])]), li([p([text('Second')])])]),
+    );
     const result = ptxastToMdast(xast);
     expect(result.children[0]).toMatchObject({ type: 'list', ordered: true });
   });
 });
 
-//  Code / program 
+//  Code / program
 
 describe('program', () => {
   it('converts program to fenced code with language', () => {
-    const prog = { type: 'element' as const, name: 'program', attributes: { language: 'python' }, children: [{ type: 'text' as const, value: 'x = 1' }] } as Element;
+    const prog = {
+      type: 'element' as const,
+      name: 'program',
+      attributes: { language: 'python' },
+      children: [{ type: 'text' as const, value: 'x = 1' }],
+    } as Element;
     const output = md(root(prog));
     expect(output).toContain('```python');
     expect(output).toContain('x = 1');
   });
 
   it('converts program without language', () => {
-    const prog = { type: 'element' as const, name: 'program', attributes: {}, children: [{ type: 'text' as const, value: 'hello' }] } as Element;
+    const prog = {
+      type: 'element' as const,
+      name: 'program',
+      attributes: {},
+      children: [{ type: 'text' as const, value: 'hello' }],
+    } as Element;
     expect(md(root(prog))).toContain('```');
   });
 });
@@ -183,10 +236,18 @@ describe('program', () => {
 
 describe('divisions', () => {
   it('converts a top-level section to a depth-1 heading, relative to itself', () => {
-    const xast = root(section([title([text('Introduction')]), p([text('Body text.')])], { 'xml:id': 'sec-intro' }));
+    const xast = root(
+      section([title([text('Introduction')]), p([text('Body text.')])], {
+        'xml:id': 'sec-intro',
+      }),
+    );
     const result = ptxastToMdast(xast);
     expect(result.children[0]).toMatchObject({ type: 'heading', depth: 1 });
-    const h = result.children[0] as { type: string; depth: number; children: { value: string }[] };
+    const h = result.children[0] as {
+      type: string;
+      depth: number;
+      children: { value: string }[];
+    };
     expect(h.children[0].value).toBe('Introduction');
     expect(result.children[1]).toMatchObject({ type: 'paragraph' });
     const output = md(xast);
@@ -196,14 +257,21 @@ describe('divisions', () => {
   });
 
   it('converts nested section/subsection to headings at correct relative depths', () => {
-    const xast = root(section([title([text('Section')]), subsection([title([text('Sub')]), p([text('Content.')])])]));
+    const xast = root(
+      section([
+        title([text('Section')]),
+        subsection([title([text('Sub')]), p([text('Content.')])]),
+      ]),
+    );
     const output = md(xast);
     expect(output).toContain('# Section');
     expect(output).toContain('## Sub');
   });
 
   it('preserves xml:id as heading data', () => {
-    const xast = root(section([title([text('Main')])], { 'xml:id': 'sec-main' }));
+    const xast = root(
+      section([title([text('Main')])], { 'xml:id': 'sec-main' }),
+    );
     const result = ptxastToMdast(xast);
     const heading = result.children[0] as { data?: { id?: string } };
     expect(heading.data?.id).toBe('sec-main');
@@ -308,7 +376,9 @@ describe('section-like divisions and frontmatter attributes', () => {
   });
 
   it('a root-level introduction has no heading, just frontmatter + flat content', () => {
-    const xast = root(elRaw('introduction', [p([text('This chapter begins by...')])]));
+    const xast = root(
+      elRaw('introduction', [p([text('This chapter begins by...')])]),
+    );
     const output = md(xast);
     expect(output).toMatch(/^---\ndivision: introduction\n---/);
     expect(output).not.toContain('#');
@@ -316,7 +386,9 @@ describe('section-like divisions and frontmatter attributes', () => {
   });
 
   it('round-trips a root-level introduction back to an <introduction> element', () => {
-    const xast = root(elRaw('introduction', [p([text('Body.')])], { 'xml:id': 'intro-1' }));
+    const xast = root(
+      elRaw('introduction', [p([text('Body.')])], { 'xml:id': 'intro-1' }),
+    );
     const markdown = ptxastToMarkdown(xast);
     const reparsed = parseMarkdownToXast(markdown);
     const introEl = reparsed.children[0] as Element;
@@ -344,22 +416,32 @@ describe('section-like divisions and frontmatter attributes', () => {
 
 describe('theorem-like blocks', () => {
   it('converts theorem with title and statement to container directive', () => {
-    const xast = root(theorem([
-      title([text('Pythagorean Theorem')]),
-      statement([p([text('For a right triangle.')])]),
-    ], { 'xml:id': 'thm-pyth' }));
+    const xast = root(
+      theorem(
+        [
+          title([text('Pythagorean Theorem')]),
+          statement([p([text('For a right triangle.')])]),
+        ],
+        { 'xml:id': 'thm-pyth' },
+      ),
+    );
     const result = ptxastToMdast(xast);
-    expect(result.children[0]).toMatchObject({ type: 'containerDirective', name: 'theorem' });
+    expect(result.children[0]).toMatchObject({
+      type: 'containerDirective',
+      name: 'theorem',
+    });
     const output = md(xast);
     expect(output).toContain(':::theorem[Pythagorean Theorem]{#thm-pyth}');
     expect(output).toContain('For a right triangle.');
   });
 
   it('converts theorem with nested proof', () => {
-    const xast = root(theorem([
-      statement([p([text('The claim.')])]),
-      proof([p([text('The proof.')])]),
-    ]));
+    const xast = root(
+      theorem([
+        statement([p([text('The claim.')])]),
+        proof([p([text('The proof.')])]),
+      ]),
+    );
     const output = md(xast);
     expect(output).toContain('::::theorem');
     expect(output).toContain(':::proof');
@@ -367,23 +449,28 @@ describe('theorem-like blocks', () => {
   });
 
   it('converts definition (definition-like) with statement', () => {
-    const xast = root(definition([
-      title([text('Prime')]),
-      statement([p([text('A prime number.')])]),
-    ]));
+    const xast = root(
+      definition([
+        title([text('Prime')]),
+        statement([p([text('A prime number.')])]),
+      ]),
+    );
     const output = md(xast);
     expect(output).toContain(':::definition[Prime]');
     expect(output).toContain('A prime number.');
   });
 });
 
-//  Remark-like / proof-like directives 
+//  Remark-like / proof-like directives
 
 describe('remark-like and proof-like blocks', () => {
   it('converts proof without statement wrapper', () => {
     const xast = root(proof([p([text('QED.')])]));
     const result = ptxastToMdast(xast);
-    expect(result.children[0]).toMatchObject({ type: 'containerDirective', name: 'proof' });
+    expect(result.children[0]).toMatchObject({
+      type: 'containerDirective',
+      name: 'proof',
+    });
     expect(md(xast)).toContain(':::proof');
     expect(md(xast)).toContain('QED.');
   });
@@ -394,10 +481,9 @@ describe('remark-like and proof-like blocks', () => {
   });
 
   it('converts example block with title', () => {
-    const xast = root(example([
-      title([text('My Example')]),
-      p([text('Example body.')]),
-    ]));
+    const xast = root(
+      example([title([text('My Example')]), p([text('Example body.')])]),
+    );
     const output = md(xast);
     expect(output).toContain(':::example[My Example]');
     expect(output).toContain('Example body.');
@@ -425,12 +511,14 @@ describe('structural containers (pretext/book/article)', () => {
       type: 'element' as const,
       name: 'pretext',
       attributes: {},
-      children: [{
-        type: 'element' as const,
-        name: 'article',
-        attributes: {},
-        children: [section([title([text('Section')])])],
-      }],
+      children: [
+        {
+          type: 'element' as const,
+          name: 'article',
+          attributes: {},
+          children: [section([title([text('Section')])])],
+        },
+      ],
     } as Element;
     const xast = root(pretext);
     const output = md(xast);
@@ -440,7 +528,12 @@ describe('structural containers (pretext/book/article)', () => {
 
 describe('unknown node handling', () => {
   it('skips unknown block element names', () => {
-    const figure = { type: 'element' as const, name: 'figure', attributes: {}, children: [] } as Element;
+    const figure = {
+      type: 'element' as const,
+      name: 'figure',
+      attributes: {},
+      children: [],
+    } as Element;
     const xast = root(figure, p([text('After unknown.')]));
     const result = ptxastToMdast(xast);
     expect(result.children).toHaveLength(1);
@@ -448,7 +541,12 @@ describe('unknown node handling', () => {
   });
 
   it('skips unknown inline element names', () => {
-    const xref = { type: 'element' as const, name: 'xref', attributes: { ref: 'sec-1' }, children: [] } as Element;
+    const xref = {
+      type: 'element' as const,
+      name: 'xref',
+      attributes: { ref: 'sec-1' },
+      children: [],
+    } as Element;
     const xast = root(p([text('before '), xref, text(' after')]));
     const result = ptxastToMdast(xast);
     const para = result.children[0] as { children: { value: string }[] };
@@ -460,11 +558,13 @@ describe('unknown node handling', () => {
 
 describe('frontmatter round-trip (xast -> markdown -> xast)', () => {
   it('preserves a section-rooted document through markdown and back', () => {
-    const xast = root(section([
-      title([text('Top Section')]),
-      p([text('Body.')]),
-      subsection([title([text('Sub')]), p([text('Nested body.')])]),
-    ]));
+    const xast = root(
+      section([
+        title([text('Top Section')]),
+        p([text('Body.')]),
+        subsection([title([text('Sub')]), p([text('Nested body.')])]),
+      ]),
+    );
 
     const markdown = ptxastToMarkdown(xast);
     expect(markdown).toMatch(/^---\ndivision: section\n---/);
@@ -479,18 +579,31 @@ describe('frontmatter round-trip (xast -> markdown -> xast)', () => {
 
 describe('semantic round-trip (xast -> markdown -> xast)', () => {
   it('preserves major theorem-like and list structure', () => {
-    const xast = root(section([
-      title([text('Round Trip')]),
-      theorem([
-        title([text('Key Result')]),
-        statement([p([text('If '), em([text('x')]), text(' then '), m('x^2'), text('.')])]),
-        proof([p([text('Direct.')])]),
-      ], { 'xml:id': 'thm-rt' }),
-      ol([
-        li([p([text('First')])]),
-        li([p([text('Second')])]),
-      ]),
-    ], { 'xml:id': 'sec-rt' }));
+    const xast = root(
+      section(
+        [
+          title([text('Round Trip')]),
+          theorem(
+            [
+              title([text('Key Result')]),
+              statement([
+                p([
+                  text('If '),
+                  em([text('x')]),
+                  text(' then '),
+                  m('x^2'),
+                  text('.'),
+                ]),
+              ]),
+              proof([p([text('Direct.')])]),
+            ],
+            { 'xml:id': 'thm-rt' },
+          ),
+          ol([li([p([text('First')])]), li([p([text('Second')])])]),
+        ],
+        { 'xml:id': 'sec-rt' },
+      ),
+    );
 
     const markdown = ptxastToMarkdown(xast);
     const reparsed = parseMarkdownToXast(markdown);
@@ -531,7 +644,8 @@ describe('semantic round-trip (xml -> xast -> markdown -> xast)', () => {
     expect(sectionEl?.attributes?.['xml:id']).toBe('sec-xml');
     if (sectionEl) {
       const theoremEl = sectionEl.children.find(
-        (node) => node.type === 'element' && (node as Element).name === 'theorem',
+        (node) =>
+          node.type === 'element' && (node as Element).name === 'theorem',
       ) as Element | undefined;
       expect(theoremEl?.attributes?.['xml:id']).toBe('thm-xml');
     }

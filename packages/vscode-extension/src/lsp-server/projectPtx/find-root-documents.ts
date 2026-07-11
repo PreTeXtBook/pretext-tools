@@ -1,9 +1,9 @@
-import * as path from "path";
-import { URI } from "vscode-uri";
+import * as path from 'path';
+import { URI } from 'vscode-uri';
 
 /** Defaults applied by the `pretext` CLI when a `project.ptx` manifest omits them. */
-const DEFAULT_SOURCE_DIR = "source";
-const DEFAULT_TARGET_SOURCE = "main.ptx";
+const DEFAULT_SOURCE_DIR = 'source';
+const DEFAULT_TARGET_SOURCE = 'main.ptx';
 /** Bound on how far up the directory tree to search for a `project.ptx`. */
 const MAX_UPWARD_SEARCH = 32;
 
@@ -72,7 +72,7 @@ export function findProjectRootDocuments(
 ): string[] | undefined {
   let dir = path.dirname(URI.parse(documentUri).fsPath);
   for (let i = 0; i < MAX_UPWARD_SEARCH; i++) {
-    const manifest = readFile(path.join(dir, "project.ptx"));
+    const manifest = readFile(path.join(dir, 'project.ptx'));
     if (manifest !== undefined) {
       return resolveManifestSourcePaths(manifest, dir);
     }

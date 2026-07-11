@@ -1,22 +1,22 @@
-import { Node, mergeAttributes, textblockTypeInputRule } from "@tiptap/core";
-import { generateInputRules } from "../utils";
+import { Node, mergeAttributes, textblockTypeInputRule } from '@tiptap/core';
+import { generateInputRules } from '../utils';
 
 const Title = Node.create({
-  name: "title",
+  name: 'title',
 
-  content: "text*",
+  content: 'text*',
 
   // defining: true,
 
   parseHTML() {
-    return [{ tag: "title" }];
+    return [{ tag: 'title' }];
   },
 
   renderHTML({ HTMLAttributes }) {
     // return ['h4', {class: "heading"}, ['span', {class: "type"}, "Definition"], ['span', {class: "space"}, " " ], ['span', {class: "codenumber"}, "xx.yy"], ['span', {class: "period"}, "."], ['span', {class: "space"}, " "], ['span', {class: "title"}, 0]]
     return [
-      "div",
-      mergeAttributes({ class: "title", ptxtag: "title" }, HTMLAttributes),
+      'div',
+      mergeAttributes({ class: 'title', ptxtag: 'title' }, HTMLAttributes),
       0,
     ];
   },
@@ -42,7 +42,7 @@ const Title = Node.create({
         find: new RegExp(`#t\\s$`),
         type: this.type,
       }),
-      ...generateInputRules("title", this.type),
+      ...generateInputRules('title', this.type),
     ];
   },
 });

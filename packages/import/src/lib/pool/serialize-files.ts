@@ -3,13 +3,9 @@
 // placeholders rewritten to `<xi:include>`, docinfo re-inlined into the main
 // file, plus the project.ptx / publication.ptx scaffold.
 
-import {
-  ensureXIncludeNamespace,
-  slugify,
-  withProlog,
-} from "../layout/shared";
-import { renderProjectPtx, renderPublicationPtx } from "../layout/templates";
-import type { ImportedDivision, ImportedProject } from "../types";
+import { ensureXIncludeNamespace, slugify, withProlog } from '../layout/shared';
+import { renderProjectPtx, renderPublicationPtx } from '../layout/templates';
+import type { ImportedDivision, ImportedProject } from '../types';
 
 export interface SerializeProjectFilesOptions {
   mainSourcePath?: string;
@@ -24,9 +20,9 @@ export interface SerializedProjectFiles {
 }
 
 const DEFAULTS = {
-  mainSourcePath: "source/main.ptx",
-  publicationPath: "publication/publication.ptx",
-  projectFilePath: "project.ptx",
+  mainSourcePath: 'source/main.ptx',
+  publicationPath: 'publication/publication.ptx',
+  projectFilePath: 'project.ptx',
 };
 
 /** Matches the canonical internal division placeholder (self-closing form). */
@@ -46,7 +42,7 @@ export function divisionChildRefs(content: string): string[] {
 
 /** `ch-` / `sec-` prefixed slug of a division's xmlId, for its filename. */
 function prefixedSlug(xmlId: string, prefix: string): string {
-  const cleaned = slugify(xmlId) || "division";
+  const cleaned = slugify(xmlId) || 'division';
   return cleaned.startsWith(`${prefix}-`) ? cleaned : `${prefix}-${cleaned}`;
 }
 
@@ -78,10 +74,13 @@ function replacePlaceholders(
   content: string,
   hrefByRef: Map<string, string>,
 ): string {
-  return content.replace(DIVISION_PLACEHOLDER_RE, (whole, _tag, ref: string) => {
-    const href = hrefByRef.get(ref);
-    return href ? `<xi:include href="${href}"/>` : whole;
-  });
+  return content.replace(
+    DIVISION_PLACEHOLDER_RE,
+    (whole, _tag, ref: string) => {
+      const href = hrefByRef.get(ref);
+      return href ? `<xi:include href="${href}"/>` : whole;
+    },
+  );
 }
 
 /**
@@ -104,16 +103,16 @@ export function serializeProjectToFiles(
   );
   const root = project.divisions.find((d) => d.isRoot);
   if (!root) {
-    throw new Error("Division pool has no root division.");
+    throw new Error('Division pool has no root division.');
   }
 
   const takenNames = new Set<string>();
   // href values are relative to the main source's directory (source/), which
   // is also where xi:include resolution happens for nested section files.
   const hrefByRef = new Map<string, string>();
-  const sourceDir = mainSourcePath.includes("/")
-    ? mainSourcePath.slice(0, mainSourcePath.lastIndexOf("/") + 1)
-    : "";
+  const sourceDir = mainSourcePath.includes('/')
+    ? mainSourcePath.slice(0, mainSourcePath.lastIndexOf('/') + 1)
+    : '';
 
   // First pass: assign filenames (chapters at source/, their children in a
   // per-chapter directory), so hrefs can be resolved in any order.
@@ -128,7 +127,7 @@ export function serializeProjectToFiles(
     if (!chapter) continue;
     const chapterSlug = claimName(
       takenNames,
-      prefixedSlug(chapter.xmlId, "ch"),
+      prefixedSlug(chapter.xmlId, 'ch'),
     );
     hrefByRef.set(chapter.xmlId, `${chapterSlug}.ptx`);
     placed.push({
@@ -142,7 +141,7 @@ export function serializeProjectToFiles(
       if (!section) continue;
       const sectionSlug = claimName(
         sectionNames,
-        prefixedSlug(sectionFileBasis(section.xmlId, chapter.xmlId), "sec"),
+        prefixedSlug(sectionFileBasis(section.xmlId, chapter.xmlId), 'sec'),
       );
       hrefByRef.set(section.xmlId, `${chapterSlug}/${sectionSlug}.ptx`);
       placed.push({
@@ -158,7 +157,7 @@ export function serializeProjectToFiles(
   const placedIds = new Set(placed.map((p) => p.division.xmlId));
   for (const division of project.divisions) {
     if (division.isRoot || placedIds.has(division.xmlId)) continue;
-    const prefix = division.type === "section" ? "sec" : "ch";
+    const prefix = division.type === 'section' ? 'sec' : 'ch';
     const slug = claimName(takenNames, prefixedSlug(division.xmlId, prefix));
     hrefByRef.set(division.xmlId, `${slug}.ptx`);
     placed.push({ division, filePath: `${sourceDir}${slug}.ptx` });
@@ -178,10 +177,12 @@ export function serializeProjectToFiles(
   // The xi namespace is only declared when the root actually gained
   // <xi:include> references.
   const rootResolved = replacePlaceholders(root.content, hrefByRef);
-  const docinfoBlock = project.docinfo ? `${project.docinfo}\n` : "";
+  const docinfoBlock = project.docinfo ? `${project.docinfo}\n` : '';
   const mainBody = `<pretext>\n${docinfoBlock}${rootResolved}\n</pretext>`;
   files[mainSourcePath] = withProlog(
-    rootResolved === root.content ? mainBody : ensureXIncludeNamespace(mainBody),
+    rootResolved === root.content
+      ? mainBody
+      : ensureXIncludeNamespace(mainBody),
   );
 
   if (includeScaffold) {

@@ -7,7 +7,7 @@ This package extracts completion generation from the VS Code extension LSP so it
 ## Usage
 
 ```ts
-import { getPretextCompletions } from "@pretextbook/completions";
+import { getPretextCompletions } from '@pretextbook/completions';
 
 const items = await getPretextCompletions({
   text,

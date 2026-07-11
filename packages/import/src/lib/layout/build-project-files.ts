@@ -1,24 +1,18 @@
-import type { CleaningWarning } from "../clean/warnings";
-import {
-  detectDocumentKind,
-  type DocumentKind,
-} from "./document-kind";
-import {
-  renderProjectPtx,
-  renderPublicationPtx,
-} from "./templates";
+import type { CleaningWarning } from '../clean/warnings';
+import { detectDocumentKind, type DocumentKind } from './document-kind';
+import { renderProjectPtx, renderPublicationPtx } from './templates';
 import {
   ensureXIncludeNamespace,
   padIndex,
   slugify,
   spliceReplacements,
   withProlog,
-} from "./shared";
+} from './shared';
 import {
   findAnyElement,
   findTopLevelElements,
   type XmlElementSpan,
-} from "./xml-scan";
+} from './xml-scan';
 
 export interface BuildProjectFilesOptions {
   documentKind?: DocumentKind;
@@ -37,14 +31,14 @@ export interface BuildProjectFilesResult {
 }
 
 const DEFAULTS = {
-  mainSourcePath: "source/main.ptx",
-  publicationPath: "publication/publication.ptx",
-  projectFilePath: "project.ptx",
-  docinfoPath: "source/docinfo.ptx",
+  mainSourcePath: 'source/main.ptx',
+  publicationPath: 'publication/publication.ptx',
+  projectFilePath: 'project.ptx',
+  docinfoPath: 'source/docinfo.ptx',
 };
 
 function wrapInPretextRoot(content: string): string {
-  if (findAnyElement(content, "pretext")) {
+  if (findAnyElement(content, 'pretext')) {
     return content;
   }
   return `<pretext>\n${content}\n</pretext>`;
@@ -65,7 +59,7 @@ function nameElements(
   const out: ExtractedElement[] = [];
   const prefixWithDash = `${prefix}-`;
   spans.forEach((span, index) => {
-    const rawId = span.attributes["xml:id"];
+    const rawId = span.attributes['xml:id'];
     let slug: string;
     if (rawId) {
       const cleaned = slugify(rawId);
@@ -75,10 +69,10 @@ function nameElements(
     } else {
       slug = `${prefixWithDash}${padIndex(index + 1, spans.length)}`;
       warnings.push({
-        action: "anomaly",
-        severity: "info",
-        kind: "structure",
-        category: "missing_xml_id",
+        action: 'anomaly',
+        severity: 'info',
+        kind: 'structure',
+        category: 'missing_xml_id',
         macro: span.name,
         occurrences: 1,
         message: `<${span.name}> at position ${index + 1} has no xml:id; using \`${slug}\` as filename.`,
@@ -103,11 +97,11 @@ function splitSectionsForChapter(
   files: Record<string, string>,
   warnings: CleaningWarning[],
 ): string {
-  const sectionSpans = findTopLevelElements(chapterInner, "section");
+  const sectionSpans = findTopLevelElements(chapterInner, 'section');
   if (sectionSpans.length === 0) {
     return chapterInner;
   }
-  const sections = nameElements(sectionSpans, "sec", warnings);
+  const sections = nameElements(sectionSpans, 'sec', warnings);
   const replacements = sections.map((sec) => {
     const sectionFile = `source/${chapterSlug}/${sec.filename}`;
     files[sectionFile] = withProlog(sec.span.outer);
@@ -125,32 +119,38 @@ function buildBookProject(
   options: Required<BuildProjectFilesOptions>,
   warnings: CleaningWarning[],
 ): Record<string, string> {
-  const bookSpan = findAnyElement(pretextSource, "book");
+  const bookSpan = findAnyElement(pretextSource, 'book');
   if (!bookSpan) {
     // Caller said this was a book but we can't find <book>. Fall back to wrap.
     warnings.push({
-      action: "anomaly",
-      severity: "warning",
-      kind: "structure",
-      category: "missing_root",
-      macro: "book",
+      action: 'anomaly',
+      severity: 'warning',
+      kind: 'structure',
+      category: 'missing_root',
+      macro: 'book',
       occurrences: 1,
-      message: "Document was treated as a book but no <book> element found; emitting as a single file.",
+      message:
+        'Document was treated as a book but no <book> element found; emitting as a single file.',
     });
     return buildArticleProject(pretextSource, options, warnings);
   }
 
   const files: Record<string, string> = {};
-  const chapterSpans = findTopLevelElements(bookSpan.inner, "chapter");
+  const chapterSpans = findTopLevelElements(bookSpan.inner, 'chapter');
   let bookInner = bookSpan.inner;
 
   if (options.splitChapters && chapterSpans.length > 0) {
-    const chapters = nameElements(chapterSpans, "ch", warnings);
+    const chapters = nameElements(chapterSpans, 'ch', warnings);
     const replacements = chapters.map((ch) => {
       let chapterContent = ch.span.outer;
       if (options.splitSections) {
         const inner = ch.span.inner;
-        const newInner = splitSectionsForChapter(inner, ch.slug, files, warnings);
+        const newInner = splitSectionsForChapter(
+          inner,
+          ch.slug,
+          files,
+          warnings,
+        );
         chapterContent =
           ch.span.outer.slice(0, ch.span.startTagEnd - ch.span.start) +
           newInner +
@@ -205,7 +205,7 @@ export function buildPretextProjectFiles(
 
   const resolved: Required<BuildProjectFilesOptions> = {
     documentKind,
-    splitChapters: options.splitChapters ?? documentKind === "book",
+    splitChapters: options.splitChapters ?? documentKind === 'book',
     splitSections: options.splitSections ?? false,
     mainSourcePath: options.mainSourcePath ?? DEFAULTS.mainSourcePath,
     publicationPath: options.publicationPath ?? DEFAULTS.publicationPath,
@@ -214,7 +214,7 @@ export function buildPretextProjectFiles(
   };
 
   const files =
-    documentKind === "book"
+    documentKind === 'book'
       ? buildBookProject(pretextSource, resolved, warnings)
       : buildArticleProject(pretextSource, resolved, warnings);
 

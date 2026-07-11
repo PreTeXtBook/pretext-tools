@@ -1,16 +1,17 @@
-import * as path from "path";
-import { fileURLToPath } from "url";
-import type { FileReader } from "./types";
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import type { FileReader } from './types';
 
 /** Used when a caller doesn't know (or care) how to locate the project's root document(s). */
-const DEFAULT_ROOT_DOCUMENTS = ["main.ptx"];
+const DEFAULT_ROOT_DOCUMENTS = ['main.ptx'];
 
 const XML_ID_RE = /\bxml:id\s*=\s*("|')(.*?)\1/g;
 const LABEL_RE = /\blabel\s*=\s*("|')(.*?)\1/g;
-const XINCLUDE_HREF_RE = /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/g;
+const XINCLUDE_HREF_RE =
+  /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/g;
 
 export function uriToPath(uri: string): string {
-  return uri.startsWith("file:") ? fileURLToPath(uri) : uri;
+  return uri.startsWith('file:') ? fileURLToPath(uri) : uri;
 }
 
 /**
@@ -23,7 +24,11 @@ export interface BookReferences {
   labels: Map<string, Set<string>>;
 }
 
-function addRef(map: Map<string, Set<string>>, key: string, file: string): void {
+function addRef(
+  map: Map<string, Set<string>>,
+  key: string,
+  file: string,
+): void {
   let files = map.get(key);
   if (!files) {
     files = new Set();

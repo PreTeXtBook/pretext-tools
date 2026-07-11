@@ -1,4 +1,4 @@
-import { SaxesParser } from "saxes";
+import { SaxesParser } from 'saxes';
 import type {
   Diagnostic,
   Range,
@@ -8,26 +8,26 @@ import type {
   ValidateOptions,
   ValidationResult,
   Grammar,
-} from "./types";
-import { applyRules, defaultRuleset, Severity } from "./rules";
+} from './types';
+import { applyRules, defaultRuleset, Severity } from './rules';
 import {
   resolveXIncludes,
   defaultFileReader,
   type OriginEntry,
-} from "./xinclude";
-import { collectBookReferences, uriToPath, type BookReferences } from "./book";
+} from './xinclude';
+import { collectBookReferences, uriToPath, type BookReferences } from './book';
 
 /** The XML namespace URI used for xmlns:* declarations. */
-const XMLNS_NS = "http://www.w3.org/2000/xmlns/";
+const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
 /** The XML namespace URI for `xml:*` attributes (e.g. `xml:id`). */
-const XML_NS = "http://www.w3.org/XML/1998/namespace";
+const XML_NS = 'http://www.w3.org/XML/1998/namespace';
 /**
  * Elements whose listed attributes hold an `xml:id` reference. Checked against
  * the set of `xml:id`s declared anywhere in the (XInclude-merged) document.
  */
 const REFERENCE_ATTRIBUTES: Record<string, string[]> = {
-  xref: ["ref", "first", "last"],
-  fragref: ["ref"],
+  xref: ['ref', 'first', 'last'],
+  fragref: ['ref'],
 };
 
 interface WalkerLike {
@@ -53,7 +53,7 @@ export function validateDocument(
   grammar: Grammar,
   options: ValidateOptions = {},
 ): ValidationResult {
-  const uri = options.uri ?? "untitled:document";
+  const uri = options.uri ?? 'untitled:document';
   const ruleset = options.ruleset ?? defaultRuleset;
   const resolve = options.resolveXIncludes ?? true;
   const readFile = options.readFile ?? defaultFileReader();
@@ -90,7 +90,14 @@ export function validateDocument(
     : undefined;
 
   errors.push(
-    ...driveValidation(mergedText, grammar, uri, origin, options.signal, bookRefs),
+    ...driveValidation(
+      mergedText,
+      grammar,
+      uri,
+      origin,
+      options.signal,
+      bookRefs,
+    ),
   );
 
   return toResult(errors, uri, ruleset);
@@ -142,7 +149,10 @@ function driveValidation(
   // entered, captured at `opentagstart` for precise element/attribute ranges.
   let tagStart: { line: number; char: number; length: number } | null = null;
 
-  const map = (line0: number, char: number): { uri: string; line: number; char: number } => {
+  const map = (
+    line0: number,
+    char: number,
+  ): { uri: string; line: number; char: number } => {
     if (!origin) {
       return { uri: documentUri, line: line0, char };
     }
@@ -157,7 +167,11 @@ function driveValidation(
     };
   };
 
-  const rangeFrom = (line0: number, startChar: number, endChar: number): { uri: string; range: Range } => {
+  const rangeFrom = (
+    line0: number,
+    startChar: number,
+    endChar: number,
+  ): { uri: string; range: Range } => {
     const s = map(line0, startChar);
     const e = map(line0, endChar);
     return {
@@ -184,14 +198,18 @@ function driveValidation(
     }
   };
 
-  const fire = (name: string, params: string[], loc: { uri: string; range: Range }) => {
+  const fire = (
+    name: string,
+    params: string[],
+    loc: { uri: string; range: Range },
+  ) => {
     const ret = walker.fireEvent(name, params);
     if (Array.isArray(ret)) {
       record(ret, loc);
     }
   };
 
-  parser.on("opentagstart", (tag) => {
+  parser.on('opentagstart', (tag) => {
     // column is 1-based index of the next char to read (just past the name).
     const line0 = parser.line - 1;
     const nameEnd = parser.column - 1;
@@ -200,7 +218,7 @@ function driveValidation(
     tagStart = { line: line0, char: ltStart, length: nameEnd - ltStart };
   });
 
-  parser.on("opentag", (node) => {
+  parser.on('opentag', (node) => {
     depth++;
     const start = tagStart ?? {
       line: parser.line - 1,
@@ -212,7 +230,7 @@ function driveValidation(
     // Fire `enterStartTag` while this element is not yet on the stack, so an
     // "element not allowed here" error reports its true parent. Then push it so
     // its attributes (and later, content) are attributed to this element.
-    fire("enterStartTag", [node.uri ?? "", node.local ?? node.name], tagLoc);
+    fire('enterStartTag', [node.uri ?? '', node.local ?? node.name], tagLoc);
     const elementName = node.local ?? node.name;
     stack.push(elementName);
     const refAttrs = REFERENCE_ATTRIBUTES[elementName];
@@ -224,14 +242,18 @@ function driveValidation(
         name: string;
         value: string;
       };
-      if (attr.prefix === "xmlns" || attr.name === "xmlns" || attr.uri === XMLNS_NS) {
+      if (
+        attr.prefix === 'xmlns' ||
+        attr.name === 'xmlns' ||
+        attr.uri === XMLNS_NS
+      ) {
         continue;
       }
       const attrLocal = attr.local ?? attr.name;
-      if (attr.uri === XML_NS && attrLocal === "id") {
+      if (attr.uri === XML_NS && attrLocal === 'id') {
         if (declaredIds.has(attr.value)) {
           errors.push({
-            kind: "duplicate-id",
+            kind: 'duplicate-id',
             message: `The xml:id "${attr.value}" is already used elsewhere in this document.`,
             name: attr.value,
             parent: elementName,
@@ -248,10 +270,10 @@ function driveValidation(
             ancestors: [...stack],
           });
         }
-      } else if (attrLocal === "label" && attr.uri !== XML_NS) {
+      } else if (attrLocal === 'label' && attr.uri !== XML_NS) {
         if (declaredLabels.has(attr.value)) {
           errors.push({
-            kind: "duplicate-label",
+            kind: 'duplicate-label',
             message: `The label "${attr.value}" is already used elsewhere in this document.`,
             name: attr.value,
             parent: elementName,
@@ -276,24 +298,24 @@ function driveValidation(
           ancestors: [...stack],
         });
       }
-      fire("attributeName", [attr.uri ?? "", attr.local ?? attr.name], tagLoc);
-      fire("attributeValue", [attr.value], tagLoc);
+      fire('attributeName', [attr.uri ?? '', attr.local ?? attr.name], tagLoc);
+      fire('attributeValue', [attr.value], tagLoc);
     }
-    fire("leaveStartTag", [], tagLoc);
+    fire('leaveStartTag', [], tagLoc);
   });
 
-  parser.on("closetag", (node) => {
+  parser.on('closetag', (node) => {
     const line0 = parser.line - 1;
     const char = Math.max(0, parser.column - 1);
     const loc = rangeFrom(line0, Math.max(0, char - 1), char);
     // Keep this element on the stack while `endTag` fires (so an "element not
     // finished" error is attributed to it), then pop it.
-    fire("endTag", [node.uri ?? "", node.local ?? node.name], loc);
+    fire('endTag', [node.uri ?? '', node.local ?? node.name], loc);
     stack.pop();
     depth = Math.max(0, depth - 1);
   });
 
-  parser.on("text", (t) => {
+  parser.on('text', (t) => {
     if (depth === 0) {
       return; // ignore prolog / inter-element whitespace at the document root
     }
@@ -306,15 +328,15 @@ function driveValidation(
     // range on the final line where saxes reports the position.
     const startChar = Math.max(0, endChar - lastLineLength(t));
     const loc = rangeFrom(line0, startChar, endChar);
-    fire("text", [t], loc);
+    fire('text', [t], loc);
   });
 
-  parser.on("error", (e) => {
+  parser.on('error', (e) => {
     const line0 = parser.line - 1;
     const char = Math.max(0, parser.column - 1);
     const loc = map(line0, char);
     errors.push({
-      kind: "well-formedness",
+      kind: 'well-formedness',
       message: e.message,
       parent: stack.length ? stack[stack.length - 1] : undefined,
       ancestors: stack.length ? [...stack] : undefined,
@@ -351,7 +373,7 @@ function driveValidation(
   for (const ref of pendingRefs) {
     if (!declaredIds.has(ref.value) && !bookRefs?.ids.has(ref.value)) {
       errors.push({
-        kind: "dangling-reference",
+        kind: 'dangling-reference',
         message: `No element with xml:id "${ref.value}" exists in this document.`,
         name: ref.value,
         parent: ref.parent,
@@ -373,8 +395,22 @@ function driveValidation(
         localFiles.add(uriToPath(entry.uri));
       }
     }
-    checkBookWideDuplicates(idLocations, bookRefs.ids, localFiles, "duplicate-id", "xml:id", errors);
-    checkBookWideDuplicates(labelLocations, bookRefs.labels, localFiles, "duplicate-label", "label", errors);
+    checkBookWideDuplicates(
+      idLocations,
+      bookRefs.ids,
+      localFiles,
+      'duplicate-id',
+      'xml:id',
+      errors,
+    );
+    checkBookWideDuplicates(
+      labelLocations,
+      bookRefs.labels,
+      localFiles,
+      'duplicate-label',
+      'label',
+      errors,
+    );
   }
 
   return errors;
@@ -437,10 +473,9 @@ function toResult(
 }
 
 /** Map a salve error object onto our normalized {@link SchemaError} shape. */
-function normalizeError(err: unknown): Pick<
-  SchemaError,
-  "kind" | "message" | "name" | "ns" | "alternatives"
-> {
+function normalizeError(
+  err: unknown,
+): Pick<SchemaError, 'kind' | 'message' | 'name' | 'ns' | 'alternatives'> {
   const anyErr = err as {
     constructor: { name: string };
     msg?: string;
@@ -448,7 +483,7 @@ function normalizeError(err: unknown): Pick<
     toString(): string;
     getNames?: () => unknown[];
   };
-  const ctor = anyErr.constructor?.name ?? "";
+  const ctor = anyErr.constructor?.name ?? '';
   const rawMessage = anyErr.msg ?? anyErr.toString();
   // Some salve error objects (e.g. certain end-of-document ChoiceErrors) have
   // neither a `.msg` nor a meaningful `toString()`, yielding an empty string.
@@ -459,27 +494,31 @@ function normalizeError(err: unknown): Pick<
   const message =
     rawMessage.trim().length > 0
       ? rawMessage
-      : `Invalid content${ctor ? ` (${ctor})` : ""}.`;
+      : `Invalid content${ctor ? ` (${ctor})` : ''}.`;
 
-  let kind: SchemaErrorKind = "other";
+  let kind: SchemaErrorKind = 'other';
   switch (ctor) {
-    case "ElementNameError":
-      kind = "element-not-allowed";
+    case 'ElementNameError':
+      kind = 'element-not-allowed';
       break;
-    case "AttributeNameError":
-      kind = "attribute-not-allowed";
+    case 'AttributeNameError':
+      kind = 'attribute-not-allowed';
       break;
-    case "AttributeValueError":
-      kind = "attribute-value-invalid";
+    case 'AttributeValueError':
+      kind = 'attribute-value-invalid';
       break;
-    case "ChoiceError":
-      kind = "choice-not-satisfied";
+    case 'ChoiceError':
+      kind = 'choice-not-satisfied';
       break;
     default:
       if (/text (is )?not allowed/i.test(rawMessage)) {
-        kind = "text-not-allowed";
-      } else if (/must choose|tag required|incomplete|nothing else may follow/i.test(rawMessage)) {
-        kind = "choice-not-satisfied";
+        kind = 'text-not-allowed';
+      } else if (
+        /must choose|tag required|incomplete|nothing else may follow/i.test(
+          rawMessage,
+        )
+      ) {
+        kind = 'choice-not-satisfied';
       }
   }
 
@@ -488,7 +527,7 @@ function normalizeError(err: unknown): Pick<
   // single-name errors, getNames() just repeats the offending name, so we omit
   // alternatives there to avoid nonsensical "expected one of: <the-bad-name>".
   const alternatives =
-    kind === "choice-not-satisfied" && typeof anyErr.getNames === "function"
+    kind === 'choice-not-satisfied' && typeof anyErr.getNames === 'function'
       ? [...new Set(anyErr.getNames().flatMap((n) => patternNames(n)))]
       : undefined;
 
@@ -496,33 +535,37 @@ function normalizeError(err: unknown): Pick<
     kind,
     message,
     name: primary[0],
-    alternatives: alternatives && alternatives.length ? alternatives : undefined,
+    alternatives:
+      alternatives && alternatives.length ? alternatives : undefined,
   };
 }
 
 /** Extract concrete local names from a salve name pattern (Name/NameChoice/...). */
 function patternNames(pattern: unknown): string[] {
-  if (!pattern || typeof pattern !== "object") {
+  if (!pattern || typeof pattern !== 'object') {
     return [];
   }
   const p = pattern as {
-    toArray?: () => Array<{ name?: string; toObject?: () => { name?: string } }> | null;
+    toArray?: () => Array<{
+      name?: string;
+      toObject?: () => { name?: string };
+    }> | null;
     toObject?: () => { name?: string };
     name?: string;
   };
-  if (typeof p.toArray === "function") {
+  if (typeof p.toArray === 'function') {
     const arr = p.toArray();
     if (arr) {
       return arr
         .map((n) => n.name ?? n.toObject?.().name)
-        .filter((n): n is string => typeof n === "string");
+        .filter((n): n is string => typeof n === 'string');
     }
   }
   const obj = p.toObject?.();
-  if (obj && typeof obj.name === "string") {
+  if (obj && typeof obj.name === 'string') {
     return [obj.name];
   }
-  if (typeof p.name === "string") {
+  if (typeof p.name === 'string') {
     return [p.name];
   }
   return [];
@@ -536,7 +579,7 @@ function singleLineRange(line: number, char: number, length: number): Range {
 }
 
 function lastLineLength(text: string): number {
-  const idx = text.lastIndexOf("\n");
+  const idx = text.lastIndexOf('\n');
   return idx === -1 ? text.length : text.length - idx - 1;
 }
 
@@ -557,13 +600,13 @@ function throwIfAborted(signal: AbortSignal | undefined): void {
 }
 
 function makeAbortError(): Error {
-  const err = new Error("Validation aborted");
-  err.name = "AbortError";
+  const err = new Error('Validation aborted');
+  err.name = 'AbortError';
   return err;
 }
 
 function isAbortError(e: unknown): boolean {
-  return e instanceof Error && e.name === "AbortError";
+  return e instanceof Error && e.name === 'AbortError';
 }
 
 // Re-export for convenience.

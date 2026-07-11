@@ -52,7 +52,9 @@ describe('schema helpers', () => {
 
     expect(collectPtxSchemaViolations(root as any)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('attribute "bogus" is not allowed on <section>'),
+        expect.stringContaining(
+          'attribute "bogus" is not allowed on <section>',
+        ),
         expect.stringContaining('child <xref> is not allowed inside <section>'),
       ]),
     );

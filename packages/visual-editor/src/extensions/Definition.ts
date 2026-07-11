@@ -1,12 +1,12 @@
-import { Node, mergeAttributes } from "@tiptap/core";
-import { generateInputRules } from "../utils";
-import { ReactNodeViewRenderer } from "@tiptap/react";
-import { TheoremLikeComponent } from "../components/TheoremLike";
+import { Node, mergeAttributes } from '@tiptap/core';
+import { generateInputRules } from '../utils';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { TheoremLikeComponent } from '../components/TheoremLike';
 
 const Definition = Node.create({
-  name: "definition",
-  content: "title? statement",
-  group: "block definitionLike",
+  name: 'definition',
+  content: 'title? statement',
+  group: 'block definitionLike',
   selectable: true,
   draggable: true,
   defining: false,
@@ -16,16 +16,16 @@ const Definition = Node.create({
   parseHTML() {
     return [
       {
-        tag: "definition",
+        tag: 'definition',
       },
     ];
   },
   renderHTML({ HTMLAttributes }) {
     return [
-      "article",
+      'article',
       mergeAttributes(
-        { class: "definition definition-like", label: "definition" },
-        HTMLAttributes
+        { class: 'definition definition-like', label: 'definition' },
+        HTMLAttributes,
       ),
       0,
     ];
@@ -34,7 +34,7 @@ const Definition = Node.create({
     return ReactNodeViewRenderer(TheoremLikeComponent);
   },
   addInputRules() {
-    return generateInputRules("definition", this.type);
+    return generateInputRules('definition', this.type);
   },
 });
 

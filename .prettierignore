@@ -1,3 +1,10 @@
 # Add files here to ignore them from prettier formatting
-/dist
-/coverage
+dist
+coverage
+out
+
+# Generated files (see `npm run refresh:schemas`) — do not hand-format
+packages/*/assets/**/*.json
+packages/completions/src/default-dev-schema.ts
+packages/ptxast/src/types/generated.ts
+packages/ptxast/src/types/generated-interfaces.ts

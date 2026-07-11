@@ -14,7 +14,7 @@
 
 body {
   margin: 0;
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
   color: var(--ink);
   background:
     radial-gradient(circle at top right, #dfeee5 0%, transparent 48%),
@@ -74,13 +74,13 @@ body {
   color: var(--muted);
 }
 
-.upload-card div[aria-label="Import source form"],
-.upload-card section[aria-label="Import upload panel"] {
+.upload-card div[aria-label='Import source form'],
+.upload-card section[aria-label='Import upload panel'] {
   display: grid;
   gap: 10px;
 }
 
-.upload-card section[aria-label="Import upload panel"] > div {
+.upload-card section[aria-label='Import upload panel'] > div {
   border: 2px dashed var(--border);
   border-radius: 10px;
   padding: 14px;
@@ -119,7 +119,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', monospace;
   background: #f7faf6;
 }
 
@@ -140,7 +140,11 @@ body {
 .wizard-frame {
   background: #f8fafc;
   color: #0f172a;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -197,7 +201,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px;
-  font-family: "IBM Plex Mono", "Cascadia Code", monospace;
+  font-family: 'IBM Plex Mono', 'Cascadia Code', monospace;
   font-size: 0.8rem;
   line-height: 1.45;
   white-space: pre-wrap;

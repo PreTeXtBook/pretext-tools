@@ -2,7 +2,7 @@
 
 To transform your PreTeXt source into a final output format, you **build** the project.
 
-Click the  **▷PreTeXt** button and select `Build default target` from the pop-up menu.
+Click the **▷PreTeXt** button and select `Build default target` from the pop-up menu.
 
 <img src="build.png" alt="Build default target" width="75%">
 

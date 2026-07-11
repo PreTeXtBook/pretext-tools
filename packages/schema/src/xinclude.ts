@@ -1,6 +1,6 @@
-import * as path from "path";
-import { pathToFileURL, fileURLToPath } from "url";
-import type { FileReader } from "./types";
+import * as path from 'path';
+import { pathToFileURL, fileURLToPath } from 'url';
+import type { FileReader } from './types';
 
 /** Where a line in the merged document originated. */
 export interface OriginEntry {
@@ -14,7 +14,7 @@ export interface OriginEntry {
 
 /** A problem with an `xi:include` element itself (missing target, cycle). */
 export interface IncludeProblem {
-  kind: "xinclude-missing" | "xinclude-circular";
+  kind: 'xinclude-missing' | 'xinclude-circular';
   message: string;
   /** URI of the file containing the offending include. */
   uri: string;
@@ -35,24 +35,26 @@ export interface ResolvedDocument {
   problems: IncludeProblem[];
 }
 
-const XINCLUDE_RE =
-  /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/;
+const XINCLUDE_RE = /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/;
 
 /** Default reader backed by Node's `fs`. */
 export function defaultFileReader(): FileReader {
   // Lazy require so bundlers targeting the browser don't choke.
 
-  const fs = require("fs") as typeof import("fs");
+  const fs = require('fs') as typeof import('fs');
   return (absolutePath: string) => {
     try {
-      return fs.readFileSync(absolutePath, "utf8");
+      return fs.readFileSync(absolutePath, 'utf8');
     } catch {
       return undefined;
     }
   };
 }
 
-function stripXmlDeclaration(text: string): { text: string; removedLines: number } {
+function stripXmlDeclaration(text: string): {
+  text: string;
+  removedLines: number;
+} {
   const match = text.match(/^﻿?\s*<\?xml\b.*?\?>/s);
   if (!match) {
     return { text, removedLines: 0 };
@@ -64,7 +66,7 @@ function stripXmlDeclaration(text: string): { text: string; removedLines: number
 
 /** Convert a document URI (file://...) or plain path to an absolute fs path. */
 function uriToPath(uri: string): string {
-  if (uri.startsWith("file:")) {
+  if (uri.startsWith('file:')) {
     return fileURLToPath(uri);
   }
   return uri;
@@ -94,7 +96,7 @@ export function resolveXIncludes(
     uri: string,
     stack: string[],
   ): { lines: string[]; origin: OriginEntry[] } {
-    const lines = source.split("\n");
+    const lines = source.split('\n');
     const outLines: string[] = [];
     const outOrigin: OriginEntry[] = [];
 
@@ -123,7 +125,7 @@ export function resolveXIncludes(
 
       if (stack.includes(targetUri)) {
         problems.push({
-          kind: "xinclude-circular",
+          kind: 'xinclude-circular',
           message: `Circular xi:include detected for "${href}".`,
           uri,
           line: i,
@@ -134,7 +136,7 @@ export function resolveXIncludes(
         const content = readFile(targetPath);
         if (content === undefined) {
           problems.push({
-            kind: "xinclude-missing",
+            kind: 'xinclude-missing',
             message: `Cannot resolve xi:include target "${href}".`,
             uri,
             line: i,
@@ -161,5 +163,5 @@ export function resolveXIncludes(
   }
 
   const { lines, origin } = expand(text, documentUri, [documentUri]);
-  return { text: lines.join("\n"), origin, problems };
+  return { text: lines.join('\n'), origin, problems };
 }

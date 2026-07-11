@@ -52,7 +52,9 @@ export const DIVISION_TYPE_NAMES = new Set<string>([
 // `introduction`/`conclusion` have no <title> in the PreTeXt schema, so they
 // never become a heading: their content is spliced into the surrounding flow
 // (and the heading depth they'd otherwise consume is left untouched).
-export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_LIST);
+export const TITLELESS_DIVISION_TYPES = new Set<string>(
+  TITLELESS_DIVISION_TYPE_LIST,
+);
 
 /**
  * Structural container types whose content should be recursed into
@@ -61,7 +63,12 @@ export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_
  * hierarchy.
  */
 export const TRANSPARENT_TYPES = new Set([
-  'pretext', 'book', 'article', 'slideshow', 'frontmatter', 'backmatter',
+  'pretext',
+  'book',
+  'article',
+  'slideshow',
+  'frontmatter',
+  'backmatter',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -69,12 +76,12 @@ export const TRANSPARENT_TYPES = new Set([
 // ---------------------------------------------------------------------------
 
 type DirectiveCategory =
-  | 'theorem-like'    // has <statement> wrapper + optional proof children
+  | 'theorem-like' // has <statement> wrapper + optional proof children
   | 'definition-like' // has <statement> wrapper
-  | 'remark-like'     // no statement wrapper, direct block children
-  | 'example-like'    // no statement wrapper
-  | 'proof-like'      // no statement wrapper
-  | 'solution-like';  // no statement wrapper
+  | 'remark-like' // no statement wrapper, direct block children
+  | 'example-like' // no statement wrapper
+  | 'proof-like' // no statement wrapper
+  | 'solution-like'; // no statement wrapper
 
 interface DirectiveMeta {
   name: string;
@@ -83,43 +90,43 @@ interface DirectiveMeta {
 
 const TYPE_TO_DIRECTIVE = new Map<string, DirectiveMeta>([
   // theorem-like
-  ['theorem',       { name: 'theorem',       category: 'theorem-like' }],
-  ['lemma',         { name: 'lemma',         category: 'theorem-like' }],
-  ['corollary',     { name: 'corollary',     category: 'theorem-like' }],
-  ['proposition',   { name: 'proposition',   category: 'theorem-like' }],
-  ['claim',         { name: 'claim',         category: 'theorem-like' }],
-  ['fact',          { name: 'fact',          category: 'theorem-like' }],
-  ['conjecture',    { name: 'conjecture',    category: 'theorem-like' }],
-  ['axiom',         { name: 'axiom',         category: 'theorem-like' }],
-  ['principle',     { name: 'principle',     category: 'theorem-like' }],
-  ['hypothesis',    { name: 'hypothesis',    category: 'theorem-like' }],
-  ['algorithm',     { name: 'algorithm',     category: 'theorem-like' }],
+  ['theorem', { name: 'theorem', category: 'theorem-like' }],
+  ['lemma', { name: 'lemma', category: 'theorem-like' }],
+  ['corollary', { name: 'corollary', category: 'theorem-like' }],
+  ['proposition', { name: 'proposition', category: 'theorem-like' }],
+  ['claim', { name: 'claim', category: 'theorem-like' }],
+  ['fact', { name: 'fact', category: 'theorem-like' }],
+  ['conjecture', { name: 'conjecture', category: 'theorem-like' }],
+  ['axiom', { name: 'axiom', category: 'theorem-like' }],
+  ['principle', { name: 'principle', category: 'theorem-like' }],
+  ['hypothesis', { name: 'hypothesis', category: 'theorem-like' }],
+  ['algorithm', { name: 'algorithm', category: 'theorem-like' }],
   // definition-like
-  ['definition',    { name: 'definition',    category: 'definition-like' }],
-  ['notation',      { name: 'notation',      category: 'definition-like' }],
+  ['definition', { name: 'definition', category: 'definition-like' }],
+  ['notation', { name: 'notation', category: 'definition-like' }],
   // remark-like
-  ['remark',        { name: 'remark',        category: 'remark-like' }],
-  ['note',          { name: 'note',          category: 'remark-like' }],
-  ['observation',   { name: 'observation',   category: 'remark-like' }],
-  ['warning',       { name: 'warning',       category: 'remark-like' }],
-  ['insight',       { name: 'insight',       category: 'remark-like' }],
-  ['assemblage',    { name: 'assemblage',    category: 'remark-like' }],
+  ['remark', { name: 'remark', category: 'remark-like' }],
+  ['note', { name: 'note', category: 'remark-like' }],
+  ['observation', { name: 'observation', category: 'remark-like' }],
+  ['warning', { name: 'warning', category: 'remark-like' }],
+  ['insight', { name: 'insight', category: 'remark-like' }],
+  ['assemblage', { name: 'assemblage', category: 'remark-like' }],
   // example-like
-  ['example',       { name: 'example',       category: 'example-like' }],
-  ['question',      { name: 'question',      category: 'example-like' }],
-  ['problem',       { name: 'problem',       category: 'example-like' }],
-  ['exercise',      { name: 'exercise',      category: 'example-like' }],
-  ['activity',      { name: 'activity',      category: 'example-like' }],
-  ['exploration',   { name: 'exploration',   category: 'example-like' }],
+  ['example', { name: 'example', category: 'example-like' }],
+  ['question', { name: 'question', category: 'example-like' }],
+  ['problem', { name: 'problem', category: 'example-like' }],
+  ['exercise', { name: 'exercise', category: 'example-like' }],
+  ['activity', { name: 'activity', category: 'example-like' }],
+  ['exploration', { name: 'exploration', category: 'example-like' }],
   ['investigation', { name: 'investigation', category: 'example-like' }],
-  ['project',       { name: 'project',       category: 'example-like' }],
+  ['project', { name: 'project', category: 'example-like' }],
   // proof-like
-  ['proof',         { name: 'proof',         category: 'proof-like' }],
-  ['case',          { name: 'case',          category: 'proof-like' }],
+  ['proof', { name: 'proof', category: 'proof-like' }],
+  ['case', { name: 'case', category: 'proof-like' }],
   // solution-like
-  ['solution',      { name: 'solution',      category: 'solution-like' }],
-  ['hint',          { name: 'hint',          category: 'solution-like' }],
-  ['answer',        { name: 'answer',        category: 'solution-like' }],
+  ['solution', { name: 'solution', category: 'solution-like' }],
+  ['hint', { name: 'hint', category: 'solution-like' }],
+  ['answer', { name: 'answer', category: 'solution-like' }],
 ]);
 
 // theorem-like and definition-like wrap body in <statement>
@@ -160,7 +167,10 @@ export function findTopLevelDivisionInfo(
   for (const node of nodes) {
     if (node.type !== 'element') continue;
     const el = node as Element;
-    if (DIVISION_TYPE_NAMES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+    if (
+      DIVISION_TYPE_NAMES.has(el.name) ||
+      TITLELESS_DIVISION_TYPES.has(el.name)
+    ) {
       const attrs = el.attributes ?? {};
       const attributes: TopLevelDivisionInfo['attributes'] = {};
       if (attrs['xml:id']) attributes.xmlid = attrs['xml:id'];
@@ -181,7 +191,9 @@ export function findTopLevelDivisionInfo(
  * transparent structural wrappers), i.e. the division a depth-1 heading
  * would represent if this tree were flattened to markdown.
  */
-export function findTopLevelDivision(nodes: ElementContent[]): string | undefined {
+export function findTopLevelDivision(
+  nodes: ElementContent[],
+): string | undefined {
   return findTopLevelDivisionInfo(nodes)?.name;
 }
 
@@ -194,15 +206,23 @@ export function findTopLevelDivision(nodes: ElementContent[]): string | undefine
  * clamped to 6) is the heading depth that the next division encountered at
  * this level should use; nested divisions go one level deeper.
  */
-function flattenChildren(nodes: ElementContent[], depth: number): MdastContent[] {
+function flattenChildren(
+  nodes: ElementContent[],
+  depth: number,
+): MdastContent[] {
   const result: MdastContent[] = [];
   for (const node of nodes) {
     if (node.type !== 'element') continue;
     const el = node as Element;
-    if (TRANSPARENT_TYPES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+    if (
+      TRANSPARENT_TYPES.has(el.name) ||
+      TITLELESS_DIVISION_TYPES.has(el.name)
+    ) {
       result.push(...flattenChildren(el.children, depth));
     } else if (DIVISION_TYPE_NAMES.has(el.name)) {
-      result.push(...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6));
+      result.push(
+        ...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6),
+      );
     } else {
       const converted = convertBlock(el);
       if (converted !== null) result.push(converted);
@@ -229,7 +249,9 @@ function flattenDivision(
   const heading: Heading = {
     type: 'heading',
     depth,
-    children: titleNode ? titleNode.children.map(convertInlineNode).filter(notNull) : [],
+    children: titleNode
+      ? titleNode.children.map(convertInlineNode).filter(notNull)
+      : [],
     ...(attrs['xml:id']
       ? { data: { id: attrs['xml:id'], hProperties: { id: attrs['xml:id'] } } }
       : {}),
@@ -248,15 +270,21 @@ function flattenDivision(
 
 function convertBlock(el: Element): BlockContent | DefinitionContent | null {
   switch (el.name) {
-    case 'p':          return convertP(el);
-    case 'blockquote': return convertBlockquote(el);
-    case 'ol':         return convertList(el, true);
-    case 'ul':         return convertList(el, false);
-    case 'program':    return convertProgram(el);
+    case 'p':
+      return convertP(el);
+    case 'blockquote':
+      return convertBlockquote(el);
+    case 'ol':
+      return convertList(el, true);
+    case 'ul':
+      return convertList(el, false);
+    case 'program':
+      return convertProgram(el);
     case 'me':
     case 'men':
     case 'md':
-    case 'mdn':        return convertDisplayMath(el);
+    case 'mdn':
+      return convertDisplayMath(el);
     default: {
       const directive = TYPE_TO_DIRECTIVE.get(el.name);
       if (directive) return convertDirective(el, directive);
@@ -331,7 +359,9 @@ function convertDisplayMath(el: Element): MdastMath {
   }
   // Multi-line: mrow elements
   const value = children
-    .filter((child) => child.type === 'element' && (child as Element).name === 'mrow')
+    .filter(
+      (child) => child.type === 'element' && (child as Element).name === 'mrow',
+    )
     .map((child) => getPtxTextContent(child as Element))
     .join(' \\\\\n');
   return { type: 'math', value };
@@ -356,7 +386,8 @@ function convertDirective(
   }
 
   const titleNode = children.find(
-    (c: ElementContent) => c.type === 'element' && (c as Element).name === 'title',
+    (c: ElementContent) =>
+      c.type === 'element' && (c as Element).name === 'title',
   ) as Element | undefined;
 
   const directiveChildren: (BlockContent | DefinitionContent)[] = [];
@@ -399,7 +430,8 @@ function convertDirective(
   return {
     type: 'containerDirective',
     name: meta.name,
-    attributes: Object.keys(directiveAttrs).length > 0 ? directiveAttrs : undefined,
+    attributes:
+      Object.keys(directiveAttrs).length > 0 ? directiveAttrs : undefined,
     children: directiveChildren,
   } as unknown as ContainerDirective;
 }
@@ -410,7 +442,10 @@ function convertDirective(
 
 function convertInlineNode(node: ElementContent): PhrasingContent | null {
   if (node.type === 'text') {
-    return { type: 'text', value: (node as { value: string }).value ?? '' } as Text;
+    return {
+      type: 'text',
+      value: (node as { value: string }).value ?? '',
+    } as Text;
   }
   if (node.type !== 'element') return null;
   const el = node as Element;

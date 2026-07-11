@@ -11,7 +11,7 @@ npm install @pretextbook/format
 ## Library usage
 
 ```js
-import { formatPretext } from "@pretextbook/format";
+import { formatPretext } from '@pretextbook/format';
 
 const formatted = formatPretext(sourceCode);
 ```
@@ -20,7 +20,7 @@ You can pass options to customize formatting:
 
 ```js
 const options = {
-  breakLines: "many",
+  breakLines: 'many',
   breakSentences: true,
   breakLongAttributes: true,
   printWidth: 80,
@@ -103,6 +103,7 @@ Snapshot tests live in `src/lib/format-snapshots.spec.ts`. They read `.ptx` inpu
 1. Add a `.ptx` input file to `src/lib/__fixtures__/`. The file should contain unformatted (or inconsistently formatted) PreTeXt that exercises the behavior you want to lock in.
 
 2. Register the fixture in `format-snapshots.spec.ts`. For default options, add its base name to the `fixtures` array:
+
    ```ts
    const fixtures = [
      "minimal-book",
@@ -110,14 +111,16 @@ Snapshot tests live in `src/lib/format-snapshots.spec.ts`. They read `.ptx` inpu
      ...
    ] as const;
    ```
+
    For non-default options, add a dedicated `it` block:
+
    ```ts
-   it("my-new-fixture with tabs", async () => {
-     const result = formatPretext(readFixture("my-new-fixture"), {
+   it('my-new-fixture with tabs', async () => {
+     const result = formatPretext(readFixture('my-new-fixture'), {
        insertSpaces: false,
      });
      await expect(result).toMatchFileSnapshot(
-       snapshotPath("my-new-fixture-tabs"),
+       snapshotPath('my-new-fixture-tabs'),
      );
    });
    ```

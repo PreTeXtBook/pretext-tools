@@ -1,5 +1,5 @@
-import { readTreeFromJSON } from "salve-annos";
-import type { Grammar } from "./types";
+import { readTreeFromJSON } from 'salve-annos';
+import type { Grammar } from './types';
 
 /**
  * Reconstruct a salve {@link Grammar} from a precompiled JSON tree (as produced

@@ -1,4 +1,8 @@
-import { NodeViewContent, NodeViewWrapper, type NodeViewProps } from "@tiptap/react";
+import {
+  NodeViewContent,
+  NodeViewWrapper,
+  type NodeViewProps,
+} from '@tiptap/react';
 //import React from 'react'
 
 const TheoremLikeComponent = (props: NodeViewProps) => {

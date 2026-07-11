@@ -1,34 +1,34 @@
-import { Focus, Gapcursor, UndoRedo } from "@tiptap/extensions";
-import { useEffect, useRef, useState } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
-import { Node } from "@tiptap/core";
-import { BulletList, OrderedList, ListItem } from "@tiptap/extension-list";
-import { MathDisplay, MathEquation, MathInline } from "../extensions/Math";
-import "katex/dist/katex.min.css";
-import Divisions from "../extensions/Divisions";
-import Inline from "../extensions/Inline";
-import Blocks from "../extensions/Blocks";
-import CodeBlock from "@tiptap/extension-code-block";
-import Title from "../extensions/Title";
-import Definition from "../extensions/Definition";
-import Url from "../extensions/Url";
-import RawPtx from "../extensions/RawPtx";
-import "../styles.scss";
-import { cleanPtx } from "../utils";
-import { json2ptx } from "../json2ptx";
-import "./VisualEditor.css";
+import { Focus, Gapcursor, UndoRedo } from '@tiptap/extensions';
+import { useEffect, useRef, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import { Node } from '@tiptap/core';
+import { BulletList, OrderedList, ListItem } from '@tiptap/extension-list';
+import { MathDisplay, MathEquation, MathInline } from '../extensions/Math';
+import 'katex/dist/katex.min.css';
+import Divisions from '../extensions/Divisions';
+import Inline from '../extensions/Inline';
+import Blocks from '../extensions/Blocks';
+import CodeBlock from '@tiptap/extension-code-block';
+import Title from '../extensions/Title';
+import Definition from '../extensions/Definition';
+import Url from '../extensions/Url';
+import RawPtx from '../extensions/RawPtx';
+import '../styles.scss';
+import { cleanPtx } from '../utils';
+import { json2ptx } from '../json2ptx';
+import './VisualEditor.css';
 //import { MenuBar } from "./TiptapMenuBar";
-import { PtxBubbleMenu } from "./BubbleMenu";
+import { PtxBubbleMenu } from './BubbleMenu';
 //import { PtxFloatingMenu } from "./FloatingMenu";
 //import { getCursorPos } from "../extensions/getCursorPos";
-import { formatPretext } from "@pretextbook/format";
+import { formatPretext } from '@pretextbook/format';
 //import KeyboardCommands from "../extensions/Keyboard";
 
 const Document = Node.create({
-  name: "ptxFragment",
+  name: 'ptxFragment',
   topNode: true,
   //content: "title? introduction? part* chapter* section* subsection* worksheet*",
-  content: "ptxdoc",
+  content: 'ptxdoc',
 });
 
 //export function toggleMenu() {
@@ -42,7 +42,7 @@ const Document = Node.create({
 
 const extensions = [
   CodeBlock.configure({
-    defaultLanguage: "xml",
+    defaultLanguage: 'xml',
   }),
   //KeyboardCommands,
   Document,
@@ -59,7 +59,7 @@ const extensions = [
   MathInline,
   MathEquation,
   MathDisplay,
-  Focus.configure({ mode: "deepest" }),
+  Focus.configure({ mode: 'deepest' }),
   UndoRedo,
   Gapcursor,
   //onPaste: (currentEditor, files, htmlContent) => {
@@ -196,13 +196,13 @@ const VisualEditor = ({
     extensions,
     content: content,
     onContentError(props) {
-      console.log("Content error: ", props.error);
+      console.log('Content error: ', props.error);
       props.disableCollaboration();
       props.editor.setEditable(false, false);
     },
     enableContentCheck: true,
     onUpdate: ({ editor }) => {
-      console.log("Editor update detected.");
+      console.log('Editor update detected.');
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         if (isEditableRef.current) {
@@ -229,10 +229,10 @@ const VisualEditor = ({
           editor.commands.setContent(cleanPtx(initialText), {
             emitUpdate: false,
           });
-          console.log("External content set in visual editor.");
+          console.log('External content set in visual editor.');
           //setIsValid(true);
         } catch (error) {
-          console.error("Error setting content: ", error);
+          console.error('Error setting content: ', error);
           //setIsValid(false);
         }
       }
@@ -246,9 +246,9 @@ const VisualEditor = ({
       isExternalUpdateRef.current = false;
     };
 
-    editor.on("update", handleUpdate);
+    editor.on('update', handleUpdate);
     return () => {
-      editor.off("update", handleUpdate);
+      editor.off('update', handleUpdate);
     };
   }, [editor]);
 
@@ -281,11 +281,13 @@ const VisualEditor = ({
           </label>
         ) : (
           <p className="pretext-plus-editor__visual-editor-hint">
-            {editDisabledReason || "Read-only preview"}
+            {editDisabledReason || 'Read-only preview'}
           </p>
         )}
       </div>
-      <div className={(isEditingEnabled ? "editable" : "read-only") + " ptx-page"}>
+      <div
+        className={(isEditingEnabled ? 'editable' : 'read-only') + ' ptx-page'}
+      >
         {/* <WarningMessage isValid={isValid} /> */}
         {/* <MenuBar editor={editor} /> */}
         <EditorContent editor={editor} />

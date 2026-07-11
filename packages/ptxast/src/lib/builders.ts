@@ -128,12 +128,18 @@ export function men(value: string, attrs?: Record<string, string>): Men {
   return valueEl('men', value, attrs) as unknown as Men;
 }
 
-export function xref(ref: string, extraAttrs?: Omit<Record<string, string>, 'ref'>): Xref {
+export function xref(
+  ref: string,
+  extraAttrs?: Omit<Record<string, string>, 'ref'>,
+): Xref {
   return el('xref', [], { ...extraAttrs, ref }) as unknown as Xref;
 }
 
 export function url(href: string, visual?: string): Url {
-  return el('url', [], { href, ...(visual ? { visual } : {}) }) as unknown as Url;
+  return el('url', [], {
+    href,
+    ...(visual ? { visual } : {}),
+  }) as unknown as Url;
 }
 
 export function fn(children: P[]): Fn {
@@ -175,21 +181,33 @@ export function chapter(
   children: Chapter['children'],
   attrs?: Record<string, string>,
 ): Chapter {
-  return el('chapter', children as Element['children'], attrs) as unknown as Chapter;
+  return el(
+    'chapter',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Chapter;
 }
 
 export function section(
   children: Section['children'],
   attrs?: Record<string, string>,
 ): Section {
-  return el('section', children as Element['children'], attrs) as unknown as Section;
+  return el(
+    'section',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Section;
 }
 
 export function subsection(
   children: Subsection['children'],
   attrs?: Record<string, string>,
 ): Subsection {
-  return el('subsection', children as Element['children'], attrs) as unknown as Subsection;
+  return el(
+    'subsection',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Subsection;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,21 +215,32 @@ export function subsection(
 // ---------------------------------------------------------------------------
 
 export function statement(children: PtxBlockContent[]): Statement {
-  return el('statement', children as Element['children']) as unknown as Statement;
+  return el(
+    'statement',
+    children as Element['children'],
+  ) as unknown as Statement;
 }
 
 export function proof(
   children: (Title | PtxBlockContent)[],
   attrs?: Record<string, string>,
 ): Proof {
-  return el('proof', children as Element['children'], attrs) as unknown as Proof;
+  return el(
+    'proof',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Proof;
 }
 
 export function solution(
   children: (Title | PtxBlockContent)[],
   attrs?: Record<string, string>,
 ): Solution {
-  return el('solution', children as Element['children'], attrs) as unknown as Solution;
+  return el(
+    'solution',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Solution;
 }
 
 export function hint(
@@ -225,49 +254,77 @@ export function answer(
   children: (Title | PtxBlockContent)[],
   attrs?: Record<string, string>,
 ): Answer {
-  return el('answer', children as Element['children'], attrs) as unknown as Answer;
+  return el(
+    'answer',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Answer;
 }
 
 export function theorem(
   children: Theorem['children'],
   attrs?: Record<string, string>,
 ): Theorem {
-  return el('theorem', children as Element['children'], attrs) as unknown as Theorem;
+  return el(
+    'theorem',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Theorem;
 }
 
 export function lemma(
   children: Lemma['children'],
   attrs?: Record<string, string>,
 ): Lemma {
-  return el('lemma', children as Element['children'], attrs) as unknown as Lemma;
+  return el(
+    'lemma',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Lemma;
 }
 
 export function corollary(
   children: Corollary['children'],
   attrs?: Record<string, string>,
 ): Corollary {
-  return el('corollary', children as Element['children'], attrs) as unknown as Corollary;
+  return el(
+    'corollary',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Corollary;
 }
 
 export function proposition(
   children: Proposition['children'],
   attrs?: Record<string, string>,
 ): Proposition {
-  return el('proposition', children as Element['children'], attrs) as unknown as Proposition;
+  return el(
+    'proposition',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Proposition;
 }
 
 export function definition(
   children: Definition['children'],
   attrs?: Record<string, string>,
 ): Definition {
-  return el('definition', children as Element['children'], attrs) as unknown as Definition;
+  return el(
+    'definition',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Definition;
 }
 
 export function remark(
   children: Remark['children'],
   attrs?: Record<string, string>,
 ): Remark {
-  return el('remark', children as Element['children'], attrs) as unknown as Remark;
+  return el(
+    'remark',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Remark;
 }
 
 export function note(
@@ -281,26 +338,42 @@ export function warning(
   children: Warning['children'],
   attrs?: Record<string, string>,
 ): Warning {
-  return el('warning', children as Element['children'], attrs) as unknown as Warning;
+  return el(
+    'warning',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Warning;
 }
 
 export function example(
   children: Example['children'],
   attrs?: Record<string, string>,
 ): Example {
-  return el('example', children as Element['children'], attrs) as unknown as Example;
+  return el(
+    'example',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Example;
 }
 
 export function exercise(
   children: Exercise['children'],
   attrs?: Record<string, string>,
 ): Exercise {
-  return el('exercise', children as Element['children'], attrs) as unknown as Exercise;
+  return el(
+    'exercise',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Exercise;
 }
 
 export function assemblage(
   children: Assemblage['children'],
   attrs?: Record<string, string>,
 ): Assemblage {
-  return el('assemblage', children as Element['children'], attrs) as unknown as Assemblage;
+  return el(
+    'assemblage',
+    children as Element['children'],
+    attrs,
+  ) as unknown as Assemblage;
 }

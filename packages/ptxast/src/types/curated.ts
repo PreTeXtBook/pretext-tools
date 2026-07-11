@@ -190,7 +190,11 @@ export type Article = ElementArticle;
 export type Frontmatter = ElementBookFrontMatter | ElementArticleFrontMatter;
 export type Backmatter = ElementBookBackMatter | ElementArticleBackMatter;
 export type Titlepage = ElementTitlePage;
-export type Author = ElementAuthorByline | ElementAuthor | ElementBibAuthor | ElementPoemAuthor;
+export type Author =
+  | ElementAuthorByline
+  | ElementAuthor
+  | ElementBibAuthor
+  | ElementPoemAuthor;
 
 // ---------------------------------------------------------------------------
 // Divisions
@@ -267,7 +271,11 @@ export type Task = ElementTask | ElementTaskWW;
 // ---------------------------------------------------------------------------
 
 export type Proof = ElementProof | ElementProof1;
-export type Statement = ElementStatement | ElementStatementExercise | ElementStatementExerciseWW | ElementStatement2;
+export type Statement =
+  | ElementStatement
+  | ElementStatementExercise
+  | ElementStatementExerciseWW
+  | ElementStatement2;
 export type Solution = ElementSolution | ElementSolutionWW;
 export type Hint = ElementHint | ElementHintWW;
 export type Answer = ElementAnswer;
@@ -286,7 +294,10 @@ export type Listing = ElementListing;
 // Paragraphs and block-level
 // ---------------------------------------------------------------------------
 
-export type P = ElementParagraph | ElementParagraphAreas | ElementParagraphLined;
+export type P =
+  | ElementParagraph
+  | ElementParagraphAreas
+  | ElementParagraphLined;
 export type Blockquote = ElementBlockQuote;
 export type Pre = ElementPreformatted;
 
@@ -296,7 +307,10 @@ export type Pre = ElementPreformatted;
 
 export type Ol = ElementOl | ElementExerciseOrderedList;
 export type Ul = ElementUl;
-export type Li = ElementListItem | ElementDefinitionListItem | ElementExerciseListItem;
+export type Li =
+  | ElementListItem
+  | ElementDefinitionListItem
+  | ElementExerciseListItem;
 export type Dl = ElementDl;
 /** PreTeXt description list items use `<li>` inside `<dl>`, not di/dt/dd */
 export type Di = Li;
@@ -310,7 +324,11 @@ export type Dd = Element & { name: 'dd' };
 export type Figure = ElementFigure | ElementFigure1 | ElementFigure2;
 export type Table = ElementTable;
 export type Tabular = ElementTabular;
-export type Sidebyside = ElementSidebyside | ElementSidebyside1 | ElementSidebyside2 | ElementSidebyside3;
+export type Sidebyside =
+  | ElementSidebyside
+  | ElementSidebyside1
+  | ElementSidebyside2
+  | ElementSidebyside3;
 export type Sbsgroup = ElementSideBySideGroup | ElementSideBySideGroupNoCaption;
 export type Image = ElementImageRaster | ElementImageCode;
 export type Caption = ElementCaption;
@@ -531,8 +549,16 @@ export type PtxContent = PtxAllElement;
  * In xast these are elements whose meaningful content is their text.
  */
 export const PTX_VALUE_ELEMENT_NAMES = new Set([
-  'm', 'me', 'men', 'mrow', 'c', 'pre', 'cline',
-  'input', 'output', 'prompt',
+  'm',
+  'me',
+  'men',
+  'mrow',
+  'c',
+  'pre',
+  'cline',
+  'input',
+  'output',
+  'prompt',
 ]);
 
 /**

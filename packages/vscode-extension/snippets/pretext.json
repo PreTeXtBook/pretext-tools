@@ -322,5 +322,4 @@
     "prefix": "<fillin>",
     "body": "<fillin characters=\"${1:5}\" />$0"
   }
-
 }

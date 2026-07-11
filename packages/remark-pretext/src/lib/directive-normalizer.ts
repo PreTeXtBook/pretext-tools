@@ -65,12 +65,19 @@ function parseDirectiveMarker(line: string): DirectiveMarker | null {
   if (colonCount < 3) return null;
 
   const afterColons = trimmed.slice(colonCount).trim();
-  const labelMatch = afterColons.match(/^([a-zA-Z0-9_-]+)(\[[^\]]*\])?(\{[^}]*\})?$/);
+  const labelMatch = afterColons.match(
+    /^([a-zA-Z0-9_-]+)(\[[^\]]*\])?(\{[^}]*\})?$/,
+  );
 
   if (afterColons === '') {
     return { colons: colonCount, label: null, lineIndex: -1, isOpen: false };
   } else if (labelMatch) {
-    return { colons: colonCount, label: labelMatch[0], lineIndex: -1, isOpen: true };
+    return {
+      colons: colonCount,
+      label: labelMatch[0],
+      lineIndex: -1,
+      isOpen: true,
+    };
   }
 
   return null;
@@ -79,7 +86,9 @@ function parseDirectiveMarker(line: string): DirectiveMarker | null {
 /**
  * Pass 1: Parse markers and build tree with proper parent-child relationships
  */
-function buildTree(markers: Array<DirectiveMarker & { lineIndex: number }>): TreeNode[] {
+function buildTree(
+  markers: Array<DirectiveMarker & { lineIndex: number }>,
+): TreeNode[] {
   const stack: TreeNode[] = []; // Stack of currently-open directives
   const roots: TreeNode[] = [];
 
@@ -143,7 +152,7 @@ function computeFinalColons(node: TreeNode): number {
 function rebuildMarkdown(
   lines: string[],
   roots: TreeNode[],
-  _allMarkers: Array<DirectiveMarker & { lineIndex: number }>
+  _allMarkers: Array<DirectiveMarker & { lineIndex: number }>,
 ): string[] {
   const output = lines.slice();
 

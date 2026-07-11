@@ -25,14 +25,14 @@ import {
   window,
   workspace,
   Disposable,
-} from "vscode";
-import { ELEMENT_CONFIG, OutlineItem, parseOutline } from "./outline-parser";
+} from 'vscode';
+import { ELEMENT_CONFIG, OutlineItem, parseOutline } from './outline-parser';
 
 /**
  * Check if a filename is a PreTeXt source file (.ptx or .xml).
  */
 function isPretextFile(fileName: string): boolean {
-  return fileName.endsWith(".ptx") || fileName.endsWith(".xml");
+  return fileName.endsWith('.ptx') || fileName.endsWith('.xml');
 }
 
 /**
@@ -132,8 +132,8 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
 
     // Click to jump to source line
     item.command = {
-      command: "pretext-tools.outlineJumpToLine",
-      title: "Go to",
+      command: 'pretext-tools.outlineJumpToLine',
+      title: 'Go to',
       arguments: [element],
     };
 

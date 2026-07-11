@@ -1,1 +1,1 @@
-declare module "@pretextbook/visual-editor/styles";
+declare module '@pretextbook/visual-editor/styles';

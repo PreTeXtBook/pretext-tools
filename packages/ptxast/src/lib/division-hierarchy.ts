@@ -109,7 +109,8 @@ export function divisionTypeAtRelativeDepth(
 ): DivisionType | ExtraDivisionType {
   if (isTitlelessDivisionType(topLevel)) return 'paragraphs';
   if (depth <= 1) return topLevel;
-  if (topLevel === 'appendix') return divisionTypeAtRelativeDepth('chapter', depth);
+  if (topLevel === 'appendix')
+    return divisionTypeAtRelativeDepth('chapter', depth);
   if (isExtraDivisionType(topLevel)) return 'paragraphs';
 
   const startIndex = DIVISION_HIERARCHY.indexOf(topLevel);
@@ -173,9 +174,7 @@ export function divisionTypeAtRootDepth(
 ): DivisionType | ExtraDivisionType {
   if (root === 'slideshow') {
     const index = Math.max(0, depth - 1);
-    return SLIDESHOW_HIERARCHY[
-      Math.min(index, SLIDESHOW_HIERARCHY.length - 1)
-    ];
+    return SLIDESHOW_HIERARCHY[Math.min(index, SLIDESHOW_HIERARCHY.length - 1)];
   }
   const child = root === 'book' ? 'chapter' : 'section';
   return divisionTypeAtRelativeDepth(child, depth);

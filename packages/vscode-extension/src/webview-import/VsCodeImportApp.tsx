@@ -1,11 +1,11 @@
-import { ImportWizard, type ImportMode } from "@pretextbook/import/react";
-import "@pretextbook/import/react.css";
+import { ImportWizard, type ImportMode } from '@pretextbook/import/react';
+import '@pretextbook/import/react.css';
 import {
   assetsForImportMode,
   filesForImportMode,
   formatWarningLine,
   type ImportedProjectSuccess,
-} from "@pretextbook/import";
+} from '@pretextbook/import';
 
 type VscodeApi = {
   postMessage: (message: unknown) => void;
@@ -22,16 +22,16 @@ declare global {
 
 // Acquire the VS Code API once at module load time
 // Store it in window to prevent "API already acquired" errors during hot reloads
-if (typeof window !== "undefined" && !window.__vscodeApi) {
-  if (typeof acquireVsCodeApi === "function") {
+if (typeof window !== 'undefined' && !window.__vscodeApi) {
+  if (typeof acquireVsCodeApi === 'function') {
     window.__vscodeApi = acquireVsCodeApi();
   }
 }
-const vscode = typeof window !== "undefined" ? window.__vscodeApi : undefined;
+const vscode = typeof window !== 'undefined' ? window.__vscodeApi : undefined;
 
 /** Message sent to the extension host when the user confirms an import. */
 export interface ImportConfirmMessage {
-  type: "import-confirm";
+  type: 'import-confirm';
   mode: ImportMode;
   files: Record<string, string>;
   assetsBase64: Record<string, string>;
@@ -41,7 +41,7 @@ export interface ImportConfirmMessage {
 }
 
 function toBase64(bytes: Uint8Array): string {
-  let binary = "";
+  let binary = '';
   const chunkSize = 0x8000;
   for (let i = 0; i < bytes.length; i += chunkSize) {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
@@ -66,7 +66,7 @@ function encodeAssets(
 function VsCodeImportApp() {
   const handleConfirm = (result: ImportedProjectSuccess, mode: ImportMode) => {
     const message: ImportConfirmMessage = {
-      type: "import-confirm",
+      type: 'import-confirm',
       mode,
       files: filesForImportMode(result, mode),
       assetsBase64: encodeAssets(assetsForImportMode(result, mode)),
@@ -78,7 +78,7 @@ function VsCodeImportApp() {
   };
 
   const handleCancel = () => {
-    vscode?.postMessage({ type: "import-cancel" });
+    vscode?.postMessage({ type: 'import-cancel' });
   };
 
   return <ImportWizard onConfirm={handleConfirm} onCancel={handleCancel} />;

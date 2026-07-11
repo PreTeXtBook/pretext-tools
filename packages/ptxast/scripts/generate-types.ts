@@ -34,10 +34,7 @@ const rngPath = path.join(
   'pretext-dev.rng',
 );
 
-const outPath = path.join(
-  __dirname,
-  '../src/types/generated-interfaces.ts',
-);
+const outPath = path.join(__dirname, '../src/types/generated-interfaces.ts');
 
 function unifiedXml() {
   return unified()

@@ -1,13 +1,13 @@
 // Build all parts of the plugin
-import esbuild from "esbuild";
+import esbuild from 'esbuild';
 
-const watch = process.argv.includes("--watch");
-const production = process.argv.includes("--production");
+const watch = process.argv.includes('--watch');
+const production = process.argv.includes('--production');
 
 function statusUpdateFunction(entry, outfile) {
   return (result) => {
     if (result) {
-      console.log("Built", entry, " to ", outfile);
+      console.log('Built', entry, ' to ', outfile);
     }
   };
 }
@@ -16,56 +16,56 @@ function statusUpdateFunction(entry, outfile) {
  * @type {import('esbuild').Plugin}
  */
 const esbuildProblemMatcherPlugin = {
-  name: "esbuild-problem-matcher",
+  name: 'esbuild-problem-matcher',
 
   setup(build) {
     build.onStart(() => {
-      console.log("[watch] build started");
+      console.log('[watch] build started');
     });
     build.onEnd((result) => {
       result.errors.forEach(({ text, location }) => {
         console.error(`✘ [ERROR] ${text}`);
         console.error(
-          `    ${location.file}:${location.line}:${location.column}:`
+          `    ${location.file}:${location.line}:${location.column}:`,
         );
       });
-      console.log("[watch] build finished");
+      console.log('[watch] build finished');
     });
   },
 };
 
 const extensionCompiled = statusUpdateFunction(
-  "./src/extension.ts",
-  "./out/extension.js"
+  './src/extension.ts',
+  './out/extension.js',
 );
 const lspServerCompiled = statusUpdateFunction(
-  "./src/lsp-server/main.ts",
-  "./out/lsp-server.js"
+  './src/lsp-server/main.ts',
+  './out/lsp-server.js',
 );
 
 const buildOptions = {
-  entryPoints: ["./src/extension.ts"],
+  entryPoints: ['./src/extension.ts'],
   bundle: true,
-  format: "cjs",
+  format: 'cjs',
   minify: production,
   sourcemap: !production,
   sourcesContent: false,
-  platform: "node",
-  external: ["vscode"],
-  outfile: "../../dist/vscode-extension/out/extension.js",
+  platform: 'node',
+  external: ['vscode'],
+  outfile: '../../dist/vscode-extension/out/extension.js',
   plugins: [esbuildProblemMatcherPlugin],
 };
 
 const buildOptionsLSP = {
-  entryPoints: ["./src/lsp-server/main.ts"],
+  entryPoints: ['./src/lsp-server/main.ts'],
   bundle: true,
-  format: "cjs",
-  platform: "node",
+  format: 'cjs',
+  platform: 'node',
   minify: production,
   sourcemap: !production,
   sourcesContent: false,
-  external: ["vscode"],
-  outfile: "../../dist/vscode-extension/out/lsp-server.js",
+  external: ['vscode'],
+  outfile: '../../dist/vscode-extension/out/lsp-server.js',
   plugins: [esbuildProblemMatcherPlugin],
 };
 
@@ -73,7 +73,7 @@ const ctx = await esbuild.context({ ...buildOptions });
 
 if (watch) {
   await ctx.watch();
-  console.log("Watching  ...");
+  console.log('Watching  ...');
 } else {
   await ctx.rebuild();
   await ctx.dispose();
@@ -143,5 +143,5 @@ if (watch) {
 //  });
 
 if (watch) {
-  console.log("Watching  ...");
+  console.log('Watching  ...');
 }

@@ -34,9 +34,12 @@ export function ptxastToMarkdown(root: Root): string {
 
   const lines: string[] = [];
   if (topLevel.name !== 'chapter') lines.push(`division: ${topLevel.name}`);
-  if (topLevel.attributes.xmlid) lines.push(`xmlid: ${topLevel.attributes.xmlid}`);
-  if (topLevel.attributes.label) lines.push(`label: ${topLevel.attributes.label}`);
-  if (topLevel.attributes.component) lines.push(`component: ${topLevel.attributes.component}`);
+  if (topLevel.attributes.xmlid)
+    lines.push(`xmlid: ${topLevel.attributes.xmlid}`);
+  if (topLevel.attributes.label)
+    lines.push(`label: ${topLevel.attributes.label}`);
+  if (topLevel.attributes.component)
+    lines.push(`component: ${topLevel.attributes.component}`);
   if (lines.length === 0) return body;
 
   return `---\n${lines.join('\n')}\n---\n\n${body}`;

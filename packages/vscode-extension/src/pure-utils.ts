@@ -1,6 +1,6 @@
-import * as path from "path";
-import * as fs from "fs";
-import { SpellCheckScope } from "./types";
+import * as path from 'path';
+import * as fs from 'fs';
+import { SpellCheckScope } from './types';
 
 /**
  * Pure, `vscode`-free helpers extracted from `utils.ts` so they can be unit
@@ -16,7 +16,7 @@ import { SpellCheckScope } from "./types";
 export function getProjectFolder(dirPath: string): string | null {
   if (dirPath === path.dirname(dirPath)) {
     return null;
-  } else if (fs.existsSync(path.join(dirPath, "project.ptx"))) {
+  } else if (fs.existsSync(path.join(dirPath, 'project.ptx'))) {
     return dirPath;
   } else {
     return getProjectFolder(path.dirname(dirPath));
@@ -27,7 +27,7 @@ export function getProjectFolder(dirPath: string): string | null {
 export function stripColorCodes(input: string): string {
   // eslint-disable-next-line no-control-regex
   const regex = /\x1B\[[0-9;]*m/g;
-  return input.replace(regex, "");
+  return input.replace(regex, '');
 }
 
 /**
@@ -42,28 +42,28 @@ export function buildSpellCheckIgnorePatterns(
   if (!scopes) {
     return ignorePatterns;
   }
-  if (scopes.comments === "Ignore") {
-    ignorePatterns.push("<!--.*?-->");
+  if (scopes.comments === 'Ignore') {
+    ignorePatterns.push('<!--.*?-->');
   }
-  if (scopes.inlineMath === "Ignore") {
-    ignorePatterns.push("<m>.*?</m>");
+  if (scopes.inlineMath === 'Ignore') {
+    ignorePatterns.push('<m>.*?</m>');
   }
-  if (scopes.displayMath === "Ignore") {
-    ignorePatterns.push("<(me|men|md|mdn)>(.|\n|\r|\n\r)*?</(me|men|md|mdn)>");
+  if (scopes.displayMath === 'Ignore') {
+    ignorePatterns.push('<(me|men|md|mdn)>(.|\n|\r|\n\r)*?</(me|men|md|mdn)>');
   }
-  if (scopes.inlineCode === "Ignore") {
-    ignorePatterns.push("<c>.*?</c>");
+  if (scopes.inlineCode === 'Ignore') {
+    ignorePatterns.push('<c>.*?</c>');
   }
-  if (scopes.blockCode === "Ignore") {
+  if (scopes.blockCode === 'Ignore') {
     ignorePatterns.push(
-      "<(program|sage|pre)>(.|\n|\r|\n\r)*?</(program|sage|pre)>",
+      '<(program|sage|pre)>(.|\n|\r|\n\r)*?</(program|sage|pre)>',
     );
   }
-  if (scopes.latexImage === "Ignore") {
-    ignorePatterns.push("<latex-image>(.|\n|\r|\n\r)*?</latex-image>");
+  if (scopes.latexImage === 'Ignore') {
+    ignorePatterns.push('<latex-image>(.|\n|\r|\n\r)*?</latex-image>');
   }
-  if (scopes.tags === "Ignore") {
-    ignorePatterns.push("<[^!].*?>");
+  if (scopes.tags === 'Ignore') {
+    ignorePatterns.push('<[^!].*?>');
   }
   return ignorePatterns;
 }

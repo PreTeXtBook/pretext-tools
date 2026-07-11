@@ -1,11 +1,11 @@
-import { processLatexViaUnified } from "@unified-latex/unified-latex";
+import { processLatexViaUnified } from '@unified-latex/unified-latex';
 import {
   unifiedLatexToPretext,
   xmlCompilePlugin,
-} from "@pretextbook/unified-latex-to-pretext";
+} from '@pretextbook/unified-latex-to-pretext';
 
 type UnifiedProcessResult = ReturnType<
-  ReturnType<typeof processLatexViaUnified>["processSync"]
+  ReturnType<typeof processLatexViaUnified>['processSync']
 >;
 
 //const myMacroReplacements = {

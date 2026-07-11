@@ -1,4 +1,4 @@
-import { firstBracketedString } from "./latex-utils";
+import { firstBracketedString } from './latex-utils';
 
 export interface PreambleInfo {
   /** Argument of \documentclass{...}, e.g. "book" or "article". Defaults to "article". */
@@ -19,16 +19,18 @@ export function splitLatexAtDocument(source: string): {
   preamble: string;
   body: string;
 } {
-  const BEGIN = "\\begin{document}";
-  const END = "\\end{document}";
+  const BEGIN = '\\begin{document}';
+  const END = '\\end{document}';
   const beginIdx = source.indexOf(BEGIN);
   if (beginIdx === -1) {
-    return { preamble: "", body: source };
+    return { preamble: '', body: source };
   }
   const preamble = source.slice(0, beginIdx).trim();
   const afterBegin = source.slice(beginIdx + BEGIN.length);
   const endIdx = afterBegin.indexOf(END);
-  const body = (endIdx === -1 ? afterBegin : afterBegin.slice(0, endIdx)).trim();
+  const body = (
+    endIdx === -1 ? afterBegin : afterBegin.slice(0, endIdx)
+  ).trim();
   return { preamble, body };
 }
 
@@ -44,18 +46,18 @@ export function splitLatexAtDocument(source: string): {
 export function extractLatexField(source: string, cmdName: string): string {
   const re = new RegExp(`\\\\${cmdName}(?![a-zA-Z])`);
   const match = re.exec(source);
-  if (!match) return "";
+  if (!match) return '';
 
   let rest = source.slice(match.index + match[0].length).trimStart();
 
   // Skip optional [...]
-  if (rest.startsWith("[")) {
-    const [opt, after] = firstBracketedString(rest, 0, "[", "]");
+  if (rest.startsWith('[')) {
+    const [opt, after] = firstBracketedString(rest, 0, '[', ']');
     if (opt) rest = after.trimStart();
   }
 
   const [arg] = firstBracketedString(rest);
-  return arg ? arg.slice(1, -1).trim() : "";
+  return arg ? arg.slice(1, -1).trim() : '';
 }
 
 // ---------------------------------------------------------------------------
@@ -72,12 +74,12 @@ const MACRO_START_RE =
 function lineBraceDepth(line: string): number {
   let depth = 0;
   for (let i = 0; i < line.length; i++) {
-    if (line[i] === "\\") {
+    if (line[i] === '\\') {
       i++; // skip next char (escaped)
       continue;
     }
-    if (line[i] === "{") depth++;
-    else if (line[i] === "}") depth--;
+    if (line[i] === '{') depth++;
+    else if (line[i] === '}') depth--;
   }
   return depth;
 }
@@ -88,7 +90,7 @@ function lineBraceDepth(line: string): number {
  * Returns the collected definitions joined with newlines.
  */
 export function extractMacros(preamble: string): string {
-  const lines = preamble.split("\n");
+  const lines = preamble.split('\n');
   const collected: string[] = [];
   let i = 0;
 
@@ -104,7 +106,7 @@ export function extractMacros(preamble: string): string {
 
     // Accumulate continuation lines until braces are balanced
     while (depth > 0 && i < lines.length) {
-      block += "\n" + lines[i];
+      block += '\n' + lines[i];
       depth += lineBraceDepth(lines[i]);
       i++;
     }
@@ -112,7 +114,7 @@ export function extractMacros(preamble: string): string {
     collected.push(block.trim());
   }
 
-  return collected.join("\n");
+  return collected.join('\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -121,16 +123,16 @@ export function extractMacros(preamble: string): string {
 
 function extractDocumentClassArg(preamble: string): string {
   const m = /\\documentclass(?:\[[^\]]*\])?\{([^}]+)\}/.exec(preamble);
-  return m ? m[1].trim() : "article";
+  return m ? m[1].trim() : 'article';
 }
 
 export function extractPreambleInfo(preamble: string): PreambleInfo {
   // Strip LaTeX comments before field extraction so `% \title{fake}` isn't found
-  const noComments = preamble.replace(/(^|[^\\])%[^\n]*/gm, "$1");
+  const noComments = preamble.replace(/(^|[^\\])%[^\n]*/gm, '$1');
   return {
     documentClass: extractDocumentClassArg(noComments),
-    title: extractLatexField(noComments, "title"),
-    author: extractLatexField(noComments, "author"),
+    title: extractLatexField(noComments, 'title'),
+    author: extractLatexField(noComments, 'author'),
     macros: extractMacros(noComments),
   };
 }
