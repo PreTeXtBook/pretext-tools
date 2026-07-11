@@ -5,10 +5,8 @@ import {
   expandPretextIncludes,
   findLikelyMainPretextPath,
 } from "./clean/pretext-includes";
-import {
-  buildPretextProjectFiles,
-  type BuildProjectFilesOptions,
-} from "./layout";
+import { type BuildProjectFilesOptions } from "./layout";
+import { buildDivisionPool, serializeProjectToFiles } from "./pool";
 import type {
   ImportedProjectResult,
   SourceFormat,
@@ -539,22 +537,37 @@ export function importProjectFromFiles(
       assets: rawAssets = {},
       ...layoutOptions
     } = options;
-    const layout = buildLayout
-      ? buildPretextProjectFiles(result.pretextSource, layoutOptions)
-      : null;
 
-    const outputFiles: Record<string, string> = {
-      ...(layout?.files ?? { "source/main.ptx": result.pretextSource }),
-    };
     const outputAssets: Record<string, Uint8Array> = {};
+    const importableAssets: Record<string, Uint8Array> = {};
 
-    // Route binary assets to source/assets/<filename>
+    // Route binary assets to source/assets/<filename>; the same set feeds
+    // the division pool's ref-keyed asset list.
     for (const [originalPath, bytes] of Object.entries(rawAssets)) {
       const routed = routeAssetPath(originalPath);
       if (routed) {
         outputAssets[routed] = bytes;
+        importableAssets[originalPath] = bytes;
       }
     }
+
+    // Build the intermediate model (division pool, SPEC §4.1); outputFiles
+    // is derived from it via the file-tree serializer so both hosts consume
+    // projections of the same pool.
+    const pool = buildDivisionPool(result.pretextSource, {
+      documentKind: layoutOptions.documentKind,
+      splitChapters: buildLayout ? layoutOptions.splitChapters : false,
+      splitSections: buildLayout ? layoutOptions.splitSections : false,
+      assets: importableAssets,
+    });
+
+    const outputFiles: Record<string, string> = buildLayout
+      ? serializeProjectToFiles(pool.project, {
+          mainSourcePath: layoutOptions.mainSourcePath,
+          publicationPath: layoutOptions.publicationPath,
+          projectFilePath: layoutOptions.projectFilePath,
+        }).files
+      : { "source/main.ptx": result.pretextSource };
 
     // Route text auxiliaries (e.g., .bib) into output as well.
     for (const [originalPath, content] of Object.entries(normalizedFiles)) {
@@ -564,13 +577,8 @@ export function importProjectFromFiles(
       }
     }
 
-    const documentKind =
-      layout?.documentKind ??
-      layoutOptions.documentKind ??
-      "article";
-    const combinedWarnings = layout
-      ? [...result.warnings, ...layout.warnings]
-      : result.warnings;
+    const documentKind = pool.project.documentKind;
+    const combinedWarnings = [...result.warnings, ...pool.warnings];
 
     let nativeOutputFiles: Record<string, string> | undefined;
     if (
@@ -599,6 +607,7 @@ export function importProjectFromFiles(
       sourcePath,
       sourceName: sourcePath.split("/").pop() ?? sourcePath,
       sourceType,
+      project: pool.project,
       files: normalizedFiles,
       assets: rawAssets,
       outputFiles,

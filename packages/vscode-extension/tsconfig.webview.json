@@ -22,5 +22,10 @@
 
     "composite": true
   },
-  "include": ["src/webview/**/*", "vite.webview.config.mts"]
+  "include": [
+    "src/webview/**/*",
+    "src/webview-import/**/*",
+    "vite.webview.config.mts",
+    "vite.webview-import.config.mts"
+  ]
 }

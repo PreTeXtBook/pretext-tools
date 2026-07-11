@@ -6,16 +6,19 @@ import {
 import {
   renderProjectPtx,
   renderPublicationPtx,
-  renderXmlProlog,
 } from "./templates";
 import {
+  ensureXIncludeNamespace,
+  padIndex,
+  slugify,
+  spliceReplacements,
+  withProlog,
+} from "./shared";
+import {
   findAnyElement,
-  findFirstElement,
   findTopLevelElements,
   type XmlElementSpan,
 } from "./xml-scan";
-
-const XI_NAMESPACE = "http://www.w3.org/2001/XInclude";
 
 export interface BuildProjectFilesOptions {
   documentKind?: DocumentKind;
@@ -40,42 +43,11 @@ const DEFAULTS = {
   docinfoPath: "source/docinfo.ptx",
 };
 
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
-
-function padIndex(index: number, total: number): string {
-  const width = String(total).length;
-  return String(index).padStart(Math.max(width, 2), "0");
-}
-
-function ensureXIncludeNamespace(content: string): string {
-  // Look for the outermost root element to attach the namespace to.
-  return content.replace(
-    /<(pretext|book|article)\b([^>]*)>/,
-    (whole, tag: string, attrs: string) => {
-      if (/\bxmlns:xi\s*=/.test(attrs)) {
-        return whole;
-      }
-      return `<${tag}${attrs} xmlns:xi="${XI_NAMESPACE}">`;
-    },
-  );
-}
-
 function wrapInPretextRoot(content: string): string {
   if (findAnyElement(content, "pretext")) {
     return content;
   }
   return `<pretext>\n${content}\n</pretext>`;
-}
-
-function withProlog(content: string): string {
-  if (content.startsWith("<?xml")) return content;
-  return renderXmlProlog() + content;
 }
 
 interface ExtractedElement {
@@ -122,23 +94,6 @@ function nameElements(
     });
   });
   return out;
-}
-
-// Replace each span's outer with a placeholder string, splicing back into source.
-function spliceReplacements(
-  source: string,
-  replacements: Array<{ start: number; end: number; replacement: string }>,
-): string {
-  const sorted = [...replacements].sort((a, b) => a.start - b.start);
-  let result = "";
-  let cursor = 0;
-  for (const r of sorted) {
-    result += source.slice(cursor, r.start);
-    result += r.replacement;
-    cursor = r.end;
-  }
-  result += source.slice(cursor);
-  return result;
 }
 
 // Extract direct-child <section> elements within a chapter and split them out.

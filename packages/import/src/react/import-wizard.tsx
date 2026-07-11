@@ -1,9 +1,10 @@
 import { useRef, useState } from "react";
 import { handleImportUploadFile, type ImportProjectOptions } from "../lib/upload";
+import { filesForImportMode, type ImportMode } from "../lib/import-mode";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import type { ImportedProjectSuccess } from "../lib/types";
 
-export type ImportMode = "converted" | "native";
+export type { ImportMode };
 
 export interface ImportWizardProps {
   /** Called when the user confirms the import. */
@@ -72,14 +73,8 @@ export function ImportWizard({
     });
   }
 
-  function previewFilesFor(result: ImportedProjectSuccess, m: ImportMode) {
-    return m === "converted"
-      ? result.outputFiles
-      : (result.nativeOutputFiles ?? result.files);
-  }
-
   function openFirstFile(result: ImportedProjectSuccess, m: ImportMode) {
-    const files = previewFilesFor(result, m);
+    const files = filesForImportMode(result, m);
     const mainPath = m === "converted" ? "source/main.ptx" : result.sourcePath;
     const first = sortPaths(Object.keys(files), mainPath)[0];
     setExpandedFiles(first ? new Set([first]) : new Set());
@@ -129,7 +124,7 @@ export function ImportWizard({
     const warningCount = result.warnings.length;
     const fileCount = Object.keys(result.outputFiles).length;
 
-    const currentPreviewFiles = previewFilesFor(result, mode);
+    const currentPreviewFiles = filesForImportMode(result, mode);
     const mainPath = mode === "converted" ? "source/main.ptx" : result.sourcePath;
     const sortedPreviewPaths = sortPaths(Object.keys(currentPreviewFiles), mainPath);
 

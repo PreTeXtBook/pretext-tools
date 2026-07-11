@@ -19,6 +19,12 @@ export {
   handleImportUploadFile,
   type ImportProjectOptions,
 } from "./lib/upload";
+export {
+  filesForImportMode,
+  assetsForImportMode,
+  formatWarningLine,
+  type ImportMode,
+} from "./lib/import-mode";
 export { cleanLatex } from "./lib/clean/clean-latex";
 export type { CleanLatexResult } from "./lib/clean/clean-latex";
 export { expandPretextIncludes } from "./lib/clean/pretext-includes";
@@ -38,6 +44,19 @@ export type {
   BuildProjectFilesResult,
   DocumentKind,
 } from "./lib/layout";
+export {
+  buildDivisionPool,
+  sanitizeRef,
+  serializeProjectToFiles,
+  serializeProjectToPlusPayload,
+  divisionChildRefs,
+} from "./lib/pool";
+export type {
+  BuildDivisionPoolOptions,
+  BuildDivisionPoolResult,
+  SerializeProjectFilesOptions,
+  SerializedProjectFiles,
+} from "./lib/pool";
 export type {
   SourceFormat,
   ConversionContext,
@@ -45,6 +64,13 @@ export type {
   UploadStatusType,
   UploadStatusMessage,
   UploadSourceType,
+  ImportedProject,
+  ImportedDivision,
+  ImportedDivisionType,
+  ImportedAsset,
+  PlusProjectPayload,
+  PlusDivisionRecord,
+  PlusAssetRecord,
   ImportedProjectResult,
   ImportedProjectSuccess,
   ImportedProjectError,

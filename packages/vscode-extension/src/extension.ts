@@ -50,6 +50,7 @@ import { projects } from "./project";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
 import { convertToPretext } from "./importFiles";
+import { cmdImportProject } from "./importWizardPanel";
 
 // this method is called when your extension is activated
 export async function activate(context: ExtensionContext) {
@@ -141,6 +142,9 @@ export async function activate(context: ExtensionContext) {
       cmdOutlineJumpToLine,
     ),
     commands.registerCommand("pretext-tools.new", cmdNew),
+    commands.registerCommand("pretext-tools.importProject", () =>
+      cmdImportProject(context),
+    ),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
     commands.registerCommand("pretext-tools.format", () => {
