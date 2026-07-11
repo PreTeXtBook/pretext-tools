@@ -29,7 +29,6 @@ const vscode = typeof window !== "undefined" ? window.__vscodeApi : undefined;
  * Handles communication with the VS Code extension host.
  */
 function VsCodeApp() {
-
   const [content, setContent] = useState("");
 
   useEffect(() => {

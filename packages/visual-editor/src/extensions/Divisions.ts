@@ -59,7 +59,7 @@ const Introduction = Node.create({
       "article",
       mergeAttributes(
         { class: "introduction", label: "introduction" },
-        HTMLAttributes
+        HTMLAttributes,
       ),
       0,
     ];
@@ -174,7 +174,7 @@ const Subsection = Node.create({
       "section",
       mergeAttributes(
         { class: "subsection", ptxtag: "subsection" },
-        HTMLAttributes
+        HTMLAttributes,
       ),
       0,
     ];

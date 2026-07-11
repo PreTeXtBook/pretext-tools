@@ -48,7 +48,7 @@ const ExampleLike = Extension.create({
               "article",
               mergeAttributes(
                 { class: `${element} theorem-like`, ptxtag: element },
-                HTMLAttributes // Include all attributes from the node
+                HTMLAttributes, // Include all attributes from the node
               ),
             ];
           },
@@ -58,7 +58,7 @@ const ExampleLike = Extension.create({
           addInputRules() {
             return generateInputRules(element, this.type);
           },
-        })
+        }),
       );
     }
 
@@ -98,7 +98,7 @@ const ExampleLike = Extension.create({
               "article",
               mergeAttributes(
                 { class: "proof", ptxtag: "proof" },
-                HTMLAttributes // Include all attributes from the node
+                HTMLAttributes, // Include all attributes from the node
               ),
               0,
             ];
@@ -109,7 +109,7 @@ const ExampleLike = Extension.create({
           addInputRules() {
             return generateInputRules("proof", this.type);
           },
-        })
+        }),
       );
     }
     return array; // Ensure an array is always returned

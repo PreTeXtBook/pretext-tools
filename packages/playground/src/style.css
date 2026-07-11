@@ -1,21 +1,28 @@
 /* ─── Reset & base ────────────────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 :root {
-  --bg:       #1e1e2e;
-  --surface:  #181825;
-  --overlay:  #313244;
-  --text:     #cdd6f4;
-  --subtext:  #a6adc8;
-  --muted:    #6c7086;
-  --accent:   #89b4fa;
-  --green:    #a6e3a1;
-  --red:      #f38ba8;
-  --yellow:   #f9e2af;
+  --bg: #1e1e2e;
+  --surface: #181825;
+  --overlay: #313244;
+  --text: #cdd6f4;
+  --subtext: #a6adc8;
+  --muted: #6c7086;
+  --accent: #89b4fa;
+  --green: #a6e3a1;
+  --red: #f38ba8;
+  --yellow: #f9e2af;
   --toolbar-h: 48px;
-  --pane-hdr:  36px;
-  --split:     50%;
-  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --pane-hdr: 36px;
+  --split: 50%;
+  font-family:
+    ui-monospace, "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);
@@ -84,7 +91,9 @@ select {
   cursor: pointer;
   outline: none;
 }
-select:focus { border-color: var(--accent); }
+select:focus {
+  border-color: var(--accent);
+}
 
 /* ─── Status badge ────────────────────────────────────────────────────────── */
 .status {
@@ -94,9 +103,18 @@ select:focus { border-color: var(--accent); }
   min-width: 48px;
   text-align: center;
 }
-.status.ok      { background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); }
-.status.error   { background: color-mix(in srgb, var(--red)   20%, transparent); color: var(--red); }
-.status.working { background: color-mix(in srgb, var(--yellow) 20%, transparent); color: var(--yellow); }
+.status.ok {
+  background: color-mix(in srgb, var(--green) 20%, transparent);
+  color: var(--green);
+}
+.status.error {
+  background: color-mix(in srgb, var(--red) 20%, transparent);
+  color: var(--red);
+}
+.status.working {
+  background: color-mix(in srgb, var(--yellow) 20%, transparent);
+  color: var(--yellow);
+}
 
 /* ─── Workspace split ─────────────────────────────────────────────────────── */
 body {
@@ -121,8 +139,13 @@ body {
   overflow: hidden;
 }
 
-.input-pane  { width: var(--split); flex-shrink: 0; }
-.output-pane { flex: 1; }
+.input-pane {
+  width: var(--split);
+  flex-shrink: 0;
+}
+.output-pane {
+  flex: 1;
+}
 
 .pane-header {
   height: var(--pane-hdr);
@@ -142,7 +165,10 @@ body {
 }
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
-.tabs { gap: 0; padding: 0; }
+.tabs {
+  gap: 0;
+  padding: 0;
+}
 
 .tab {
   height: var(--pane-hdr);
@@ -154,14 +180,22 @@ body {
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
-.tab:hover:not(:disabled) { color: var(--text); }
+.tab:hover:not(:disabled) {
+  color: var(--text);
+}
 .tab.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
-.tab:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.5; }
+.tab:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
 
 .copy-btn {
   margin-left: auto;
@@ -174,7 +208,10 @@ body {
   font-size: 12px;
   cursor: pointer;
 }
-.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+.copy-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 /* ─── Textarea ────────────────────────────────────────────────────────────── */
 textarea {
@@ -204,7 +241,9 @@ textarea {
   color: var(--text);
   background: var(--bg);
 }
-.output-content.error { color: var(--red); }
+.output-content.error {
+  color: var(--red);
+}
 
 /* ─── Divider ─────────────────────────────────────────────────────────────── */
 .divider {
@@ -214,4 +253,7 @@ textarea {
   flex-shrink: 0;
   transition: background 0.15s;
 }
-.divider:hover, .divider.dragging { background: var(--accent); }
+.divider:hover,
+.divider.dragging {
+  background: var(--accent);
+}

@@ -10,8 +10,8 @@ const Url = Node.create({
   parseHTML() {
     return [
       {
-        tag: "url"
-      }
+        tag: "url",
+      },
     ];
   },
 
@@ -24,12 +24,8 @@ const Url = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return [
-      "a",
-      mergeAttributes({ ptxtag: "url" }, HTMLAttributes),
-      0,
-    ];
-  }
+    return ["a", mergeAttributes({ ptxtag: "url" }, HTMLAttributes), 0];
+  },
 });
 
 export default Url;

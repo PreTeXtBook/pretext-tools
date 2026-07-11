@@ -29,8 +29,7 @@ describe("findLikelyMainPretextPath", () => {
 describe("expandPretextIncludes", () => {
   it("inlines a single xi:include", () => {
     const files = {
-      "main.ptx":
-        '<book><xi:include href="ch-1.ptx"/></book>',
+      "main.ptx": '<book><xi:include href="ch-1.ptx"/></book>',
       "ch-1.ptx": "<chapter><title>One</title></chapter>",
     };
     const { expandedText, expandedCount, missingIncludes } =
@@ -44,8 +43,7 @@ describe("expandPretextIncludes", () => {
 
   it("resolves include paths relative to the base file's directory", () => {
     const files = {
-      "source/main.ptx":
-        '<book><xi:include href="ch-1.ptx"/></book>',
+      "source/main.ptx": '<book><xi:include href="ch-1.ptx"/></book>',
       "source/ch-1.ptx": "<chapter/>",
     };
     const { expandedText, expandedCount } = expandPretextIncludes(
@@ -71,7 +69,9 @@ describe("expandPretextIncludes", () => {
   });
 
   it("records missing includes without throwing", () => {
-    const files = { "main.ptx": '<book><xi:include href="missing.ptx"/></book>' };
+    const files = {
+      "main.ptx": '<book><xi:include href="missing.ptx"/></book>',
+    };
     const { expandedCount, missingIncludes } = expandPretextIncludes(
       files["main.ptx"],
       "main.ptx",

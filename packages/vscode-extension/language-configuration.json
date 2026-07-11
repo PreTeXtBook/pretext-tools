@@ -80,7 +80,7 @@
     {
       "beforeText": "^\\s*</(section|chapter|subsection|part|subsubsection|paragraphs).*?>\\s*$",
       "action": {
-        "indent": "outdent",
+        "indent": "outdent"
       }
     }
   ]

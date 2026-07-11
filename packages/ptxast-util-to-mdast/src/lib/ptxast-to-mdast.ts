@@ -25,17 +25,17 @@ import type {
   ListItem,
   Code,
   Blockquote as MdastBlockquote,
-} from 'mdast';
-import type { ContainerDirective } from 'mdast-util-directive';
-import type { Math as MdastMath, InlineMath } from 'mdast-util-math';
-import type { Root, Element, ElementContent } from '@pretextbook/ptxast';
+} from "mdast";
+import type { ContainerDirective } from "mdast-util-directive";
+import type { Math as MdastMath, InlineMath } from "mdast-util-math";
+import type { Root, Element, ElementContent } from "@pretextbook/ptxast";
 import {
   getPtxTextContent,
   DIVISION_HIERARCHY,
   EXTRA_DIVISION_TYPES,
   TITLELESS_DIVISION_TYPES as TITLELESS_DIVISION_TYPE_LIST,
   isTitlelessDivisionType,
-} from '@pretextbook/ptxast';
+} from "@pretextbook/ptxast";
 
 // ---------------------------------------------------------------------------
 // Division metadata
@@ -52,7 +52,9 @@ export const DIVISION_TYPE_NAMES = new Set<string>([
 // `introduction`/`conclusion` have no <title> in the PreTeXt schema, so they
 // never become a heading: their content is spliced into the surrounding flow
 // (and the heading depth they'd otherwise consume is left untouched).
-export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_LIST);
+export const TITLELESS_DIVISION_TYPES = new Set<string>(
+  TITLELESS_DIVISION_TYPE_LIST,
+);
 
 /**
  * Structural container types whose content should be recursed into
@@ -61,7 +63,12 @@ export const TITLELESS_DIVISION_TYPES = new Set<string>(TITLELESS_DIVISION_TYPE_
  * hierarchy.
  */
 export const TRANSPARENT_TYPES = new Set([
-  'pretext', 'book', 'article', 'slideshow', 'frontmatter', 'backmatter',
+  "pretext",
+  "book",
+  "article",
+  "slideshow",
+  "frontmatter",
+  "backmatter",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -69,12 +76,12 @@ export const TRANSPARENT_TYPES = new Set([
 // ---------------------------------------------------------------------------
 
 type DirectiveCategory =
-  | 'theorem-like'    // has <statement> wrapper + optional proof children
-  | 'definition-like' // has <statement> wrapper
-  | 'remark-like'     // no statement wrapper, direct block children
-  | 'example-like'    // no statement wrapper
-  | 'proof-like'      // no statement wrapper
-  | 'solution-like';  // no statement wrapper
+  | "theorem-like" // has <statement> wrapper + optional proof children
+  | "definition-like" // has <statement> wrapper
+  | "remark-like" // no statement wrapper, direct block children
+  | "example-like" // no statement wrapper
+  | "proof-like" // no statement wrapper
+  | "solution-like"; // no statement wrapper
 
 interface DirectiveMeta {
   name: string;
@@ -83,47 +90,47 @@ interface DirectiveMeta {
 
 const TYPE_TO_DIRECTIVE = new Map<string, DirectiveMeta>([
   // theorem-like
-  ['theorem',       { name: 'theorem',       category: 'theorem-like' }],
-  ['lemma',         { name: 'lemma',         category: 'theorem-like' }],
-  ['corollary',     { name: 'corollary',     category: 'theorem-like' }],
-  ['proposition',   { name: 'proposition',   category: 'theorem-like' }],
-  ['claim',         { name: 'claim',         category: 'theorem-like' }],
-  ['fact',          { name: 'fact',          category: 'theorem-like' }],
-  ['conjecture',    { name: 'conjecture',    category: 'theorem-like' }],
-  ['axiom',         { name: 'axiom',         category: 'theorem-like' }],
-  ['principle',     { name: 'principle',     category: 'theorem-like' }],
-  ['hypothesis',    { name: 'hypothesis',    category: 'theorem-like' }],
-  ['algorithm',     { name: 'algorithm',     category: 'theorem-like' }],
+  ["theorem", { name: "theorem", category: "theorem-like" }],
+  ["lemma", { name: "lemma", category: "theorem-like" }],
+  ["corollary", { name: "corollary", category: "theorem-like" }],
+  ["proposition", { name: "proposition", category: "theorem-like" }],
+  ["claim", { name: "claim", category: "theorem-like" }],
+  ["fact", { name: "fact", category: "theorem-like" }],
+  ["conjecture", { name: "conjecture", category: "theorem-like" }],
+  ["axiom", { name: "axiom", category: "theorem-like" }],
+  ["principle", { name: "principle", category: "theorem-like" }],
+  ["hypothesis", { name: "hypothesis", category: "theorem-like" }],
+  ["algorithm", { name: "algorithm", category: "theorem-like" }],
   // definition-like
-  ['definition',    { name: 'definition',    category: 'definition-like' }],
-  ['notation',      { name: 'notation',      category: 'definition-like' }],
+  ["definition", { name: "definition", category: "definition-like" }],
+  ["notation", { name: "notation", category: "definition-like" }],
   // remark-like
-  ['remark',        { name: 'remark',        category: 'remark-like' }],
-  ['note',          { name: 'note',          category: 'remark-like' }],
-  ['observation',   { name: 'observation',   category: 'remark-like' }],
-  ['warning',       { name: 'warning',       category: 'remark-like' }],
-  ['insight',       { name: 'insight',       category: 'remark-like' }],
-  ['assemblage',    { name: 'assemblage',    category: 'remark-like' }],
+  ["remark", { name: "remark", category: "remark-like" }],
+  ["note", { name: "note", category: "remark-like" }],
+  ["observation", { name: "observation", category: "remark-like" }],
+  ["warning", { name: "warning", category: "remark-like" }],
+  ["insight", { name: "insight", category: "remark-like" }],
+  ["assemblage", { name: "assemblage", category: "remark-like" }],
   // example-like
-  ['example',       { name: 'example',       category: 'example-like' }],
-  ['question',      { name: 'question',      category: 'example-like' }],
-  ['problem',       { name: 'problem',       category: 'example-like' }],
-  ['exercise',      { name: 'exercise',      category: 'example-like' }],
-  ['activity',      { name: 'activity',      category: 'example-like' }],
-  ['exploration',   { name: 'exploration',   category: 'example-like' }],
-  ['investigation', { name: 'investigation', category: 'example-like' }],
-  ['project',       { name: 'project',       category: 'example-like' }],
+  ["example", { name: "example", category: "example-like" }],
+  ["question", { name: "question", category: "example-like" }],
+  ["problem", { name: "problem", category: "example-like" }],
+  ["exercise", { name: "exercise", category: "example-like" }],
+  ["activity", { name: "activity", category: "example-like" }],
+  ["exploration", { name: "exploration", category: "example-like" }],
+  ["investigation", { name: "investigation", category: "example-like" }],
+  ["project", { name: "project", category: "example-like" }],
   // proof-like
-  ['proof',         { name: 'proof',         category: 'proof-like' }],
-  ['case',          { name: 'case',          category: 'proof-like' }],
+  ["proof", { name: "proof", category: "proof-like" }],
+  ["case", { name: "case", category: "proof-like" }],
   // solution-like
-  ['solution',      { name: 'solution',      category: 'solution-like' }],
-  ['hint',          { name: 'hint',          category: 'solution-like' }],
-  ['answer',        { name: 'answer',        category: 'solution-like' }],
+  ["solution", { name: "solution", category: "solution-like" }],
+  ["hint", { name: "hint", category: "solution-like" }],
+  ["answer", { name: "answer", category: "solution-like" }],
 ]);
 
 // theorem-like and definition-like wrap body in <statement>
-const HAS_STATEMENT_WRAPPER = new Set(['theorem-like', 'definition-like']);
+const HAS_STATEMENT_WRAPPER = new Set(["theorem-like", "definition-like"]);
 
 // ---------------------------------------------------------------------------
 // Public entry point
@@ -132,7 +139,7 @@ const HAS_STATEMENT_WRAPPER = new Set(['theorem-like', 'definition-like']);
 /** Convert an xast Root (PreTeXt document) to an mdast Root. */
 export function ptxastToMdast(root: Root): MdastRoot {
   return {
-    type: 'root',
+    type: "root",
     children: flattenChildren(root.children as ElementContent[], 1),
   };
 }
@@ -158,14 +165,17 @@ export function findTopLevelDivisionInfo(
   nodes: ElementContent[],
 ): TopLevelDivisionInfo | undefined {
   for (const node of nodes) {
-    if (node.type !== 'element') continue;
+    if (node.type !== "element") continue;
     const el = node as Element;
-    if (DIVISION_TYPE_NAMES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+    if (
+      DIVISION_TYPE_NAMES.has(el.name) ||
+      TITLELESS_DIVISION_TYPES.has(el.name)
+    ) {
       const attrs = el.attributes ?? {};
-      const attributes: TopLevelDivisionInfo['attributes'] = {};
-      if (attrs['xml:id']) attributes.xmlid = attrs['xml:id'];
-      if (attrs['label']) attributes.label = attrs['label'];
-      if (attrs['component']) attributes.component = attrs['component'];
+      const attributes: TopLevelDivisionInfo["attributes"] = {};
+      if (attrs["xml:id"]) attributes.xmlid = attrs["xml:id"];
+      if (attrs["label"]) attributes.label = attrs["label"];
+      if (attrs["component"]) attributes.component = attrs["component"];
       return { name: el.name, attributes };
     }
     if (TRANSPARENT_TYPES.has(el.name)) {
@@ -181,7 +191,9 @@ export function findTopLevelDivisionInfo(
  * transparent structural wrappers), i.e. the division a depth-1 heading
  * would represent if this tree were flattened to markdown.
  */
-export function findTopLevelDivision(nodes: ElementContent[]): string | undefined {
+export function findTopLevelDivision(
+  nodes: ElementContent[],
+): string | undefined {
   return findTopLevelDivisionInfo(nodes)?.name;
 }
 
@@ -194,15 +206,23 @@ export function findTopLevelDivision(nodes: ElementContent[]): string | undefine
  * clamped to 6) is the heading depth that the next division encountered at
  * this level should use; nested divisions go one level deeper.
  */
-function flattenChildren(nodes: ElementContent[], depth: number): MdastContent[] {
+function flattenChildren(
+  nodes: ElementContent[],
+  depth: number,
+): MdastContent[] {
   const result: MdastContent[] = [];
   for (const node of nodes) {
-    if (node.type !== 'element') continue;
+    if (node.type !== "element") continue;
     const el = node as Element;
-    if (TRANSPARENT_TYPES.has(el.name) || TITLELESS_DIVISION_TYPES.has(el.name)) {
+    if (
+      TRANSPARENT_TYPES.has(el.name) ||
+      TITLELESS_DIVISION_TYPES.has(el.name)
+    ) {
       result.push(...flattenChildren(el.children, depth));
     } else if (DIVISION_TYPE_NAMES.has(el.name)) {
-      result.push(...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6));
+      result.push(
+        ...flattenDivision(el, Math.min(depth, 6) as 1 | 2 | 3 | 4 | 5 | 6),
+      );
     } else {
       const converted = convertBlock(el);
       if (converted !== null) result.push(converted);
@@ -220,18 +240,20 @@ function flattenDivision(
   const children = el.children;
 
   const titleNode = children.find(
-    (c) => c.type === 'element' && (c as Element).name === 'title',
+    (c) => c.type === "element" && (c as Element).name === "title",
   ) as Element | undefined;
   const restChildren = children.filter(
-    (c) => !(c.type === 'element' && (c as Element).name === 'title'),
+    (c) => !(c.type === "element" && (c as Element).name === "title"),
   );
 
   const heading: Heading = {
-    type: 'heading',
+    type: "heading",
     depth,
-    children: titleNode ? titleNode.children.map(convertInlineNode).filter(notNull) : [],
-    ...(attrs['xml:id']
-      ? { data: { id: attrs['xml:id'], hProperties: { id: attrs['xml:id'] } } }
+    children: titleNode
+      ? titleNode.children.map(convertInlineNode).filter(notNull)
+      : [],
+    ...(attrs["xml:id"]
+      ? { data: { id: attrs["xml:id"], hProperties: { id: attrs["xml:id"] } } }
       : {}),
   };
   result.push(heading);
@@ -248,15 +270,21 @@ function flattenDivision(
 
 function convertBlock(el: Element): BlockContent | DefinitionContent | null {
   switch (el.name) {
-    case 'p':          return convertP(el);
-    case 'blockquote': return convertBlockquote(el);
-    case 'ol':         return convertList(el, true);
-    case 'ul':         return convertList(el, false);
-    case 'program':    return convertProgram(el);
-    case 'me':
-    case 'men':
-    case 'md':
-    case 'mdn':        return convertDisplayMath(el);
+    case "p":
+      return convertP(el);
+    case "blockquote":
+      return convertBlockquote(el);
+    case "ol":
+      return convertList(el, true);
+    case "ul":
+      return convertList(el, false);
+    case "program":
+      return convertProgram(el);
+    case "me":
+    case "men":
+    case "md":
+    case "mdn":
+      return convertDisplayMath(el);
     default: {
       const directive = TYPE_TO_DIRECTIVE.get(el.name);
       if (directive) return convertDirective(el, directive);
@@ -269,7 +297,7 @@ function convertBlock(el: Element): BlockContent | DefinitionContent | null {
 
 function convertP(el: Element): Paragraph {
   return {
-    type: 'paragraph',
+    type: "paragraph",
     children: el.children.map(convertInlineNode).filter(notNull),
   };
 }
@@ -278,9 +306,9 @@ function convertP(el: Element): Paragraph {
 
 function convertBlockquote(el: Element): MdastBlockquote {
   return {
-    type: 'blockquote',
+    type: "blockquote",
     children: el.children
-      .filter((c) => c.type === 'element')
+      .filter((c) => c.type === "element")
       .map((c) => convertBlock(c as Element))
       .filter(notNull) as BlockContent[],
   };
@@ -290,21 +318,21 @@ function convertBlockquote(el: Element): MdastBlockquote {
 
 function convertList(el: Element, ordered: boolean): List {
   return {
-    type: 'list',
+    type: "list",
     ordered,
     spread: false,
     children: el.children
-      .filter((c) => c.type === 'element')
+      .filter((c) => c.type === "element")
       .map((c) => convertListItem(c as Element)),
   };
 }
 
 function convertListItem(el: Element): ListItem {
   return {
-    type: 'listItem',
+    type: "listItem",
     spread: false,
     children: el.children
-      .filter((c) => c.type === 'element')
+      .filter((c) => c.type === "element")
       .map((c) => convertBlock(c as Element))
       .filter(notNull) as BlockContent[],
   };
@@ -315,8 +343,8 @@ function convertListItem(el: Element): ListItem {
 function convertProgram(el: Element): Code {
   const attrs = el.attributes ?? {};
   return {
-    type: 'code',
-    lang: attrs['language'] ?? null,
+    type: "code",
+    lang: attrs["language"] ?? null,
     value: getPtxTextContent(el),
   };
 }
@@ -326,15 +354,17 @@ function convertProgram(el: Element): Code {
 function convertDisplayMath(el: Element): MdastMath {
   const children = el.children;
   // Single-line: first child is a Text node
-  if (children.length > 0 && children[0].type === 'text') {
-    return { type: 'math', value: getPtxTextContent(el) };
+  if (children.length > 0 && children[0].type === "text") {
+    return { type: "math", value: getPtxTextContent(el) };
   }
   // Multi-line: mrow elements
   const value = children
-    .filter((child) => child.type === 'element' && (child as Element).name === 'mrow')
+    .filter(
+      (child) => child.type === "element" && (child as Element).name === "mrow",
+    )
     .map((child) => getPtxTextContent(child as Element))
-    .join(' \\\\\n');
-  return { type: 'math', value };
+    .join(" \\\\\n");
+  return { type: "math", value };
 }
 
 // ---------------------------------------------------------------------------
@@ -349,21 +379,22 @@ function convertDirective(
   const children = el.children;
 
   const directiveAttrs: Record<string, string> = {};
-  if (attrs['xml:id']) directiveAttrs['id'] = attrs['xml:id'];
+  if (attrs["xml:id"]) directiveAttrs["id"] = attrs["xml:id"];
   for (const [k, v] of Object.entries(attrs)) {
-    if (k === 'xml:id' || v == null) continue;
+    if (k === "xml:id" || v == null) continue;
     directiveAttrs[k] = v as string;
   }
 
   const titleNode = children.find(
-    (c: ElementContent) => c.type === 'element' && (c as Element).name === 'title',
+    (c: ElementContent) =>
+      c.type === "element" && (c as Element).name === "title",
   ) as Element | undefined;
 
   const directiveChildren: (BlockContent | DefinitionContent)[] = [];
 
   if (titleNode) {
     const labelPara: Paragraph & { data: { directiveLabel: boolean } } = {
-      type: 'paragraph',
+      type: "paragraph",
       data: { directiveLabel: true },
       children: titleNode.children.map(convertInlineNode).filter(notNull),
     };
@@ -372,12 +403,12 @@ function convertDirective(
 
   if (HAS_STATEMENT_WRAPPER.has(meta.category)) {
     for (const child of children) {
-      if (child.type !== 'element') continue;
+      if (child.type !== "element") continue;
       const childEl = child as Element;
-      if (childEl.name === 'title') continue;
-      if (childEl.name === 'statement') {
+      if (childEl.name === "title") continue;
+      if (childEl.name === "statement") {
         for (const sc of childEl.children) {
-          if (sc.type !== 'element') continue;
+          if (sc.type !== "element") continue;
           const c = convertBlock(sc as Element);
           if (c) directiveChildren.push(c);
         }
@@ -388,18 +419,19 @@ function convertDirective(
     }
   } else {
     for (const child of children) {
-      if (child.type !== 'element') continue;
+      if (child.type !== "element") continue;
       const childEl = child as Element;
-      if (childEl.name === 'title') continue;
+      if (childEl.name === "title") continue;
       const c = convertBlock(childEl);
       if (c) directiveChildren.push(c);
     }
   }
 
   return {
-    type: 'containerDirective',
+    type: "containerDirective",
     name: meta.name,
-    attributes: Object.keys(directiveAttrs).length > 0 ? directiveAttrs : undefined,
+    attributes:
+      Object.keys(directiveAttrs).length > 0 ? directiveAttrs : undefined,
     children: directiveChildren,
   } as unknown as ContainerDirective;
 }
@@ -409,26 +441,29 @@ function convertDirective(
 // ---------------------------------------------------------------------------
 
 function convertInlineNode(node: ElementContent): PhrasingContent | null {
-  if (node.type === 'text') {
-    return { type: 'text', value: (node as { value: string }).value ?? '' } as Text;
+  if (node.type === "text") {
+    return {
+      type: "text",
+      value: (node as { value: string }).value ?? "",
+    } as Text;
   }
-  if (node.type !== 'element') return null;
+  if (node.type !== "element") return null;
   const el = node as Element;
   switch (el.name) {
-    case 'em':
+    case "em":
       return {
-        type: 'emphasis',
+        type: "emphasis",
         children: el.children.map(convertInlineNode).filter(notNull),
       } as Emphasis;
-    case 'alert':
+    case "alert":
       return {
-        type: 'strong',
+        type: "strong",
         children: el.children.map(convertInlineNode).filter(notNull),
       } as Strong;
-    case 'c':
-      return { type: 'inlineCode', value: getPtxTextContent(el) } as InlineCode;
-    case 'm':
-      return { type: 'inlineMath', value: getPtxTextContent(el) } as InlineMath;
+    case "c":
+      return { type: "inlineCode", value: getPtxTextContent(el) } as InlineCode;
+    case "m":
+      return { type: "inlineMath", value: getPtxTextContent(el) } as InlineMath;
     default:
       return null;
   }

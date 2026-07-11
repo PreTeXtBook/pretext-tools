@@ -52,7 +52,9 @@ export interface CompileResult {
  * Convert a RELAX NG schema file to a precompiled JSON grammar tree. Resolves
  * `<include>` directives via a `file://` resource loader.
  */
-export async function compileRngToJSON(rngPath: string): Promise<CompileResult> {
+export async function compileRngToJSON(
+  rngPath: string,
+): Promise<CompileResult> {
   const result = await convertRNGToPattern(pathToFileURL(rngPath));
   const warnings = (result.warnings ?? []).map((w) => String(w));
   const json = writeTreeToJSON(result.simplified, 3);

@@ -1,24 +1,24 @@
 /**
  * Custom remark plugin for parsing math delimiters.
- * 
+ *
  * Supports:
  * - Display math: `$$...$$` (block or inline) and `\[...\]` (LaTeX)
  * - Inline math: `$...$` and `\(...\)` (LaTeX)
- * 
+ *
  * Creates 'math' nodes with optional 'meta' field to distinguish display from inline.
  */
 
-import type { Plugin } from 'unified';
-import type { Root, Text } from 'mdast';
-import { visit } from 'unist-util-visit';
+import type { Plugin } from "unified";
+import type { Root, Text } from "mdast";
+import { visit } from "unist-util-visit";
 
 export interface Math {
-  type: 'math';
+  type: "math";
   value: string;
   meta?: string; // Can be 'display' or 'inline'
 }
 
-declare module 'mdast' {
+declare module "mdast" {
   interface PhrasingContentMap {
     math: Math;
   }
@@ -35,22 +35,25 @@ interface DelimiterPattern {
 
 const DELIMITERS: DelimiterPattern[] = [
   // Display math (check these first, before single $)
-  { open: '$$', close: '$$', isDisplay: true },
-  { open: '\\[', close: '\\]', isDisplay: true },
+  { open: "$$", close: "$$", isDisplay: true },
+  { open: "\\[", close: "\\]", isDisplay: true },
   // Inline math
-  { open: '$', close: '$', isDisplay: false },
-  { open: '\\(', close: '\\)', isDisplay: false },
+  { open: "$", close: "$", isDisplay: false },
+  { open: "\\(", close: "\\)", isDisplay: false },
 ];
 
-const TOKEN_PREFIX = 'PTX_MATH_TOKEN_';
-const TOKEN_RE = new RegExp(`${TOKEN_PREFIX}(\\d+)`, 'g');
+const TOKEN_PREFIX = "PTX_MATH_TOKEN_";
+const TOKEN_RE = new RegExp(`${TOKEN_PREFIX}(\\d+)`, "g");
 
 export interface MathTokenizationResult {
   markdown: string;
   tokens: Map<string, Math>;
 }
 
-function findNextDelimiter(text: string, pos: number): {
+function findNextDelimiter(
+  text: string,
+  pos: number,
+): {
   index: number;
   pattern: DelimiterPattern;
   content: string;
@@ -68,10 +71,10 @@ function findNextDelimiter(text: string, pos: number): {
     const closeIndex = text.indexOf(pattern.close, index + pattern.open.length);
     if (closeIndex === -1) continue;
 
-    if (pattern.open === '$') {
+    if (pattern.open === "$") {
       if (
-        (index > 0 && text[index - 1] === '$')
-        || (index + 1 < text.length && text[index + 1] === '$')
+        (index > 0 && text[index - 1] === "$") ||
+        (index + 1 < text.length && text[index + 1] === "$")
       ) {
         continue;
       }
@@ -92,22 +95,25 @@ function findNextDelimiter(text: string, pos: number): {
  * `end` is the index of the first character AFTER the region, or `null` if no
  * code region exists.
  */
-function findNextCodeRegion(text: string, fromPos: number): { start: number; end: number } | null {
+function findNextCodeRegion(
+  text: string,
+  fromPos: number,
+): { start: number; end: number } | null {
   let p = fromPos;
 
   while (p < text.length) {
-    const backtickIndex = text.indexOf('`', p);
+    const backtickIndex = text.indexOf("`", p);
     if (backtickIndex === -1) return null;
 
     // Count consecutive backticks at this position
     let tickCount = 0;
     let q = backtickIndex;
-    while (q < text.length && text[q] === '`') {
+    while (q < text.length && text[q] === "`") {
       tickCount++;
       q++;
     }
 
-    const openTicks = '`'.repeat(tickCount);
+    const openTicks = "`".repeat(tickCount);
     // Search for a matching closing run of exactly the same length
     let searchFrom = q;
     while (searchFrom < text.length) {
@@ -116,7 +122,7 @@ function findNextCodeRegion(text: string, fromPos: number): { start: number; end
 
       const afterClose = closeIndex + tickCount;
       // Exact match: the character after the closing run must not be another backtick
-      if (afterClose >= text.length || text[afterClose] !== '`') {
+      if (afterClose >= text.length || text[afterClose] !== "`") {
         return { start: backtickIndex, end: afterClose };
       }
       // Closing run has extra backticks – keep searching
@@ -130,9 +136,11 @@ function findNextCodeRegion(text: string, fromPos: number): { start: number; end
   return null;
 }
 
-export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult {
+export function tokenizeMathInMarkdown(
+  markdown: string,
+): MathTokenizationResult {
   const tokens = new Map<string, Math>();
-  let out = '';
+  let out = "";
   let pos = 0;
   let id = 0;
 
@@ -158,12 +166,16 @@ export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult
     const token = `${TOKEN_PREFIX}${id}`;
     out += token;
     tokens.set(token, {
-      type: 'math',
+      type: "math",
       value: next.content,
-      meta: next.pattern.isDisplay ? 'display' : 'inline',
+      meta: next.pattern.isDisplay ? "display" : "inline",
     });
 
-    pos = next.index + next.pattern.open.length + next.content.length + next.pattern.close.length;
+    pos =
+      next.index +
+      next.pattern.open.length +
+      next.content.length +
+      next.pattern.close.length;
     id += 1;
   }
 
@@ -173,7 +185,7 @@ export function tokenizeMathInMarkdown(markdown: string): MathTokenizationResult
 /**
  * Find math in a string and split into text and math nodes.
  * Returns array of alternating Text and Math nodes.
- * 
+ *
  * Order matters: we check longer/more specific delimiters first.
  */
 export function splitTextWithMath(text: string): (Text | Math)[] {
@@ -186,7 +198,7 @@ export function splitTextWithMath(text: string): (Text | Math)[] {
     if (!nextMatch) {
       // No more math found
       if (pos < text.length) {
-        result.push({ type: 'text', value: text.substring(pos) });
+        result.push({ type: "text", value: text.substring(pos) });
       }
       break;
     }
@@ -194,25 +206,32 @@ export function splitTextWithMath(text: string): (Text | Math)[] {
     // Add text before math
     if (nextMatch.index > pos) {
       result.push({
-        type: 'text',
+        type: "text",
         value: text.substring(pos, nextMatch.index),
       });
     }
 
     // Add math node
     result.push({
-      type: 'math',
+      type: "math",
       value: nextMatch.content,
-      meta: nextMatch.pattern.isDisplay ? 'display' : 'inline',
+      meta: nextMatch.pattern.isDisplay ? "display" : "inline",
     });
 
-    pos = nextMatch.index + nextMatch.pattern.open.length + nextMatch.content.length + nextMatch.pattern.close.length;
+    pos =
+      nextMatch.index +
+      nextMatch.pattern.open.length +
+      nextMatch.content.length +
+      nextMatch.pattern.close.length;
   }
 
-  return result.length === 0 ? [{ type: 'text', value: text }] : result;
+  return result.length === 0 ? [{ type: "text", value: text }] : result;
 }
 
-function splitTextWithMathTokens(text: string, tokens: Map<string, Math>): (Text | Math)[] {
+function splitTextWithMathTokens(
+  text: string,
+  tokens: Map<string, Math>,
+): (Text | Math)[] {
   const result: (Text | Math)[] = [];
   let lastIndex = 0;
   TOKEN_RE.lastIndex = 0;
@@ -223,14 +242,14 @@ function splitTextWithMathTokens(text: string, tokens: Map<string, Math>): (Text
     const token = match[0];
 
     if (start > lastIndex) {
-      result.push({ type: 'text', value: text.substring(lastIndex, start) });
+      result.push({ type: "text", value: text.substring(lastIndex, start) });
     }
 
     const mathNode = tokens.get(token);
     if (mathNode) {
       result.push(mathNode);
     } else {
-      result.push({ type: 'text', value: token });
+      result.push({ type: "text", value: token });
     }
 
     lastIndex = start + token.length;
@@ -238,22 +257,22 @@ function splitTextWithMathTokens(text: string, tokens: Map<string, Math>): (Text
   }
 
   if (lastIndex < text.length) {
-    result.push({ type: 'text', value: text.substring(lastIndex) });
+    result.push({ type: "text", value: text.substring(lastIndex) });
   }
 
-  return result.length === 0 ? [{ type: 'text', value: text }] : result;
+  return result.length === 0 ? [{ type: "text", value: text }] : result;
 }
 
 /**
  * Remark plugin that detects and parses math delimiters in text nodes.
  */
 export function applyMathDelimiters(tree: Root): void {
-  visit(tree, 'paragraph', (node: any) => {
+  visit(tree, "paragraph", (node: any) => {
     const children = (node.children || []) as (Text | Math)[];
     const newChildren: (Text | Math)[] = [];
 
     for (const child of children) {
-      if (child.type === 'text') {
+      if (child.type === "text") {
         const nodes = splitTextWithMath(child.value);
         newChildren.push(...nodes);
       } else {
@@ -266,12 +285,12 @@ export function applyMathDelimiters(tree: Root): void {
 }
 
 export function applyMathTokens(tree: Root, tokens: Map<string, Math>): void {
-  visit(tree, 'paragraph', (node: any) => {
+  visit(tree, "paragraph", (node: any) => {
     const children = (node.children || []) as (Text | Math)[];
     const newChildren: (Text | Math)[] = [];
 
     for (const child of children) {
-      if (child.type === 'text') {
+      if (child.type === "text") {
         const nodes = splitTextWithMathTokens(child.value, tokens);
         newChildren.push(...nodes);
       } else {
@@ -290,4 +309,3 @@ const remarkMath: Plugin<[], Root> = () => {
 };
 
 export default remarkMath;
-

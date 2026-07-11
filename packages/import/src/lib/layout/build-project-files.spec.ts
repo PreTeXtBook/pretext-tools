@@ -4,7 +4,7 @@ import { buildPretextProjectFiles } from "./build-project-files";
 describe("buildPretextProjectFiles — article", () => {
   it("emits a single source/main.ptx plus project.ptx and publication.ptx", () => {
     const source =
-      '<pretext><article><title>Hi</title><p>body</p></article></pretext>';
+      "<pretext><article><title>Hi</title><p>body</p></article></pretext>";
     const { files, documentKind } = buildPretextProjectFiles(source);
     expect(documentKind).toBe("article");
     expect(Object.keys(files).sort()).toEqual([
@@ -40,7 +40,7 @@ describe("buildPretextProjectFiles — book", () => {
   it("splits each chapter into its own file", () => {
     const { files, documentKind } = buildPretextProjectFiles(bookSource);
     expect(documentKind).toBe("book");
-    expect(files["source/ch-intro.ptx"]).toContain("<chapter xml:id=\"intro\"");
+    expect(files["source/ch-intro.ptx"]).toContain('<chapter xml:id="intro"');
     expect(files["source/ch-methods.ptx"]).toContain("<title>Methods</title>");
   });
 
@@ -58,9 +58,7 @@ describe("buildPretextProjectFiles — book", () => {
     const { files, warnings } = buildPretextProjectFiles(noIds);
     expect(files["source/ch-01.ptx"]).toContain("<title>A</title>");
     expect(files["source/ch-02.ptx"]).toContain("<title>B</title>");
-    expect(
-      warnings.find((w) => w.category === "missing_xml_id"),
-    ).toBeTruthy();
+    expect(warnings.find((w) => w.category === "missing_xml_id")).toBeTruthy();
   });
 
   it("can additionally split sections within each chapter", () => {
@@ -84,8 +82,12 @@ describe("buildPretextProjectFiles — book", () => {
     expect(files["source/ch-intro.ptx"]).toContain(
       '<xi:include href="ch-intro/sec-why.ptx"/>',
     );
-    expect(files["source/ch-intro/sec-why.ptx"]).toContain("<title>Why</title>");
-    expect(files["source/ch-intro/sec-how.ptx"]).toContain("<title>How</title>");
+    expect(files["source/ch-intro/sec-why.ptx"]).toContain(
+      "<title>Why</title>",
+    );
+    expect(files["source/ch-intro/sec-how.ptx"]).toContain(
+      "<title>How</title>",
+    );
   });
 
   it("respects an explicit documentKind override", () => {

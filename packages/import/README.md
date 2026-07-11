@@ -101,10 +101,7 @@ files into `source/`.
 ## React Components
 
 ```tsx
-import {
-  ImportSourceForm,
-  ImportUploadPanel,
-} from "@pretextbook/import/react";
+import { ImportSourceForm, ImportUploadPanel } from "@pretextbook/import/react";
 
 function ImportPanel() {
   return (

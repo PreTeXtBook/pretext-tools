@@ -40,7 +40,7 @@
         {
           "id": "pretext-sidebar",
           "title": "PreTeXt",
-          "icon": "logo.png"
+          "icon": "logo.svg"
         }
       ]
     },
@@ -48,7 +48,8 @@
       "pretext-sidebar": [
         {
           "id": "pretextDocumentOutline",
-          "name": "Document Outline"
+          "name": "Document Outline",
+          "icon": "logo.svg"
         }
       ]
     },

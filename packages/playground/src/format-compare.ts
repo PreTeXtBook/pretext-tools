@@ -17,7 +17,9 @@ const blankLinesEl = document.getElementById("blankLines") as HTMLSelectElement;
 const printWidthEl = document.getElementById("printWidth") as HTMLInputElement;
 const tabSizeEl = document.getElementById("tabSize") as HTMLInputElement;
 const useTabsEl = document.getElementById("useTabs") as HTMLInputElement;
-const breakSentencesEl = document.getElementById("breakSentences") as HTMLInputElement;
+const breakSentencesEl = document.getElementById(
+  "breakSentences",
+) as HTMLInputElement;
 
 // ─── Main update loop ─────────────────────────────────────────────────────────
 
@@ -40,7 +42,10 @@ function update(): void {
   }
 }
 
-function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+function debounce<T extends (...args: unknown[]) => void>(
+  fn: T,
+  ms: number,
+): T {
   let t: ReturnType<typeof setTimeout>;
   return ((...args: unknown[]) => {
     clearTimeout(t);
@@ -64,7 +69,8 @@ inputEl.addEventListener("keydown", (e) => {
     e.preventDefault();
     const s = inputEl.selectionStart;
     const end = inputEl.selectionEnd;
-    inputEl.value = inputEl.value.substring(0, s) + "  " + inputEl.value.substring(end);
+    inputEl.value =
+      inputEl.value.substring(0, s) + "  " + inputEl.value.substring(end);
     inputEl.selectionStart = inputEl.selectionEnd = s + 2;
     debouncedUpdate();
   }

@@ -285,7 +285,9 @@ const VisualEditor = ({
           </p>
         )}
       </div>
-      <div className={(isEditingEnabled ? "editable" : "read-only") + " ptx-page"}>
+      <div
+        className={(isEditingEnabled ? "editable" : "read-only") + " ptx-page"}
+      >
         {/* <WarningMessage isValid={isValid} /> */}
         {/* <MenuBar editor={editor} /> */}
         <EditorContent editor={editor} />

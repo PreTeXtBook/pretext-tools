@@ -95,10 +95,7 @@ function buildDocinfo(info: PreambleInfo): string {
  *
  * Also strips the empty `<p />` that unified-latex emits for `\maketitle`.
  */
-function assemblePretextDocument(
-  fragment: string,
-  info: PreambleInfo,
-): string {
+function assemblePretextDocument(fragment: string, info: PreambleInfo): string {
   // Strip <p /> / <p></p> artifacts emitted for \maketitle
   const content = fragment
     .replace(/^\s*<p\s*\/>\s*/g, "")
@@ -174,7 +171,9 @@ export function convertLatexToPretext(
     ? cleanedLatex + "\n\\end{document}"
     : cleanedLatex;
 
-  const rawFragment = asConvertedString(latexToPretext(sourceForUnified)).trim();
+  const rawFragment = asConvertedString(
+    latexToPretext(sourceForUnified),
+  ).trim();
   if (!rawFragment) {
     return { pretext: "", cleanedLatex, warnings };
   }

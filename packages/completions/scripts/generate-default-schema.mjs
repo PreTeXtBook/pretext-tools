@@ -65,7 +65,7 @@ function getAst(rngPath) {
 
   if (iterations >= maxIterations) {
     console.warn(
-      `Warning: include resolution hit max iterations (${maxIterations}). File may have circular includes.`
+      `Warning: include resolution hit max iterations (${maxIterations}). File may have circular includes.`,
     );
   }
 
@@ -175,7 +175,10 @@ function createSchemaElementChildren(schemaAst) {
     if (node.name === "define") {
       const nodeName = node.attributes?.name;
       if (nodeName) {
-        aliasMap[nodeName] = deepmerge(aliasMap[nodeName] || {}, getChildren(node));
+        aliasMap[nodeName] = deepmerge(
+          aliasMap[nodeName] || {},
+          getChildren(node),
+        );
       }
     } else if (node.name === "element") {
       const nodeName = node.attributes?.name;
@@ -194,7 +197,9 @@ function createSchemaElementChildren(schemaAst) {
 }
 
 function sortSchemaElementChildren(elementChildren) {
-  const sortedNames = Object.keys(elementChildren).sort((a, b) => a.localeCompare(b));
+  const sortedNames = Object.keys(elementChildren).sort((a, b) =>
+    a.localeCompare(b),
+  );
   const sorted = {};
 
   for (const name of sortedNames) {
@@ -255,14 +260,18 @@ export type GeneratedPtxElementName = keyof typeof ptxSchemaElementChildren;
 export type GeneratedPtxCuratedElementName = typeof ptxCuratedElementNames[number];
 export type GeneratedPtxUnmodeledSchemaElementName =
   typeof ptxUnmodeledSchemaElementNames[number];
-export type GeneratedPtxAttributeName = ${[
-    ...new Set(
-      Object.values(sortedElementChildren).flatMap((entry) => entry.attributes),
-    ),
-  ]
-    .sort((a, b) => a.localeCompare(b))
-    .map((name) => JSON.stringify(name))
-    .join(" | ") || "never"};
+export type GeneratedPtxAttributeName = ${
+    [
+      ...new Set(
+        Object.values(sortedElementChildren).flatMap(
+          (entry) => entry.attributes,
+        ),
+      ),
+    ]
+      .sort((a, b) => a.localeCompare(b))
+      .map((name) => JSON.stringify(name))
+      .join(" | ") || "never"
+  };
 export type GeneratedPtxChildElementName<
   ElementName extends GeneratedPtxElementName,
 > = (typeof ptxSchemaElementChildren)[ElementName]["elements"][number];

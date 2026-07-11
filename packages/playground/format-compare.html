@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -65,7 +65,9 @@
         font-size: 12px;
         color: var(--subtext);
       }
-      .control-group label { white-space: nowrap; }
+      .control-group label {
+        white-space: nowrap;
+      }
       .control-group select,
       .control-group input[type="number"] {
         background: var(--overlay);
@@ -76,7 +78,9 @@
         font-family: inherit;
         font-size: 12px;
       }
-      .control-group input[type="checkbox"] { accent-color: var(--accent); }
+      .control-group input[type="checkbox"] {
+        accent-color: var(--accent);
+      }
       .input-col textarea {
         flex: 1;
         resize: none;
@@ -118,17 +122,34 @@
           </div>
           <div class="control-group">
             <label for="printWidth">Print width:</label>
-            <input id="printWidth" type="number" value="80" min="0" max="200" style="width:60px" />
+            <input
+              id="printWidth"
+              type="number"
+              value="80"
+              min="0"
+              max="200"
+              style="width: 60px"
+            />
           </div>
           <div class="control-group">
             <label for="tabSize">Tab size:</label>
-            <input id="tabSize" type="number" value="2" min="1" max="8" style="width:50px" />
+            <input
+              id="tabSize"
+              type="number"
+              value="2"
+              min="1"
+              max="8"
+              style="width: 50px"
+            />
           </div>
           <div class="control-group">
             <label><input id="useTabs" type="checkbox" /> Tabs</label>
           </div>
           <div class="control-group">
-            <label><input id="breakSentences" type="checkbox" /> Break sentences</label>
+            <label
+              ><input id="breakSentences" type="checkbox" /> Break
+              sentences</label
+            >
           </div>
         </div>
         <pre id="output" class="output-pre"></pre>

@@ -47,11 +47,7 @@ describe("pretext-format CLI", () => {
       const formatted = formatPretext(
         "<pretext><section><title>t</title></section></pretext>",
       );
-      writeFileSync(
-        filePath,
-        formatted,
-        "utf8",
-      );
+      writeFileSync(filePath, formatted, "utf8");
       const result = runCli(["--check", filePath]);
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");

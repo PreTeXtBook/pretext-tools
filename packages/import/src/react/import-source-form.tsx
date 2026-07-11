@@ -52,8 +52,9 @@ export function ImportSourceForm({
   const [sourceFormat, setSourceFormat] = useState<SourceFormat | "auto">(
     initialSourceFormat ?? "auto",
   );
-  const [lastResult, setLastResult] =
-    useState<ConvertedPretextResult | null>(null);
+  const [lastResult, setLastResult] = useState<ConvertedPretextResult | null>(
+    null,
+  );
 
   const detectedSourceFormat = useMemo(
     () => detectSourceFormat(source),

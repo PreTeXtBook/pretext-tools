@@ -26,7 +26,7 @@ const esbuildProblemMatcherPlugin = {
       result.errors.forEach(({ text, location }) => {
         console.error(`✘ [ERROR] ${text}`);
         console.error(
-          `    ${location.file}:${location.line}:${location.column}:`
+          `    ${location.file}:${location.line}:${location.column}:`,
         );
       });
       console.log("[watch] build finished");
@@ -36,11 +36,11 @@ const esbuildProblemMatcherPlugin = {
 
 const extensionCompiled = statusUpdateFunction(
   "./src/extension.ts",
-  "./out/extension.js"
+  "./out/extension.js",
 );
 const lspServerCompiled = statusUpdateFunction(
   "./src/lsp-server/main.ts",
-  "./out/lsp-server.js"
+  "./out/lsp-server.js",
 );
 
 const buildOptions = {

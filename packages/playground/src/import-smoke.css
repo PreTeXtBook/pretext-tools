@@ -140,7 +140,11 @@ body {
 .wizard-frame {
   background: #f8fafc;
   color: #0f172a;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   padding: 1.5rem;
   border: 1px solid var(--border);
   border-radius: 8px;

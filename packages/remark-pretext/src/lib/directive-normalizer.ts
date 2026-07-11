@@ -54,23 +54,30 @@ interface TreeNode {
  */
 function parseDirectiveMarker(line: string): DirectiveMarker | null {
   const trimmed = line.trim();
-  if (!trimmed.startsWith(':')) return null;
+  if (!trimmed.startsWith(":")) return null;
 
   let colonCount = 0;
   for (let i = 0; i < trimmed.length; i++) {
-    if (trimmed[i] === ':') colonCount++;
+    if (trimmed[i] === ":") colonCount++;
     else break;
   }
 
   if (colonCount < 3) return null;
 
   const afterColons = trimmed.slice(colonCount).trim();
-  const labelMatch = afterColons.match(/^([a-zA-Z0-9_-]+)(\[[^\]]*\])?(\{[^}]*\})?$/);
+  const labelMatch = afterColons.match(
+    /^([a-zA-Z0-9_-]+)(\[[^\]]*\])?(\{[^}]*\})?$/,
+  );
 
-  if (afterColons === '') {
+  if (afterColons === "") {
     return { colons: colonCount, label: null, lineIndex: -1, isOpen: false };
   } else if (labelMatch) {
-    return { colons: colonCount, label: labelMatch[0], lineIndex: -1, isOpen: true };
+    return {
+      colons: colonCount,
+      label: labelMatch[0],
+      lineIndex: -1,
+      isOpen: true,
+    };
   }
 
   return null;
@@ -79,7 +86,9 @@ function parseDirectiveMarker(line: string): DirectiveMarker | null {
 /**
  * Pass 1: Parse markers and build tree with proper parent-child relationships
  */
-function buildTree(markers: Array<DirectiveMarker & { lineIndex: number }>): TreeNode[] {
+function buildTree(
+  markers: Array<DirectiveMarker & { lineIndex: number }>,
+): TreeNode[] {
   const stack: TreeNode[] = []; // Stack of currently-open directives
   const roots: TreeNode[] = [];
 
@@ -143,7 +152,7 @@ function computeFinalColons(node: TreeNode): number {
 function rebuildMarkdown(
   lines: string[],
   roots: TreeNode[],
-  _allMarkers: Array<DirectiveMarker & { lineIndex: number }>
+  _allMarkers: Array<DirectiveMarker & { lineIndex: number }>,
 ): string[] {
   const output = lines.slice();
 
@@ -163,11 +172,11 @@ function rebuildMarkdown(
       // Count leading colons to preserve the rest of the line
       const colonCount = oldMarkerLine.match(/^:+/)?.[0].length || 3;
       const rest = oldMarkerLine.slice(colonCount);
-      output[node.openLineIndex] = ':'.repeat(node.finalColons) + rest;
+      output[node.openLineIndex] = ":".repeat(node.finalColons) + rest;
     }
 
     if (node.closeLineIndex !== null && node.closeLineIndex >= 0) {
-      output[node.closeLineIndex] = ':'.repeat(node.finalColons);
+      output[node.closeLineIndex] = ":".repeat(node.finalColons);
     }
   }
 
@@ -179,7 +188,7 @@ function rebuildMarkdown(
  * Main normalization function
  */
 export function normalizeDirectiveColons(markdown: string): string {
-  const lines = markdown.split('\n');
+  const lines = markdown.split("\n");
   const markers: Array<DirectiveMarker & { lineIndex: number }> = [];
   let inCodeFence = false;
   let codeFenceMarker: string | null = null;
@@ -230,5 +239,5 @@ export function normalizeDirectiveColons(markdown: string): string {
   // Pass 3: Rebuild with new counts
   const output = rebuildMarkdown(lines, roots, markers);
 
-  return output.join('\n');
+  return output.join("\n");
 }

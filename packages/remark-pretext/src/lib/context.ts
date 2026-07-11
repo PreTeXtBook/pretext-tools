@@ -5,8 +5,11 @@
  * enabling context-sensitive formatting decisions.
  */
 
-import type { BlockContent, DefinitionContent, PhrasingContent } from 'mdast';
-import type { RootDivisionType, TopLevelDivisionType } from '@pretextbook/ptxast';
+import type { BlockContent, DefinitionContent, PhrasingContent } from "mdast";
+import type {
+  RootDivisionType,
+  TopLevelDivisionType,
+} from "@pretextbook/ptxast";
 
 export interface VisitContext {
   /** Parent node, if any. */
@@ -44,7 +47,7 @@ export interface VisitContext {
 }
 
 export interface ConversionMessage {
-  type: 'warning' | 'error';
+  type: "warning" | "error";
   reason: string;
   category: string;
   position?: { line?: number; column?: number };

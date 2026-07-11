@@ -28,7 +28,9 @@ export function splitLatexAtDocument(source: string): {
   const preamble = source.slice(0, beginIdx).trim();
   const afterBegin = source.slice(beginIdx + BEGIN.length);
   const endIdx = afterBegin.indexOf(END);
-  const body = (endIdx === -1 ? afterBegin : afterBegin.slice(0, endIdx)).trim();
+  const body = (
+    endIdx === -1 ? afterBegin : afterBegin.slice(0, endIdx)
+  ).trim();
   return { preamble, body };
 }
 

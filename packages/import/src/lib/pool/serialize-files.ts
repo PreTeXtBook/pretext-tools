@@ -3,11 +3,7 @@
 // placeholders rewritten to `<xi:include>`, docinfo re-inlined into the main
 // file, plus the project.ptx / publication.ptx scaffold.
 
-import {
-  ensureXIncludeNamespace,
-  slugify,
-  withProlog,
-} from "../layout/shared";
+import { ensureXIncludeNamespace, slugify, withProlog } from "../layout/shared";
 import { renderProjectPtx, renderPublicationPtx } from "../layout/templates";
 import type { ImportedDivision, ImportedProject } from "../types";
 
@@ -78,10 +74,13 @@ function replacePlaceholders(
   content: string,
   hrefByRef: Map<string, string>,
 ): string {
-  return content.replace(DIVISION_PLACEHOLDER_RE, (whole, _tag, ref: string) => {
-    const href = hrefByRef.get(ref);
-    return href ? `<xi:include href="${href}"/>` : whole;
-  });
+  return content.replace(
+    DIVISION_PLACEHOLDER_RE,
+    (whole, _tag, ref: string) => {
+      const href = hrefByRef.get(ref);
+      return href ? `<xi:include href="${href}"/>` : whole;
+    },
+  );
 }
 
 /**
@@ -181,7 +180,9 @@ export function serializeProjectToFiles(
   const docinfoBlock = project.docinfo ? `${project.docinfo}\n` : "";
   const mainBody = `<pretext>\n${docinfoBlock}${rootResolved}\n</pretext>`;
   files[mainSourcePath] = withProlog(
-    rootResolved === root.content ? mainBody : ensureXIncludeNamespace(mainBody),
+    rootResolved === root.content
+      ? mainBody
+      : ensureXIncludeNamespace(mainBody),
   );
 
   if (includeScaffold) {

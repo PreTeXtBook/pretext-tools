@@ -32,7 +32,10 @@
     },
     "./react.css": "./dist/import.css"
   },
-  "sideEffects": ["*.css", "dist/*.css"],
+  "sideEffects": [
+    "*.css",
+    "dist/*.css"
+  ],
   "files": [
     "*.js",
     "*.cjs",

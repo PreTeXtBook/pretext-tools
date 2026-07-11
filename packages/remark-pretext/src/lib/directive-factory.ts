@@ -1,22 +1,22 @@
 /**
  * Generic directive builder factory.
- * 
+ *
  * Applies semantic rules from DirectiveSpec uniformly to all directives.
  * Pattern mirrors unified-latex-to-pretext's envFactory approach.
- * 
+ *
  * This is the key insight: instead of separate buildTheoremLike(),
  * buildProofLike(), buildRemarkLike() functions, we have ONE function
  * that respects the spec's requiresStatement flag.
  */
 
-import type { BlockContent, DefinitionContent } from 'mdast';
-import type { ContainerDirective } from 'mdast-util-directive';
-import type { Element } from 'xast';
-import type { DirectiveSpec } from './directive-map.js';
-import { PROOF_SOLUTION_NAMES } from './directive-map.js';
-import type { VisitContext } from './context.js';
+import type { BlockContent, DefinitionContent } from "mdast";
+import type { ContainerDirective } from "mdast-util-directive";
+import type { Element } from "xast";
+import type { DirectiveSpec } from "./directive-map.js";
+import { PROOF_SOLUTION_NAMES } from "./directive-map.js";
+import type { VisitContext } from "./context.js";
 
-type XastChild = Element | { type: 'text'; value: string };
+type XastChild = Element | { type: "text"; value: string };
 
 function el(
   name: string,
@@ -24,10 +24,10 @@ function el(
   attributes?: Record<string, string>,
 ): Element {
   return {
-    type: 'element',
+    type: "element",
     name,
     attributes: attributes ?? {},
-    children: children as Element['children'],
+    children: children as Element["children"],
   };
 }
 
@@ -37,14 +37,14 @@ function el(
  */
 function isTaskNode(node: BlockContent | DefinitionContent): boolean {
   return (
-    node.type === 'containerDirective' &&
-    (node as ContainerDirective).name === 'task'
+    node.type === "containerDirective" &&
+    (node as ContainerDirective).name === "task"
   );
 }
 
 function isProofSolutionNode(node: BlockContent | DefinitionContent): boolean {
   return (
-    node.type === 'containerDirective' &&
+    node.type === "containerDirective" &&
     PROOF_SOLUTION_NAMES.has((node as ContainerDirective).name)
   );
 }
@@ -59,13 +59,13 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
   const result: Element[] = [];
 
   for (const elem of elements) {
-    if (elem.name === 'ul' || elem.name === 'ol') {
-      if (result.length > 0 && result[result.length - 1]?.name === 'p') {
+    if (elem.name === "ul" || elem.name === "ol") {
+      if (result.length > 0 && result[result.length - 1]?.name === "p") {
         // Strategy 1: Append list to preceding paragraph
         (result[result.length - 1].children as XastChild[]).push(elem);
       } else {
         // Strategy 2: Wrap orphaned list in new <p>
-        result.push(el('p', [elem]));
+        result.push(el("p", [elem]));
       }
     } else {
       result.push(elem);
@@ -77,12 +77,12 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
 
 /**
  * Generic factory function: applies semantic rules from spec.
- * 
+ *
  * Handles:
  * - Statement wrapping for theorem-like elements
  * - Task nesting with introduction wrapping (exercise/project/task)
  * - Proof/solution sibling extraction
- * 
+ *
  * @param spec Semantic specification for this directive type
  * @param attrs HTML/XML attributes for the element
  * @param titleEl Optional <title> element (extracted from first paragraph if present)
@@ -90,7 +90,7 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
  * @param ctx Visitor context
  * @param convertBlock Callback to recursively convert block children
  * @param convertDirective Callback to recursively convert nested directives
- * 
+ *
  * @returns XAST element for this directive
  */
 export function buildDirectiveWithSpec(
@@ -99,8 +99,14 @@ export function buildDirectiveWithSpec(
   titleEl: Element | null,
   children: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  convertBlock: (child: BlockContent | DefinitionContent, ctx: VisitContext) => Element | null,
-  convertDirective: (node: ContainerDirective, ctx: VisitContext) => Element | null,
+  convertBlock: (
+    child: BlockContent | DefinitionContent,
+    ctx: VisitContext,
+  ) => Element | null,
+  convertDirective: (
+    node: ContainerDirective,
+    ctx: VisitContext,
+  ) => Element | null,
 ): Element {
   const result: Element[] = [];
 
@@ -113,7 +119,7 @@ export function buildDirectiveWithSpec(
   if (spec.hasNestedTasks) {
     // Find first task node
     const firstTaskIndex = children.findIndex(isTaskNode);
-    
+
     if (firstTaskIndex !== -1) {
       // Tasks exist: separate intro content, task nodes, and post-task content
       const taskIndexes: number[] = [];
@@ -149,9 +155,9 @@ export function buildDirectiveWithSpec(
       if (droppedBetweenTasks.length > 0) {
         const messages = ctx.messages ?? (ctx.messages = []);
         messages.push({
-          type: 'warning',
+          type: "warning",
           reason: `Dropped ${droppedBetweenTasks.length} non-task node(s) between task directives in ${spec.type}.`,
-          category: 'dropped-content-between-tasks',
+          category: "dropped-content-between-tasks",
           position: droppedBetweenTasks[0].position?.start,
         });
       }
@@ -161,10 +167,10 @@ export function buildDirectiveWithSpec(
         const introChildren = nestListsInParagraphs(
           introContent
             .map((child) => convertBlock(child, ctx))
-            .filter((n): n is Element => n !== null)
+            .filter((n): n is Element => n !== null),
         );
         if (introChildren.length > 0) {
-          result.push(el('introduction', introChildren));
+          result.push(el("introduction", introChildren));
         }
       }
 
@@ -178,10 +184,10 @@ export function buildDirectiveWithSpec(
         const conclusionChildren = nestListsInParagraphs(
           conclusionNodes
             .map((child) => convertBlock(child, ctx))
-            .filter((n): n is Element => n !== null)
+            .filter((n): n is Element => n !== null),
         );
         if (conclusionChildren.length > 0) {
-          result.push(el('conclusion', conclusionChildren));
+          result.push(el("conclusion", conclusionChildren));
         }
       }
 
@@ -193,11 +199,25 @@ export function buildDirectiveWithSpec(
     } else {
       // No tasks found: fall back to statement/direct content logic
       // (will be handled in next rule)
-      handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+      handleContentWithoutTasks(
+        result,
+        spec,
+        children,
+        ctx,
+        convertBlock,
+        convertDirective,
+      );
     }
   } else {
     // No nested task support: handle normally
-    handleContentWithoutTasks(result, spec, children, ctx, convertBlock, convertDirective);
+    handleContentWithoutTasks(
+      result,
+      spec,
+      children,
+      ctx,
+      convertBlock,
+      convertDirective,
+    );
   }
 
   return el(spec.type, result, attrs);
@@ -212,8 +232,14 @@ function handleContentWithoutTasks(
   spec: DirectiveSpec,
   children: Array<BlockContent | DefinitionContent>,
   ctx: VisitContext,
-  convertBlock: (child: BlockContent | DefinitionContent, ctx: VisitContext) => Element | null,
-  convertDirective: (node: ContainerDirective, ctx: VisitContext) => Element | null,
+  convertBlock: (
+    child: BlockContent | DefinitionContent,
+    ctx: VisitContext,
+  ) => Element | null,
+  convertDirective: (
+    node: ContainerDirective,
+    ctx: VisitContext,
+  ) => Element | null,
 ): void {
   // Rule 2A: Apply requiresStatement rule
   if (spec.requiresStatement) {
@@ -223,7 +249,7 @@ function handleContentWithoutTasks(
 
     for (const child of children) {
       if (
-        child.type === 'containerDirective' &&
+        child.type === "containerDirective" &&
         PROOF_SOLUTION_NAMES.has((child as ContainerDirective).name)
       ) {
         const converted = convertDirective(child as ContainerDirective, ctx);
@@ -238,10 +264,10 @@ function handleContentWithoutTasks(
       const statementChildren = nestListsInParagraphs(
         bodyContent
           .map((child) => convertBlock(child, ctx))
-          .filter((n): n is Element => n !== null)
+          .filter((n): n is Element => n !== null),
       );
       if (statementChildren.length > 0) {
-        result.push(el('statement', statementChildren));
+        result.push(el("statement", statementChildren));
       }
     }
 
@@ -252,7 +278,7 @@ function handleContentWithoutTasks(
     const converted = nestListsInParagraphs(
       children
         .map((child) => convertBlock(child, ctx))
-        .filter((n): n is Element => n !== null)
+        .filter((n): n is Element => n !== null),
     );
     result.push(...converted);
   }

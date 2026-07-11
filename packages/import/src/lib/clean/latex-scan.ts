@@ -83,7 +83,9 @@ function noPlainTeX(
 
   // Each group has shape: { kind, category, macros }
   // For MacroGroup, macros are strings; for MacroWithArityGroup, macros are {name, arity}.
-  const macros = group.macros as Array<string | { name: string; arity: number }>;
+  const macros = group.macros as Array<
+    string | { name: string; arity: number }
+  >;
   for (const entry of macros) {
     const name = typeof entry === "string" ? entry : entry.name;
     const arity = typeof entry === "string" ? 0 : entry.arity;
@@ -223,7 +225,12 @@ export function scanForAnomalies(source: string): {
       { type: "line", action: "delete" },
       warnings,
     );
-    body = noPlainTeX(body, group, { type: "line", action: "delete" }, warnings);
+    body = noPlainTeX(
+      body,
+      group,
+      { type: "line", action: "delete" },
+      warnings,
+    );
   }
   for (const group of publisherOptions) {
     preamble = noPlainTeX(

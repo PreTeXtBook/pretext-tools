@@ -51,7 +51,11 @@ export function serializeXast(tree: Root, options?: FormatOptions): string {
   const ctx = makeCtx(options);
   const lines: string[] = [];
   // First remove the dummy root if present (see formatPretext) so it doesn't interfere with formatting decisions, but keep its children.
-  if (tree.children.length === 1 && tree.children[0].type === "element" && tree.children[0].name === "tmp-root") {
+  if (
+    tree.children.length === 1 &&
+    tree.children[0].type === "element" &&
+    tree.children[0].name === "tmp-root"
+  ) {
     tree = { ...tree, children: tree.children[0].children };
   }
   for (const child of tree.children) {
@@ -104,14 +108,13 @@ export function formatPretext(text: string, options?: FormatOptions): string {
   return result;
 }
 
-
-// General strategy: recursively walk the tree depth-first, building an array of output lines as we go. 
-// Each node is dispatched to an appender function based on its tag name and role in the document structure, 
+// General strategy: recursively walk the tree depth-first, building an array of output lines as we go.
+// Each node is dispatched to an appender function based on its tag name and role in the document structure,
 // which handles indentation and line breaks according to the formatting rules for that category of node.
 // So we flow through appendNode → appendElement → appendPar/appendMixedPar/appendBlock/appendVerbatim/appendLineEnd, depending on the node type and tag,
 // and these call appendNode or another appender recursively on their children as needed.
 
-// After the tree is fully serialized into an array of lines, 
+// After the tree is fully serialized into an array of lines,
 // a post-processing pass inserts blank lines according to the breakLines option, and the array is joined into the final output string.
 
 // ─── Node dispatch ────────────────────────────────────────────────────────────
@@ -133,9 +136,7 @@ function appendNode(
       out.push(`${ctx.ind.repeat(depth)}<!--${node.value}-->`);
       break;
     case "cdata":
-      out.push(
-        `${ctx.ind.repeat(depth)}<![CDATA[${node.value}]]>`,
-      );
+      out.push(`${ctx.ind.repeat(depth)}<![CDATA[${node.value}]]>`);
       break;
     case "text": {
       // Whitespace-only text between tags is dropped; non-empty text is re-indented.
@@ -205,12 +206,12 @@ function appendVerbatim(
       return "";
     })
     .join("");
-    const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
-    if (trailingNewlineWithWhitespace) {
-      // Strip any trailing whitespace after the final newline so the closing tag
-      // gets the correct indentation.
-      const trimmedRaw = raw.replace(/\n[ \t]*$/, "\n");
-      out.push(`${ind}${openTag(node)}${trimmedRaw}${ind}</${node.name}>`);
+  const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
+  if (trailingNewlineWithWhitespace) {
+    // Strip any trailing whitespace after the final newline so the closing tag
+    // gets the correct indentation.
+    const trimmedRaw = raw.replace(/\n[ \t]*$/, "\n");
+    out.push(`${ind}${openTag(node)}${trimmedRaw}${ind}</${node.name}>`);
   } else {
     // Otherwise, render the whole verbatim element on one line. Any internal newlines will be preserved as literal \n characters in the text content, and any trailing spaces will be preserved because the closing tag is on the same line.
     out.push(`${ind}${openTag(node)}${raw}</${node.name}>`);
@@ -267,7 +268,12 @@ function appendSmartPar(
   }
   // Doesn't fit — reflow in par format (open tag, wrapped content, close tag).
   out.push(`${ind}${openTag(node)}`);
-  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+  for (const line of reflowTokens(
+    tokens,
+    ctx.printWidth,
+    childInd.length,
+    ctx.breakSentences,
+  )) {
     out.push(`${childInd}${line}`);
   }
   out.push(`${ind}</${node.name}>`);
@@ -289,7 +295,12 @@ function appendPar(
   }
   out.push(`${ind}${openTag(node)}`);
   const tokens = collectTokens(node.children);
-  for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+  for (const line of reflowTokens(
+    tokens,
+    ctx.printWidth,
+    childInd.length,
+    ctx.breakSentences,
+  )) {
     out.push(`${childInd}${line}`);
   }
   out.push(`${ind}</${node.name}>`);
@@ -353,7 +364,12 @@ function appendMixedPar(
       }
       const tokens = collectTokens(run);
       if (tokens.length > 0) {
-        for (const line of reflowTokens(tokens, ctx.printWidth, childInd.length, ctx.breakSentences)) {
+        for (const line of reflowTokens(
+          tokens,
+          ctx.printWidth,
+          childInd.length,
+          ctx.breakSentences,
+        )) {
           out.push(`${childInd}${line}`);
         }
       }
@@ -380,7 +396,11 @@ function appendBlock(
   // Special case: any node whose only meaningful child is xi:include stays on one line.
   // e.g. <outernode><xi:include href="..."/></outernode>
   const mc = meaningfulChildren(node);
-  if (mc.length === 1 && mc[0].type === "element" && (mc[0] as Element).name === "xi:include") {
+  if (
+    mc.length === 1 &&
+    mc[0].type === "element" &&
+    (mc[0] as Element).name === "xi:include"
+  ) {
     const el = mc[0] as Element;
     const startLines = startTagLines(node, depth, ctx);
     if (startLines.length === 1) {
@@ -510,7 +530,8 @@ function reflowTokens(
   if (tokens.length === 0) return [];
   // 0 means no width limit; otherwise floor at 20 so deeply-nested content
   // doesn't produce a zero/negative target when the indent exceeds printWidth.
-  const width = printWidth === 0 ? Infinity : Math.max(20, printWidth - indentLen);
+  const width =
+    printWidth === 0 ? Infinity : Math.max(20, printWidth - indentLen);
   const lines: string[] = [];
   let cur = "";
 
@@ -550,10 +571,12 @@ function buildAttrs(node: Element): string {
 }
 
 function buildAttrList(node: Element): string[] {
-  return Object.entries(node.attributes || {})
-    // v == null (loose equality) covers both null and undefined that can appear
-    // in Object.entries output for boolean/valueless XML attributes.
-    .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
+  return (
+    Object.entries(node.attributes || {})
+      // v == null (loose equality) covers both null and undefined that can appear
+      // in Object.entries output for boolean/valueless XML attributes.
+      .map(([k, v]) => (v == null ? k : `${k}="${escAttr(v)}"`))
+  );
 }
 
 function startTagLines(
@@ -570,7 +593,11 @@ function startTagLines(
   }
 
   const singleLine = `${ind}<${node.name} ${attrs.join(" ")}${close}`;
-  if (!ctx.breakLongAttributes || ctx.printWidth === 0 || singleLine.length <= ctx.printWidth) {
+  if (
+    !ctx.breakLongAttributes ||
+    ctx.printWidth === 0 ||
+    singleLine.length <= ctx.printWidth
+  ) {
     return [singleLine];
   }
 
@@ -588,9 +615,7 @@ function startTagLines(
 function isEmptyElement(node: Element): boolean {
   // The XML parser always emits text nodes for whitespace between tags, so "empty"
   // means every child is a whitespace-only text node.
-  return node.children.every(
-    (c) => c.type === "text" && c.value.trim() === "",
-  );
+  return node.children.every((c) => c.type === "text" && c.value.trim() === "");
 }
 
 function meaningfulChildren(node: Element): ElementContent[] {
@@ -633,8 +658,5 @@ function escText(s: string): string {
 }
 
 function escAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;");
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 }

@@ -1,5 +1,8 @@
 import { useRef, useState } from "react";
-import { handleImportUploadFile, type ImportProjectOptions } from "../lib/upload";
+import {
+  handleImportUploadFile,
+  type ImportProjectOptions,
+} from "../lib/upload";
 import { filesForImportMode, type ImportMode } from "../lib/import-mode";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import type { ImportedProjectSuccess } from "../lib/types";
@@ -31,7 +34,9 @@ export function ImportWizard({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState<Step>({ name: "upload" });
   const [dragActive, setDragActive] = useState(false);
-  const [documentKindChoice, setDocumentKindChoice] = useState<DocumentKind | "auto">(defaultDocumentKind);
+  const [documentKindChoice, setDocumentKindChoice] = useState<
+    DocumentKind | "auto"
+  >(defaultDocumentKind);
   const [splitSections, setSplitSections] = useState(false);
   const [mode, setMode] = useState<ImportMode>("converted");
   const [showPreview, setShowPreview] = useState(false);
@@ -41,7 +46,8 @@ export function ImportWizard({
     setStep({ name: "processing" });
     try {
       const options: ImportProjectOptions = importOptions ?? {
-        documentKind: documentKindChoice === "auto" ? undefined : documentKindChoice,
+        documentKind:
+          documentKindChoice === "auto" ? undefined : documentKindChoice,
         splitSections,
       };
       const result = await handleImportUploadFile(file, options);
@@ -53,7 +59,8 @@ export function ImportWizard({
     } catch (err) {
       setStep({
         name: "error",
-        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+        message:
+          err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
   };
@@ -125,8 +132,12 @@ export function ImportWizard({
     const fileCount = Object.keys(result.outputFiles).length;
 
     const currentPreviewFiles = filesForImportMode(result, mode);
-    const mainPath = mode === "converted" ? "source/main.ptx" : result.sourcePath;
-    const sortedPreviewPaths = sortPaths(Object.keys(currentPreviewFiles), mainPath);
+    const mainPath =
+      mode === "converted" ? "source/main.ptx" : result.sourcePath;
+    const sortedPreviewPaths = sortPaths(
+      Object.keys(currentPreviewFiles),
+      mainPath,
+    );
 
     function handleModeChange(newMode: ImportMode) {
       setMode(newMode);
@@ -136,14 +147,20 @@ export function ImportWizard({
     return (
       <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">Import Summary</h3>
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">
+            Import Summary
+          </h3>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <dt className="text-slate-500">Source</dt>
             <dd className="font-medium text-slate-900">{result.sourceName}</dd>
             <dt className="text-slate-500">Detected format</dt>
-            <dd className="font-medium text-slate-900 capitalize">{result.detectedSourceFormat}</dd>
+            <dd className="font-medium text-slate-900 capitalize">
+              {result.detectedSourceFormat}
+            </dd>
             <dt className="text-slate-500">Document kind</dt>
-            <dd className="font-medium text-slate-900 capitalize">{result.documentKind}</dd>
+            <dd className="font-medium text-slate-900 capitalize">
+              {result.documentKind}
+            </dd>
             <dt className="text-slate-500">Output files</dt>
             <dd className="font-medium text-slate-900">{fileCount}</dd>
           </dl>
@@ -152,16 +169,19 @@ export function ImportWizard({
         {warningCount > 0 ? (
           <details className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
             <summary className="cursor-pointer font-semibold text-amber-800">
-              {warningCount} conversion {warningCount === 1 ? "warning" : "warnings"}
+              {warningCount} conversion{" "}
+              {warningCount === 1 ? "warning" : "warnings"}
             </summary>
             <ul className="mt-3 space-y-1.5 text-amber-700">
               {result.warnings.map((w, i) => (
                 <li key={i}>
-                  <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">{w.macro}</code>
+                  <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">
+                    {w.macro}
+                  </code>
                   {" — "}
                   {w.action === "replace" || w.action === "rewrite"
                     ? `replaced with \`${w.replacement}\``
-                    : w.message ?? w.action}
+                    : (w.message ?? w.action)}
                   {w.occurrences > 1 ? ` (×${w.occurrences})` : null}
                 </li>
               ))}
@@ -173,7 +193,9 @@ export function ImportWizard({
 
         {isLatex ? (
           <fieldset className="rounded-lg border border-slate-200 p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-700">Import mode</legend>
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Import mode
+            </legend>
             <div className="mt-2 flex flex-col gap-3">
               <label className="flex cursor-pointer items-start gap-3 text-sm">
                 <input
@@ -185,9 +207,12 @@ export function ImportWizard({
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="font-medium text-slate-900">Convert to PreTeXt</span>
+                  <span className="font-medium text-slate-900">
+                    Convert to PreTeXt
+                  </span>
                   <span className="block text-slate-500">
-                    Use the converted PreTeXt output. Recommended for new PreTeXt projects.
+                    Use the converted PreTeXt output. Recommended for new
+                    PreTeXt projects.
                   </span>
                 </span>
               </label>
@@ -201,9 +226,12 @@ export function ImportWizard({
                   className="mt-0.5"
                 />
                 <span>
-                  <span className="font-medium text-slate-900">Keep as LaTeX</span>
+                  <span className="font-medium text-slate-900">
+                    Keep as LaTeX
+                  </span>
                   <span className="block text-slate-500">
-                    Preserve the original LaTeX source. The conversion will not be applied.
+                    Preserve the original LaTeX source. The conversion will not
+                    be applied.
                   </span>
                 </span>
               </label>
@@ -216,13 +244,18 @@ export function ImportWizard({
             {sortedPreviewPaths.map((path) => {
               const isOpen = expandedFiles.has(path);
               return (
-                <div key={path} className="border-b border-slate-200 last:border-b-0">
+                <div
+                  key={path}
+                  className="border-b border-slate-200 last:border-b-0"
+                >
                   <button
                     type="button"
                     onClick={() => toggleExpanded(path)}
                     className="flex w-full items-center gap-2 bg-slate-100 px-4 py-2 text-left font-mono text-xs text-slate-700 hover:bg-slate-200"
                   >
-                    <span className="shrink-0 text-slate-400">{isOpen ? "▾" : "▸"}</span>
+                    <span className="shrink-0 text-slate-400">
+                      {isOpen ? "▾" : "▸"}
+                    </span>
                     <span className="flex-1 truncate">{path}</span>
                     <span className="shrink-0 text-slate-400">
                       {(currentPreviewFiles[path].length / 1024).toFixed(1)} KB
@@ -280,7 +313,11 @@ export function ImportWizard({
             <span className="text-slate-500">Document kind</span>
             <select
               value={documentKindChoice}
-              onChange={(e) => setDocumentKindChoice(e.currentTarget.value as DocumentKind | "auto")}
+              onChange={(e) =>
+                setDocumentKindChoice(
+                  e.currentTarget.value as DocumentKind | "auto",
+                )
+              }
               className="rounded border border-slate-300 px-2 py-1 text-sm"
             >
               <option value="auto">Auto detect</option>
@@ -304,7 +341,10 @@ export function ImportWizard({
         tabIndex={0}
         onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
         onClick={() => fileInputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragActive(true);
+        }}
         onDragLeave={() => setDragActive(false)}
         onDrop={(e) => {
           e.preventDefault();
@@ -318,12 +358,13 @@ export function ImportWizard({
             : "border-slate-300 bg-slate-50 hover:border-slate-400"
         }`}
       >
-        <p className="text-slate-600">
-          Drop a file here, or click to select.
-        </p>
+        <p className="text-slate-600">Drop a file here, or click to select.</p>
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            fileInputRef.current?.click();
+          }}
           className="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
         >
           Select File

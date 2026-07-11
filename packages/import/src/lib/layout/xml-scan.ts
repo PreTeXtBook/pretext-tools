@@ -29,7 +29,13 @@ function parseAttributes(attrString: string): Record<string, string> {
 type Token =
   | { kind: "open"; name: string; attrs: string; pos: number; end: number }
   | { kind: "close"; name: string; pos: number; end: number }
-  | { kind: "selfclose"; name: string; attrs: string; pos: number; end: number };
+  | {
+      kind: "selfclose";
+      name: string;
+      attrs: string;
+      pos: number;
+      end: number;
+    };
 
 // Scan all element tags, skipping comments / CDATA / PIs / DOCTYPE.
 function tokenize(source: string): Token[] {
@@ -164,9 +170,7 @@ export function findTopLevelElements(
         end: tok.end,
         inner: source.slice(currentOpen.end, tok.pos),
         outer: source.slice(currentOpen.pos, tok.end),
-        attributes: parseAttributes(
-          (currentOpen as { attrs: string }).attrs,
-        ),
+        attributes: parseAttributes((currentOpen as { attrs: string }).attrs),
       });
       currentOpen = null;
     }
@@ -218,11 +222,7 @@ export function findAnyElement(
     }
     depth -= 1;
     if (depth < 0) depth = 0;
-    if (
-      targetOpen &&
-      tok.name === name &&
-      depth === targetOpenDepth
-    ) {
+    if (targetOpen && tok.name === name && depth === targetOpenDepth) {
       const attrs = (targetOpen as { attrs: string }).attrs;
       return {
         name,

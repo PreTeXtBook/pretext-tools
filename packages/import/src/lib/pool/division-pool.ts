@@ -294,7 +294,10 @@ export function buildDivisionPool(
             replacement: `<plus:section ref="${sectionClaim.ref}"/>`,
           };
         });
-        chapterInner = spliceReplacements(chapterSpan.inner, sectionReplacements);
+        chapterInner = spliceReplacements(
+          chapterSpan.inner,
+          sectionReplacements,
+        );
       }
 
       divisions.push({

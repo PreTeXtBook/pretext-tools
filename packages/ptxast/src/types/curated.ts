@@ -11,7 +11,7 @@
  *   { type: 'element', name: 'section', attributes: {...}, children: [...] }
  */
 
-import type { Root, Element, Text, ElementContent } from 'xast';
+import type { Root, Element, Text, ElementContent } from "xast";
 import type {
   // Document level
   ElementPretextRoot,
@@ -164,7 +164,7 @@ import type {
   ElementFootnote,
   ElementIndex,
   ElementIdxHeading,
-} from './generated-interfaces.js';
+} from "./generated-interfaces.js";
 
 // ---------------------------------------------------------------------------
 // Root
@@ -190,7 +190,11 @@ export type Article = ElementArticle;
 export type Frontmatter = ElementBookFrontMatter | ElementArticleFrontMatter;
 export type Backmatter = ElementBookBackMatter | ElementArticleBackMatter;
 export type Titlepage = ElementTitlePage;
-export type Author = ElementAuthorByline | ElementAuthor | ElementBibAuthor | ElementPoemAuthor;
+export type Author =
+  | ElementAuthorByline
+  | ElementAuthor
+  | ElementBibAuthor
+  | ElementPoemAuthor;
 
 // ---------------------------------------------------------------------------
 // Divisions
@@ -223,9 +227,9 @@ export type Proposition = ElementProposition;
 export type Claim = ElementClaim;
 export type Fact = ElementFact;
 export type Conjecture = ElementConjecture;
-export type OpenConjecture = Element & { name: 'openconjecture' };
-export type OpenProblem = Element & { name: 'openproblem' };
-export type OpenQuestion = Element & { name: 'openquestion' };
+export type OpenConjecture = Element & { name: "openconjecture" };
+export type OpenProblem = Element & { name: "openproblem" };
+export type OpenQuestion = Element & { name: "openquestion" };
 export type Axiom = ElementAxiom;
 export type Principle = ElementPrinciple;
 export type Hypothesis = ElementHypothesis;
@@ -254,12 +258,12 @@ export type Insight = ElementInsight;
 export type Example = ElementExample;
 export type Question = ElementQuestion;
 export type Problem = ElementProblem;
-export type Exercise = Element & { name: 'exercise' };
+export type Exercise = Element & { name: "exercise" };
 export type Activity = ElementActivity;
 export type Exploration = ElementExploration;
 export type Investigation = ElementInvestigation;
 export type Project = ElementProject;
-export type Demonstration = Element & { name: 'demonstration' };
+export type Demonstration = Element & { name: "demonstration" };
 export type Task = ElementTask | ElementTaskWW;
 
 // ---------------------------------------------------------------------------
@@ -267,7 +271,11 @@ export type Task = ElementTask | ElementTaskWW;
 // ---------------------------------------------------------------------------
 
 export type Proof = ElementProof | ElementProof1;
-export type Statement = ElementStatement | ElementStatementExercise | ElementStatementExerciseWW | ElementStatement2;
+export type Statement =
+  | ElementStatement
+  | ElementStatementExercise
+  | ElementStatementExerciseWW
+  | ElementStatement2;
 export type Solution = ElementSolution | ElementSolutionWW;
 export type Hint = ElementHint | ElementHintWW;
 export type Answer = ElementAnswer;
@@ -286,7 +294,10 @@ export type Listing = ElementListing;
 // Paragraphs and block-level
 // ---------------------------------------------------------------------------
 
-export type P = ElementParagraph | ElementParagraphAreas | ElementParagraphLined;
+export type P =
+  | ElementParagraph
+  | ElementParagraphAreas
+  | ElementParagraphLined;
 export type Blockquote = ElementBlockQuote;
 export type Pre = ElementPreformatted;
 
@@ -296,12 +307,15 @@ export type Pre = ElementPreformatted;
 
 export type Ol = ElementOl | ElementExerciseOrderedList;
 export type Ul = ElementUl;
-export type Li = ElementListItem | ElementDefinitionListItem | ElementExerciseListItem;
+export type Li =
+  | ElementListItem
+  | ElementDefinitionListItem
+  | ElementExerciseListItem;
 export type Dl = ElementDl;
 /** PreTeXt description list items use `<li>` inside `<dl>`, not di/dt/dd */
 export type Di = Li;
-export type Dt = Element & { name: 'dt' };
-export type Dd = Element & { name: 'dd' };
+export type Dt = Element & { name: "dt" };
+export type Dd = Element & { name: "dd" };
 
 // ---------------------------------------------------------------------------
 // Figure / table / media
@@ -310,7 +324,11 @@ export type Dd = Element & { name: 'dd' };
 export type Figure = ElementFigure | ElementFigure1 | ElementFigure2;
 export type Table = ElementTable;
 export type Tabular = ElementTabular;
-export type Sidebyside = ElementSidebyside | ElementSidebyside1 | ElementSidebyside2 | ElementSidebyside3;
+export type Sidebyside =
+  | ElementSidebyside
+  | ElementSidebyside1
+  | ElementSidebyside2
+  | ElementSidebyside3;
 export type Sbsgroup = ElementSideBySideGroup | ElementSideBySideGroupNoCaption;
 export type Image = ElementImageRaster | ElementImageCode;
 export type Caption = ElementCaption;
@@ -358,7 +376,7 @@ export type Q = ElementQ | ElementQ1;
 export type Sq = ElementSq | ElementSq1;
 export type Pubtitle = ElementPubtitle;
 /** Section/chapter title reference: `<stitle>` (not in schema, custom extension) */
-export type Stitle = Element & { name: 'stitle' };
+export type Stitle = Element & { name: "stitle" };
 
 // ---------------------------------------------------------------------------
 // References and links
@@ -531,8 +549,16 @@ export type PtxContent = PtxAllElement;
  * In xast these are elements whose meaningful content is their text.
  */
 export const PTX_VALUE_ELEMENT_NAMES = new Set([
-  'm', 'me', 'men', 'mrow', 'c', 'pre', 'cline',
-  'input', 'output', 'prompt',
+  "m",
+  "me",
+  "men",
+  "mrow",
+  "c",
+  "pre",
+  "cline",
+  "input",
+  "output",
+  "prompt",
 ]);
 
 /**
@@ -540,9 +566,9 @@ export const PTX_VALUE_ELEMENT_NAMES = new Set([
  * Concatenates all Text child node values.
  */
 export function getPtxTextContent(el: Element): string {
-  if (!('children' in el) || !Array.isArray(el.children)) return '';
+  if (!("children" in el) || !Array.isArray(el.children)) return "";
   return el.children
-    .filter((c): c is Text => c.type === 'text')
+    .filter((c): c is Text => c.type === "text")
     .map((c) => c.value)
-    .join('');
+    .join("");
 }

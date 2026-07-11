@@ -10,12 +10,12 @@ You can access the PreTeXt menu by clicking on the **▷PreTeXt** button in the 
 
 <img src="pretext-menu.png" alt="PreTeXt Menu" width="75%">
 
-You can also access the PreTeXt menu with the keyboard shortcut ``Ctrl+Alt+P`` (Windows, Linux) or ``Cmd+Alt+P`` (macOS).
+You can also access the PreTeXt menu with the keyboard shortcut `Ctrl+Alt+P` (Windows, Linux) or `Cmd+Alt+P` (macOS).
 
 ## Command Palette
 
 For the complete list of available PreTeXt commands, you can use the Command Palette; open it and start typing `PreTeXt` to see all available commands.
 
-You can access the Command Palette by pressing ``Ctrl+Shift+P`` (Windows, Linux) or ``Cmd+Shift+P`` (macOS) or by using the `View` menu and selecting `Command Palette...`.
+You can access the Command Palette by pressing `Ctrl+Shift+P` (Windows, Linux) or `Cmd+Shift+P` (macOS) or by using the `View` menu and selecting `Command Palette...`.
 
 ![image](command-palette.png)

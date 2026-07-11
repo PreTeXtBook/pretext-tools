@@ -76,5 +76,4 @@ describe("verbatim content preservation", () => {
     const result = formatPretext(input);
     expect(result).toBe(input);
   });
-
 });

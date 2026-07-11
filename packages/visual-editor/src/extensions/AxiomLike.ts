@@ -37,7 +37,7 @@ const AxiomLike = Extension.create({
               "article",
               mergeAttributes(
                 { class: `${element} axiom-like`, label: element },
-                HTMLAttributes
+                HTMLAttributes,
               ),
               0,
             ];
@@ -48,7 +48,7 @@ const AxiomLike = Extension.create({
           addInputRules() {
             return generateInputRules(element, this.type);
           },
-        })
+        }),
       );
     }
 

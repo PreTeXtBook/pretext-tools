@@ -30,7 +30,7 @@
       "path": "./packages/ptxast-util-to-mdast"
     },
     {
-      "path": "./packages/project-import"
+      "path": "./packages/import"
     }
   ]
 }

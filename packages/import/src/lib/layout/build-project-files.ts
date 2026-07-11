@@ -1,12 +1,6 @@
 import type { CleaningWarning } from "../clean/warnings";
-import {
-  detectDocumentKind,
-  type DocumentKind,
-} from "./document-kind";
-import {
-  renderProjectPtx,
-  renderPublicationPtx,
-} from "./templates";
+import { detectDocumentKind, type DocumentKind } from "./document-kind";
+import { renderProjectPtx, renderPublicationPtx } from "./templates";
 import {
   ensureXIncludeNamespace,
   padIndex,
@@ -135,7 +129,8 @@ function buildBookProject(
       category: "missing_root",
       macro: "book",
       occurrences: 1,
-      message: "Document was treated as a book but no <book> element found; emitting as a single file.",
+      message:
+        "Document was treated as a book but no <book> element found; emitting as a single file.",
     });
     return buildArticleProject(pretextSource, options, warnings);
   }
@@ -150,7 +145,12 @@ function buildBookProject(
       let chapterContent = ch.span.outer;
       if (options.splitSections) {
         const inner = ch.span.inner;
-        const newInner = splitSectionsForChapter(inner, ch.slug, files, warnings);
+        const newInner = splitSectionsForChapter(
+          inner,
+          ch.slug,
+          files,
+          warnings,
+        );
         chapterContent =
           ch.span.outer.slice(0, ch.span.startTagEnd - ch.span.start) +
           newInner +

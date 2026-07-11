@@ -12,12 +12,12 @@ serves two consumers:
 
 - **pretext-plus** (web): an import modal where an author pastes source or
   uploads a file/archive, reviews the conversion, and confirms creation of a
-  new project.  Creates the new project with correctly scaffolded divisions and 
-  assets in the requested format, using appropriate `<plus:section ref=".."/>` 
+  new project. Creates the new project with correctly scaffolded divisions and
+  assets in the requested format, using appropriate `<plus:section ref=".."/>`
   or equivalent inclusions.
 - **pretext-tools** (VS Code extension): an "import existing project" command
   that scaffolds a workspace folder from a LaTeX/Markdown/PreTeXt file or
-  archive, without requiring external tools (pandoc, plastex, python).  Creates a
+  archive, without requiring external tools (pandoc, plastex, python). Creates a
   new project in the requested directory or adds a parallel project as a subfolder of
   the current project's workspace.
 
@@ -26,11 +26,11 @@ in the extension host — no server round-trip, no native dependencies.
 
 ## 2. Consumers
 
-| Consumer | Entry point | Output | Status |
-|---|---|---|---|
-| pretext-plus modal | `ImportWizard` from `@pretextbook/import/react` | `PlusProjectPayload` (§4.3) — divisions + assets mapped to the Rails create/PATCH endpoints | Component built; not yet integrated into pretext-plus |
-| VS Code extension | `ImportWizard` in a webview panel (§6) | File tree (§4.2) posted to the host, written via `workspace.fs` | Wired: `pretext-tools.importProject` |
-| Playground (dev) | `/import-smoke.html` — `ImportUploadPanel` + `ImportWizard` demos | Demos of both options above | Working |
+| Consumer           | Entry point                                                       | Output                                                                                      | Status                                                |
+| ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| pretext-plus modal | `ImportWizard` from `@pretextbook/import/react`                   | `PlusProjectPayload` (§4.3) — divisions + assets mapped to the Rails create/PATCH endpoints | Component built; not yet integrated into pretext-plus |
+| VS Code extension  | `ImportWizard` in a webview panel (§6)                            | File tree (§4.2) posted to the host, written via `workspace.fs`                             | Wired: `pretext-tools.importProject`                  |
+| Playground (dev)   | `/import-smoke.html` — `ImportUploadPanel` + `ImportWizard` demos | Demos of both options above                                                                 | Working                                               |
 
 The package is published to npm (`private: false`) so pretext-plus can depend
 on it directly.
@@ -62,7 +62,7 @@ ImportedProjectResult  (outputFiles + outputAssets + warnings + statusMessages)
 - Archives: `.zip`, `.tar.gz`/`.tgz`
 - Pasted text (any of the three formats, auto-detected)
 
-Binary entries inside archives (`png jpg jpeg gif pdf eps ps bmp tiff tif webp ico`) 
+Binary entries inside archives (`png jpg jpeg gif pdf eps ps bmp tiff tif webp ico`)
 are kept as `Uint8Array` assets; everything else is decoded as
 text with line endings normalized.
 
@@ -83,9 +83,9 @@ The user can always override detection (format dropdown in the UI; the
 
 For multi-file uploads:
 
-Uploaded files may contain multiple files that are "root" documents.  We
+Uploaded files may contain multiple files that are "root" documents. We
 decide if there is only one of them, otherwise ask the user to select one of the
-candidates.  The heuristics for identifying root documents are:
+candidates. The heuristics for identifying root documents are:
 
 - **LaTeX**: the `.tex` file containing `\begin{document}`, else the first
   `.tex` alphabetically.
@@ -95,8 +95,8 @@ candidates.  The heuristics for identifying root documents are:
 - Fallback: first file alphabetically, re-detected by content.
 
 If the set of uploaded files contains multiple formats, the user is prompted
-to choose which format to use for the main document.  Root files that are not
-chosen as the main file, 
+to choose which format to use for the main document. Root files that are not
+chosen as the main file,
 or files that are not "reachable" from the main file via includes can still be
 converted as standalone orphaned divisions.
 
@@ -109,7 +109,7 @@ converted as standalone orphaned divisions.
 - **PreTeXt**: `<xi:include href="…"/>` inlined, resolving `.ptx`/`.xml`
   extensions and relative paths, max depth 5, with the XML prolog stripped
   from included fragments. Missing targets reported, non-fatal.
-- **Markdown**: no include mechanism (single file only).  Todo: add support
+- **Markdown**: no include mechanism (single file only). Todo: add support
   for pretext-plus style includes, as well as quarto style includes.
 
 ### 3.5 LaTeX cleaning (`lib/clean/`)
@@ -143,8 +143,8 @@ Before cleaning, the raw preamble is mined for:
 
 - `\title` → `<title>` (LaTeX formatting stripped to plain text)
 - `\author` → `<docinfo><author><personname>` — **first author only**
-  (split on `\and`).  TODO: Check what unified-latex does with these and possibly fix there.
-- `\newcommand`/`\DeclareMathOperator` definitions → `<docinfo><macros>`.  Creates a 
+  (split on `\and`). TODO: Check what unified-latex does with these and possibly fix there.
+- `\newcommand`/`\DeclareMathOperator` definitions → `<docinfo><macros>`. Creates a
   string of these that pretext-plus can write into its own docinfo field.
 - `\documentclass` — used to rebuild a minimal document for unified-latex
 
@@ -208,7 +208,7 @@ source/<ch-slug>/sec-*.ptx     one per section (when splitSections)
 ### 3.10 Native mode ("keep as LaTeX/Markdown")
 
 When the input was LaTeX or Markdown, the result also carries
-`nativeOutputFiles` — the *cleaned* (but unconverted) source as
+`nativeOutputFiles` — the _cleaned_ (but unconverted) source as
 `source/main.tex` or `source/main.md`. The wizard offers this as an "Import
 mode" choice on the review step, for authors who want their project hosted
 but aren't ready to convert. What the host app does with a native-mode
@@ -236,7 +236,7 @@ a **division pool** (§4.1); each host consumes a serializer over it:
   `<plus:* ref="…"/>` placeholder hierarchy, docinfo/title as project fields,
   assets as library uploads.
 
-The shapes below are the *target* contract; §4.4 records what the code
+The shapes below are the _target_ contract; §4.4 records what the code
 returns today during the transition.
 
 ### 4.1 Intermediate model: the division pool
@@ -250,7 +250,7 @@ model:
 ```ts
 interface ImportedProject {
   title: string;
-  docinfo: string;              // full <docinfo>…</docinfo> element, or ""
+  docinfo: string; // full <docinfo>…</docinfo> element, or ""
   documentKind: "article" | "book";
   divisions: ImportedDivision[]; // exactly one isRoot; unreferenced = orphan
   assets: ImportedAsset[];
@@ -259,17 +259,17 @@ interface ImportedProject {
 }
 
 interface ImportedDivision {
-  xmlId: string;                // unique; NCName-safe slug (see ref rules, §4.3)
-  type: DivisionType;           // "book" | "article" | "chapter" | "section" | …
-  title: string;                // plain text
+  xmlId: string; // unique; NCName-safe slug (see ref rules, §4.3)
+  type: DivisionType; // "book" | "article" | "chapter" | "section" | …
+  title: string; // plain text
   sourceFormat: "pretext" | "latex" | "markdown";
-  content: string;              // full division source, child refs as placeholders
+  content: string; // full division source, child refs as placeholders
   isRoot: boolean;
 }
 
 interface ImportedAsset {
-  ref: string;                  // unique among divisions + assets
-  fileName: string;             // original basename
+  ref: string; // unique among divisions + assets
+  fileName: string; // original basename
   data: Uint8Array;
 }
 ```
@@ -298,7 +298,7 @@ Conventions:
   leading `# heading`; a latex division opens with its header macro
   (`\chapter{Title}\label{id}`).
 - **Multi-root inputs** (§3.3): the pool has exactly one `isRoot` division.
-  Secondary roots either become *orphan divisions* (present in the pool,
+  Secondary roots either become _orphan divisions_ (present in the pool,
   referenced by nothing — pretext-plus's TOC surfaces these for placement)
   or separate `ImportedProject` results (→ separate plus projects / separate
   `project.ptx` targets in VS Code).
@@ -310,7 +310,7 @@ What the webview posts to the host today (§6.2) and what
 
 ```ts
 {
-  files:  Record<string, string>;     // path → text content
+  files: Record<string, string>; // path → text content
   assets: Record<string, Uint8Array>; // path → bytes (base64 over postMessage)
 }
 ```
@@ -346,20 +346,20 @@ serializer output is a direct camelCase mirror:
 ```ts
 interface PlusProjectPayload {
   title: string;
-  docinfo: string;               // requires follow-up PATCH — see gaps below
+  docinfo: string; // requires follow-up PATCH — see gaps below
   documentType: "article" | "book";
   divisions: {
-    id: string;                  // client-minted UUID (Rails inserts it as the PK)
-    ref: string;                 // the division's xml:id
+    id: string; // client-minted UUID (Rails inserts it as the PK)
+    ref: string; // the division's xml:id
     source: string;
     sourceFormat: "pretext" | "latex" | "markdown";
     isRoot: boolean;
   }[];
   assets: {
-    id: string;                  // client-minted UUID, same pattern as divisions
+    id: string; // client-minted UUID, same pattern as divisions
     ref: string;
-    kind: "file";                // imported binaries; "authored" unused by import
-    fileName: string;            // → short_description; bytes attach as `file`
+    kind: "file"; // imported binaries; "authored" unused by import
+    fileName: string; // → short_description; bytes attach as `file`
     data: Uint8Array;
   }[];
 }
@@ -383,10 +383,10 @@ Rails-side rules the serializer must satisfy:
 
 1. `ProjectsController#create` unconditionally calls `set_default_docinfo`,
    clobbering any imported docinfo — the importing page must follow with a
-   `PATCH` (docinfo *is* permitted on update), or create relaxes to
+   `PATCH` (docinfo _is_ permitted on update), or create relaxes to
    only-default-when-blank.
 2. `document_type` is not a permitted param on create **or** update — a
-   native latex/markdown *book* import can't be marked as a book (the editor
+   native latex/markdown _book_ import can't be marked as a book (the editor
    reads `document_type` for non-pretext roots). Converted (pretext)
    imports are unaffected.
 3. There is no import UI/endpoint in pretext-plus yet — the wizard will
@@ -403,16 +403,16 @@ for this host).
 
 `ImportedProjectSuccess` (see `lib/types.ts`) — field guide:
 
-| Field | Meaning |
-|---|---|
-| `files` / `assets` | The extracted *input* file map (text / binary), as uploaded |
-| `pretextSource` | The full converted PreTeXt document (single string, pre-split) |
-| `outputFiles` | The *project to write*: main/chapters/project.ptx/publication.ptx + routed `.bib` |
-| `outputAssets` | Binary assets to write (`source/assets/…`) |
-| `nativeOutputFiles` | Optional cleaned-native alternative (`source/main.tex` or `.md`) |
-| `sourcePath` / `sourceName` / `sourceType` | Which input file drove the import |
-| `documentKind` | `article` \| `book` (detected or overridden) |
-| `statusMessages`, `warnings` | Diagnostics (see 3.11) |
+| Field                                      | Meaning                                                                           |
+| ------------------------------------------ | --------------------------------------------------------------------------------- |
+| `files` / `assets`                         | The extracted _input_ file map (text / binary), as uploaded                       |
+| `pretextSource`                            | The full converted PreTeXt document (single string, pre-split)                    |
+| `outputFiles`                              | The _project to write_: main/chapters/project.ptx/publication.ptx + routed `.bib` |
+| `outputAssets`                             | Binary assets to write (`source/assets/…`)                                        |
+| `nativeOutputFiles`                        | Optional cleaned-native alternative (`source/main.tex` or `.md`)                  |
+| `sourcePath` / `sourceName` / `sourceType` | Which input file drove the import                                                 |
+| `documentKind`                             | `article` \| `book` (detected or overridden)                                      |
+| `statusMessages`, `warnings`               | Diagnostics (see 3.11)                                                            |
 
 Errors are the union alternative `{ pretextError, statusMessages, warnings }` —
 consumers discriminate with `"pretextError" in result`.
@@ -454,7 +454,7 @@ Three components, increasing in completeness:
      of the output tree; Cancel / Confirm buttons
   4. Terminal — `onConfirm(result, mode)` fires; host writes the files
      (upload to pretext-plus storage, or write to disk in VS Code)
-  
+
   Error state offers "Try Another File".
 
 Open styling question: the wizard uses Tailwind utility classes (and the
@@ -480,16 +480,16 @@ pretext-plus. This mirrors how the visual editor webview is already wired
   they do on pretext-plus. The extension host never re-runs the conversion;
   it only writes files.
 - On confirm, the webview resolves the chosen mode ("converted" vs
-  "native") to a concrete file map and posts *that* to the host. Keeping
+  "native") to a concrete file map and posts _that_ to the host. Keeping
   the wire protocol at the "files to write" level insulates it from the
   planned redesign of the result contract (§4, §8).
 
 ### 6.2 Message protocol (webview → host)
 
-| Message | Payload | Host action |
-|---|---|---|
+| Message          | Payload                                                                                                                   | Host action                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | `import-confirm` | `{ mode, files: Record<path, string>, assetsBase64: Record<path, string>, sourceName, documentKind, warnings: string[] }` | pick destination, write files |
-| `import-cancel` | — | dispose the panel |
+| `import-cancel`  | —                                                                                                                         | dispose the panel             |
 
 Binary assets are base64-encoded in the webview because VS Code's
 `postMessage` only guarantees JSON-serializable payloads across supported
@@ -560,8 +560,8 @@ comments in `upload.ts`):
 4. **Wizard native mode**: should "Keep as LaTeX" preserve the original
    multi-file layout instead of the expanded/cleaned single file? Should it
    emit a `project.ptx` with a LaTeX-source target instead of the PreTeXt
-   one? *(Answered for the pretext-plus host: split into native divisions
-   with `\plus{…}{…}` placeholders — see §4.3. Still open for VS Code.)*
+   one? _(Answered for the pretext-plus host: split into native divisions
+   with `\plus{…}{…}` placeholders — see §4.3. Still open for VS Code.)_
 5. **Styling strategy for React components** — Tailwind for all three (and
    require consumers to load `react.css`), or CSS-variables/unstyled with
    the host app themable? pretext-plus's stack should decide this.

@@ -25,7 +25,7 @@ const Definition = Node.create({
       "article",
       mergeAttributes(
         { class: "definition definition-like", label: "definition" },
-        HTMLAttributes
+        HTMLAttributes,
       ),
       0,
     ];

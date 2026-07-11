@@ -137,9 +137,7 @@ function attributeCompletions(
     return [];
   }
   // Names (qualified, e.g. "xml:id") already written in the start tag.
-  const present = new Set(
-    existingAttributes(tagText).map((a) => a.name),
-  );
+  const present = new Set(existingAttributes(tagText).map((a) => a.name));
 
   const source = walker.possibleAttributes
     ? walker.possibleAttributes()
@@ -371,7 +369,9 @@ function currentAttributePartial(tagText: string): string | null {
 }
 
 /** Extract already-written attributes from an in-progress start tag. */
-function existingAttributes(tagText: string): Array<{ name: string; value: string }> {
+function existingAttributes(
+  tagText: string,
+): Array<{ name: string; value: string }> {
   const attrs: Array<{ name: string; value: string }> = [];
   const re = /([A-Za-z_][\w.:-]*)\s*=\s*("([^"]*)"|'([^']*)')/g;
   let m: RegExpExecArray | null;

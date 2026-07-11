@@ -6,7 +6,7 @@ The default Codespace image does not include SageMath, which is only needed if y
 bash ./.devcontainer/installSage.sh
 ```
 
-If you don't want to run these every time you create a new codespace for this project, edit the `.devcontainer` file.  Look for the line that starts with
+If you don't want to run these every time you create a new codespace for this project, edit the `.devcontainer` file. Look for the line that starts with
 `postCreateCommand` and uncomment the lines for each of those scripts as you like.
 
 Note: the button on the left does both these tasks for you.

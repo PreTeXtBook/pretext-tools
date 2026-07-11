@@ -35,8 +35,7 @@ export interface ResolvedDocument {
   problems: IncludeProblem[];
 }
 
-const XINCLUDE_RE =
-  /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/;
+const XINCLUDE_RE = /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/;
 
 /** Default reader backed by Node's `fs`. */
 export function defaultFileReader(): FileReader {
@@ -52,7 +51,10 @@ export function defaultFileReader(): FileReader {
   };
 }
 
-function stripXmlDeclaration(text: string): { text: string; removedLines: number } {
+function stripXmlDeclaration(text: string): {
+  text: string;
+  removedLines: number;
+} {
   const match = text.match(/^﻿?\s*<\?xml\b.*?\?>/s);
   if (!match) {
     return { text, removedLines: 0 };

@@ -8,7 +8,8 @@ import {
 
 describe("splitLatexAtDocument", () => {
   it("splits at \\begin{document}", () => {
-    const src = "\\documentclass{article}\n\\begin{document}\nHello.\n\\end{document}";
+    const src =
+      "\\documentclass{article}\n\\begin{document}\nHello.\n\\end{document}";
     const { preamble, body } = splitLatexAtDocument(src);
     expect(preamble).toBe("\\documentclass{article}");
     expect(body).toBe("Hello.");
@@ -41,7 +42,9 @@ describe("extractLatexField", () => {
   });
 
   it("skips optional argument", () => {
-    expect(extractLatexField("\\title[Short]{Long Title}", "title")).toBe("Long Title");
+    expect(extractLatexField("\\title[Short]{Long Title}", "title")).toBe(
+      "Long Title",
+    );
   });
 
   it("returns empty string when command not present", () => {
@@ -49,7 +52,9 @@ describe("extractLatexField", () => {
   });
 
   it("extracts author", () => {
-    expect(extractLatexField("\\author{Oscar Levin}", "author")).toBe("Oscar Levin");
+    expect(extractLatexField("\\author{Oscar Levin}", "author")).toBe(
+      "Oscar Levin",
+    );
   });
 
   it("handles nested braces in field content", () => {
@@ -66,7 +71,8 @@ describe("extractLatexField", () => {
 
 describe("extractMacros", () => {
   it("collects \\newcommand lines", () => {
-    const preamble = "\\usepackage{amsmath}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\ZZ}{\\mathbb{Z}}";
+    const preamble =
+      "\\usepackage{amsmath}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\ZZ}{\\mathbb{Z}}";
     const macros = extractMacros(preamble);
     expect(macros).toContain("\\newcommand{\\R}{\\mathbb{R}}");
     expect(macros).toContain("\\newcommand{\\ZZ}{\\mathbb{Z}}");

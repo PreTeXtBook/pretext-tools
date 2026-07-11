@@ -193,4 +193,3 @@ const MathDisplay = Node.create({
 });
 
 export { MathInline, MathEquation, MathDisplay };
-

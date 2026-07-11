@@ -83,9 +83,7 @@ describe("buildDivisionPool", () => {
 
     const methods = project.divisions.find((d) => d.xmlId === "methods");
     expect(methods?.content).toContain('<plus:section ref="setup"/>');
-    expect(methods?.content).toContain(
-      '<plus:section ref="methods-sec-02"/>',
-    );
+    expect(methods?.content).toContain('<plus:section ref="methods-sec-02"/>');
     expect(methods?.content).not.toContain("Details.");
 
     const generated = project.divisions.find(

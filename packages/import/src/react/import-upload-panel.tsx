@@ -1,5 +1,8 @@
 import { useMemo, useRef, useState } from "react";
-import { handleImportUploadFile, type ImportProjectOptions } from "../lib/upload";
+import {
+  handleImportUploadFile,
+  type ImportProjectOptions,
+} from "../lib/upload";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import type { ImportedProjectResult, UploadStatusMessage } from "../lib/types";
 
@@ -99,7 +102,9 @@ export function ImportUploadPanel({
               type="checkbox"
               checked={splitSections}
               disabled={isDisabled}
-              onChange={(event) => setSplitSections(event.currentTarget.checked)}
+              onChange={(event) =>
+                setSplitSections(event.currentTarget.checked)
+              }
             />
             {text.splitSectionsLabel}
           </label>

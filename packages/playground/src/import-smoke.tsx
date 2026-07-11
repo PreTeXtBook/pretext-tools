@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
-import { JsonView, collapseAllNested, defaultStyles } from "react-json-view-lite";
+import {
+  JsonView,
+  collapseAllNested,
+  defaultStyles,
+} from "react-json-view-lite";
 import "react-json-view-lite/dist/index.css";
 import { createRoot } from "react-dom/client";
 import { ImportUploadPanel, ImportWizard } from "@pretextbook/import/react";
@@ -71,9 +75,10 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
   return (
     <div className="pool">
       <p className="pool-meta">
-        <strong>{project.title || "(untitled)"}</strong> — {project.documentKind},{" "}
-        {project.divisions.length} division{project.divisions.length === 1 ? "" : "s"},{" "}
-        {project.assets.length} asset{project.assets.length === 1 ? "" : "s"}
+        <strong>{project.title || "(untitled)"}</strong> —{" "}
+        {project.documentKind}, {project.divisions.length} division
+        {project.divisions.length === 1 ? "" : "s"}, {project.assets.length}{" "}
+        asset{project.assets.length === 1 ? "" : "s"}
       </p>
 
       {project.docinfo ? (
@@ -94,13 +99,20 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
             <li key={division.xmlId}>
               <button type="button" onClick={() => toggle(division.xmlId)}>
                 <span className="pool-caret">{isOpen ? "▾" : "▸"}</span>
-                {division.isRoot ? <span className="pool-badge root">root</span> : null}
-                {isOrphan ? <span className="pool-badge orphan">orphan</span> : null}
+                {division.isRoot ? (
+                  <span className="pool-badge root">root</span>
+                ) : null}
+                {isOrphan ? (
+                  <span className="pool-badge orphan">orphan</span>
+                ) : null}
                 <code>{division.xmlId}</code>
                 <span className="pool-type">{division.type}</span>
-                <span className="pool-title">{division.title || "(untitled)"}</span>
+                <span className="pool-title">
+                  {division.title || "(untitled)"}
+                </span>
                 <span className="pool-size">
-                  {division.sourceFormat} · {formatSize(division.content.length)}
+                  {division.sourceFormat} ·{" "}
+                  {formatSize(division.content.length)}
                 </span>
               </button>
               {isOpen ? (
@@ -196,8 +208,8 @@ function WizardDemo() {
       <p className="pool-meta">
         The same component the VS Code webview panel hosts (and pretext-plus
         will), rendered in a matching 720px light container, with both{" "}
-        <code>onConfirm</code> and <code>onCancel</code> wired. Confirming
-        shows exactly what each host receives.
+        <code>onConfirm</code> and <code>onCancel</code> wired. Confirming shows
+        exactly what each host receives.
       </p>
       <div className="wizard-frame">
         <ImportWizard
@@ -219,7 +231,8 @@ function WizardDemo() {
       {confirmed && hostPayloads ? (
         <div className="host-payloads">
           <h3>
-            Confirmed: mode={confirmed.mode}, kind={confirmed.result.documentKind}
+            Confirmed: mode={confirmed.mode}, kind=
+            {confirmed.result.documentKind}
           </h3>
 
           <details open>
@@ -315,7 +328,8 @@ function App() {
               setResult(r);
               if ("outputFiles" in r) {
                 const keys = Object.keys(r.outputFiles).sort();
-                const preferred = keys.find((k) => k.endsWith("/main.ptx")) ?? keys[0];
+                const preferred =
+                  keys.find((k) => k.endsWith("/main.ptx")) ?? keys[0];
                 setSelectedFile(preferred ?? null);
               } else {
                 setSelectedFile(null);
@@ -342,13 +356,16 @@ function App() {
                 <strong>Detected format:</strong> {result.detectedSourceFormat}
               </li>
               <li>
-                <strong>Files extracted:</strong> {Object.keys(result.files).length}
+                <strong>Files extracted:</strong>{" "}
+                {Object.keys(result.files).length}
               </li>
               <li>
-                <strong>Output files:</strong> {Object.keys(result.outputFiles).length}
+                <strong>Output files:</strong>{" "}
+                {Object.keys(result.outputFiles).length}
               </li>
               <li>
-                <strong>Output assets:</strong> {Object.keys(result.outputAssets).length}
+                <strong>Output assets:</strong>{" "}
+                {Object.keys(result.outputAssets).length}
               </li>
               <li>
                 <strong>Warnings:</strong> {result.warnings.length}

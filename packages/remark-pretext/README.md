@@ -27,18 +27,18 @@ Left as an exercise.
 ## Usage
 
 ```ts
-import { unified } from 'unified'
-import remarkParse from 'remark-parse'
-import remarkDirective from 'remark-directive'
-import { remarkPretext } from '@pretextbook/remark-pretext'
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
+import { remarkPretext } from "@pretextbook/remark-pretext";
 
 const processor = unified()
   .use(remarkParse)
-  .use(remarkDirective)   // enables ::: directives
-  .use(remarkPretext)
+  .use(remarkDirective) // enables ::: directives
+  .use(remarkPretext);
 
-const mdast = processor.parse(markdownString)
-const ptxast = processor.runSync(mdast, { value: markdownString }) // PtxRoot
+const mdast = processor.parse(markdownString);
+const ptxast = processor.runSync(mdast, { value: markdownString }); // PtxRoot
 
 // Serialize to XML (use @pretextbook/ptxast-util-to-xml)
 ```
@@ -80,9 +80,9 @@ There are two ways to change it:
    precedence over frontmatter when both are present.
 
    ```ts
-   import { markdownToPretext } from '@pretextbook/remark-pretext'
+   import { markdownToPretext } from "@pretextbook/remark-pretext";
 
-   markdownToPretext('# Title\n\n## Sub', { topLevelDivision: 'section' })
+   markdownToPretext("# Title\n\n## Sub", { topLevelDivision: "section" });
    // → '<section><title>Title</title><subsection>...'
    ```
 
@@ -196,11 +196,11 @@ when both are present.
 
 ## Supported Directives
 
-| Category | Names |
-|----------|-------|
-| theorem-like | `theorem`, `lemma`, `corollary`, `proposition`, `claim`, `fact`, `conjecture`, `axiom`, `principle`, `hypothesis`, `algorithm` |
-| definition-like | `definition`, `notation` |
-| remark-like | `remark`, `note`, `observation`, `warning`, `insight`, `assemblage` |
-| example-like | `example`, `question`, `problem`, `exercise`, `activity`, `exploration`, `investigation`, `project` |
-| proof-like | `proof`, `case` |
-| solution-like | `solution`, `hint`, `answer` |
+| Category        | Names                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| theorem-like    | `theorem`, `lemma`, `corollary`, `proposition`, `claim`, `fact`, `conjecture`, `axiom`, `principle`, `hypothesis`, `algorithm` |
+| definition-like | `definition`, `notation`                                                                                                       |
+| remark-like     | `remark`, `note`, `observation`, `warning`, `insight`, `assemblage`                                                            |
+| example-like    | `example`, `question`, `problem`, `exercise`, `activity`, `exploration`, `investigation`, `project`                            |
+| proof-like      | `proof`, `case`                                                                                                                |
+| solution-like   | `solution`, `hint`, `answer`                                                                                                   |

@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  applyRules,
-  defaultRuleset,
-  relaxedRuleset,
-  Severity,
-} from "../rules";
+import { applyRules, defaultRuleset, relaxedRuleset, Severity } from "../rules";
 import type { Ruleset, SchemaError } from "../types";
 
 const baseRange = {
@@ -77,10 +72,7 @@ describe("applyRules", () => {
   });
 
   it("suggests <md> for a removed <me> element", () => {
-    const [diag] = applyRules(
-      [err({ name: "me" })],
-      defaultRuleset,
-    );
+    const [diag] = applyRules([err({ name: "me" })], defaultRuleset);
     expect(diag.code).toBe("element-me-removed");
     expect(diag.message).toMatch(/<md>/);
   });
@@ -88,7 +80,11 @@ describe("applyRules", () => {
   it("suppresses <document-id>/<blurb> inside <docinfo> under the relaxed ruleset", () => {
     const diags = applyRules(
       [
-        err({ kind: "element-not-allowed", name: "document-id", parent: "docinfo" }),
+        err({
+          kind: "element-not-allowed",
+          name: "document-id",
+          parent: "docinfo",
+        }),
         err({ kind: "element-not-allowed", name: "blurb", parent: "docinfo" }),
       ],
       relaxedRuleset,
@@ -98,7 +94,13 @@ describe("applyRules", () => {
 
   it("still reports <document-id> outside <docinfo> under the relaxed ruleset", () => {
     const [diag] = applyRules(
-      [err({ kind: "element-not-allowed", name: "document-id", parent: "section" })],
+      [
+        err({
+          kind: "element-not-allowed",
+          name: "document-id",
+          parent: "section",
+        }),
+      ],
       relaxedRuleset,
     );
     expect(diag.code).toBe("element-not-allowed");
@@ -125,5 +127,23 @@ describe("applyRules", () => {
       "element-not-allowed",
       "attribute-not-allowed",
     ]);
+  });
+
+  it("never produces an empty diagnostic message, even when the raw error's message is empty", () => {
+    // VS Code's Diagnostic constructor throws on an empty message, and since
+    // a document's diagnostics are converted as a single batch client-side,
+    // one empty message silently drops every diagnostic for that file. A
+    // `choice-not-satisfied` error with no alternatives falls back to
+    // `error.message`, which can be empty for certain salve error shapes
+    // (e.g. some end-of-document ChoiceErrors) — this must never reach the
+    // client empty.
+    const [diag] = applyRules([
+      err({
+        kind: "choice-not-satisfied",
+        message: "",
+        alternatives: undefined,
+      }),
+    ]);
+    expect(diag.message.trim().length).toBeGreaterThan(0);
   });
 });

@@ -31,6 +31,7 @@ export type SchemaErrorKind =
   | "xinclude-circular"
   | "well-formedness"
   | "duplicate-id"
+  | "duplicate-label"
   | "dangling-reference"
   | "other";
 
@@ -110,6 +111,15 @@ export interface ValidateOptions {
   readFile?: FileReader;
   /** Rule customization applied to raw errors. Defaults to {@link defaultRuleset}. */
   ruleset?: Ruleset;
+  /**
+   * The book's root document(s) (e.g. resolved from a `project.ptx` manifest
+   * by the caller), used to find `xref`/`fragref` targets and duplicate
+   * ids/labels that live outside this document's own xi:include chain. Paths
+   * may be absolute or relative to this document's directory. This package
+   * has no knowledge of `project.ptx` itself — resolving it is the caller's
+   * responsibility. Defaults to `["main.ptx"]` when omitted.
+   */
+  rootDocuments?: string[];
 }
 
 export interface ValidationResult {
