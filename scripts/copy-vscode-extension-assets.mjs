@@ -11,6 +11,7 @@ const filesToCopy = [
   ['LICENSE', path.join(workspaceRoot, 'LICENSE')],
   ['README.md', path.join(extensionRoot, 'README.md')],
   ['logo.png', path.join(extensionRoot, 'logo.png')],
+  ['logo.svg', path.join(extensionRoot, 'logo.svg')],
   ['language-configuration.json', path.join(extensionRoot, 'language-configuration.json')],
   ['.vscodeignore', path.join(extensionRoot, '.vscodeignore')],
 ];

@@ -15,6 +15,7 @@ import {
   defaultFileReader,
   type OriginEntry,
 } from "./xinclude";
+import { collectBookReferences, uriToPath, type BookReferences } from "./book";
 
 /** The XML namespace URI used for xmlns:* declarations. */
 const XMLNS_NS = "http://www.w3.org/2000/xmlns/";
@@ -32,6 +33,14 @@ const REFERENCE_ATTRIBUTES: Record<string, string[]> = {
 interface WalkerLike {
   fireEvent(name: string, params: string[]): false | unknown[];
   end(): false | unknown[];
+}
+
+/** Where an id/label was first declared, for reporting book-wide duplicates. */
+interface DeclLoc {
+  uri: string;
+  range: Range;
+  parent?: string;
+  ancestors?: string[];
 }
 
 /**
@@ -69,7 +78,20 @@ export function validateDocument(
     }
   }
 
-  errors.push(...driveValidation(mergedText, grammar, uri, origin, options.signal));
+  // `xref`/`fragref` targets, and duplicate ids/labels, may live in a sibling
+  // file that reaches the current document only through the book's root (not
+  // through this document's own forward xi:include chain), e.g. editing a
+  // chapter that cross-references another chapter also included by
+  // main.ptx. Resolve the whole book's ids/labels (if this document is part
+  // of one) so those targets aren't reported as dangling, and those
+  // collisions aren't missed, just because they're out of local scope.
+  const bookRefs = resolve
+    ? collectBookReferences(uri, readFile, options.rootDocuments)
+    : undefined;
+
+  errors.push(
+    ...driveValidation(mergedText, grammar, uri, origin, options.signal, bookRefs),
+  );
 
   return toResult(errors, uri, ruleset);
 }
@@ -81,6 +103,7 @@ function driveValidation(
   documentUri: string,
   origin: OriginEntry[] | undefined,
   signal: AbortSignal | undefined,
+  bookRefs: BookReferences | undefined,
 ): SchemaError[] {
   const walker = grammar.newWalker() as WalkerLike;
   const errors: SchemaError[] = [];
@@ -89,12 +112,18 @@ function driveValidation(
     position: true,
   });
 
-  // `xml:id` uniqueness and `ref`/`xref`/`fragref` target checks: these are not
-  // expressed in the RELAX NG schema (xml:id is a plain untyped attribute
-  // there), so we track them ourselves alongside the walker-driven validation.
-  // Reference targets may point forward, so target-existence is checked once
-  // the whole (merged) document has been seen.
+  // `xml:id`/`label` uniqueness and `ref`/`xref`/`fragref` target checks:
+  // these are not expressed in the RELAX NG schema (xml:id and label are
+  // plain untyped attributes there), so we track them ourselves alongside the
+  // walker-driven validation. Reference targets may point forward, so
+  // target-existence is checked once the whole (merged) document has been
+  // seen. First-occurrence locations for ids/labels are kept so a duplicate
+  // discovered only via `bookRefs` (i.e. against a *sibling* file, not this
+  // merge) can still be reported at a sensible position.
   const declaredIds = new Set<string>();
+  const declaredLabels = new Set<string>();
+  const idLocations = new Map<string, DeclLoc>();
+  const labelLocations = new Map<string, DeclLoc>();
   const pendingRefs: Array<{
     value: string;
     loc: { uri: string; range: Range };
@@ -212,6 +241,32 @@ function driveValidation(
           });
         } else {
           declaredIds.add(attr.value);
+          idLocations.set(attr.value, {
+            uri: tagLoc.uri,
+            range: tagLoc.range,
+            parent: elementName,
+            ancestors: [...stack],
+          });
+        }
+      } else if (attrLocal === "label" && attr.uri !== XML_NS) {
+        if (declaredLabels.has(attr.value)) {
+          errors.push({
+            kind: "duplicate-label",
+            message: `The label "${attr.value}" is already used elsewhere in this document.`,
+            name: attr.value,
+            parent: elementName,
+            ancestors: [...stack],
+            uri: tagLoc.uri,
+            range: tagLoc.range,
+          });
+        } else {
+          declaredLabels.add(attr.value);
+          labelLocations.set(attr.value, {
+            uri: tagLoc.uri,
+            range: tagLoc.range,
+            parent: elementName,
+            ancestors: [...stack],
+          });
         }
       } else if (refAttrs?.includes(attrLocal)) {
         pendingRefs.push({
@@ -294,7 +349,7 @@ function driveValidation(
   }
 
   for (const ref of pendingRefs) {
-    if (!declaredIds.has(ref.value)) {
+    if (!declaredIds.has(ref.value) && !bookRefs?.ids.has(ref.value)) {
       errors.push({
         kind: "dangling-reference",
         message: `No element with xml:id "${ref.value}" exists in this document.`,
@@ -307,7 +362,55 @@ function driveValidation(
     }
   }
 
+  if (bookRefs) {
+    // Files already covered by *this* merge (the current document plus its
+    // own forward xi:includes): a hit against only these isn't a duplicate,
+    // it's the same declaration we already saw (and, if truly repeated
+    // in-file, already reported above).
+    const localFiles = new Set<string>([uriToPath(documentUri)]);
+    if (origin) {
+      for (const entry of origin) {
+        localFiles.add(uriToPath(entry.uri));
+      }
+    }
+    checkBookWideDuplicates(idLocations, bookRefs.ids, localFiles, "duplicate-id", "xml:id", errors);
+    checkBookWideDuplicates(labelLocations, bookRefs.labels, localFiles, "duplicate-label", "label", errors);
+  }
+
   return errors;
+}
+
+/**
+ * For each locally-declared id/label, check whether {@link bookWide} shows it
+ * declared in a file outside the current merge — i.e. a duplicate this
+ * document's own local check couldn't see.
+ */
+function checkBookWideDuplicates(
+  declared: Map<string, DeclLoc>,
+  bookWide: Map<string, Set<string>>,
+  localFiles: Set<string>,
+  kind: SchemaErrorKind,
+  label: string,
+  errors: SchemaError[],
+): void {
+  for (const [value, loc] of declared) {
+    const files = bookWide.get(value);
+    if (!files) {
+      continue;
+    }
+    const elsewhere = [...files].some((f) => !localFiles.has(f));
+    if (elsewhere) {
+      errors.push({
+        kind,
+        message: `The ${label} "${value}" is already used elsewhere in the project.`,
+        name: value,
+        parent: loc.parent,
+        ancestors: loc.ancestors,
+        uri: loc.uri,
+        range: loc.range,
+      });
+    }
+  }
 }
 
 function toResult(
@@ -346,7 +449,17 @@ function normalizeError(err: unknown): Pick<
     getNames?: () => unknown[];
   };
   const ctor = anyErr.constructor?.name ?? "";
-  const message = anyErr.msg ?? anyErr.toString();
+  const rawMessage = anyErr.msg ?? anyErr.toString();
+  // Some salve error objects (e.g. certain end-of-document ChoiceErrors) have
+  // neither a `.msg` nor a meaningful `toString()`, yielding an empty string.
+  // VS Code's Diagnostic constructor throws on an empty message, and since
+  // diagnostics for a document are converted as one batch client-side, a
+  // single empty message silently drops *all* diagnostics for that file — so
+  // this must never be empty.
+  const message =
+    rawMessage.trim().length > 0
+      ? rawMessage
+      : `Invalid content${ctor ? ` (${ctor})` : ""}.`;
 
   let kind: SchemaErrorKind = "other";
   switch (ctor) {
@@ -363,9 +476,9 @@ function normalizeError(err: unknown): Pick<
       kind = "choice-not-satisfied";
       break;
     default:
-      if (/text (is )?not allowed/i.test(message)) {
+      if (/text (is )?not allowed/i.test(rawMessage)) {
         kind = "text-not-allowed";
-      } else if (/must choose|tag required|incomplete|nothing else may follow/i.test(message)) {
+      } else if (/must choose|tag required|incomplete|nothing else may follow/i.test(rawMessage)) {
         kind = "choice-not-satisfied";
       }
   }

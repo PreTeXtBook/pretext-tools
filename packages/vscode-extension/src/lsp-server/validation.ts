@@ -15,6 +15,7 @@ import {
 import { schemaDir } from "./paths";
 import { documents } from "./state";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
+import { findProjectRootDocuments } from "./projectPtx/find-root-documents";
 import { isPublicationPtx } from "./completions/utils";
 
 let grammar: Grammar | undefined;
@@ -139,11 +140,13 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
   inflight.set(uri, controller);
 
   try {
+    const readFile = makeReadFile();
     const result = validateDocument(document.getText(), grammar, {
       uri,
       signal: controller.signal,
-      readFile: makeReadFile(),
+      readFile,
       ruleset,
+      rootDocuments: findProjectRootDocuments(uri, readFile),
     });
 
     const currentTargets = new Set(Object.keys(result.diagnosticsByUri));

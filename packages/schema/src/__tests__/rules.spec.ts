@@ -126,4 +126,18 @@ describe("applyRules", () => {
       "attribute-not-allowed",
     ]);
   });
+
+  it("never produces an empty diagnostic message, even when the raw error's message is empty", () => {
+    // VS Code's Diagnostic constructor throws on an empty message, and since
+    // a document's diagnostics are converted as a single batch client-side,
+    // one empty message silently drops every diagnostic for that file. A
+    // `choice-not-satisfied` error with no alternatives falls back to
+    // `error.message`, which can be empty for certain salve error shapes
+    // (e.g. some end-of-document ChoiceErrors) — this must never reach the
+    // client empty.
+    const [diag] = applyRules([
+      err({ kind: "choice-not-satisfied", message: "", alternatives: undefined }),
+    ]);
+    expect(diag.message.trim().length).toBeGreaterThan(0);
+  });
 });

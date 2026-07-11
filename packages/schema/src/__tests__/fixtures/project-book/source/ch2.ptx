@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<chapter xml:id="ch2">
+  <title>Chapter Two</title>
+  <p>See <xref ref="target1"/> for details.</p>
+</chapter>

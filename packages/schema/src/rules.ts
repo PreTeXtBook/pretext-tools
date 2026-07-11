@@ -85,6 +85,10 @@ export const defaultRuleset: Ruleset = {
       match: (e) => e.kind === "duplicate-id",
     },
     {
+      id: "duplicate-label",
+      match: (e) => e.kind === "duplicate-label",
+    },
+    {
       id: "dangling-reference",
       match: (e) => e.kind === "dangling-reference",
     },
@@ -157,12 +161,17 @@ export function applyRules(
     if (rule?.suppress) {
       continue;
     }
+    const message = rule?.message ? rule.message(error) : error.message;
     diagnostics.push({
       range: error.range,
       severity: rule?.severity ?? defaultSeverity,
       code: rule?.id,
       source,
-      message: rule?.message ? rule.message(error) : error.message,
+      // An empty message here isn't just cosmetic: VS Code's Diagnostic
+      // constructor throws on it, and since a document's diagnostics are
+      // converted as one batch client-side, a single empty message can
+      // silently drop *every* diagnostic for that file.
+      message: message.trim().length > 0 ? message : `${error.kind} (no message provided).`,
     });
   }
 

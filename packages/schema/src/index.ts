@@ -15,6 +15,10 @@ export {
   type IncludeProblem,
   type ResolvedDocument,
 } from "./xinclude";
+export {
+  collectBookReferences,
+  type BookReferences,
+} from "./book";
 export type {
   Grammar,
   Diagnostic,

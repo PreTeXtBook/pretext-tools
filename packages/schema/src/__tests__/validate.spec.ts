@@ -163,6 +163,40 @@ describe("validateDocument", () => {
     expect(result.diagnostics).toEqual([]);
   });
 
+  it("reports a duplicate label", () => {
+    const doc = `<pretext>
+  <article xml:id="art">
+    <title>Hi</title>
+    <mermaid label="dup">graph TD; A --> B;</mermaid>
+    <mermaid label="dup">graph TD; C --> D;</mermaid>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    const dupDiag = result.diagnostics.find(
+      (d) => d.code === "duplicate-label",
+    );
+    expect(dupDiag).toBeDefined();
+    expect(dupDiag!.message).toMatch(/dup/);
+  });
+
+  it("does not flag distinct labels", () => {
+    const doc = `<pretext>
+  <article xml:id="art">
+    <title>Hi</title>
+    <mermaid label="a">graph TD; A --> B;</mermaid>
+    <mermaid label="b">graph TD; C --> D;</mermaid>
+  </article>
+</pretext>`;
+    const result = validateDocument(doc, testGrammar(), {
+      resolveXIncludes: false,
+    });
+    expect(
+      result.diagnostics.filter((d) => d.code === "duplicate-label"),
+    ).toEqual([]);
+  });
+
   it("reports a dangling xref target", () => {
     const doc = `<pretext>
   <article xml:id="art">

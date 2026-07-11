@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<chapter xml:id="ch1">
+  <title>Chapter One</title>
+  <p xml:id="target1">The target of a cross-reference from Chapter Two.</p>
+  <mermaid label="diagram1">graph TD; A --> B;</mermaid>
+</chapter>
