@@ -1,51 +1,51 @@
-import type { IToken } from 'chevrotain';
-import type * as Prettier from 'prettier';
+import type { IToken } from "chevrotain";
+import type * as Prettier from "prettier";
 import type {
-  AttributeCstNode,
-  ChardataCstNode,
-  ContentCstNode,
-  DocTypeDeclNode,
-  DocumentCstNode,
-  ElementCstNode,
-  ExternalIDNode,
-  PrologCstNode,
-} from '@xml-tools/parser';
+    AttributeCstNode,
+    ChardataCstNode,
+    ContentCstNode,
+    DocTypeDeclNode,
+    DocumentCstNode,
+    ElementCstNode,
+    ExternalIDNode,
+    PrologCstNode,
+} from "@xml-tools/parser";
 
 export type Fragment = {
-  offset: number;
-  printed: Doc;
-  startLine?: number;
-  endLine?: number;
-  endOffset?: number;
-  nodeType?: 'element' | 'text';
-  tagName?: string | null;
+    offset: number;
+    printed: Doc;
+    startLine?: number;
+    endLine?: number;
+    endOffset?: number;
+    nodeType?: "element" | "text";
+    tagName?: string | null;
 };
 
 // Override the children property of the content CST node because it is missing
 // the PROCESSING_INSTRUCTION property.
-interface ContentCstNodeExt extends Omit<ContentCstNode, 'children'> {
-  children: ContentCstNode['children'] & { PROCESSING_INSTRUCTION: IToken[] };
+interface ContentCstNodeExt extends Omit<ContentCstNode, "children"> {
+    children: ContentCstNode["children"] & { PROCESSING_INSTRUCTION: IToken[] };
 }
 
 // Override the children property of the doctype CST node because it is missing
 // the CLOSE property.
-interface DocTypeDeclNodeExt extends Omit<DocTypeDeclNode, 'children'> {
-  children: DocTypeDeclNode['children'] & { CLOSE: IToken[] };
+interface DocTypeDeclNodeExt extends Omit<DocTypeDeclNode, "children"> {
+    children: DocTypeDeclNode["children"] & { CLOSE: IToken[] };
 }
 
 // Override the children property of the element CST node because its children
 // object points to the content CST node that is missing the
 // PROCESSING_INSTRUCTION property.
-interface ElementCstNodeExt extends Omit<ElementCstNode, 'children'> {
-  children: Omit<ElementCstNode['children'], 'content'> & {
-    content: ContentCstNodeExt[];
-  };
+interface ElementCstNodeExt extends Omit<ElementCstNode, "children"> {
+    children: Omit<ElementCstNode["children"], "content"> & {
+        content: ContentCstNodeExt[];
+    };
 }
 
 // Override the name property on the external ID CST node because it has the
 // incorrect name value.
-interface ExternalIDNodeExt extends Omit<ExternalIDNode, 'name'> {
-  name: 'externalID';
+interface ExternalIDNodeExt extends Omit<ExternalIDNode, "name"> {
+    name: "externalID";
 }
 
 // The type of elements that make up the given array T.
@@ -53,22 +53,23 @@ type ArrayElement<T> = T extends (infer E)[] ? E : never;
 
 // A union of the properties of the given object that are arrays.
 type ArrayProperties<T> = {
-  [K in keyof T]: T[K] extends any[] ? K : never;
+    [K in keyof T]: T[K] extends any[] ? K : never;
 }[keyof T];
 
 // A union of the properties of the given array T that can be used to index it.
 // If the array is a tuple, then that's going to be the explicit indices of the
 // array, otherwise it's going to just be number.
-type IndexProperties<T extends { length: number }> =
-  IsTuple<T> extends true ? Exclude<Partial<T>['length'], T['length']> : number;
+type IndexProperties<T extends { length: number }> = IsTuple<T> extends true
+    ? Exclude<Partial<T>["length"], T["length"]>
+    : number;
 
 // Effectively performing T[P], except that it's telling TypeScript that it's
 // safe to do this for tuples, arrays, or objects.
 type IndexValue<T, P> = T extends any[]
-  ? P extends number
-    ? T[P]
-    : never
-  : P extends keyof T
+    ? P extends number
+        ? T[P]
+        : never
+    : P extends keyof T
     ? T[P]
     : never;
 
@@ -77,26 +78,26 @@ type IndexValue<T, P> = T extends any[]
 // true).
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 type IsTuple<T> = T extends []
-  ? true
-  : T extends [infer First, ...infer Remain]
+    ? true
+    : T extends [infer First, ...infer Remain]
     ? IsTuple<Remain>
     : false;
 
 type CallProperties<T> = T extends any[] ? IndexProperties<T> : keyof T;
 type IterProperties<T> = T extends any[]
-  ? IndexProperties<T>
-  : ArrayProperties<T>;
+    ? IndexProperties<T>
+    : ArrayProperties<T>;
 
 type CallCallback<T, U> = (path: Path<T>, index: number, value: any) => U;
 type EachCallback<T> = (
-  path: Path<ArrayElement<T>>,
-  index: number,
-  value: any,
+    path: Path<ArrayElement<T>>,
+    index: number,
+    value: any
 ) => void;
 type MapCallback<T, U> = (
-  path: Path<ArrayElement<T>>,
-  index: number,
-  value: any,
+    path: Path<ArrayElement<T>>,
+    index: number,
+    value: any
 ) => U;
 
 // This path interface is going to override a bunch of functions on the regular
@@ -141,22 +142,22 @@ interface StrictPath<T> {
 // Exporting an overall node union type so that we can reference it in parsers
 // and everything.
 export type AnyNode =
-  | AttributeCstNode
-  | ChardataCstNode
-  | ContentCstNodeExt
-  | DocTypeDeclNodeExt
-  | DocumentCstNode
-  | ElementCstNodeExt
-  | ExternalIDNodeExt
-  | PrologCstNode;
+    | AttributeCstNode
+    | ChardataCstNode
+    | ContentCstNodeExt
+    | DocTypeDeclNodeExt
+    | DocumentCstNode
+    | ElementCstNodeExt
+    | ExternalIDNodeExt
+    | PrologCstNode;
 
 // Reexporting every export from the parser so that the different node types can
 // be referenced.
-export * from '@xml-tools/parser';
+export * from "@xml-tools/parser";
 
 // Reporting the IToken from chevrotain because that is effectively another
 // node in th tree.
-export type { IToken } from 'chevrotain';
+export type { IToken } from "chevrotain";
 
 // Reexporting the Doc type mostly because it's annoying to have to reference
 // type so deeply in the Prettier namespace. Also because we only really want to
@@ -165,48 +166,48 @@ export type Doc = Prettier.doc.builders.Doc;
 
 // This is the same embed as is present in prettier, except that it's required.
 export type Embed = (
-  path: Path<AnyNode>,
-  print: (path: Path<any>) => Doc,
-  textToDoc: (text: string, options: Options) => Doc,
-  options: Options,
+    path: Path<AnyNode>,
+    print: (path: Path<any>) => Doc,
+    textToDoc: (text: string, options: Options) => Doc,
+    options: Options
 ) => Doc | null;
 
 // These are the regular options from prettier except they also include all of
 // the options we defined in our plugin configuration.
 export type Options = Prettier.ParserOptions<any> & {
-  bracketSameLine: boolean;
-  xmlSelfClosingSpace: boolean;
-  xmlWhitespaceSensitivity: 'ignore' | 'strict';
+    bracketSameLine: boolean;
+    xmlSelfClosingSpace: boolean;
+    xmlWhitespaceSensitivity: "ignore" | "strict";
 };
 
 // We're going to change the signature of our parse function to accept our
 // options as opposed to the generic options that don't contain the options we
 // defined in our plugin configuration.
-export type Parser = Omit<Prettier.Parser<AnyNode>, 'parse'> & {
-  parse: (
-    text: string,
-    parsers: { [name: string]: Prettier.Parser<any> },
-    options: Options,
-  ) => any;
+export type Parser = Omit<Prettier.Parser<AnyNode>, "parse"> & {
+    parse: (
+        text: string,
+        parsers: { [name: string]: Prettier.Parser<any> },
+        options: Options
+    ) => any;
 };
 
 // We're overwriting a bunch of function here that walk around the tree here
 // because if you restrict the AST for the main path then presumably you're
 // printing a lower node in the tree that won't match the current AST type.
 export type Path<T> = Omit<Prettier.AstPath<T>, keyof StrictPath<T>> &
-  StrictPath<T>;
+    StrictPath<T>;
 
 // Overwriting the parsers option so that we can again pass our defined options
 // into the parse functions.
-export type Plugin = Omit<Prettier.Plugin<AnyNode>, 'parsers' | 'printers'> & {
-  parsers: { [name: string]: Parser };
-  printers: { [name: string]: Printer };
+export type Plugin = Omit<Prettier.Plugin<AnyNode>, "parsers" | "printers"> & {
+    parsers: { [name: string]: Parser };
+    printers: { [name: string]: Printer };
 };
 
 // We're overwriting the print function with a print function that accepts the
 // options we've defined.
-export type Printer = Omit<Prettier.Printer<AnyNode>, 'embed' | 'print'> & {
-  print: (path: Path<AnyNode>, options: Options, print: Print) => Doc;
+export type Printer = Omit<Prettier.Printer<AnyNode>, "embed" | "print"> & {
+    print: (path: Path<AnyNode>, options: Options, print: Print) => Doc;
 };
 
 // This is the regular print node, except it's not restricted by the AST that

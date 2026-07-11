@@ -174,11 +174,11 @@ export type {
   PtxMathContent,
   PtxTheoremLikeElement,
   PtxAllElement,
-} from './types/index.js';
+} from "./types/index.js";
 
-export { getPtxTextContent, PTX_VALUE_ELEMENT_NAMES } from './types/curated.js';
+export { getPtxTextContent, PTX_VALUE_ELEMENT_NAMES } from "./types/curated.js";
 
-export { ptxSchemaElementChildren } from './types/generated.js';
+export { ptxSchemaElementChildren } from "./types/generated.js";
 
 export type {
   GeneratedPtxCuratedElementName,
@@ -187,7 +187,7 @@ export type {
   GeneratedPtxChildElementName,
   GeneratedPtxElementName,
   GeneratedPtxUnmodeledSchemaElementName,
-} from './types/generated.js';
+} from "./types/generated.js";
 
 export type {
   PtxCuratedElementName,
@@ -199,7 +199,7 @@ export type {
   PtxSchemaElementName,
   PtxSchemaNode,
   PtxUnmodeledSchemaElementName,
-} from './types/schema.js';
+} from "./types/schema.js";
 
 export {
   collectPtxSchemaViolations,
@@ -210,8 +210,8 @@ export {
   getPtxUnmodeledSchemaElementNames,
   isPtxCuratedElementName,
   isPtxSchemaElementName,
-} from './types/schema.js';
+} from "./types/schema.js";
 
-export * from './lib/guards.js';
-export * from './lib/builders.js';
-export * from './lib/division-hierarchy.js';
+export * from "./lib/guards.js";
+export * from "./lib/builders.js";
+export * from "./lib/division-hierarchy.js";

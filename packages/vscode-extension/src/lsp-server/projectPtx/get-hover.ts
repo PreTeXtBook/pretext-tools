@@ -1,6 +1,6 @@
-import { Hover, HoverParams, MarkupKind } from 'vscode-languageserver/node';
-import { elementAtOffset } from '../../parse/utils';
-import { documents, getDocumentInfo } from '../state';
+import { Hover, HoverParams, MarkupKind } from "vscode-languageserver/node";
+import { elementAtOffset } from "../../parse/utils";
+import { documents, getDocumentInfo } from "../state";
 
 /**
  * Return all the linkable items in a project.ptx file.
@@ -12,7 +12,7 @@ export async function getProjectPtxHoverInfo(
   const info = getDocumentInfo(uri);
   const doc = documents.get(uri);
   if (!info || !doc) {
-    console.warn('Requested project symbols for uninitialized file', uri);
+    console.warn("Requested project symbols for uninitialized file", uri);
     return null;
   }
   const ast = await info.ast;

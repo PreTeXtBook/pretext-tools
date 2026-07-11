@@ -13,17 +13,17 @@
 
 /** Maps PreTeXt element tags to display icons and labels. */
 export const ELEMENT_CONFIG: Record<string, { icon: string; label: string }> = {
-  book: { icon: 'book', label: 'Book' },
-  article: { icon: 'book', label: 'Article' },
-  frontmatter: { icon: 'info', label: 'Front Matter' },
-  backmatter: { icon: 'info', label: 'Back Matter' },
-  chapter: { icon: 'symbol-class', label: 'Chapter' },
-  section: { icon: 'symbol-class', label: 'Section' },
-  subsection: { icon: 'symbol-method', label: 'Subsection' },
-  subsubsection: { icon: 'symbol-field', label: 'Subsubsection' },
-  paragraphs: { icon: 'symbol-text', label: 'Paragraphs' },
-  references: { icon: 'references', label: 'References' },
-  appendix: { icon: 'symbol-class', label: 'Appendix' },
+  book: { icon: "book", label: "Book" },
+  article: { icon: "book", label: "Article" },
+  frontmatter: { icon: "info", label: "Front Matter" },
+  backmatter: { icon: "info", label: "Back Matter" },
+  chapter: { icon: "symbol-class", label: "Chapter" },
+  section: { icon: "symbol-class", label: "Section" },
+  subsection: { icon: "symbol-method", label: "Subsection" },
+  subsubsection: { icon: "symbol-field", label: "Subsubsection" },
+  paragraphs: { icon: "symbol-text", label: "Paragraphs" },
+  references: { icon: "references", label: "References" },
+  appendix: { icon: "symbol-class", label: "Appendix" },
 };
 
 // Only these tags appear in the outline — section headings and structural containers.
@@ -31,15 +31,15 @@ export const OUTLINE_TAGS = new Set(Object.keys(ELEMENT_CONFIG));
 
 // Tags that can contain other outline-relevant elements.
 export const CONTAINER_TAGS = new Set([
-  'book',
-  'article',
-  'frontmatter',
-  'backmatter',
-  'chapter',
-  'section',
-  'subsection',
-  'subsubsection',
-  'appendix',
+  "book",
+  "article",
+  "frontmatter",
+  "backmatter",
+  "chapter",
+  "section",
+  "subsection",
+  "subsubsection",
+  "appendix",
 ]);
 
 /** A plain (vscode-free) node in the parsed outline tree. */
@@ -61,18 +61,18 @@ export function parseOutline(text: string): OutlineItem[] {
   // Stack to track nesting: each entry is [tag, node].
   const stack: Array<{ tag: string; node: OutlineItem }> = [];
 
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   let inComment = false;
 
   for (let lineNum = 0; lineNum < lines.length; lineNum++) {
     const line = lines[lineNum];
 
     // Skip XML comments (simple heuristic — not perfect but good enough).
-    if (line.includes('<!--')) {
+    if (line.includes("<!--")) {
       inComment = true;
     }
     if (inComment) {
-      if (line.includes('-->')) {
+      if (line.includes("-->")) {
         inComment = false;
       }
       continue;
@@ -111,7 +111,7 @@ export function parseOutline(text: string): OutlineItem[] {
       }
 
       // Extract xml:id if present.
-      let xmlId = '';
+      let xmlId = "";
       const idMatch = line.match(/xml:id=["']([^"']+)["']/);
       if (idMatch) {
         xmlId = idMatch[1];
@@ -158,7 +158,7 @@ export function parseOutline(text: string): OutlineItem[] {
 export function extractTitle(lines: string[], startLine: number): string {
   const searchWindow = lines
     .slice(startLine, Math.min(startLine + 8, lines.length))
-    .join('\n');
+    .join("\n");
 
   const singleLine = searchWindow.match(/<title>(.*?)<\/title>/);
   if (singleLine) {
@@ -170,13 +170,13 @@ export function extractTitle(lines: string[], startLine: number): string {
     return cleanText(multiLine[1]);
   }
 
-  return '';
+  return "";
 }
 
 /** Clean extracted text: strip XML tags, collapse whitespace. */
 export function cleanText(text: string): string {
   return text
-    .replace(/<[^>]+>/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }

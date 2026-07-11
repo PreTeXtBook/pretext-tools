@@ -1,57 +1,57 @@
-import { Node, mergeAttributes } from '@tiptap/core';
-import katex from 'katex';
+import { Node, mergeAttributes } from "@tiptap/core";
+import katex from "katex";
 
 const MathInline = Node.create({
-  name: 'm',
-  content: 'text*',
-  group: 'inline math',
+  name: "m",
+  content: "text*",
+  group: "inline math",
   inline: true,
 
   parseHTML() {
-    return [{ tag: 'm' }];
+    return [{ tag: "m" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['span', mergeAttributes({ class: 'inlineMath' }, HTMLAttributes)];
+    return ["span", mergeAttributes({ class: "inlineMath" }, HTMLAttributes)];
   },
 
   addNodeView() {
     return ({ node, HTMLAttributes }) => {
-      const dom = document.createElement('span');
-      dom.classList.add('node-view', 'math');
+      const dom = document.createElement("span");
+      dom.classList.add("node-view", "math");
       Object.entries(HTMLAttributes).forEach(([key, value]) => {
         dom.setAttribute(key, value);
       });
 
-      const rendered = document.createElement('span');
-      const editable = document.createElement('span');
+      const rendered = document.createElement("span");
+      const editable = document.createElement("span");
       const latex = node.textContent.trim();
 
-      rendered.classList.add('katex-rendered');
+      rendered.classList.add("katex-rendered");
       rendered.innerHTML = katex.renderToString(latex, { throwOnError: false });
-      rendered.contentEditable = 'false';
-      rendered.style.pointerEvents = 'none';
+      rendered.contentEditable = "false";
+      rendered.style.pointerEvents = "none";
 
-      editable.classList.add('edit-math');
-      editable.classList.add('is-editable');
-      editable.innerHTML = '<m>' + node.textContent + '</m>';
-      editable.contentEditable = 'true';
+      editable.classList.add("edit-math");
+      editable.classList.add("is-editable");
+      editable.innerHTML = "<m>" + node.textContent + "</m>";
+      editable.contentEditable = "true";
       editable.draggable = false;
 
       const observer = new MutationObserver(() => {
-        const updatedLatex = editable.textContent || '';
+        const updatedLatex = editable.textContent || "";
         rendered.innerHTML = katex.renderToString(updatedLatex, {
           throwOnError: false,
         });
       });
       observer.observe(editable, { characterData: true, subtree: true });
 
-      editable.addEventListener('focus', () => {
-        dom.classList.add('has-focus');
+      editable.addEventListener("focus", () => {
+        dom.classList.add("has-focus");
       });
 
-      editable.addEventListener('blur', () => {
-        dom.classList.remove('has-focus');
+      editable.addEventListener("blur", () => {
+        dom.classList.remove("has-focus");
       });
 
       dom.appendChild(editable);
@@ -65,57 +65,57 @@ const MathInline = Node.create({
 });
 
 const MathEquation = Node.create({
-  name: 'me',
-  content: 'text*',
-  group: 'inline math',
+  name: "me",
+  content: "text*",
+  group: "inline math",
   inline: true,
 
   parseHTML() {
-    return [{ tag: 'me' }];
+    return [{ tag: "me" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes({ class: 'displayMath' }, HTMLAttributes)];
+    return ["div", mergeAttributes({ class: "displayMath" }, HTMLAttributes)];
   },
 
   addNodeView() {
     return ({ node, HTMLAttributes }) => {
-      const dom = document.createElement('div');
-      dom.classList.add('node-view', 'math');
-      dom.classList.add('display');
+      const dom = document.createElement("div");
+      dom.classList.add("node-view", "math");
+      dom.classList.add("display");
       Object.entries(HTMLAttributes).forEach(([key, value]) => {
         dom.setAttribute(key, value);
       });
 
-      const rendered = document.createElement('span');
-      const editable = document.createElement('span');
+      const rendered = document.createElement("span");
+      const editable = document.createElement("span");
       const latex = node.textContent.trim();
 
-      rendered.classList.add('katex-rendered');
+      rendered.classList.add("katex-rendered");
       rendered.innerHTML = katex.renderToString(latex, { throwOnError: false });
-      rendered.contentEditable = 'false';
-      rendered.style.pointerEvents = 'none';
+      rendered.contentEditable = "false";
+      rendered.style.pointerEvents = "none";
 
-      editable.classList.add('edit-math');
-      editable.classList.add('is-editable');
-      editable.contentEditable = 'true';
-      editable.innerHTML = '<md>' + node.textContent + '</md>';
+      editable.classList.add("edit-math");
+      editable.classList.add("is-editable");
+      editable.contentEditable = "true";
+      editable.innerHTML = "<md>" + node.textContent + "</md>";
       editable.draggable = false;
 
       const observer = new MutationObserver(() => {
-        const updatedLatex = editable.textContent || '';
+        const updatedLatex = editable.textContent || "";
         rendered.innerHTML = katex.renderToString(updatedLatex, {
           throwOnError: false,
         });
       });
       observer.observe(editable, { characterData: true, subtree: true });
 
-      editable.addEventListener('focus', () => {
-        dom.classList.add('has-focus');
+      editable.addEventListener("focus", () => {
+        dom.classList.add("has-focus");
       });
 
-      editable.addEventListener('blur', () => {
-        dom.classList.remove('has-focus');
+      editable.addEventListener("blur", () => {
+        dom.classList.remove("has-focus");
       });
 
       dom.appendChild(editable);
@@ -129,57 +129,57 @@ const MathEquation = Node.create({
 });
 
 const MathDisplay = Node.create({
-  name: 'md',
-  content: 'text*',
-  group: 'inline math',
+  name: "md",
+  content: "text*",
+  group: "inline math",
   inline: true,
 
   parseHTML() {
-    return [{ tag: 'md' }];
+    return [{ tag: "md" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes({ class: 'displayMath' }, HTMLAttributes)];
+    return ["div", mergeAttributes({ class: "displayMath" }, HTMLAttributes)];
   },
 
   addNodeView() {
     return ({ node, HTMLAttributes }) => {
-      const dom = document.createElement('div');
-      dom.classList.add('node-view', 'math');
-      dom.classList.add('display');
+      const dom = document.createElement("div");
+      dom.classList.add("node-view", "math");
+      dom.classList.add("display");
       Object.entries(HTMLAttributes).forEach(([key, value]) => {
         dom.setAttribute(key, value);
       });
 
-      const rendered = document.createElement('span');
-      const editable = document.createElement('span');
+      const rendered = document.createElement("span");
+      const editable = document.createElement("span");
       const latex = node.textContent.trim();
 
-      rendered.classList.add('katex-rendered');
+      rendered.classList.add("katex-rendered");
       rendered.innerHTML = katex.renderToString(latex, { throwOnError: false });
-      rendered.contentEditable = 'false';
-      rendered.style.pointerEvents = 'none';
+      rendered.contentEditable = "false";
+      rendered.style.pointerEvents = "none";
 
-      editable.classList.add('edit-math');
-      editable.classList.add('is-editable');
-      editable.innerHTML = '<md>' + node.textContent + '</md>';
-      editable.contentEditable = 'true';
+      editable.classList.add("edit-math");
+      editable.classList.add("is-editable");
+      editable.innerHTML = "<md>" + node.textContent + "</md>";
+      editable.contentEditable = "true";
       editable.draggable = false;
 
       const observer = new MutationObserver(() => {
-        const updatedLatex = editable.textContent || '';
+        const updatedLatex = editable.textContent || "";
         rendered.innerHTML = katex.renderToString(updatedLatex, {
           throwOnError: false,
         });
       });
       observer.observe(editable, { characterData: true, subtree: true });
 
-      editable.addEventListener('focus', () => {
-        dom.classList.add('has-focus');
+      editable.addEventListener("focus", () => {
+        dom.classList.add("has-focus");
       });
 
-      editable.addEventListener('blur', () => {
-        dom.classList.remove('has-focus');
+      editable.addEventListener("blur", () => {
+        dom.classList.remove("has-focus");
       });
 
       dom.appendChild(editable);

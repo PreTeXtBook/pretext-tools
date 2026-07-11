@@ -251,7 +251,7 @@ model:
 interface ImportedProject {
   title: string;
   docinfo: string; // full <docinfo>…</docinfo> element, or ""
-  documentKind: 'article' | 'book';
+  documentKind: "article" | "book";
   divisions: ImportedDivision[]; // exactly one isRoot; unreferenced = orphan
   assets: ImportedAsset[];
   statusMessages: StatusMessage[];
@@ -262,7 +262,7 @@ interface ImportedDivision {
   xmlId: string; // unique; NCName-safe slug (see ref rules, §4.3)
   type: DivisionType; // "book" | "article" | "chapter" | "section" | …
   title: string; // plain text
-  sourceFormat: 'pretext' | 'latex' | 'markdown';
+  sourceFormat: "pretext" | "latex" | "markdown";
   content: string; // full division source, child refs as placeholders
   isRoot: boolean;
 }
@@ -347,18 +347,18 @@ serializer output is a direct camelCase mirror:
 interface PlusProjectPayload {
   title: string;
   docinfo: string; // requires follow-up PATCH — see gaps below
-  documentType: 'article' | 'book';
+  documentType: "article" | "book";
   divisions: {
     id: string; // client-minted UUID (Rails inserts it as the PK)
     ref: string; // the division's xml:id
     source: string;
-    sourceFormat: 'pretext' | 'latex' | 'markdown';
+    sourceFormat: "pretext" | "latex" | "markdown";
     isRoot: boolean;
   }[];
   assets: {
     id: string; // client-minted UUID, same pattern as divisions
     ref: string;
-    kind: 'file'; // imported binaries; "authored" unused by import
+    kind: "file"; // imported binaries; "authored" unused by import
     fileName: string; // → short_description; bytes attach as `file`
     data: Uint8Array;
   }[];

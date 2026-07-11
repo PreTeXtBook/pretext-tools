@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node, mergeAttributes } from "@tiptap/core";
 
 /*
  * This is a special Tiptap node that is used to represent raw PreTeXt source.
@@ -7,11 +7,11 @@ import { Node, mergeAttributes } from '@tiptap/core';
  * display the raw PreTeXt source in the visual editor.
  */
 const RawPtx = Node.create({
-  name: 'rawptx',
+  name: "rawptx",
 
-  content: 'text*',
+  content: "text*",
 
-  marks: '',
+  marks: "",
 
   selectable: true,
 
@@ -21,21 +21,21 @@ const RawPtx = Node.create({
 
   code: true,
 
-  whitespace: 'pre',
+  whitespace: "pre",
 
   parseHTML() {
     return [
       {
-        tag: 'rawptx',
-        preserveWhitespace: 'full',
+        tag: "rawptx",
+        preserveWhitespace: "full",
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      'pre',
-      mergeAttributes({ class: 'rawptx', ptxtag: 'rawptx' }, HTMLAttributes),
+      "pre",
+      mergeAttributes({ class: "rawptx", ptxtag: "rawptx" }, HTMLAttributes),
       0,
     ];
   },

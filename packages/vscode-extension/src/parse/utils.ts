@@ -1,17 +1,17 @@
-import { visit } from 'unist-util-visit';
-import { Range } from 'vscode-languageserver-textdocument';
-import { Element, Node } from 'xast';
+import { visit } from "unist-util-visit";
+import { Range } from "vscode-languageserver-textdocument";
+import { Element, Node } from "xast";
 
-type Position = Element['position'] & {};
+type Position = Element["position"] & {};
 
 export function isElement(node: any): node is Element {
-  if (node && typeof node === 'object' && node.type === 'element') {
+  if (node && typeof node === "object" && node.type === "element") {
     return true;
   }
 
   return false;
 }
-export function unifiedPositionToLspPosition(uPos: Element['position']): Range {
+export function unifiedPositionToLspPosition(uPos: Element["position"]): Range {
   if (!uPos) {
     return {
       start: {
@@ -53,7 +53,7 @@ export function positionOfSubstring(
 
   let startBound = Math.min(start, origSource.length);
   for (let i = 0; i < startBound; i++) {
-    if (origSource.charAt(i) === '\n') {
+    if (origSource.charAt(i) === "\n") {
       startLineOffset += 1;
       startColOffset = 0;
     } else {
@@ -65,7 +65,7 @@ export function positionOfSubstring(
   let endColOffset = startColOffset;
   let endBound = Math.min(end, origSource.length);
   for (let i = startBound; i < endBound; i++) {
-    if (origSource.charAt(i) === '\n') {
+    if (origSource.charAt(i) === "\n") {
       endLineOffset += 1;
       endColOffset = 0;
     } else {

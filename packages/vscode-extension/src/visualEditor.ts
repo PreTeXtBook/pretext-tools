@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
-import { getNonce } from './utils';
-import { formatPretext } from '@pretextbook/format';
+import * as vscode from "vscode";
+import { getNonce } from "./utils";
+import { formatPretext } from "@pretextbook/format";
 
 // Based on the example at https://github.com/microsoft/vscode-extension-samples/tree/main/custom-editor-sample.
 
@@ -25,10 +25,10 @@ export class PretextVisualEditorProvider
     return providerRegistration;
   }
 
-  private static readonly viewType = 'pretext.visualEditor';
+  private static readonly viewType = "pretext.visualEditor";
 
   constructor(private readonly context: vscode.ExtensionContext) {
-    console.log('PretextVisualEditorProvider constructor');
+    console.log("PretextVisualEditorProvider constructor");
   }
 
   /**
@@ -46,10 +46,10 @@ export class PretextVisualEditorProvider
     webviewPanel.webview.html = this.getHtmlForWebview(webviewPanel.webview);
 
     function updateWebview() {
-      console.log('updateWebview');
+      console.log("updateWebview");
       // Send message to visual editor to update with the current text
       webviewPanel.webview.postMessage({
-        type: 'update',
+        type: "update",
         text: document.getText(),
       });
       return;
@@ -57,9 +57,9 @@ export class PretextVisualEditorProvider
 
     // TODO: this could be used for initial loading.
     function loadWebview() {
-      console.log('loading webview');
+      console.log("loading webview");
       webviewPanel.webview.postMessage({
-        type: 'load',
+        type: "load",
         text: document.getText(),
       });
     }
@@ -98,17 +98,17 @@ export class PretextVisualEditorProvider
 
     // Make sure we get rid of the listener when our editor is closed.
     webviewPanel.onDidDispose(() => {
-      console.log('webviewPanel disposed');
+      console.log("webviewPanel disposed");
       changeDocumentSubscription.dispose();
     });
 
     // Receive message *from* the webview.
     webviewPanel.webview.onDidReceiveMessage((e) => {
-      console.log('Received message from visual editor', e);
+      console.log("Received message from visual editor", e);
       switch (e.type) {
-        case 'update':
-          if (e.value === '') {
-            console.error('Error getting text');
+        case "update":
+          if (e.value === "") {
+            console.error("Error getting text");
             return;
           }
           const edit = new vscode.WorkspaceEdit();
@@ -124,13 +124,13 @@ export class PretextVisualEditorProvider
     });
 
     webviewPanel.webview.onDidReceiveMessage((e) => {
-      if (e.type === 'ready') {
+      if (e.type === "ready") {
         loadWebview();
       }
     });
 
     //// Wait for the webview to signal that it is ready
-    webviewPanel.webview.postMessage({ type: 'checkReady' });
+    webviewPanel.webview.postMessage({ type: "checkReady" });
     //updateWebview()
   }
 
@@ -138,24 +138,24 @@ export class PretextVisualEditorProvider
    * Get the static html used for the editor webviews.
    */
   private getHtmlForWebview(webview: vscode.Webview): string {
-    console.log('getHtmlForWebview');
+    console.log("getHtmlForWebview");
     // Local path to script and css for the webview
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(
         this.context.extensionUri,
-        'out',
-        'media',
-        'visualEditor.js',
+        "out",
+        "media",
+        "visualEditor.js",
       ),
     );
 
     const styleUri = webview.asWebviewUri(
       vscode.Uri.joinPath(
         this.context.extensionUri,
-        'out',
-        'media',
-        'assets',
-        'visualEditor.css',
+        "out",
+        "media",
+        "assets",
+        "visualEditor.css",
       ),
     );
 

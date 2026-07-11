@@ -1,4 +1,4 @@
-declare module '@unified-latex/unified-latex' {
+declare module "@unified-latex/unified-latex" {
   type Processor = {
     use: (...args: unknown[]) => Processor;
     processSync: (input: { value: string }) => unknown;
@@ -7,7 +7,7 @@ declare module '@unified-latex/unified-latex' {
   export function processLatexViaUnified(): Processor;
 }
 
-declare module '@pretextbook/unified-latex-to-pretext' {
+declare module "@pretextbook/unified-latex-to-pretext" {
   export const unifiedLatexToPretext: unknown;
   export const xmlCompilePlugin: unknown;
 }

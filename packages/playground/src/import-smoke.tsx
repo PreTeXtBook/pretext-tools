@@ -1,26 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
   JsonView,
   collapseAllNested,
   defaultStyles,
-} from 'react-json-view-lite';
-import 'react-json-view-lite/dist/index.css';
-import { createRoot } from 'react-dom/client';
-import { ImportUploadPanel, ImportWizard } from '@pretextbook/import/react';
-import '@pretextbook/import/react.css';
+} from "react-json-view-lite";
+import "react-json-view-lite/dist/index.css";
+import { createRoot } from "react-dom/client";
+import { ImportUploadPanel, ImportWizard } from "@pretextbook/import/react";
+import "@pretextbook/import/react.css";
 import {
   assetsForImportMode,
   divisionChildRefs,
   filesForImportMode,
   formatWarningLine,
   serializeProjectToPlusPayload,
-} from '@pretextbook/import';
+} from "@pretextbook/import";
 import type {
   ImportMode,
   ImportedProject,
   ImportedProjectResult,
   ImportedProjectSuccess,
-} from '@pretextbook/import';
+} from "@pretextbook/import";
 
 function formatSize(charCount: number): string {
   if (charCount < 1024) {
@@ -37,7 +37,7 @@ function jsonSafe(value: unknown): unknown {
   return JSON.parse(
     JSON.stringify(value, (_key, v) => {
       if (v instanceof Uint8Array) return `Uint8Array(${v.length} bytes)`;
-      if (typeof v === 'string' && v.length > 2000) {
+      if (typeof v === "string" && v.length > 2000) {
         return `${v.slice(0, 2000)}… (${v.length} chars)`;
       }
       return v;
@@ -75,10 +75,10 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
   return (
     <div className="pool">
       <p className="pool-meta">
-        <strong>{project.title || '(untitled)'}</strong> —{' '}
+        <strong>{project.title || "(untitled)"}</strong> —{" "}
         {project.documentKind}, {project.divisions.length} division
-        {project.divisions.length === 1 ? '' : 's'}, {project.assets.length}{' '}
-        asset{project.assets.length === 1 ? '' : 's'}
+        {project.divisions.length === 1 ? "" : "s"}, {project.assets.length}{" "}
+        asset{project.assets.length === 1 ? "" : "s"}
       </p>
 
       {project.docinfo ? (
@@ -98,7 +98,7 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
           return (
             <li key={division.xmlId}>
               <button type="button" onClick={() => toggle(division.xmlId)}>
-                <span className="pool-caret">{isOpen ? '▾' : '▸'}</span>
+                <span className="pool-caret">{isOpen ? "▾" : "▸"}</span>
                 {division.isRoot ? (
                   <span className="pool-badge root">root</span>
                 ) : null}
@@ -108,10 +108,10 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
                 <code>{division.xmlId}</code>
                 <span className="pool-type">{division.type}</span>
                 <span className="pool-title">
-                  {division.title || '(untitled)'}
+                  {division.title || "(untitled)"}
                 </span>
                 <span className="pool-size">
-                  {division.sourceFormat} ·{' '}
+                  {division.sourceFormat} ·{" "}
                   {formatSize(division.content.length)}
                 </span>
               </button>
@@ -119,7 +119,7 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
                 <div className="pool-detail">
                   {childRefs.length > 0 ? (
                     <p className="pool-meta">
-                      children:{' '}
+                      children:{" "}
                       {childRefs.map((r, i) => (
                         <code key={i}>{r}</code>
                       ))}
@@ -169,7 +169,7 @@ function DivisionPoolView({ project }: { project: ImportedProject }) {
 function buildVsCodeMessage(result: ImportedProjectSuccess, mode: ImportMode) {
   const assets = assetsForImportMode(result, mode);
   return {
-    type: 'import-confirm',
+    type: "import-confirm",
     mode,
     files: filesForImportMode(result, mode),
     assetsBase64: Object.fromEntries(
@@ -207,7 +207,7 @@ function WizardDemo() {
       <h2>ImportWizard (as shipped)</h2>
       <p className="pool-meta">
         The same component the VS Code webview panel hosts (and pretext-plus
-        will), rendered in a matching 720px light container, with both{' '}
+        will), rendered in a matching 720px light container, with both{" "}
         <code>onConfirm</code> and <code>onCancel</code> wired. Confirming shows
         exactly what each host receives.
       </p>
@@ -244,7 +244,7 @@ function WizardDemo() {
 
           <details>
             <summary>
-              VS Code host message (<code>import-confirm</code>,{' '}
+              VS Code host message (<code>import-confirm</code>,{" "}
               {Object.keys(hostPayloads.vscode.files).length} files)
             </summary>
             <JsonView
@@ -256,8 +256,8 @@ function WizardDemo() {
 
           <details>
             <summary>
-              pretext-plus payload (<code>serializeProjectToPlusPayload</code>,{' '}
-              {hostPayloads.plus.divisions.length} divisions,{' '}
+              pretext-plus payload (<code>serializeProjectToPlusPayload</code>,{" "}
+              {hostPayloads.plus.divisions.length} divisions,{" "}
               {hostPayloads.plus.assets.length} assets)
             </summary>
             <JsonView
@@ -282,10 +282,10 @@ function App() {
 
   const resultSummary = useMemo(() => {
     if (!result) {
-      return 'Upload a file to run the import smoke test.';
+      return "Upload a file to run the import smoke test.";
     }
 
-    if ('pretextError' in result) {
+    if ("pretextError" in result) {
       return `Conversion failed: ${result.pretextError}`;
     }
 
@@ -295,17 +295,17 @@ function App() {
   }, [result]);
 
   const pretextSource =
-    result && 'pretextSource' in result ? result.pretextSource : '';
+    result && "pretextSource" in result ? result.pretextSource : "";
 
   const outputFilePaths =
-    result && 'outputFiles' in result
+    result && "outputFiles" in result
       ? Object.keys(result.outputFiles).sort()
       : [];
 
   const visibleOutputFile =
-    result && 'outputFiles' in result && selectedFile
+    result && "outputFiles" in result && selectedFile
       ? result.outputFiles[selectedFile]
-      : '';
+      : "";
 
   return (
     <main className="smoke-page">
@@ -326,10 +326,10 @@ function App() {
           <ImportUploadPanel
             onImport={(r) => {
               setResult(r);
-              if ('outputFiles' in r) {
+              if ("outputFiles" in r) {
                 const keys = Object.keys(r.outputFiles).sort();
                 const preferred =
-                  keys.find((k) => k.endsWith('/main.ptx')) ?? keys[0];
+                  keys.find((k) => k.endsWith("/main.ptx")) ?? keys[0];
                 setSelectedFile(preferred ?? null);
               } else {
                 setSelectedFile(null);
@@ -341,7 +341,7 @@ function App() {
         <article className="card summary-card">
           <h2>Result Summary</h2>
           <p>{resultSummary}</p>
-          {result && 'pretextSource' in result ? (
+          {result && "pretextSource" in result ? (
             <ul>
               <li>
                 <strong>Main source:</strong> {result.sourcePath}
@@ -356,15 +356,15 @@ function App() {
                 <strong>Detected format:</strong> {result.detectedSourceFormat}
               </li>
               <li>
-                <strong>Files extracted:</strong>{' '}
+                <strong>Files extracted:</strong>{" "}
                 {Object.keys(result.files).length}
               </li>
               <li>
-                <strong>Output files:</strong>{' '}
+                <strong>Output files:</strong>{" "}
                 {Object.keys(result.outputFiles).length}
               </li>
               <li>
-                <strong>Output assets:</strong>{' '}
+                <strong>Output assets:</strong>{" "}
                 {Object.keys(result.outputAssets).length}
               </li>
               <li>
@@ -375,7 +375,7 @@ function App() {
         </article>
       </section>
 
-      {result && 'project' in result ? (
+      {result && "project" in result ? (
         <section className="card output-card">
           <h2>Division Pool</h2>
           <DivisionPoolView project={result.project} />
@@ -388,7 +388,7 @@ function App() {
           <label>
             File:&nbsp;
             <select
-              value={selectedFile ?? ''}
+              value={selectedFile ?? ""}
               onChange={(e) => setSelectedFile(e.currentTarget.value)}
             >
               {outputFilePaths.map((path) => (
@@ -417,13 +417,13 @@ function App() {
         />
       </section>
 
-      {result && 'warnings' in result && result.warnings.length > 0 ? (
+      {result && "warnings" in result && result.warnings.length > 0 ? (
         <section className="card output-card">
           <h2>Warnings</h2>
           <ul>
             {result.warnings.map((w, i) => (
               <li key={i}>
-                <code>{w.action}</code> {w.kind}/{w.category}{' '}
+                <code>{w.action}</code> {w.kind}/{w.category}{" "}
                 <strong>{w.macro}</strong> ×{w.occurrences}
                 {w.message ? ` — ${w.message}` : null}
               </li>
@@ -448,9 +448,9 @@ function App() {
   );
 }
 
-const rootElement = document.getElementById('root');
+const rootElement = document.getElementById("root");
 if (!rootElement) {
-  throw new Error('Missing root element for import smoke test.');
+  throw new Error("Missing root element for import smoke test.");
 }
 
 createRoot(rootElement).render(<App />);

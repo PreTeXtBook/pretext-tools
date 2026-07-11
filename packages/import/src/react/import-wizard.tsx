@@ -1,11 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
 import {
   handleImportUploadFile,
   type ImportProjectOptions,
-} from '../lib/upload';
-import { filesForImportMode, type ImportMode } from '../lib/import-mode';
-import type { DocumentKind } from '../lib/layout/document-kind';
-import type { ImportedProjectSuccess } from '../lib/types';
+} from "../lib/upload";
+import { filesForImportMode, type ImportMode } from "../lib/import-mode";
+import type { DocumentKind } from "../lib/layout/document-kind";
+import type { ImportedProjectSuccess } from "../lib/types";
 
 export type { ImportMode };
 
@@ -16,58 +16,58 @@ export interface ImportWizardProps {
   onCancel?: () => void;
   /** Pass fixed options to skip the document-kind / split-sections controls. */
   importOptions?: ImportProjectOptions;
-  defaultDocumentKind?: DocumentKind | 'auto';
+  defaultDocumentKind?: DocumentKind | "auto";
 }
 
 type Step =
-  | { name: 'upload' }
-  | { name: 'processing' }
-  | { name: 'review'; result: ImportedProjectSuccess }
-  | { name: 'error'; message: string };
+  | { name: "upload" }
+  | { name: "processing" }
+  | { name: "review"; result: ImportedProjectSuccess }
+  | { name: "error"; message: string };
 
 export function ImportWizard({
   onConfirm,
   onCancel,
   importOptions,
-  defaultDocumentKind = 'auto',
+  defaultDocumentKind = "auto",
 }: ImportWizardProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [step, setStep] = useState<Step>({ name: 'upload' });
+  const [step, setStep] = useState<Step>({ name: "upload" });
   const [dragActive, setDragActive] = useState(false);
   const [documentKindChoice, setDocumentKindChoice] = useState<
-    DocumentKind | 'auto'
+    DocumentKind | "auto"
   >(defaultDocumentKind);
   const [splitSections, setSplitSections] = useState(false);
-  const [mode, setMode] = useState<ImportMode>('converted');
+  const [mode, setMode] = useState<ImportMode>("converted");
   const [showPreview, setShowPreview] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
 
   const processFile = async (file: File) => {
-    setStep({ name: 'processing' });
+    setStep({ name: "processing" });
     try {
       const options: ImportProjectOptions = importOptions ?? {
         documentKind:
-          documentKindChoice === 'auto' ? undefined : documentKindChoice,
+          documentKindChoice === "auto" ? undefined : documentKindChoice,
         splitSections,
       };
       const result = await handleImportUploadFile(file, options);
-      if ('pretextError' in result) {
-        setStep({ name: 'error', message: result.pretextError });
+      if ("pretextError" in result) {
+        setStep({ name: "error", message: result.pretextError });
       } else {
-        setStep({ name: 'review', result });
+        setStep({ name: "review", result });
       }
     } catch (err) {
       setStep({
-        name: 'error',
+        name: "error",
         message:
-          err instanceof Error ? err.message : 'An unexpected error occurred.',
+          err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     }
   };
 
   const restart = () => {
-    setStep({ name: 'upload' });
-    setMode('converted');
+    setStep({ name: "upload" });
+    setMode("converted");
     setShowPreview(false);
     setExpandedFiles(new Set());
   };
@@ -82,7 +82,7 @@ export function ImportWizard({
 
   function openFirstFile(result: ImportedProjectSuccess, m: ImportMode) {
     const files = filesForImportMode(result, m);
-    const mainPath = m === 'converted' ? 'source/main.ptx' : result.sourcePath;
+    const mainPath = m === "converted" ? "source/main.ptx" : result.sourcePath;
     const first = sortPaths(Object.keys(files), mainPath)[0];
     setExpandedFiles(first ? new Set([first]) : new Set());
   }
@@ -96,7 +96,7 @@ export function ImportWizard({
     });
   }
 
-  if (step.name === 'processing') {
+  if (step.name === "processing") {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
@@ -105,7 +105,7 @@ export function ImportWizard({
     );
   }
 
-  if (step.name === 'error') {
+  if (step.name === "error") {
     return (
       <div className="flex flex-col gap-4">
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
@@ -125,15 +125,15 @@ export function ImportWizard({
     );
   }
 
-  if (step.name === 'review') {
+  if (step.name === "review") {
     const { result } = step;
-    const isLatex = result.detectedSourceFormat === 'latex';
+    const isLatex = result.detectedSourceFormat === "latex";
     const warningCount = result.warnings.length;
     const fileCount = Object.keys(result.outputFiles).length;
 
     const currentPreviewFiles = filesForImportMode(result, mode);
     const mainPath =
-      mode === 'converted' ? 'source/main.ptx' : result.sourcePath;
+      mode === "converted" ? "source/main.ptx" : result.sourcePath;
     const sortedPreviewPaths = sortPaths(
       Object.keys(currentPreviewFiles),
       mainPath,
@@ -169,8 +169,8 @@ export function ImportWizard({
         {warningCount > 0 ? (
           <details className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
             <summary className="cursor-pointer font-semibold text-amber-800">
-              {warningCount} conversion{' '}
-              {warningCount === 1 ? 'warning' : 'warnings'}
+              {warningCount} conversion{" "}
+              {warningCount === 1 ? "warning" : "warnings"}
             </summary>
             <ul className="mt-3 space-y-1.5 text-amber-700">
               {result.warnings.map((w, i) => (
@@ -178,8 +178,8 @@ export function ImportWizard({
                   <code className="rounded bg-amber-100 px-1 py-0.5 text-xs">
                     {w.macro}
                   </code>
-                  {' — '}
-                  {w.action === 'replace' || w.action === 'rewrite'
+                  {" — "}
+                  {w.action === "replace" || w.action === "rewrite"
                     ? `replaced with \`${w.replacement}\``
                     : (w.message ?? w.action)}
                   {w.occurrences > 1 ? ` (×${w.occurrences})` : null}
@@ -202,8 +202,8 @@ export function ImportWizard({
                   type="radio"
                   name="import-mode"
                   value="converted"
-                  checked={mode === 'converted'}
-                  onChange={() => handleModeChange('converted')}
+                  checked={mode === "converted"}
+                  onChange={() => handleModeChange("converted")}
                   className="mt-0.5"
                 />
                 <span>
@@ -221,8 +221,8 @@ export function ImportWizard({
                   type="radio"
                   name="import-mode"
                   value="native"
-                  checked={mode === 'native'}
-                  onChange={() => handleModeChange('native')}
+                  checked={mode === "native"}
+                  onChange={() => handleModeChange("native")}
                   className="mt-0.5"
                 />
                 <span>
@@ -254,7 +254,7 @@ export function ImportWizard({
                     className="flex w-full items-center gap-2 bg-slate-100 px-4 py-2 text-left font-mono text-xs text-slate-700 hover:bg-slate-200"
                   >
                     <span className="shrink-0 text-slate-400">
-                      {isOpen ? '▾' : '▸'}
+                      {isOpen ? "▾" : "▸"}
                     </span>
                     <span className="flex-1 truncate">{path}</span>
                     <span className="shrink-0 text-slate-400">
@@ -278,7 +278,7 @@ export function ImportWizard({
             onClick={onCancel ?? restart}
             className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
           >
-            {onCancel ? 'Cancel' : 'Start Over'}
+            {onCancel ? "Cancel" : "Start Over"}
           </button>
           <div className="flex gap-2">
             <button
@@ -289,7 +289,7 @@ export function ImportWizard({
               }}
               className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
-              {showPreview ? 'Hide Preview' : 'Preview'}
+              {showPreview ? "Hide Preview" : "Preview"}
             </button>
             <button
               type="button"
@@ -315,7 +315,7 @@ export function ImportWizard({
               value={documentKindChoice}
               onChange={(e) =>
                 setDocumentKindChoice(
-                  e.currentTarget.value as DocumentKind | 'auto',
+                  e.currentTarget.value as DocumentKind | "auto",
                 )
               }
               className="rounded border border-slate-300 px-2 py-1 text-sm"
@@ -339,7 +339,7 @@ export function ImportWizard({
       <div
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+        onKeyDown={(e) => e.key === "Enter" && fileInputRef.current?.click()}
         onClick={() => fileInputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
@@ -354,8 +354,8 @@ export function ImportWizard({
         }}
         className={`flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
           dragActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+            ? "border-blue-500 bg-blue-50"
+            : "border-slate-300 bg-slate-50 hover:border-slate-400"
         }`}
       >
         <p className="text-slate-600">Drop a file here, or click to select.</p>
@@ -380,7 +380,7 @@ export function ImportWizard({
           onChange={(e) => {
             const file = e.currentTarget.files?.[0];
             if (file) void processFile(file);
-            e.currentTarget.value = '';
+            e.currentTarget.value = "";
           }}
         />
       </div>

@@ -14,7 +14,7 @@ npm install @pretextbook/ptxast-util-to-mdast
 import {
   ptxastToMdast,
   ptxastToMarkdown,
-} from '@pretextbook/ptxast-util-to-mdast';
+} from "@pretextbook/ptxast-util-to-mdast";
 
 // Convert a ptxast root to mdast
 const mdast = ptxastToMdast(ptxRoot);

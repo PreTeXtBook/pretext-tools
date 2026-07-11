@@ -1,8 +1,8 @@
-import { Diagnostic, TextDocuments } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { Root, Node } from 'xast';
-import { validateXml } from '../parse/validate-xml';
-import { fromXml } from 'xast-util-from-xml';
+import { Diagnostic, TextDocuments } from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { Root, Node } from "xast";
+import { validateXml } from "../parse/validate-xml";
+import { fromXml } from "xast-util-from-xml";
 
 type DocumentInfo = {
   validXml: boolean;
@@ -106,10 +106,10 @@ function getDocumentSettings(uri: string) {
     // not create the LSP IPC connection as a side effect (which throws outside
     // a real language-server host and would break unit tests). The running
     // server already creates the connection eagerly via `main.ts`.
-    const { connection } = await import('./connection');
+    const { connection } = await import("./connection");
     const settings: LspSettings = await connection.workspace.getConfiguration({
       scopeUri: uri,
-      section: 'pretextLanguageServer',
+      section: "pretextLanguageServer",
     });
     return settings || { ...DEFAULT_DOCUMENT_SETTINGS };
   })();

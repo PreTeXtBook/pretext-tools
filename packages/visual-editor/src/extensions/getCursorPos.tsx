@@ -50,7 +50,7 @@ export const getCursorPos = (editor: Editor): CursorPosition => {
     },
     nextNodeIsText: () => {
       return editor.state.selection.$anchor.nodeAfter
-        ? editor.state.selection.$anchor.nodeAfter.type.name === 'text'
+        ? editor.state.selection.$anchor.nodeAfter.type.name === "text"
         : false;
     },
     parentType: () => {

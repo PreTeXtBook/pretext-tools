@@ -1,5 +1,5 @@
-import { parseString } from 'xml2js';
-import { Target } from './types';
+import { parseString } from "xml2js";
+import { Target } from "./types";
 
 /**
  * Parse the `<targets>` out of a `project.ptx` manifest.
@@ -20,7 +20,7 @@ export function parseTargetsFromManifest(
   // parseString invokes its callback synchronously when given a string.
   parseString(contents, (err, result) => {
     if (err) {
-      console.error('Error parsing project.ptx XML: ', err);
+      console.error("Error parsing project.ptx XML: ", err);
       return;
     }
     if (
@@ -31,7 +31,7 @@ export function parseTargetsFromManifest(
       targets = result.project.targets[0].target.map((t: any) => ({
         name: t.$?.name,
         path: projectRoot,
-        standalone: (t.$?.standalone && t.$.standalone !== 'no') || false,
+        standalone: (t.$?.standalone && t.$.standalone !== "no") || false,
       }));
     }
   });

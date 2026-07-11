@@ -1,75 +1,75 @@
 {
-  "name": "prettier-plugin-pretext",
-  "version": "2.0.0",
-  "description": "A Prettier plugin for PreTeXt XML",
-  "main": "dist/index.cjs",
-  "scripts": {
-    "lint": "eslint --cache .",
-    "build": "tsc -p tsconfig.build.json && node build.mjs",
-    "build:raw": "node build.mjs",
-    "print": "prettier --plugin=.",
-    "test": "vitest"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/siefkenj/prettier-plugin-pretext.git"
-  },
-  "files": [
-    "dist/**/*"
-  ],
-  "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+    "name": "prettier-plugin-pretext",
+    "version": "2.0.0",
+    "description": "A Prettier plugin for PreTeXt XML",
+    "main": "dist/index.cjs",
+    "scripts": {
+        "lint": "eslint --cache .",
+        "build": "tsc -p tsconfig.build.json && node build.mjs",
+        "build:raw": "node build.mjs",
+        "print": "prettier --plugin=.",
+        "test": "vitest"
     },
-    "./*js": "./dist/*js",
-    "./*": {
-      "import": "./dist/*.mjs",
-      "require": "./dist/*.cjs"
-    }
-  },
-  "author": "Kevin Newton, Jason Siefken",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/siefkenj/prettier-plugin-pretext/issues"
-  },
-  "homepage": "https://github.com/siefkenj/prettier-plugin-pretext#readme",
-  "dependencies": {
-    "@xml-tools/parser": "^1.0.11",
-    "prettier": ">=3.8.1"
-  },
-  "devDependencies": {
-    "@types/node": "^25.3.5",
-    "eslint-config-prettier": "^10.1.8"
-  },
-  "eslintConfig": {
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended",
-      "prettier"
-    ],
-    "env": {
-      "es6": true,
-      "jest": true,
-      "node": true
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/siefkenj/prettier-plugin-pretext.git"
     },
-    "parser": "@typescript-eslint/parser",
-    "rules": {
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-non-null-assertion": "off"
-    }
-  },
-  "eslintIgnore": [
-    "dist"
-  ],
-  "jest": {
-    "preset": "ts-jest",
-    "testRegex": ".test.ts$"
-  },
-  "prettier": {
-    "plugins": [
-      "."
+    "files": [
+        "dist/**/*"
     ],
-    "tabWidth": 4
-  }
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.cjs"
+        },
+        "./*js": "./dist/*js",
+        "./*": {
+            "import": "./dist/*.mjs",
+            "require": "./dist/*.cjs"
+        }
+    },
+    "author": "Kevin Newton, Jason Siefken",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/siefkenj/prettier-plugin-pretext/issues"
+    },
+    "homepage": "https://github.com/siefkenj/prettier-plugin-pretext#readme",
+    "dependencies": {
+        "@xml-tools/parser": "^1.0.11",
+        "prettier": ">=3.8.1"
+    },
+    "devDependencies": {
+        "@types/node": "^25.3.5",
+        "eslint-config-prettier": "^10.1.8"
+    },
+    "eslintConfig": {
+        "extends": [
+            "eslint:recommended",
+            "plugin:@typescript-eslint/recommended",
+            "prettier"
+        ],
+        "env": {
+            "es6": true,
+            "jest": true,
+            "node": true
+        },
+        "parser": "@typescript-eslint/parser",
+        "rules": {
+            "@typescript-eslint/no-explicit-any": "off",
+            "@typescript-eslint/no-non-null-assertion": "off"
+        }
+    },
+    "eslintIgnore": [
+        "dist"
+    ],
+    "jest": {
+        "preset": "ts-jest",
+        "testRegex": ".test.ts$"
+    },
+    "prettier": {
+        "plugins": [
+            "."
+        ],
+        "tabWidth": 4
+    }
 }

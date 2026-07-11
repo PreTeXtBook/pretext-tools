@@ -1,28 +1,28 @@
-import { formatPretext } from '@pretextbook/format';
-import { latexToPretext } from '@pretextbook/latex-pretext';
-import { markdownToPretext } from '@pretextbook/remark-pretext';
-import { cleanLatex } from './clean/clean-latex';
+import { formatPretext } from "@pretextbook/format";
+import { latexToPretext } from "@pretextbook/latex-pretext";
+import { markdownToPretext } from "@pretextbook/remark-pretext";
+import { cleanLatex } from "./clean/clean-latex";
 import {
   splitLatexAtDocument,
   extractPreambleInfo,
   type PreambleInfo,
-} from './clean/latex-preamble';
-import type { CleaningWarning } from './clean/warnings';
-import { detectSourceFormat } from './detect-source-format';
-import type { ConvertedPretextResult, SourceFormat } from './types';
+} from "./clean/latex-preamble";
+import type { CleaningWarning } from "./clean/warnings";
+import { detectSourceFormat } from "./detect-source-format";
+import type { ConvertedPretextResult, SourceFormat } from "./types";
 
 function asConvertedString(converted: unknown): string {
-  if (typeof converted === 'string') {
+  if (typeof converted === "string") {
     return converted;
   }
 
   if (
-    typeof converted === 'object' &&
+    typeof converted === "object" &&
     converted !== null &&
-    'value' in converted
+    "value" in converted
   ) {
     const value = (converted as { value?: unknown }).value;
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       return value;
     }
     if (value !== undefined && value !== null) {
@@ -39,9 +39,9 @@ function asConvertedString(converted: unknown): string {
 
 function xmlEscape(text: string): string {
   return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 /**
@@ -51,15 +51,15 @@ function xmlEscape(text: string): string {
  */
 function latexToPlainText(tex: string): string {
   return tex
-    .replace(/\\LaTeX\b/g, 'LaTeX')
-    .replace(/\\TeX\b/g, 'TeX')
-    .replace(/\\thanks\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g, '')
-    .replace(/\\inst\{[^{}]*\}/g, '')
-    .replace(/\\email\{[^{}]*\}/g, '')
-    .replace(/\\[a-zA-Z]+\{([^{}]*)\}/g, '$1') // \cmd{content} → content
-    .replace(/\\\s/g, ' ')
-    .replace(/~/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/\\LaTeX\b/g, "LaTeX")
+    .replace(/\\TeX\b/g, "TeX")
+    .replace(/\\thanks\{[^{}]*(?:\{[^{}]*\}[^{}]*)?\}/g, "")
+    .replace(/\\inst\{[^{}]*\}/g, "")
+    .replace(/\\email\{[^{}]*\}/g, "")
+    .replace(/\\[a-zA-Z]+\{([^{}]*)\}/g, "$1") // \cmd{content} → content
+    .replace(/\\\s/g, " ")
+    .replace(/~/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -68,9 +68,9 @@ function buildDocinfo(info: PreambleInfo): string {
 
   if (info.macros) {
     const indented = info.macros
-      .split('\n')
+      .split("\n")
       .map((l) => `    ${l}`)
-      .join('\n');
+      .join("\n");
     parts.push(`  <macros>\n${indented}\n  </macros>`);
   }
 
@@ -85,8 +85,8 @@ function buildDocinfo(info: PreambleInfo): string {
     }
   }
 
-  if (parts.length === 0) return '';
-  return `<docinfo>\n${parts.join('\n')}\n</docinfo>`;
+  if (parts.length === 0) return "";
+  return `<docinfo>\n${parts.join("\n")}\n</docinfo>`;
 }
 
 /**
@@ -98,29 +98,29 @@ function buildDocinfo(info: PreambleInfo): string {
 function assemblePretextDocument(fragment: string, info: PreambleInfo): string {
   // Strip <p /> / <p></p> artifacts emitted for \maketitle
   const content = fragment
-    .replace(/^\s*<p\s*\/>\s*/g, '')
-    .replace(/^\s*<p>\s*<\/p>\s*/g, '')
+    .replace(/^\s*<p\s*\/>\s*/g, "")
+    .replace(/^\s*<p>\s*<\/p>\s*/g, "")
     .trim();
 
-  if (!content) return '';
+  if (!content) return "";
 
   const isBook = /<chapter[\s>]/.test(content);
-  const docTag = isBook ? 'book' : 'article';
+  const docTag = isBook ? "book" : "article";
 
   const docinfo = buildDocinfo(info);
   const titleEl = info.title
     ? `  <title>${xmlEscape(latexToPlainText(info.title))}</title>\n`
-    : '';
+    : "";
 
   const docBody = `<${docTag}>\n${titleEl}${content}\n</${docTag}>`;
-  const inner = [docinfo, docBody].filter(Boolean).join('\n');
+  const inner = [docinfo, docBody].filter(Boolean).join("\n");
   return `<pretext>\n${inner}\n</pretext>`;
 }
 
 export function normalizePretextSource(pretextSource: string): string {
   const trimmedPretext = pretextSource.trim();
   if (!trimmedPretext) {
-    return '';
+    return "";
   }
   return formatPretext(trimmedPretext);
 }
@@ -136,7 +136,7 @@ export function convertLatexToPretext(
 ): LatexConversionResult {
   const trimmedLatex = latexSource.trim();
   if (!trimmedLatex) {
-    return { pretext: '', cleanedLatex: '', warnings: [] };
+    return { pretext: "", cleanedLatex: "", warnings: [] };
   }
 
   // Extract preamble metadata from the raw source before any cleaning so
@@ -152,34 +152,34 @@ export function convertLatexToPretext(
     ? [
         `\\documentclass{${preambleInfo.documentClass}}`,
         preambleInfo.macros,
-        '\\begin{document}',
+        "\\begin{document}",
         body,
-        '\\end{document}',
+        "\\end{document}",
       ]
         .filter(Boolean)
-        .join('\n')
+        .join("\n")
     : trimmedLatex; // no \begin{document} found — convert as-is
 
   const { output: cleanedLatex, warnings } = cleanLatex(conversionSource);
   if (!cleanedLatex.trim()) {
-    return { pretext: '', cleanedLatex, warnings };
+    return { pretext: "", cleanedLatex, warnings };
   }
 
   // trimJunk strips \end{document} but unified-latex needs it to recognise the
   // preamble/body boundary. Re-append it when we built a full document source.
   const sourceForUnified = body
-    ? cleanedLatex + '\n\\end{document}'
+    ? cleanedLatex + "\n\\end{document}"
     : cleanedLatex;
 
   const rawFragment = asConvertedString(
     latexToPretext(sourceForUnified),
   ).trim();
   if (!rawFragment) {
-    return { pretext: '', cleanedLatex, warnings };
+    return { pretext: "", cleanedLatex, warnings };
   }
 
   const assembled = assemblePretextDocument(rawFragment, preambleInfo);
-  const pretext = assembled ? normalizePretextSource(assembled) : '';
+  const pretext = assembled ? normalizePretextSource(assembled) : "";
   return { pretext, cleanedLatex, warnings };
 }
 
@@ -193,11 +193,11 @@ export function convertMarkdownToPretext(
 ): MarkdownConversionResult {
   const trimmedMarkdown = markdownSource.trim();
   if (!trimmedMarkdown) {
-    return { pretext: '', cleanedMarkdown: '' };
+    return { pretext: "", cleanedMarkdown: "" };
   }
 
   const converted = String(markdownToPretext(trimmedMarkdown)).trim();
-  const pretext = converted ? normalizePretextSource(converted) : '';
+  const pretext = converted ? normalizePretextSource(converted) : "";
   return { pretext, cleanedMarkdown: trimmedMarkdown };
 }
 
@@ -205,7 +205,7 @@ export function getConversionErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message.trim();
   }
-  return 'Could not convert source content to PreTeXt.';
+  return "Could not convert source content to PreTeXt.";
 }
 
 export function convertSourceToPretext(
@@ -216,7 +216,7 @@ export function convertSourceToPretext(
   const finalSourceFormat = sourceFormat ?? detectedSourceFormat;
 
   try {
-    if (finalSourceFormat === 'pretext') {
+    if (finalSourceFormat === "pretext") {
       return {
         sourceFormat: finalSourceFormat,
         detectedSourceFormat,
@@ -225,7 +225,7 @@ export function convertSourceToPretext(
       };
     }
 
-    if (finalSourceFormat === 'markdown') {
+    if (finalSourceFormat === "markdown") {
       const { pretext, cleanedMarkdown } = convertMarkdownToPretext(source);
       return {
         sourceFormat: finalSourceFormat,

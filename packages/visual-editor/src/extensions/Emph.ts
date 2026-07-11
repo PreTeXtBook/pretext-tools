@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node, mergeAttributes } from "@tiptap/core";
 
 export const inputPTXRegex = /(?:^|\s)(<em>(.*?)<\/em>)$/;
 export const pastePTXRegex = /(?:^|\s)(<em>(.*?)<\/em>)/g;
@@ -9,17 +9,17 @@ export const inputRegex = /(?:^|\s)`em\s$/;
 // /(?:^|\s)(`(?!\s+`)((?:[^`]+))`(?!\s+`))$/
 
 const Emphasis = Node.create({
-  name: 'em',
-  content: 'text*',
+  name: "em",
+  content: "text*",
   inline: true,
-  group: 'inline',
+  group: "inline",
 
   parseHTML() {
-    return [{ tag: 'em' }];
+    return [{ tag: "em" }];
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['span', mergeAttributes({ class: 'em' }, HTMLAttributes), 0];
+    return ["span", mergeAttributes({ class: "em" }, HTMLAttributes), 0];
   },
 });
 // The following works, but since we will have so many, we probably just want to use the toggleMark('term') command directly.

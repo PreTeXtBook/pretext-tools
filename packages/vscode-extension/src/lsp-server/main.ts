@@ -1,4 +1,4 @@
-import { connection } from './connection';
+import { connection } from "./connection";
 /* --------------------------------------------------------------------------------------------
  * Copyright (c) Microsoft Corporation. All rights reserved.
  * Licensed under the MIT License. See License.txt in the project root for license information.
@@ -12,8 +12,8 @@ import {
   CodeActionKind,
   TextDocumentPositionParams,
   Diagnostic,
-} from 'vscode-languageserver/node';
-import { isProjectPtx } from './projectPtx/is-project-ptx';
+} from "vscode-languageserver/node";
+import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import {
   clearAllDocumentInfo,
   clearDocumentInfo,
@@ -21,21 +21,21 @@ import {
   getDocumentInfo,
   initializeDocument,
   updateDocument,
-} from './state';
-import { getProjectPtxSymbols } from './projectPtx/get-symbols';
-import { getProjectPtxLinks } from './projectPtx/get-links';
-import { getProjectPtxHoverInfo } from './projectPtx/get-hover';
+} from "./state";
+import { getProjectPtxSymbols } from "./projectPtx/get-symbols";
+import { getProjectPtxLinks } from "./projectPtx/get-links";
+import { getProjectPtxHoverInfo } from "./projectPtx/get-hover";
 import {
   getCompletions,
   getCompletionDetails,
-} from './completions/get-completions';
-import { clearCompletionCache } from '@pretextbook/schema';
+} from "./completions/get-completions";
+import { clearCompletionCache } from "@pretextbook/schema";
 //import { formatDocument, formatRange } from "./formatter";
-import { formatDocument, formatRange, formatText } from './formatter-ptx';
-import { getReferences, updateReferences } from './completions/utils';
-import { getAst, initializeSchema, Schema } from './schema';
-import path from 'path';
-import { schemaDir } from './paths';
+import { formatDocument, formatRange, formatText } from "./formatter-ptx";
+import { getReferences, updateReferences } from "./completions/utils";
+import { getAst, initializeSchema, Schema } from "./schema";
+import path from "path";
+import { schemaDir } from "./paths";
 
 import {
   scheduleValidation,
@@ -43,7 +43,7 @@ import {
   shouldValidate,
   loadValidationGrammar,
   setValidationMode,
-} from './validation';
+} from "./validation";
 
 /** Publish diagnostics for a given document URI. */
 const publishDiagnostics = (uri: string, diagnostics: Diagnostic[]) =>
@@ -87,14 +87,14 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: ['@', '<', '"'],
+        triggerCharacters: ["@", "<", '"'],
       },
       // hoverProvider: { workDoneProgress: true },
       // documentSymbolProvider: { label: "PreTeXt Symbols" },
       // documentLinkProvider: {},
       // codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
       executeCommandProvider: {
-        commands: ['formatDocument', 'formatText'],
+        commands: ["formatDocument", "formatText"],
       },
       documentFormattingProvider: true,
       documentRangeFormattingProvider: true,
@@ -126,31 +126,31 @@ connection.onInitialized(() => {
           pretextSchema = await initializeSchema(schemaConfig);
           globalSettings.schema = schemaConfig;
           setValidationMode(schemaConfig.validationMode);
-          console.log('Schema set to: ', schemaConfig);
+          console.log("Schema set to: ", schemaConfig);
           // Use the schemaConfig as needed
         } else {
           pretextSchema = await initializeSchema(globalSettings.schema);
-          console.log('Schema set to: ', globalSettings.schema);
+          console.log("Schema set to: ", globalSettings.schema);
         }
       });
   } else {
     async () => {
       pretextSchema = await initializeSchema(globalSettings.schema);
-      console.log('Schema set to: ', globalSettings.schema);
+      console.log("Schema set to: ", globalSettings.schema);
     };
   }
 
   publicationSchema = new Schema(
-    getAst(path.join(schemaDir, 'publication-schema.rng')),
+    getAst(path.join(schemaDir, "publication-schema.rng")),
   );
-  projectSchema = new Schema(getAst(path.join(schemaDir, 'project-ptx.rng')));
+  projectSchema = new Schema(getAst(path.join(schemaDir, "project-ptx.rng")));
 
   // Load the precompiled RELAX NG grammar used for schema validation.
   loadValidationGrammar(globalSettings.schema?.versionName);
 
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
-      connection.console.log('Workspace folder change event received.');
+      connection.console.log("Workspace folder change event received.");
     });
   }
 
@@ -159,7 +159,7 @@ connection.onInitialized(() => {
   try {
     references = getReferences();
   } catch {
-    console.log('Error getting references');
+    console.log("Error getting references");
   }
 });
 
@@ -170,11 +170,11 @@ interface LspSettings {
   schema: {
     versionName: string;
     customPath: string;
-    validationMode: 'Strict' | 'Relaxed';
+    validationMode: "Strict" | "Relaxed";
   };
   formatter: {
     breakSentences: boolean;
-    blankLines: 'few' | 'some' | 'many';
+    blankLines: "few" | "some" | "many";
     breakLongAttributes: boolean;
     printWidth: number;
   };
@@ -184,16 +184,16 @@ interface LspSettings {
   };
 }
 
-const schemaConfigSection = 'pretext-tools.schema';
-const formatterConfigSection = 'pretext-tools.formatter';
-const editorConfigSection = 'editor';
-const tabSizeConfigSection = 'editor.tabSize';
-const insertSpacesConfigSection = 'editor.insertSpaces';
+const schemaConfigSection = "pretext-tools.schema";
+const formatterConfigSection = "pretext-tools.formatter";
+const editorConfigSection = "editor";
+const tabSizeConfigSection = "editor.tabSize";
+const insertSpacesConfigSection = "editor.insertSpaces";
 // The global settings, used when the `workspace/configuration` request is not supported by the client.
 const defaultSettings: LspSettings = {
-  schema: { versionName: 'Stable', customPath: '', validationMode: 'Strict' },
+  schema: { versionName: "Stable", customPath: "", validationMode: "Strict" },
   formatter: {
-    blankLines: 'some',
+    blankLines: "some",
     breakSentences: true,
     breakLongAttributes: false,
     printWidth: 80,
@@ -204,14 +204,14 @@ export let globalSettings: LspSettings = defaultSettings;
 
 connection.onDidChangeConfiguration((change) => {
   //clearAllDocumentInfo();
-  console.log('changed configuration', change);
+  console.log("changed configuration", change);
   if (hasConfigurationCapability) {
     connection.workspace
       .getConfiguration(formatterConfigSection)
       .then((formatterConfig) => {
         if (formatterConfig && globalSettings.formatter !== formatterConfig) {
           globalSettings.formatter = formatterConfig;
-          console.log('Formatter set to', formatterConfig);
+          console.log("Formatter set to", formatterConfig);
         }
       });
     connection.workspace
@@ -220,7 +220,7 @@ connection.onDidChangeConfiguration((change) => {
         //console.log("editorConfig", editorConfig);
         //console.log("globalSettings.editor", globalSettings.editor);
         if (editorConfig && globalSettings.editor !== editorConfig) {
-          console.log('Editor config changed to', editorConfig);
+          console.log("Editor config changed to", editorConfig);
           globalSettings.editor = editorConfig;
         }
       });
@@ -228,7 +228,7 @@ connection.onDidChangeConfiguration((change) => {
       .getConfiguration(tabSizeConfigSection)
       .then((tabSizeConfig) => {
         if (tabSizeConfig && globalSettings.editor.tabSize !== tabSizeConfig) {
-          console.log('Tab size changed to', tabSizeConfig);
+          console.log("Tab size changed to", tabSizeConfig);
           globalSettings.editor.tabSize = tabSizeConfig;
         }
       });
@@ -239,7 +239,7 @@ connection.onDidChangeConfiguration((change) => {
           insertSpacesConfig &&
           globalSettings.editor.insertSpaces !== insertSpacesConfig
         ) {
-          console.log('Insert spaces changed to', insertSpacesConfig);
+          console.log("Insert spaces changed to", insertSpacesConfig);
           globalSettings.editor.insertSpaces = insertSpacesConfig;
         }
       });
@@ -264,7 +264,7 @@ connection.onDidChangeConfiguration((change) => {
         }
         globalSettings.schema = schemaConfig;
         setValidationMode(schemaConfig.validationMode);
-        console.log('Schema set to', schemaConfig);
+        console.log("Schema set to", schemaConfig);
         // Re-validate open documents against the new schema / ruleset.
         for (const doc of documents.all()) {
           if (shouldValidate(doc)) {
@@ -286,7 +286,7 @@ connection.onDidChangeConfiguration((change) => {
 
 // Only keep settings for open documents
 documents.onDidClose((e) => {
-  console.log('closed', e.document.uri);
+  console.log("closed", e.document.uri);
   clearDocumentInfo(e.document.uri);
   clearValidation(e.document.uri, publishDiagnostics);
   clearCompletionCache(e.document.uri);
@@ -336,30 +336,30 @@ connection.onCompletionResolve(getCompletionDetails);
 
 connection.onHover(async (params) => {
   if (isProjectPtx(params.textDocument.uri)) {
-    connection.console.log('hovering over');
+    connection.console.log("hovering over");
     return getProjectPtxHoverInfo(params);
   }
 });
 
 connection.onCodeAction((params) => {
-  return [{ title: 'My Custom Action' }];
+  return [{ title: "My Custom Action" }];
 });
 connection.onExecuteCommand(async (params) => {
   // Handle commands sent from the client
-  if (params.command === 'formatText') {
+  if (params.command === "formatText") {
     if (
       params.arguments &&
       params.arguments[0] &&
-      typeof params.arguments[0].text === 'string'
+      typeof params.arguments[0].text === "string"
     ) {
       const newText = await formatText({ text: params.arguments[0].text });
       return newText;
     }
-  } else if (params.command === 'formatDocument') {
+  } else if (params.command === "formatDocument") {
     if (
       params.arguments &&
       params.arguments[0] &&
-      typeof params.arguments[0].uri === 'string'
+      typeof params.arguments[0].uri === "string"
     ) {
       const uri = params.arguments[0].uri;
       const edits = await formatDocument({
@@ -369,7 +369,7 @@ connection.onExecuteCommand(async (params) => {
           insertSpaces: globalSettings.editor.insertSpaces,
         },
       });
-      connection.sendRequest('workspace/applyEdit', {
+      connection.sendRequest("workspace/applyEdit", {
         edit: { changes: { [uri]: edits } },
       });
     }
@@ -377,7 +377,7 @@ connection.onExecuteCommand(async (params) => {
 });
 
 connection.onNotification((...args) => {
-  console.log('notified of', args);
+  console.log("notified of", args);
 });
 
 connection.onDocumentLinks((params, cancel) => {

@@ -3,7 +3,7 @@
 // `ProjectsController` permits. Near-identity: the pool already stores
 // divisions in pretext-plus's own shape.
 
-import type { ImportedProject, PlusProjectPayload } from '../types';
+import type { ImportedProject, PlusProjectPayload } from "../types";
 
 /**
  * Client-minted UUID for a new Rails record (the same pattern the plus
@@ -16,9 +16,9 @@ function mintUuid(): string {
   if (cryptoObj?.randomUUID) {
     return cryptoObj.randomUUID();
   }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
 }
@@ -48,7 +48,7 @@ export function serializeProjectToPlusPayload(
     assets: project.assets.map((asset) => ({
       id: mintUuid(),
       ref: asset.ref,
-      kind: 'file' as const,
+      kind: "file" as const,
       fileName: asset.fileName,
       data: asset.data,
     })),

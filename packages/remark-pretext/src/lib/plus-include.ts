@@ -22,12 +22,12 @@
  * itself to a `(kind, attributes)` pair and call the builder.
  */
 
-import type { Element } from 'xast';
+import type { Element } from "xast";
 import type {
   ContainerDirective,
   LeafDirective,
   TextDirective,
-} from 'mdast-util-directive';
+} from "mdast-util-directive";
 
 /** Any of the three remark-directive node shapes (`:x`, `::x`, `:::x`). */
 type DirectiveNode = TextDirective | LeafDirective | ContainerDirective;
@@ -50,7 +50,7 @@ export function plusIncludeElement(
     attrs[key] = value;
   }
   return {
-    type: 'element',
+    type: "element",
     name: `plus:${kind}`,
     attributes: attrs,
     children: [],

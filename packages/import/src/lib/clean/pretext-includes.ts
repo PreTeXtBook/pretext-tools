@@ -5,12 +5,12 @@ const XI_INCLUDE_RE =
   /<xi:include\b[^>]*\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*\/>/g;
 
 function directoryOf(pathName: string): string {
-  const slash = pathName.lastIndexOf('/');
-  return slash >= 0 ? pathName.slice(0, slash) : '';
+  const slash = pathName.lastIndexOf("/");
+  return slash >= 0 ? pathName.slice(0, slash) : "";
 }
 
 function normalizePath(value: string): string {
-  return value.replace(/\\/g, '/').replace(/^\.\//, '');
+  return value.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
 function resolveIncludeTarget(
@@ -40,7 +40,7 @@ function resolveIncludeTarget(
 // Strip the XML prolog (`<?xml ...?>`) and any leading whitespace; included
 // fragments should not introduce a second prolog when inlined.
 function stripXmlProlog(content: string): string {
-  return content.replace(/^\s*<\?xml[^?]*\?>\s*/, '');
+  return content.replace(/^\s*<\?xml[^?]*\?>\s*/, "");
 }
 
 export interface PretextIncludeExpansion {
@@ -67,7 +67,7 @@ export function expandPretextIncludes(
     const output = text.replace(
       XI_INCLUDE_RE,
       (whole: string, dq?: string, sq?: string) => {
-        const requested = dq ?? sq ?? '';
+        const requested = dq ?? sq ?? "";
         const target = resolveIncludeTarget(requested, currentBase, files);
         if (!target) {
           if (!missingIncludes.includes(requested)) {

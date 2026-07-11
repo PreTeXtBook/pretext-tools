@@ -1,6 +1,6 @@
 :root {
   color-scheme: light;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   background: radial-gradient(
     circle at top right,
     #f1f8ff,
@@ -62,7 +62,7 @@ textarea {
   border-radius: 10px;
   background: #ffffff;
   color: #13283f;
-  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-family: "Cascadia Code", "Consolas", monospace;
   font-size: 0.95rem;
   line-height: 1.45;
   padding: 0.9rem;

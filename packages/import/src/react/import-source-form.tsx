@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
-import { convertSourceToPretext } from '../lib/convert';
-import { detectSourceFormat } from '../lib/detect-source-format';
-import type { ConvertedPretextResult, SourceFormat } from '../lib/types';
+import { useMemo, useState } from "react";
+import { convertSourceToPretext } from "../lib/convert";
+import { detectSourceFormat } from "../lib/detect-source-format";
+import type { ConvertedPretextResult, SourceFormat } from "../lib/types";
 
 export interface ImportSourceFormLabels {
   title?: string;
@@ -24,20 +24,20 @@ export interface ImportSourceFormProps {
 }
 
 const DEFAULT_LABELS: Required<ImportSourceFormLabels> = {
-  title: 'Import Source Content',
+  title: "Import Source Content",
   description:
-    'Paste LaTeX, Markdown, or PreTeXt source to convert into PreTeXt.',
-  sourceLabel: 'Source',
-  sourcePlaceholder: 'Paste source content here...',
-  formatLabel: 'Source format',
-  convertButton: 'Convert to PreTeXt',
-  detectedFormatPrefix: 'Detected',
-  successPrefix: 'Ready',
-  errorPrefix: 'Error',
+    "Paste LaTeX, Markdown, or PreTeXt source to convert into PreTeXt.",
+  sourceLabel: "Source",
+  sourcePlaceholder: "Paste source content here...",
+  formatLabel: "Source format",
+  convertButton: "Convert to PreTeXt",
+  detectedFormatPrefix: "Detected",
+  successPrefix: "Ready",
+  errorPrefix: "Error",
 };
 
 export function ImportSourceForm({
-  initialSource = '',
+  initialSource = "",
   initialSourceFormat,
   labels,
   disabled = false,
@@ -49,8 +49,8 @@ export function ImportSourceForm({
   );
 
   const [source, setSource] = useState(initialSource);
-  const [sourceFormat, setSourceFormat] = useState<SourceFormat | 'auto'>(
-    initialSourceFormat ?? 'auto',
+  const [sourceFormat, setSourceFormat] = useState<SourceFormat | "auto">(
+    initialSourceFormat ?? "auto",
   );
   const [lastResult, setLastResult] = useState<ConvertedPretextResult | null>(
     null,
@@ -69,7 +69,7 @@ export function ImportSourceForm({
         event.preventDefault();
         const result = convertSourceToPretext(
           source,
-          sourceFormat === 'auto' ? undefined : sourceFormat,
+          sourceFormat === "auto" ? undefined : sourceFormat,
         );
         setLastResult(result);
         onImport(result);
@@ -96,7 +96,7 @@ export function ImportSourceForm({
             value={sourceFormat}
             onChange={(event) =>
               setSourceFormat(
-                event.currentTarget.value as SourceFormat | 'auto',
+                event.currentTarget.value as SourceFormat | "auto",
               )
             }
           >
@@ -116,7 +116,7 @@ export function ImportSourceForm({
         </button>
 
         {lastResult ? (
-          'pretextError' in lastResult ? (
+          "pretextError" in lastResult ? (
             <p role="alert">
               {text.errorPrefix}: {lastResult.pretextError}
             </p>

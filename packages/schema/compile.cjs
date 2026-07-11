@@ -1,1 +1,1 @@
-module.exports = require('./dist/compile.cjs');
+module.exports = require("./dist/compile.cjs");

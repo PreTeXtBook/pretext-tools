@@ -1,10 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from "react";
 import {
   handleImportUploadFile,
   type ImportProjectOptions,
-} from '../lib/upload';
-import type { DocumentKind } from '../lib/layout/document-kind';
-import type { ImportedProjectResult, UploadStatusMessage } from '../lib/types';
+} from "../lib/upload";
+import type { DocumentKind } from "../lib/layout/document-kind";
+import type { ImportedProjectResult, UploadStatusMessage } from "../lib/types";
 
 export interface ImportUploadPanelLabels {
   title?: string;
@@ -19,25 +19,25 @@ export interface ImportUploadPanelProps {
   labels?: ImportUploadPanelLabels;
   disabled?: boolean;
   /** Default document-kind option presented to the user; user can override. */
-  defaultDocumentKind?: DocumentKind | 'auto';
+  defaultDocumentKind?: DocumentKind | "auto";
   /** When provided, takes precedence — UI controls hidden. */
   importOptions?: ImportProjectOptions;
   onImport: (result: ImportedProjectResult) => void;
 }
 
 const DEFAULT_LABELS: Required<ImportUploadPanelLabels> = {
-  title: 'Upload Source File',
-  hint: 'Supports .tex, .md, .ptx, .xml, .zip, and .tar.gz files.',
-  selectButton: 'Select File',
-  dropHint: 'Drop a file here, or click Select File.',
-  documentKindLabel: 'Document kind',
-  splitSectionsLabel: 'Split each chapter into sections',
+  title: "Upload Source File",
+  hint: "Supports .tex, .md, .ptx, .xml, .zip, and .tar.gz files.",
+  selectButton: "Select File",
+  dropHint: "Drop a file here, or click Select File.",
+  documentKindLabel: "Document kind",
+  splitSectionsLabel: "Split each chapter into sections",
 };
 
 export function ImportUploadPanel({
   labels,
   disabled = false,
-  defaultDocumentKind = 'auto',
+  defaultDocumentKind = "auto",
   importOptions,
   onImport,
 }: ImportUploadPanelProps) {
@@ -53,7 +53,7 @@ export function ImportUploadPanel({
     [],
   );
   const [documentKindChoice, setDocumentKindChoice] = useState<
-    DocumentKind | 'auto'
+    DocumentKind | "auto"
   >(defaultDocumentKind);
   const [splitSections, setSplitSections] = useState(false);
 
@@ -64,7 +64,7 @@ export function ImportUploadPanel({
     try {
       const resolvedOptions: ImportProjectOptions = importOptions ?? {
         documentKind:
-          documentKindChoice === 'auto' ? undefined : documentKindChoice,
+          documentKindChoice === "auto" ? undefined : documentKindChoice,
         splitSections,
       };
       const result = await handleImportUploadFile(file, resolvedOptions);
@@ -88,7 +88,7 @@ export function ImportUploadPanel({
               disabled={isDisabled}
               onChange={(event) =>
                 setDocumentKindChoice(
-                  event.currentTarget.value as DocumentKind | 'auto',
+                  event.currentTarget.value as DocumentKind | "auto",
                 )
               }
             >
@@ -136,7 +136,7 @@ export function ImportUploadPanel({
           disabled={isDisabled}
           onClick={() => fileInputRef.current?.click()}
         >
-          {busy ? 'Processing...' : text.selectButton}
+          {busy ? "Processing..." : text.selectButton}
         </button>
         <input
           ref={fileInputRef}
@@ -149,7 +149,7 @@ export function ImportUploadPanel({
             if (firstFile) {
               void processFile(firstFile);
             }
-            event.currentTarget.value = '';
+            event.currentTarget.value = "";
           }}
         />
       </div>

@@ -19,14 +19,14 @@
 //    .join("\n"));
 //}
 
-import { fromXml } from 'xast-util-from-xml';
-import { toXml } from 'xast-util-to-xml';
-import { SKIP, visit } from 'unist-util-visit';
-import { whitespace } from 'hast-util-whitespace';
-import type { ElementContent, Root, RootContent } from 'xast'; // Import ElementContent type
-import { wrappingInputRule } from '@tiptap/core';
-import type { NodeType } from '@tiptap/pm/model';
-import { KNOWN_TAGS } from './knownTags';
+import { fromXml } from "xast-util-from-xml";
+import { toXml } from "xast-util-to-xml";
+import { SKIP, visit } from "unist-util-visit";
+import { whitespace } from "hast-util-whitespace";
+import type { ElementContent, Root, RootContent } from "xast"; // Import ElementContent type
+import { wrappingInputRule } from "@tiptap/core";
+import type { NodeType } from "@tiptap/pm/model";
+import { KNOWN_TAGS } from "./knownTags";
 //import { useEffect, useState } from "react";
 
 /*
@@ -37,8 +37,8 @@ export function cleanPtx(origXml: string) {
   // Always add the root <ptxdoc> tag to make sure the XML is well-formed.  The visual editor expects exactly this as the root element.
   let xml = origXml.trim();
   // remove xml declaration if present
-  if (xml.startsWith('<?xml')) {
-    const endDecl = xml.indexOf('?>');
+  if (xml.startsWith("<?xml")) {
+    const endDecl = xml.indexOf("?>");
     if (endDecl !== -1) {
       xml = xml.slice(endDecl + 2).trim();
     }
@@ -46,29 +46,29 @@ export function cleanPtx(origXml: string) {
   xml = `<ptxdoc>\n${xml}\n</ptxdoc>`;
   // We use xast to parse the XML into a AST
   const tree = fromXml(xml);
-  console.log('xast before: ', tree);
+  console.log("xast before: ", tree);
   // Visit each node until we find an unknown tag
   visit(tree, (node, index, parent) => {
-    if (node.type === 'element' && !KNOWN_TAGS.includes(node.name)) {
+    if (node.type === "element" && !KNOWN_TAGS.includes(node.name)) {
       // Create a rawptx node whose contents is the sanatized (escaped) xml
       const rawptxNode: ElementContent = {
-        type: 'element',
-        name: 'rawptx',
+        type: "element",
+        name: "rawptx",
         attributes: {},
         children: [
           //{type: "text", value: '\n'},
-          { type: 'text', value: toXml(node) },
+          { type: "text", value: toXml(node) },
           //{type: "text", value: '\n'},
         ],
       };
       // replace the node with the rawptx node
-      if (typeof index !== 'number' || !parent) return;
+      if (typeof index !== "number" || !parent) return;
       parent.children.splice(index, 1, rawptxNode);
       // Stop processing children of this node
       return SKIP;
     }
   });
-  console.log('xast after: ', tree);
+  console.log("xast after: ", tree);
   // Convert the resulting tree back to XML
   const newXml = toXml(tree);
   //console.log("back to xml: ", newXml);
@@ -84,14 +84,14 @@ export function ptxToJson(xml: string) {
 function buildJsonFromTree(tree: Root | RootContent) {
   let ret;
   visit(tree, (node) => {
-    if (node.type === 'root' && node.children) {
+    if (node.type === "root" && node.children) {
       ret = {
-        type: 'ptxFragment',
+        type: "ptxFragment",
         content: node.children
           .filter((child) => buildJsonFromTree(child) !== undefined)
           .map((child) => buildJsonFromTree(child)),
       };
-    } else if (node.type === 'element') {
+    } else if (node.type === "element") {
       ret = {
         type: node.name,
         attrs: node.attributes,
@@ -99,9 +99,9 @@ function buildJsonFromTree(tree: Root | RootContent) {
           .filter((child) => buildJsonFromTree(child) !== undefined)
           .map((child) => buildJsonFromTree(child)),
       };
-    } else if (node.type === 'text' && !whitespace(node)) {
+    } else if (node.type === "text" && !whitespace(node)) {
       ret = {
-        type: 'text',
+        type: "text",
         text: node.value.trim(),
       };
     }
@@ -113,13 +113,13 @@ function buildJsonFromTree(tree: Root | RootContent) {
 export function blockAttributes() {
   return {
     label: {
-      parseHTML: (element: HTMLElement) => element.getAttribute('label'),
+      parseHTML: (element: HTMLElement) => element.getAttribute("label"),
     },
-    'xml:id': {
-      parseHTML: (element: HTMLElement) => element.getAttribute('xml:id'),
+    "xml:id": {
+      parseHTML: (element: HTMLElement) => element.getAttribute("xml:id"),
     },
     component: {
-      parseHTML: (element: HTMLElement) => element.getAttribute('component'),
+      parseHTML: (element: HTMLElement) => element.getAttribute("component"),
     },
   };
 }
@@ -127,15 +127,15 @@ export function blockAttributes() {
 export function generateInputRules(prefix: string, nodeType: NodeType) {
   return [
     wrappingInputRule({
-      find: new RegExp(`^#${prefix}\\s$`, 'i'),
+      find: new RegExp(`^#${prefix}\\s$`, "i"),
       type: nodeType,
     }),
     wrappingInputRule({
-      find: new RegExp(`(?:^)(<${prefix}>(\\s))$`, 'i'),
+      find: new RegExp(`(?:^)(<${prefix}>(\\s))$`, "i"),
       type: nodeType,
     }),
     wrappingInputRule({
-      find: new RegExp(`(?:^)(${prefix}:(\\s))$`, 'i'),
+      find: new RegExp(`(?:^)(${prefix}:(\\s))$`, "i"),
       type: nodeType,
     }),
   ];

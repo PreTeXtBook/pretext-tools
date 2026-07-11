@@ -4,14 +4,14 @@
  * Public API for converting an xast Root (PreTeXt document) to mdast and markdown.
  */
 
-import { toMarkdown } from 'mdast-util-to-markdown';
-import { directiveToMarkdown } from 'mdast-util-directive';
-import { mathToMarkdown } from 'mdast-util-math';
-import type { Root as MdastRoot } from 'mdast';
-import type { ElementContent, Root } from '@pretextbook/ptxast';
-import { ptxastToMdast, findTopLevelDivisionInfo } from './ptxast-to-mdast.js';
+import { toMarkdown } from "mdast-util-to-markdown";
+import { directiveToMarkdown } from "mdast-util-directive";
+import { mathToMarkdown } from "mdast-util-math";
+import type { Root as MdastRoot } from "mdast";
+import type { ElementContent, Root } from "@pretextbook/ptxast";
+import { ptxastToMdast, findTopLevelDivisionInfo } from "./ptxast-to-mdast.js";
 
-export { ptxastToMdast } from './ptxast-to-mdast.js';
+export { ptxastToMdast } from "./ptxast-to-mdast.js";
 
 /**
  * Convert an xast Root (PreTeXt document) to a markdown string using the directive
@@ -33,7 +33,7 @@ export function ptxastToMarkdown(root: Root): string {
   if (!topLevel) return body;
 
   const lines: string[] = [];
-  if (topLevel.name !== 'chapter') lines.push(`division: ${topLevel.name}`);
+  if (topLevel.name !== "chapter") lines.push(`division: ${topLevel.name}`);
   if (topLevel.attributes.xmlid)
     lines.push(`xmlid: ${topLevel.attributes.xmlid}`);
   if (topLevel.attributes.label)
@@ -42,5 +42,5 @@ export function ptxastToMarkdown(root: Root): string {
     lines.push(`component: ${topLevel.attributes.component}`);
   if (lines.length === 0) return body;
 
-  return `---\n${lines.join('\n')}\n---\n\n${body}`;
+  return `---\n${lines.join("\n")}\n---\n\n${body}`;
 }

@@ -2,32 +2,32 @@ import {
   CompletionItem,
   CompletionItemKind,
   InsertTextFormat,
-} from 'vscode-languageserver/node';
+} from "vscode-languageserver/node";
 import {
   CompletionSchema,
   CompletionType,
   GetPretextCompletionsParams,
   ReferenceEntry,
-} from './types';
-import { defaultDevSchema } from './default-dev-schema';
-import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from './constants';
+} from "./types";
+import { defaultDevSchema } from "./default-dev-schema";
+import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from "./constants";
 import {
   getCurrentTag,
   getTextInRange,
   linePrefix,
   rangeInLine,
-} from './utils';
+} from "./utils";
 
 function normalizePath(filePath: string): string {
-  return filePath.replace(/\\/g, '/');
+  return filePath.replace(/\\/g, "/");
 }
 
 function isAbsolutePath(filePath: string): boolean {
-  return filePath.startsWith('/') || /^[A-Za-z]:\//.test(filePath);
+  return filePath.startsWith("/") || /^[A-Za-z]:\//.test(filePath);
 }
 
 function toPathSegments(filePath: string): string[] {
-  return filePath.replace(/\/+$/, '').split('/').filter(Boolean);
+  return filePath.replace(/\/+$/, "").split("/").filter(Boolean);
 }
 
 function toRelativeFilePath(filePath: string, currentFileDir?: string): string {
@@ -66,41 +66,41 @@ function toRelativeFilePath(filePath: string, currentFileDir?: string): string {
 
   const parentSegments = Array.from(
     { length: currentDirSegments.length - commonPrefixLength },
-    () => '..',
+    () => "..",
   );
   const childSegments = fileSegments.slice(commonPrefixLength);
   const relativeSegments = [...parentSegments, ...childSegments];
-  return relativeSegments.join('/');
+  return relativeSegments.join("/");
 }
 
 function withOptionalDotPrefix(filePath: string): string {
   if (
-    filePath.startsWith('./') ||
-    filePath.startsWith('../') ||
-    filePath.startsWith('/') ||
+    filePath.startsWith("./") ||
+    filePath.startsWith("../") ||
+    filePath.startsWith("/") ||
     /^[A-Za-z]:\//.test(filePath)
   ) {
     return filePath;
   }
-  return './' + filePath;
+  return "./" + filePath;
 }
 
 export function getCompletionType(
   text: string,
-  position: GetPretextCompletionsParams['position'],
+  position: GetPretextCompletionsParams["position"],
 ): CompletionType {
   const prefix = linePrefix(text, position);
   const match = prefix.match(/<[^>/]+$/);
   if (match) {
     if (match[0].match(/<xref ref="[^"]*$/)) {
-      return 'ref';
+      return "ref";
     }
     if (match[0].match(/(href|source)="[^"]*$/)) {
-      return 'file';
+      return "file";
     }
-    return 'attribute';
+    return "attribute";
   }
-  return 'element';
+  return "element";
 }
 
 export async function getPretextCompletions(
@@ -111,7 +111,7 @@ export async function getPretextCompletions(
   const completionType = getCompletionType(text, position);
   let completionItems: CompletionItem[] = [];
 
-  if (completionType === 'file') {
+  if (completionType === "file") {
     const files = params.sourceFiles || [];
     const labels = new Set<string>();
     completionItems = files.flatMap((f) => {
@@ -131,7 +131,7 @@ export async function getPretextCompletions(
     return completionItems;
   }
 
-  if (completionType === 'ref') {
+  if (completionType === "ref") {
     completionItems = getRefCompletions(params.references || []);
     return completionItems;
   }
@@ -139,15 +139,15 @@ export async function getPretextCompletions(
   const charsBefore = getTextInRange(text, rangeInLine(position, -2, 0));
   if (
     charsBefore.length !== 0 &&
-    !charsBefore.includes(' ') &&
-    !charsBefore.includes('\t')
+    !charsBefore.includes(" ") &&
+    !charsBefore.includes("\t")
   ) {
     return null;
   }
 
-  if (completionType === 'attribute') {
+  if (completionType === "attribute") {
     completionItems = getAttributeCompletions(params, schema);
-  } else if (completionType === 'element') {
+  } else if (completionType === "element") {
     completionItems = getElementCompletions(params, schema);
   }
 
@@ -158,15 +158,15 @@ function getRefCompletions(references: ReferenceEntry[]): CompletionItem[] {
   return references.map(([reference, parent]) => ({
     label: reference,
     kind: CompletionItemKind.Reference,
-    documentation: '(a ' + parent + ')',
-    detail: '(reference to ' + parent + ')',
-    sortText: '0' + reference,
+    documentation: "(a " + parent + ")",
+    detail: "(reference to " + parent + ")",
+    sortText: "0" + reference,
   }));
 }
 
 function getAttributeCompletions(
   params: GetPretextCompletionsParams,
-  schema: NonNullable<GetPretextCompletionsParams['schema']>,
+  schema: NonNullable<GetPretextCompletionsParams["schema"]>,
 ): CompletionItem[] {
   const { text, position } = params;
   const prefix = linePrefix(text, position);
@@ -175,13 +175,13 @@ function getAttributeCompletions(
     return [];
   }
 
-  const element = match[0].slice(1, match[0].indexOf(' '));
+  const element = match[0].slice(1, match[0].indexOf(" "));
   if (!schema.elementChildren[element]?.attributes) {
     return [];
   }
 
   const range =
-    getTextInRange(text, rangeInLine(position, -1, 0)) === '@'
+    getTextInRange(text, rangeInLine(position, -1, 0)) === "@"
       ? rangeInLine(position, -1, 0)
       : rangeInLine(position);
 
@@ -202,7 +202,7 @@ function getAttributeCompletions(
     }
 
     return {
-      label: '@' + attr,
+      label: "@" + attr,
       kind: CompletionItemKind.TypeParameter,
       insertTextFormat: InsertTextFormat.Snippet,
       textEdit: {
@@ -215,7 +215,7 @@ function getAttributeCompletions(
 
 function getElementCompletions(
   params: GetPretextCompletionsParams,
-  schema: NonNullable<GetPretextCompletionsParams['schema']>,
+  schema: NonNullable<GetPretextCompletionsParams["schema"]>,
 ): CompletionItem[] {
   const { text, position } = params;
   const element = getCurrentTag(text, position);
@@ -225,7 +225,7 @@ function getElementCompletions(
   }
 
   const range =
-    getTextInRange(text, rangeInLine(position, -1, 0)) === '<'
+    getTextInRange(text, rangeInLine(position, -1, 0)) === "<"
       ? rangeInLine(position, -1, 0)
       : rangeInLine(position);
 
@@ -247,20 +247,20 @@ function getElementCompletions(
       });
     } else {
       completionItems.push({
-        label: '<' + elem,
+        label: "<" + elem,
         kind: CompletionItemKind.TypeParameter,
         insertTextFormat: InsertTextFormat.Snippet,
         textEdit: {
           newText: `<${elem}>$1</${elem}>$0`,
           range,
         },
-        documentation: 'Generic implementation for element ' + elem,
+        documentation: "Generic implementation for element " + elem,
       });
     }
   }
 
   completionItems.push({
-    label: '</' + element,
+    label: "</" + element,
     kind: CompletionItemKind.TypeParameter,
     insertTextFormat: InsertTextFormat.Snippet,
     textEdit: {

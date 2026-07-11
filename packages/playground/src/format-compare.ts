@@ -1,4 +1,4 @@
-import { formatPretext } from '@pretextbook/format';
+import { formatPretext } from "@pretextbook/format";
 
 // ─── Sample input ─────────────────────────────────────────────────────────────
 
@@ -10,15 +10,15 @@ def hello():
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 
-const inputEl = document.getElementById('input') as HTMLTextAreaElement;
-const outEl = document.getElementById('output') as HTMLPreElement;
+const inputEl = document.getElementById("input") as HTMLTextAreaElement;
+const outEl = document.getElementById("output") as HTMLPreElement;
 
-const blankLinesEl = document.getElementById('blankLines') as HTMLSelectElement;
-const printWidthEl = document.getElementById('printWidth') as HTMLInputElement;
-const tabSizeEl = document.getElementById('tabSize') as HTMLInputElement;
-const useTabsEl = document.getElementById('useTabs') as HTMLInputElement;
+const blankLinesEl = document.getElementById("blankLines") as HTMLSelectElement;
+const printWidthEl = document.getElementById("printWidth") as HTMLInputElement;
+const tabSizeEl = document.getElementById("tabSize") as HTMLInputElement;
+const useTabsEl = document.getElementById("useTabs") as HTMLInputElement;
 const breakSentencesEl = document.getElementById(
-  'breakSentences',
+  "breakSentences",
 ) as HTMLInputElement;
 
 // ─── Main update loop ─────────────────────────────────────────────────────────
@@ -27,7 +27,7 @@ function update(): void {
   const text = inputEl.value;
   const parsedWidth = parseInt(printWidthEl.value, 10);
   const options = {
-    breakLines: blankLinesEl.value as 'few' | 'some' | 'many',
+    breakLines: blankLinesEl.value as "few" | "some" | "many",
     // Don't use || here: 0 is a valid sentinel meaning "no width limit".
     printWidth: Number.isNaN(parsedWidth) ? undefined : parsedWidth,
     tabSize: parseInt(tabSizeEl.value, 10) || 2,
@@ -57,20 +57,20 @@ const debouncedUpdate = debounce(update, 250);
 
 // ─── Event wiring ─────────────────────────────────────────────────────────────
 
-inputEl.addEventListener('input', debouncedUpdate);
-blankLinesEl.addEventListener('change', update);
-printWidthEl.addEventListener('input', debouncedUpdate);
-tabSizeEl.addEventListener('input', debouncedUpdate);
-useTabsEl.addEventListener('change', update);
-breakSentencesEl.addEventListener('change', update);
+inputEl.addEventListener("input", debouncedUpdate);
+blankLinesEl.addEventListener("change", update);
+printWidthEl.addEventListener("input", debouncedUpdate);
+tabSizeEl.addEventListener("input", debouncedUpdate);
+useTabsEl.addEventListener("change", update);
+breakSentencesEl.addEventListener("change", update);
 
-inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Tab') {
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") {
     e.preventDefault();
     const s = inputEl.selectionStart;
     const end = inputEl.selectionEnd;
     inputEl.value =
-      inputEl.value.substring(0, s) + '  ' + inputEl.value.substring(end);
+      inputEl.value.substring(0, s) + "  " + inputEl.value.substring(end);
     inputEl.selectionStart = inputEl.selectionEnd = s + 2;
     debouncedUpdate();
   }

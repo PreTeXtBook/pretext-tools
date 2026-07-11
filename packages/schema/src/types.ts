@@ -3,7 +3,7 @@ import type {
   CompletionItem,
   Range,
   Position,
-} from 'vscode-languageserver-types';
+} from "vscode-languageserver-types";
 
 export type { Diagnostic, CompletionItem, Range, Position };
 
@@ -21,19 +21,19 @@ export interface Grammar {
  * Rule predicates and message templates key off this.
  */
 export type SchemaErrorKind =
-  | 'element-not-allowed'
-  | 'attribute-not-allowed'
-  | 'attribute-value-invalid'
-  | 'choice-not-satisfied'
-  | 'text-not-allowed'
-  | 'unexpected-end'
-  | 'xinclude-missing'
-  | 'xinclude-circular'
-  | 'well-formedness'
-  | 'duplicate-id'
-  | 'duplicate-label'
-  | 'dangling-reference'
-  | 'other';
+  | "element-not-allowed"
+  | "attribute-not-allowed"
+  | "attribute-value-invalid"
+  | "choice-not-satisfied"
+  | "text-not-allowed"
+  | "unexpected-end"
+  | "xinclude-missing"
+  | "xinclude-circular"
+  | "well-formedness"
+  | "duplicate-id"
+  | "duplicate-label"
+  | "dangling-reference"
+  | "other";
 
 /**
  * A normalized validation error, produced before rule/severity/message

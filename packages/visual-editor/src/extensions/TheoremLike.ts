@@ -1,22 +1,22 @@
-import { Extension, Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { Extension, Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import {
   TheoremLikeComponent,
   ProofComponent,
-} from '../components/TheoremLike';
-import { blockAttributes, generateInputRules } from '../utils';
+} from "../components/TheoremLike";
+import { blockAttributes, generateInputRules } from "../utils";
 
 const TheoremLikeElements = [
-  'theorem',
-  'lemma',
-  'corollary',
-  'proposition',
-  'claim',
-  'fact',
+  "theorem",
+  "lemma",
+  "corollary",
+  "proposition",
+  "claim",
+  "fact",
 ];
 
 const TheoremLike = Extension.create({
-  name: 'theoremLike',
+  name: "theoremLike",
 
   addExtensions() {
     const array = [];
@@ -24,8 +24,8 @@ const TheoremLike = Extension.create({
       array.push(
         Node.create({
           name: element,
-          content: 'title? statement proof*',
-          group: 'block theoremLike',
+          content: "title? statement proof*",
+          group: "block theoremLike",
           selectable: true,
           draggable: true,
           defining: false,
@@ -42,7 +42,7 @@ const TheoremLike = Extension.create({
 
           renderHTML({ HTMLAttributes }) {
             return [
-              'article',
+              "article",
               mergeAttributes(
                 { class: `${element} theorem-like`, ptxtag: element },
                 HTMLAttributes, // Include all attributes from the node
@@ -62,19 +62,19 @@ const TheoremLike = Extension.create({
     // Add proof node
     array.push(
       Node.create({
-        name: 'proof',
-        content: 'title? BasicBlock+',
-        group: 'block',
+        name: "proof",
+        content: "title? BasicBlock+",
+        group: "block",
         selectable: true,
         draggable: true,
         parseHTML() {
-          return [{ tag: 'proof' }];
+          return [{ tag: "proof" }];
         },
         renderHTML({ HTMLAttributes }) {
           return [
-            'article',
+            "article",
             mergeAttributes(
-              { class: 'proof', ptxtag: 'proof' },
+              { class: "proof", ptxtag: "proof" },
               HTMLAttributes, // Include all attributes from the node
             ),
             0,
@@ -84,7 +84,7 @@ const TheoremLike = Extension.create({
           return ReactNodeViewRenderer(ProofComponent);
         },
         addInputRules() {
-          return generateInputRules('proof', this.type);
+          return generateInputRules("proof", this.type);
         },
       }),
     );

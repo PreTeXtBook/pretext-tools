@@ -1,1 +1,1 @@
-export * from './lib/latex-pretext';
+export * from "./lib/latex-pretext";

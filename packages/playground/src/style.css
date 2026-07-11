@@ -22,7 +22,7 @@
   --pane-hdr: 36px;
   --split: 50%;
   font-family:
-    ui-monospace, 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    ui-monospace, "Cascadia Code", "Fira Code", "Consolas", monospace;
   font-size: 14px;
   color: var(--text);
   background: var(--bg);

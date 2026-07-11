@@ -1,18 +1,18 @@
-import { Node } from '@tiptap/core';
-import { generateInputRules } from '../utils';
+import { Node } from "@tiptap/core";
+import { generateInputRules } from "../utils";
 
 const Statement = Node.create({
-  name: 'statement',
-  content: 'BasicBlock+',
-  group: 'blockContent',
+  name: "statement",
+  content: "BasicBlock+",
+  group: "blockContent",
   parseHTML() {
-    return [{ tag: 'statement' }];
+    return [{ tag: "statement" }];
   },
   renderHTML() {
-    return ['div', { class: 'statement', ptxtag: 'statement' }, 0];
+    return ["div", { class: "statement", ptxtag: "statement" }, 0];
   },
   addInputRules() {
-    return generateInputRules('statement', this.type);
+    return generateInputRules("statement", this.type);
   },
 });
 

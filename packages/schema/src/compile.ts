@@ -1,8 +1,8 @@
-import { convertRNGToPattern, writeTreeToJSON } from 'salve-annos';
-import { createRequire } from 'module';
-import { pathToFileURL } from 'url';
-import { loadGrammarFromJSON } from './grammar';
-import type { Grammar } from './types';
+import { convertRNGToPattern, writeTreeToJSON } from "salve-annos";
+import { createRequire } from "module";
+import { pathToFileURL } from "url";
+import { loadGrammarFromJSON } from "./grammar";
+import type { Grammar } from "./types";
 
 /**
  * NOTE: This module imports salve's RNG-conversion machinery, which depends on
@@ -21,10 +21,10 @@ import type { Grammar } from './types';
 {
   const _require = createRequire(import.meta.url);
   const internal = _require(
-    'salve-annos/lib/salve/conversion/schema-simplifiers/internal.js',
+    "salve-annos/lib/salve/conversion/schema-simplifiers/internal.js",
   ) as { InternalSimplifier: { prototype: { parse: Function } } };
   const origParse = internal.InternalSimplifier.prototype.parse;
-  if (origParse.name !== 'patchedParse') {
+  if (origParse.name !== "patchedParse") {
     internal.InternalSimplifier.prototype.parse = async function patchedParse(
       filePath: URL,
       schemaResource: unknown,

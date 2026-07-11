@@ -1,15 +1,15 @@
-import { Extension, Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
+import { Extension, Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
 import {
   TheoremLikeComponent,
   ProofComponent,
-} from '../components/TheoremLike';
-import { generateInputRules } from '../utils';
+} from "../components/TheoremLike";
+import { generateInputRules } from "../utils";
 
-const ExampleLikeElements = ['example', 'question', 'problem'];
+const ExampleLikeElements = ["example", "question", "problem"];
 
 const ExampleLike = Extension.create({
-  name: 'exampleLike',
+  name: "exampleLike",
 
   addExtensions() {
     const array = [];
@@ -17,8 +17,8 @@ const ExampleLike = Extension.create({
       array.push(
         Node.create({
           name: element,
-          content: 'title? (BasicBlock*|(statement hint* answer* solution*))',
-          group: 'block exampleLike',
+          content: "title? (BasicBlock*|(statement hint* answer* solution*))",
+          group: "block exampleLike",
           selectable: true,
           draggable: true,
           defining: false,
@@ -32,20 +32,20 @@ const ExampleLike = Extension.create({
           addAttributes() {
             return {
               label: {
-                parseHTML: (element) => element.getAttribute('label'),
+                parseHTML: (element) => element.getAttribute("label"),
               },
-              'xml:id': {
-                parseHTML: (element) => element.getAttribute('xml:id'),
+              "xml:id": {
+                parseHTML: (element) => element.getAttribute("xml:id"),
               },
               component: {
-                parseHTML: (element) => element.getAttribute('component'),
+                parseHTML: (element) => element.getAttribute("component"),
               },
             };
           },
 
           renderHTML({ HTMLAttributes }) {
             return [
-              'article',
+              "article",
               mergeAttributes(
                 { class: `${element} theorem-like`, ptxtag: element },
                 HTMLAttributes, // Include all attributes from the node
@@ -63,12 +63,12 @@ const ExampleLike = Extension.create({
     }
 
     // Add hint/answer/solution node
-    for (const element of ['hint', 'answer', 'solution']) {
+    for (const element of ["hint", "answer", "solution"]) {
       array.push(
         Node.create({
           name: element,
-          content: 'title? BasicBlock+',
-          group: 'block solutionLike',
+          content: "title? BasicBlock+",
+          group: "block solutionLike",
           selectable: true,
           draggable: true,
           defining: false,
@@ -82,22 +82,22 @@ const ExampleLike = Extension.create({
           addAttributes() {
             return {
               label: {
-                parseHTML: (element) => element.getAttribute('label'),
+                parseHTML: (element) => element.getAttribute("label"),
               },
-              'xml:id': {
-                parseHTML: (element) => element.getAttribute('xml:id'),
+              "xml:id": {
+                parseHTML: (element) => element.getAttribute("xml:id"),
               },
               component: {
-                parseHTML: (element) => element.getAttribute('component'),
+                parseHTML: (element) => element.getAttribute("component"),
               },
             };
           },
 
           renderHTML({ HTMLAttributes }) {
             return [
-              'article',
+              "article",
               mergeAttributes(
-                { class: 'proof', ptxtag: 'proof' },
+                { class: "proof", ptxtag: "proof" },
                 HTMLAttributes, // Include all attributes from the node
               ),
               0,
@@ -107,7 +107,7 @@ const ExampleLike = Extension.create({
             return ReactNodeViewRenderer(ProofComponent);
           },
           addInputRules() {
-            return generateInputRules('proof', this.type);
+            return generateInputRules("proof", this.type);
           },
         }),
       );

@@ -5,20 +5,20 @@
  */
 
 export type DivisionType =
-  | 'part'
-  | 'chapter'
-  | 'section'
-  | 'subsection'
-  | 'subsubsection'
-  | 'paragraphs';
+  | "part"
+  | "chapter"
+  | "section"
+  | "subsection"
+  | "subsubsection"
+  | "paragraphs";
 
 export const DIVISION_HIERARCHY: readonly DivisionType[] = [
-  'part',
-  'chapter',
-  'section',
-  'subsection',
-  'subsubsection',
-  'paragraphs',
+  "part",
+  "chapter",
+  "section",
+  "subsection",
+  "subsubsection",
+  "paragraphs",
 ];
 
 export function isDivisionType(value: string): value is DivisionType {
@@ -35,30 +35,30 @@ export function isDivisionType(value: string): value is DivisionType {
  * schema, so deeper headings inside them become `paragraphs` divisions.
  */
 export type ExtraDivisionType =
-  | 'worksheet'
-  | 'exercises'
-  | 'references'
-  | 'appendix'
-  | 'glossary'
-  | 'handout'
-  | 'solutions'
-  | 'reading-questions'
-  | 'introduction'
-  | 'conclusion'
-  | 'slide';
+  | "worksheet"
+  | "exercises"
+  | "references"
+  | "appendix"
+  | "glossary"
+  | "handout"
+  | "solutions"
+  | "reading-questions"
+  | "introduction"
+  | "conclusion"
+  | "slide";
 
 export const EXTRA_DIVISION_TYPES: readonly ExtraDivisionType[] = [
-  'worksheet',
-  'exercises',
-  'references',
-  'appendix',
-  'glossary',
-  'handout',
-  'solutions',
-  'reading-questions',
-  'introduction',
-  'conclusion',
-  'slide',
+  "worksheet",
+  "exercises",
+  "references",
+  "appendix",
+  "glossary",
+  "handout",
+  "solutions",
+  "reading-questions",
+  "introduction",
+  "conclusion",
+  "slide",
 ];
 
 export function isExtraDivisionType(value: string): value is ExtraDivisionType {
@@ -71,11 +71,11 @@ export function isExtraDivisionType(value: string): value is ExtraDivisionType {
  * division. Every heading depth inside one of these resolves to `paragraphs`
  * (there's no title slot for the division itself to consume).
  */
-export type TitlelessDivisionType = 'introduction' | 'conclusion';
+export type TitlelessDivisionType = "introduction" | "conclusion";
 
 export const TITLELESS_DIVISION_TYPES: readonly TitlelessDivisionType[] = [
-  'introduction',
-  'conclusion',
+  "introduction",
+  "conclusion",
 ];
 
 export function isTitlelessDivisionType(
@@ -107,11 +107,11 @@ export function divisionTypeAtRelativeDepth(
   topLevel: TopLevelDivisionType,
   depth: number,
 ): DivisionType | ExtraDivisionType {
-  if (isTitlelessDivisionType(topLevel)) return 'paragraphs';
+  if (isTitlelessDivisionType(topLevel)) return "paragraphs";
   if (depth <= 1) return topLevel;
-  if (topLevel === 'appendix')
-    return divisionTypeAtRelativeDepth('chapter', depth);
-  if (isExtraDivisionType(topLevel)) return 'paragraphs';
+  if (topLevel === "appendix")
+    return divisionTypeAtRelativeDepth("chapter", depth);
+  if (isExtraDivisionType(topLevel)) return "paragraphs";
 
   const startIndex = DIVISION_HIERARCHY.indexOf(topLevel);
   const index = startIndex + (depth - 1);
@@ -124,12 +124,12 @@ export function divisionTypeAtRelativeDepth(
  * depth: they wrap the whole document, and a depth-1 heading (`#`) becomes
  * their outermost *child* division (see `rootChildDivision`).
  */
-export type RootDivisionType = 'article' | 'book' | 'slideshow';
+export type RootDivisionType = "article" | "book" | "slideshow";
 
 export const ROOT_DIVISION_TYPES: readonly RootDivisionType[] = [
-  'article',
-  'book',
-  'slideshow',
+  "article",
+  "book",
+  "slideshow",
 ];
 
 export function isRootDivisionType(value: string): value is RootDivisionType {
@@ -157,9 +157,9 @@ export function rootChildDivision(
  * `section` → `subsection` chain of `DIVISION_HIERARCHY`.)
  */
 const SLIDESHOW_HIERARCHY: readonly (DivisionType | ExtraDivisionType)[] = [
-  'section',
-  'slide',
-  'paragraphs',
+  "section",
+  "slide",
+  "paragraphs",
 ];
 
 /**
@@ -172,10 +172,10 @@ export function divisionTypeAtRootDepth(
   root: RootDivisionType,
   depth: number,
 ): DivisionType | ExtraDivisionType {
-  if (root === 'slideshow') {
+  if (root === "slideshow") {
     const index = Math.max(0, depth - 1);
     return SLIDESHOW_HIERARCHY[Math.min(index, SLIDESHOW_HIERARCHY.length - 1)];
   }
-  const child = root === 'book' ? 'chapter' : 'section';
+  const child = root === "book" ? "chapter" : "section";
   return divisionTypeAtRelativeDepth(child, depth);
 }

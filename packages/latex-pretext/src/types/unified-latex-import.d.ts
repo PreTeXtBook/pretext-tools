@@ -1,4 +1,4 @@
-declare module '@unified-latex/unified-latex' {
+declare module "@unified-latex/unified-latex" {
   export type UnifiedProcessor = {
     use: (...args: unknown[]) => UnifiedProcessor;
     processSync: (input: { value: string }) => unknown;

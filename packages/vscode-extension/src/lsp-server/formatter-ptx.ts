@@ -4,10 +4,10 @@ import {
   DocumentRangeFormattingParams,
   Range,
   TextEdit,
-} from 'vscode-languageserver/node';
-import { documents } from './state';
-import { globalSettings } from './main';
-import { formatPretext } from '@pretextbook/format';
+} from "vscode-languageserver/node";
+import { documents } from "./state";
+import { globalSettings } from "./main";
+import { formatPretext } from "@pretextbook/format";
 
 function getOptions(editorOptions?: {
   tabSize: number;
@@ -38,12 +38,12 @@ export async function formatDocument(
     end: doc.positionAt(origText.length),
   };
 
-  console.log('formatting with pretext-tools formatter.');
+  console.log("formatting with pretext-tools formatter.");
   try {
     let formatted = formatPretext(origText, getOptions(params.options));
     return [{ newText: formatted, range: replacementRange }];
   } catch (e) {
-    console.log('Could not format document', e);
+    console.log("Could not format document", e);
   }
 
   return null;
@@ -59,10 +59,10 @@ export async function formatRange(
   }
   const origText = doc.getText();
   const range = params.range;
-  console.log('formatting with pretext-tools formatter.');
+  console.log("formatting with pretext-tools formatter.");
 
   try {
-    console.log('range is', range);
+    console.log("range is", range);
     const rangeSlice = origText.slice(
       doc.offsetAt(range.start),
       doc.offsetAt(range.end),
@@ -71,10 +71,10 @@ export async function formatRange(
       origText.slice(doc.offsetAt(range.start), doc.offsetAt(range.end)),
     );
     let formatted = formatPretext(rangeSlice, getOptions(params.options));
-    console.log('formatted', formatted);
+    console.log("formatted", formatted);
     return [{ newText: formatted, range }];
   } catch (e) {
-    console.log('Could not format range', e);
+    console.log("Could not format range", e);
   }
   return null;
 }
@@ -83,15 +83,15 @@ export async function formatText(params: {
   text: string;
 }): Promise<string | null> {
   const origText = params.text;
-  console.log('formatting with pretext-tools formatter.');
+  console.log("formatting with pretext-tools formatter.");
 
   try {
     console.log(`formatting: ${origText}`);
     let formatted = formatPretext(origText, getOptions());
-    console.log('formatted', formatted);
+    console.log("formatted", formatted);
     return formatted;
   } catch (e) {
-    console.log('Could not format range', e);
+    console.log("Could not format range", e);
   }
   return null;
 }

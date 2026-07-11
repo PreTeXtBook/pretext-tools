@@ -1,28 +1,28 @@
-import { visit, EXIT } from 'unist-util-visit';
+import { visit, EXIT } from "unist-util-visit";
 import {
   DocumentLink,
   DocumentSymbol,
   SymbolKind,
-} from 'vscode-languageserver/node';
-import { toString } from 'xast-util-to-string';
+} from "vscode-languageserver/node";
+import { toString } from "xast-util-to-string";
 import {
   isElement,
   positionOfSubstring,
   unifiedPositionToLspPosition,
-} from '../../parse/utils';
-import { getDocumentInfo } from '../state';
-import { Element } from 'xast';
+} from "../../parse/utils";
+import { getDocumentInfo } from "../state";
+import { Element } from "xast";
 
-type Position = Element['position'];
+type Position = Element["position"];
 
-const LINK_CONTENT_NODES = new Set(['xsl', 'source', 'publication']);
+const LINK_CONTENT_NODES = new Set(["xsl", "source", "publication"]);
 
 function findLinkPosition(node: Element): Position {
   const textNode = node.children[0];
   if (
     node.children.length !== 1 ||
     !textNode ||
-    textNode.type !== 'text' ||
+    textNode.type !== "text" ||
     !textNode.position
   ) {
     return node.position;
@@ -44,7 +44,7 @@ function findLinkPosition(node: Element): Position {
 export async function getProjectPtxLinks(uri: string): Promise<DocumentLink[]> {
   const info = getDocumentInfo(uri);
   if (!info) {
-    console.warn('Requested project symbols for uninitialized file', uri);
+    console.warn("Requested project symbols for uninitialized file", uri);
     return [];
   }
   const ast = await info.ast;
@@ -67,7 +67,7 @@ export async function getProjectPtxLinks(uri: string): Promise<DocumentLink[]> {
   // We convert into DocumentSymbol type.
   return links.map((n) => ({
     range: unifiedPositionToLspPosition(findLinkPosition(n)),
-    target: '' + new URL(toString(n), uri),
+    target: "" + new URL(toString(n), uri),
     tooltip: `${n.name} file at ${toString(n)}`,
   }));
 }

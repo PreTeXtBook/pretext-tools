@@ -4,15 +4,15 @@ import {
   StatusBarItem,
   Terminal,
   window,
-} from 'vscode';
-import { updateStatusBarItem } from './utils';
-import { ptxCommandList } from './constants';
-import { resetProjectList } from './project';
-import { Target } from './types';
+} from "vscode";
+import { updateStatusBarItem } from "./utils";
+import { ptxCommandList } from "./constants";
+import { resetProjectList } from "./project";
+import { Target } from "./types";
 
 export const pretextOutputChannel: OutputChannel = window.createOutputChannel(
-  'PreTeXt Tools',
-  'log',
+  "PreTeXt Tools",
+  "log",
 );
 export const ptxSBItem: StatusBarItem = window.createStatusBarItem(
   StatusBarAlignment.Left,
@@ -25,8 +25,8 @@ export function showLog() {
 }
 
 export function refreshProjects() {
-  pretextOutputChannel.append('Refreshing project/target list.');
-  console.log('Refreshing project/target list.');
+  pretextOutputChannel.append("Refreshing project/target list.");
+  console.log("Refreshing project/target list.");
   //reset projects:
   resetProjectList();
 }
@@ -37,14 +37,14 @@ export let pretextCommandList = ptxCommandList;
 
 export function setTopCommand(command: string) {
   pretextCommandList[0].label = command;
-  pretextCommandList[0].description = '';
+  pretextCommandList[0].description = "";
 }
 
 export let lastTarget: Target = {
-  name: '',
-  path: '',
+  name: "",
+  path: "",
   standalone: false,
-  filename: '',
+  filename: "",
 };
 
 export function updateLastTarget(target: Target) {

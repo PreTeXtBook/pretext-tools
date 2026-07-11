@@ -1,31 +1,31 @@
-import { commands, extensions, ViewColumn, window, workspace } from 'vscode';
-import * as utils from '../utils';
-import { pretextOutputChannel, pretextTerminal, ptxSBItem } from '../ui';
+import { commands, extensions, ViewColumn, window, workspace } from "vscode";
+import * as utils from "../utils";
+import { pretextOutputChannel, pretextTerminal, ptxSBItem } from "../ui";
 
-import { cli } from '../cli';
-import { spawn } from 'child_process';
-import { ensureProjectList, projectTargetList } from '../project';
+import { cli } from "../cli";
+import { spawn } from "child_process";
+import { ensureProjectList, projectTargetList } from "../project";
 
 export function cmdView(runInTerminal: boolean = false) {
   const selectedViewMethod: string =
-    workspace.getConfiguration('pretext-tools').get('viewMethod') || 'Ask';
+    workspace.getConfiguration("pretext-tools").get("viewMethod") || "Ask";
   // Create and use a quick-select box if user has not set a configuration for view:
-  if (selectedViewMethod === 'Ask') {
+  if (selectedViewMethod === "Ask") {
     let viewMethods = [];
     // Live Preview is always available as the first option
     viewMethods.push({
-      label: 'Live Preview (side-by-side)',
-      command: 'pretext-tools.livePreview',
+      label: "Live Preview (side-by-side)",
+      command: "pretext-tools.livePreview",
     });
-    if (extensions.getExtension('CodeChat.codechat')) {
+    if (extensions.getExtension("CodeChat.codechat")) {
       viewMethods.push({
-        label: 'Use CodeChat',
-        command: 'pretext-tools.viewCodeChat',
+        label: "Use CodeChat",
+        command: "pretext-tools.viewCodeChat",
       });
     }
     viewMethods.push({
       label: "Use PreTeXt's view command (external browser)",
-      command: 'pretext-tools.viewCLI',
+      command: "pretext-tools.viewCLI",
     });
     window.showQuickPick(viewMethods).then((qpSelection) => {
       if (!qpSelection) {
@@ -33,16 +33,16 @@ export function cmdView(runInTerminal: boolean = false) {
       }
       commands.executeCommand(qpSelection.command);
     });
-  } else if (selectedViewMethod === 'Live Preview') {
-    commands.executeCommand('pretext-tools.livePreview');
+  } else if (selectedViewMethod === "Live Preview") {
+    commands.executeCommand("pretext-tools.livePreview");
   } else {
     // otherwise honor the users setting choice.
     switch (selectedViewMethod) {
-      case 'CodeChat':
-        commands.executeCommand('pretext-tools.viewCodeChat');
+      case "CodeChat":
+        commands.executeCommand("pretext-tools.viewCodeChat");
         break;
-      case 'PreTeXT-CLI View':
-        commands.executeCommand('pretext-tools.viewCLI', runInTerminal);
+      case "PreTeXT-CLI View":
+        commands.executeCommand("pretext-tools.viewCLI", runInTerminal);
         break;
     }
   }
@@ -59,9 +59,9 @@ export function cmdViewCLI(runInTerminal: boolean = false) {
     const isCodespace = !!process.env.CODESPACES;
     if (runInTerminal || isCodespace) {
       let terminal = utils.setupTerminal(pretextTerminal);
-      terminal.sendText('pretext view ' + qpSelection.label);
+      terminal.sendText("pretext view " + qpSelection.label);
     } else {
-      console.log('Viewing ' + qpSelection.label);
+      console.log("Viewing " + qpSelection.label);
       runView(qpSelection.label, qpSelection.description);
     }
     // Move selected target to front of list for next command.
@@ -72,8 +72,8 @@ export function cmdViewCLI(runInTerminal: boolean = false) {
 }
 
 export function cmdViewCodeChat() {
-  if (extensions.getExtension('CodeChat.codechat')) {
-    commands.executeCommand('extension.codeChatActivate');
+  if (extensions.getExtension("CodeChat.codechat")) {
+    commands.executeCommand("extension.codeChatActivate");
   } else {
     window.showErrorMessage(
       "Unable to start CodeChat preview.  Is the 'CodeChat' extension and CodeChat_Server (through pip) installed?",
@@ -83,60 +83,60 @@ export function cmdViewCodeChat() {
 
 // The main function to run pretext commands:
 function runView(target: string, projectPath: string): void {
-  let fullCommand = cli.cmd() + ' view ' + target;
-  let status = 'ready'; //for statusbaritem
+  let fullCommand = cli.cmd() + " view " + target;
+  let status = "ready"; //for statusbaritem
   let capturedOutput: string[] = [];
   let capturedErrors: string[] = [];
   pretextOutputChannel.clear();
-  pretextOutputChannel.appendLine('\n\nNow running `' + fullCommand + '`...');
+  pretextOutputChannel.appendLine("\n\nNow running `" + fullCommand + "`...");
   const ptxRun = spawn(fullCommand, [], {
     cwd: projectPath,
     shell: true,
   });
-  ptxRun.stdout.on('data', function (data) {
+  ptxRun.stdout.on("data", function (data) {
     console.log(`stdout: ${data}`);
     data = utils.stripColorCodes(data.toString());
     pretextOutputChannel.appendLine(`${data}`);
     pretextOutputChannel.append(
-      '(this local server will remain running until you close vs-code)\n',
+      "(this local server will remain running until you close vs-code)\n",
     );
     capturedOutput.push(data);
-    console.log('Using view. Status should change back');
-    utils.updateStatusBarItem(ptxSBItem, 'success');
+    console.log("Using view. Status should change back");
+    utils.updateStatusBarItem(ptxSBItem, "success");
   });
-  ptxRun.stderr.on('data', function (data) {
+  ptxRun.stderr.on("data", function (data) {
     console.log(`stderr: ${data}`);
     data = utils.stripColorCodes(data.toString());
     capturedErrors.push(data);
   });
 
-  ptxRun.on('close', function (code) {
+  ptxRun.on("close", function (code) {
     console.log(code);
     if (ptxRun.killed) {
-      pretextOutputChannel.appendLine('...PreTeXt command terminated early.');
-      console.log('Process killed');
+      pretextOutputChannel.appendLine("...PreTeXt command terminated early.");
+      console.log("Process killed");
     } else {
-      pretextOutputChannel.appendLine('...PreTeXt command finished.');
+      pretextOutputChannel.appendLine("...PreTeXt command finished.");
     }
     if (code === 1) {
-      console.log('PreTeXt encountered an error; code =', code);
+      console.log("PreTeXt encountered an error; code =", code);
       for (let error of capturedErrors) {
-        pretextOutputChannel.appendLine('Collected Errors:\n');
+        pretextOutputChannel.appendLine("Collected Errors:\n");
         pretextOutputChannel.appendLine(error);
       }
       window
         .showErrorMessage(
-          'PreTeXt encountered one or more errors',
-          'Show Log',
-          'Dismiss',
+          "PreTeXt encountered one or more errors",
+          "Show Log",
+          "Dismiss",
         )
         .then((option) => {
-          if (option === 'Show Log') {
+          if (option === "Show Log") {
             pretextOutputChannel.show();
           }
         });
     } else {
-      console.log('PreTeXt command finished successfully; code =', code);
+      console.log("PreTeXt command finished successfully; code =", code);
     }
     utils.updateStatusBarItem(ptxSBItem, status);
   });
@@ -144,9 +144,9 @@ function runView(target: string, projectPath: string): void {
 
 export async function cmdViewVisualEditor() {
   await commands.executeCommand(
-    'vscode.openWith',
+    "vscode.openWith",
     window.activeTextEditor?.document.uri,
-    'pretext.visualEditor',
+    "pretext.visualEditor",
     {
       viewColumn: ViewColumn.Beside,
       preserveFocus: true,

@@ -1,10 +1,10 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkDirective from 'remark-directive';
-import { toXml } from 'xast-util-to-xml';
-import remarkPretext from './remark-pretext.js';
-import type { RemarkPretextOptions } from './remark-pretext.js';
-import type { Root as PtxRoot } from 'xast';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
+import { toXml } from "xast-util-to-xml";
+import remarkPretext from "./remark-pretext.js";
+import type { RemarkPretextOptions } from "./remark-pretext.js";
+import type { Root as PtxRoot } from "xast";
 
 /**
  * Convert a markdown string (with PreTeXt directive extensions) to a PreTeXt

@@ -27,16 +27,16 @@ import {
   loadGrammarFromJSON,
   validateDocument,
   getCompletions,
-} from '@pretextbook/schema';
-import fs from 'fs';
+} from "@pretextbook/schema";
+import fs from "fs";
 
 // Load the precompiled grammar (generated at build time — see below).
 const grammar = loadGrammarFromJSON(
-  fs.readFileSync('assets/pretext.json', 'utf8'),
+  fs.readFileSync("assets/pretext.json", "utf8"),
 );
 
 const result = validateDocument(source, grammar, {
-  uri: 'file:///book/main.ptx',
+  uri: "file:///book/main.ptx",
 });
 for (const [uri, diagnostics] of Object.entries(result.diagnosticsByUri)) {
   // publish `diagnostics` for `uri`
@@ -52,8 +52,8 @@ const items = getCompletions({ text: source, position, grammar });
 point, which pulls in salve's Node-only conversion machinery:
 
 ```ts
-import { compileRngToJSON } from '@pretextbook/schema/compile';
-const { json, warnings } = await compileRngToJSON('schema/pretext.rng');
+import { compileRngToJSON } from "@pretextbook/schema/compile";
+const { json, warnings } = await compileRngToJSON("schema/pretext.rng");
 ```
 
 The monorepo wires this up via `scripts/compile-grammar.mjs`, run as part of
@@ -63,15 +63,15 @@ alongside the `.rng` files the extension ships.
 ## Custom rules
 
 ```ts
-import { validateDocument, Severity } from '@pretextbook/schema';
+import { validateDocument, Severity } from "@pretextbook/schema";
 
 const result = validateDocument(source, grammar, {
   ruleset: {
     defaultSeverity: Severity.Error,
     rules: [
       {
-        id: 'text-not-allowed',
-        match: (e) => e.kind === 'text-not-allowed',
+        id: "text-not-allowed",
+        match: (e) => e.kind === "text-not-allowed",
         severity: Severity.Warning,
       },
     ],

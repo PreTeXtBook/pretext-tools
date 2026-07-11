@@ -22,14 +22,14 @@ import {
   extensions,
   window,
   workspace,
-} from 'vscode';
-import { ChildProcess, spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
-import { cli } from './cli';
-import { ensureProjectList, projectTargetList } from './project';
-import { pretextOutputChannel, ptxSBItem } from './ui';
-import * as utils from './utils';
+} from "vscode";
+import { ChildProcess, spawn } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
+import { cli } from "./cli";
+import { ensureProjectList, projectTargetList } from "./project";
+import { pretextOutputChannel, ptxSBItem } from "./ui";
+import * as utils from "./utils";
 
 // Module-level state
 let currentPanel: WebviewPanel | undefined;
@@ -40,7 +40,7 @@ let buildInProgress = false;
 let buildDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 let currentTarget: string | undefined;
 let currentProjectPath: string | undefined;
-let lastPtxEditor: import('vscode').TextEditor | undefined;
+let lastPtxEditor: import("vscode").TextEditor | undefined;
 let editorTracker: Disposable | undefined;
 
 const BUILD_DEBOUNCE_MS = 1000;
@@ -65,26 +65,26 @@ export async function cmdLivePreview(): Promise<void> {
   }
 
   currentTarget = qpSelection.label;
-  currentProjectPath = qpSelection.description || '';
+  currentProjectPath = qpSelection.description || "";
 
   pretextOutputChannel.appendLine(
     `Starting live preview for target: ${currentTarget}`,
   );
 
   // PDF and braille targets can't use the HTML server — open the file directly
-  if (currentTarget === 'pdf' || currentTarget === 'print') {
-    await openFilePreview(currentTarget, currentProjectPath, '.pdf');
-  } else if (currentTarget === 'braille') {
-    await openFilePreview(currentTarget, currentProjectPath, '.brf');
-  } else if (currentTarget === 'epub') {
+  if (currentTarget === "pdf" || currentTarget === "print") {
+    await openFilePreview(currentTarget, currentProjectPath, ".pdf");
+  } else if (currentTarget === "braille") {
+    await openFilePreview(currentTarget, currentProjectPath, ".brf");
+  } else if (currentTarget === "epub") {
     // If an EPUB viewer extension is installed, open in VS Code; otherwise open externally
     const hasEpubViewer = extensions.all.some((ext) =>
-      ext.id.toLowerCase().includes('epub'),
+      ext.id.toLowerCase().includes("epub"),
     );
     if (hasEpubViewer) {
-      await openFilePreview(currentTarget, currentProjectPath, '.epub');
+      await openFilePreview(currentTarget, currentProjectPath, ".epub");
     } else {
-      await openFileExternally(currentTarget, currentProjectPath, '.epub');
+      await openFileExternally(currentTarget, currentProjectPath, ".epub");
     }
   } else {
     await startViewServer(currentTarget, currentProjectPath);
@@ -100,7 +100,7 @@ async function openFileExternally(
   projectPath: string,
   extension: string,
 ): Promise<void> {
-  const outputDir = path.join(projectPath, 'output', target);
+  const outputDir = path.join(projectPath, "output", target);
   let outputFile: string | undefined;
 
   try {
@@ -115,10 +115,10 @@ async function openFileExternally(
       `[External Preview] No ${extension} file found, building first...`,
     );
     pretextOutputChannel.show();
-    utils.updateStatusBarItem(ptxSBItem, 'building');
+    utils.updateStatusBarItem(ptxSBItem, "building");
 
     await new Promise<boolean>((resolve) => {
-      const fullCommand = cli.cmd() + ' build ' + target;
+      const fullCommand = cli.cmd() + " build " + target;
       pretextOutputChannel.appendLine(
         `[External Preview] Running: ${fullCommand}`,
       );
@@ -126,19 +126,19 @@ async function openFileExternally(
         cwd: projectPath,
         shell: true,
       });
-      buildProcess.stdout?.on('data', (data: Buffer) => {
+      buildProcess.stdout?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      buildProcess.stderr?.on('data', (data: Buffer) => {
+      buildProcess.stderr?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      buildProcess.on('close', (code) => {
+      buildProcess.on("close", (code) => {
         pretextOutputChannel.appendLine(
           `[External Preview] Build exited with code ${code}`,
         );
@@ -178,7 +178,7 @@ async function openFilePreview(
   projectPath: string,
   extension: string,
 ): Promise<void> {
-  const outputDir = path.join(projectPath, 'output', target);
+  const outputDir = path.join(projectPath, "output", target);
   let outputFile: string | undefined;
 
   try {
@@ -195,28 +195,28 @@ async function openFilePreview(
       `[File Preview] No ${extension} file found, building first...`,
     );
     pretextOutputChannel.show();
-    utils.updateStatusBarItem(ptxSBItem, 'building');
+    utils.updateStatusBarItem(ptxSBItem, "building");
 
     const buildResult = await new Promise<boolean>((resolve) => {
-      const fullCommand = cli.cmd() + ' build ' + target;
+      const fullCommand = cli.cmd() + " build " + target;
       pretextOutputChannel.appendLine(`[File Preview] Running: ${fullCommand}`);
       const buildProcess = spawn(fullCommand, [], {
         cwd: projectPath,
         shell: true,
       });
-      buildProcess.stdout?.on('data', (data: Buffer) => {
+      buildProcess.stdout?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      buildProcess.stderr?.on('data', (data: Buffer) => {
+      buildProcess.stderr?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      buildProcess.on('close', (code) => {
+      buildProcess.on("close", (code) => {
         pretextOutputChannel.appendLine(
           `[File Preview] Build exited with code ${code}`,
         );
@@ -245,7 +245,7 @@ async function openFilePreview(
   pretextOutputChannel.appendLine(`[File Preview] Opening: ${filePath}`);
 
   const fileUri = Uri.file(filePath);
-  await commands.executeCommand('vscode.open', fileUri, {
+  await commands.executeCommand("vscode.open", fileUri, {
     viewColumn: ViewColumn.Beside,
     preview: true,
   });
@@ -260,8 +260,8 @@ async function openFilePreview(
     }
     const autoCompile: boolean =
       workspace
-        .getConfiguration('pretext-tools')
-        .get('livePreview.autoCompile') ?? true;
+        .getConfiguration("pretext-tools")
+        .get("livePreview.autoCompile") ?? true;
     if (!autoCompile) {
       return;
     }
@@ -289,36 +289,36 @@ function triggerFileBuildAndReopen(
     return;
   }
   buildInProgress = true;
-  utils.updateStatusBarItem(ptxSBItem, 'building');
+  utils.updateStatusBarItem(ptxSBItem, "building");
   pretextOutputChannel.appendLine(
     `[File Preview] Auto-building target: ${target}`,
   );
 
-  const fullCommand = cli.cmd() + ' build ' + target;
+  const fullCommand = cli.cmd() + " build " + target;
   const buildProcess = spawn(fullCommand, [], {
     cwd: projectPath,
     shell: true,
   });
 
-  buildProcess.stdout?.on('data', (data: Buffer) => {
+  buildProcess.stdout?.on("data", (data: Buffer) => {
     pretextOutputChannel.appendLine(utils.stripColorCodes(data.toString()));
   });
-  buildProcess.stderr?.on('data', (data: Buffer) => {
+  buildProcess.stderr?.on("data", (data: Buffer) => {
     const text = utils.stripColorCodes(data.toString());
     if (text.trim()) {
       pretextOutputChannel.appendLine(`[build stderr] ${text}`);
     }
   });
 
-  buildProcess.on('close', (code: number | null) => {
+  buildProcess.on("close", (code: number | null) => {
     buildInProgress = false;
     if (code === 0) {
       pretextOutputChannel.appendLine(
-        '[File Preview] Build complete. Reopening file.',
+        "[File Preview] Build complete. Reopening file.",
       );
-      utils.updateStatusBarItem(ptxSBItem, 'success');
+      utils.updateStatusBarItem(ptxSBItem, "success");
       const fileUri = Uri.file(filePath);
-      commands.executeCommand('vscode.open', fileUri, {
+      commands.executeCommand("vscode.open", fileUri, {
         viewColumn: ViewColumn.Beside,
         preview: true,
       });
@@ -326,7 +326,7 @@ function triggerFileBuildAndReopen(
       pretextOutputChannel.appendLine(
         `[File Preview] Build failed (code ${code}).`,
       );
-      utils.updateStatusBarItem(ptxSBItem, 'ready');
+      utils.updateStatusBarItem(ptxSBItem, "ready");
     }
   });
 }
@@ -340,11 +340,11 @@ async function startViewServer(
   projectPath: string,
 ): Promise<void> {
   // Check if the output exists; if not, build first
-  const outputDir = path.join(projectPath, 'output', target);
+  const outputDir = path.join(projectPath, "output", target);
   let needsBuild = true;
   try {
     const files = fs.readdirSync(outputDir);
-    needsBuild = !files.some((f) => f.endsWith('.html'));
+    needsBuild = !files.some((f) => f.endsWith(".html"));
   } catch {
     needsBuild = true;
   }
@@ -354,28 +354,28 @@ async function startViewServer(
       `[Live Preview] No HTML output found for "${target}", building first...`,
     );
     pretextOutputChannel.show(); // Show the output channel so user sees build progress
-    utils.updateStatusBarItem(ptxSBItem, 'building');
+    utils.updateStatusBarItem(ptxSBItem, "building");
 
     const buildOk = await new Promise<boolean>((resolve) => {
-      const buildCmd = cli.cmd() + ' build ' + target;
+      const buildCmd = cli.cmd() + " build " + target;
       pretextOutputChannel.appendLine(`[Live Preview] Running: ${buildCmd}`);
       const proc = spawn(buildCmd, [], {
         cwd: projectPath,
         shell: true,
       });
-      proc.stdout?.on('data', (data: Buffer) => {
+      proc.stdout?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      proc.stderr?.on('data', (data: Buffer) => {
+      proc.stderr?.on("data", (data: Buffer) => {
         const text = utils.stripColorCodes(data.toString());
         if (text.trim()) {
           pretextOutputChannel.appendLine(text);
         }
       });
-      proc.on('close', (code) => {
+      proc.on("close", (code) => {
         pretextOutputChannel.appendLine(
           `[Live Preview] Build process exited with code ${code}`,
         );
@@ -388,7 +388,7 @@ async function startViewServer(
     let hasOutput = false;
     try {
       const files = fs.readdirSync(outputDir);
-      hasOutput = files.some((f) => f.endsWith('.html'));
+      hasOutput = files.some((f) => f.endsWith(".html"));
     } catch {
       hasOutput = false;
     }
@@ -396,15 +396,15 @@ async function startViewServer(
     if (!hasOutput) {
       window
         .showErrorMessage(
-          'PreTeXt build produced no HTML output. Check the output log for details.',
-          'Show Log',
+          "PreTeXt build produced no HTML output. Check the output log for details.",
+          "Show Log",
         )
         .then((choice) => {
-          if (choice === 'Show Log') {
+          if (choice === "Show Log") {
             pretextOutputChannel.show();
           }
         });
-      utils.updateStatusBarItem(ptxSBItem, 'ready');
+      utils.updateStatusBarItem(ptxSBItem, "ready");
       return;
     }
 
@@ -415,10 +415,10 @@ async function startViewServer(
 
   // Use --restart-server to ensure we get a fresh server (handles stale servers)
   const fullCommand =
-    cli.cmd() + ' view --no-launch --restart-server ' + target;
+    cli.cmd() + " view --no-launch --restart-server " + target;
 
   pretextOutputChannel.appendLine(`Running: ${fullCommand}`);
-  utils.updateStatusBarItem(ptxSBItem, 'building');
+  utils.updateStatusBarItem(ptxSBItem, "building");
 
   viewProcess = spawn(fullCommand, [], {
     cwd: projectPath,
@@ -426,7 +426,7 @@ async function startViewServer(
   });
 
   // Buffer to accumulate output for URL detection (data may arrive in chunks)
-  let outputBuffer = '';
+  let outputBuffer = "";
 
   function checkForServerUrl(text: string): void {
     outputBuffer += text;
@@ -439,20 +439,20 @@ async function startViewServer(
       pretextOutputChannel.appendLine(
         `[Live Preview] Server ready at: ${serverUrl}`,
       );
-      utils.updateStatusBarItem(ptxSBItem, 'success');
+      utils.updateStatusBarItem(ptxSBItem, "success");
       injectInverseSearchScript(projectPath, target);
       openPreviewPanel(serverUrl, target);
       setupFileWatcher(target, projectPath);
     }
   }
 
-  viewProcess.stdout?.on('data', (data: Buffer) => {
+  viewProcess.stdout?.on("data", (data: Buffer) => {
     const text = utils.stripColorCodes(data.toString());
     pretextOutputChannel.appendLine(text);
     checkForServerUrl(text);
   });
 
-  viewProcess.stderr?.on('data', (data: Buffer) => {
+  viewProcess.stderr?.on("data", (data: Buffer) => {
     const text = utils.stripColorCodes(data.toString());
     if (text.trim()) {
       pretextOutputChannel.appendLine(text);
@@ -460,9 +460,9 @@ async function startViewServer(
     checkForServerUrl(text);
   });
 
-  viewProcess.on('close', (code: number | null) => {
+  viewProcess.on("close", (code: number | null) => {
     pretextOutputChannel.appendLine(
-      `[Live Preview] Server process exited (code ${code}). serverUrl=${serverUrl || 'NOT DETECTED'}`,
+      `[Live Preview] Server process exited (code ${code}). serverUrl=${serverUrl || "NOT DETECTED"}`,
     );
     if (!serverUrl) {
       pretextOutputChannel.appendLine(
@@ -470,18 +470,18 @@ async function startViewServer(
       );
       window
         .showErrorMessage(
-          'PreTeXt server failed to start. Check the output log.',
-          'Show Log',
+          "PreTeXt server failed to start. Check the output log.",
+          "Show Log",
         )
         .then((choice) => {
-          if (choice === 'Show Log') {
+          if (choice === "Show Log") {
             pretextOutputChannel.show();
           }
         });
     }
     serverUrl = undefined;
     viewProcess = undefined;
-    utils.updateStatusBarItem(ptxSBItem, 'ready');
+    utils.updateStatusBarItem(ptxSBItem, "ready");
   });
 }
 
@@ -490,7 +490,7 @@ async function startViewServer(
  */
 function openPreviewPanel(url: string, target: string): void {
   currentPanel = window.createWebviewPanel(
-    'pretextLivePreview',
+    "pretextLivePreview",
     `PreTeXt Preview: ${target}`,
     ViewColumn.Beside,
     {
@@ -513,12 +513,12 @@ function openPreviewPanel(url: string, target: string): void {
         `[Extension] Received webview message: ${JSON.stringify(message)}`,
       );
       switch (message.command) {
-        case 'jumpToSource':
+        case "jumpToSource":
           if (message.id) {
             jumpToSourceByXmlId(message.id, message.text);
           }
           break;
-        case 'openExternal':
+        case "openExternal":
           if (message.url) {
             env.openExternal(Uri.parse(message.url));
           }
@@ -560,87 +560,87 @@ function openPreviewPanel(url: string, target: string): void {
 function getWebviewContent(url: string): string {
   const escapedUrl = url.replace(/'/g, "\\'");
   return [
-    '<!DOCTYPE html>',
+    "<!DOCTYPE html>",
     '<html lang="en">',
-    '<head>',
+    "<head>",
     '    <meta charset="UTF-8">',
     '    <meta name="viewport" content="width=device-width, initial-scale=1.0">',
-    '    <title>PreTeXt Preview</title>',
-    '    <style>',
-    '        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--vscode-editor-background); }',
-    '        #toolbar { height: 32px; background: var(--vscode-editorGroupHeader-tabsBackground); border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; padding: 0 8px; font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); }',
-    '        #toolbar button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; margin-right: 4px; cursor: pointer; font-size: 12px; border-radius: 2px; }',
-    '        #toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }',
-    '        #status { margin-left: auto; opacity: 0.7; }',
-    '        iframe { width: 100%; height: calc(100% - 33px); border: none; }',
-    '    </style>',
-    '</head>',
-    '<body>',
+    "    <title>PreTeXt Preview</title>",
+    "    <style>",
+    "        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--vscode-editor-background); }",
+    "        #toolbar { height: 32px; background: var(--vscode-editorGroupHeader-tabsBackground); border-bottom: 1px solid var(--vscode-panel-border); display: flex; align-items: center; padding: 0 8px; font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); }",
+    "        #toolbar button { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); border: none; padding: 3px 10px; margin-right: 4px; cursor: pointer; font-size: 12px; border-radius: 2px; }",
+    "        #toolbar button:hover { background: var(--vscode-button-secondaryHoverBackground); }",
+    "        #status { margin-left: auto; opacity: 0.7; }",
+    "        iframe { width: 100%; height: calc(100% - 33px); border: none; }",
+    "    </style>",
+    "</head>",
+    "<body>",
     '    <div id="toolbar">',
     '        <button id="btn-refresh" title="Refresh preview">&#x21bb; Refresh</button>',
     '        <button id="btn-browser" title="Open in external browser">&#x2197; Browser</button>',
     '        <span id="status">Live Preview (click to jump to source)</span>',
-    '    </div>',
+    "    </div>",
     '    <iframe id="preview" src="' + url + '"></iframe>',
-    '    <script>',
-    '        (function() {',
-    '            var vscode = acquireVsCodeApi();',
+    "    <script>",
+    "        (function() {",
+    "            var vscode = acquireVsCodeApi();",
     '            var iframe = document.getElementById("preview");',
     '            var statusEl = document.getElementById("status");',
     '            var previewUrl = "' + escapedUrl + '";',
-    '',
+    "",
     '            document.getElementById("btn-refresh").addEventListener("click", function() {',
-    '                iframe.src = previewUrl;',
+    "                iframe.src = previewUrl;",
     '                statusEl.textContent = "Refreshing...";',
     '                setTimeout(function() { statusEl.textContent = "Live Preview (click to jump to source)"; }, 2000);',
-    '            });',
-    '',
+    "            });",
+    "",
     '            document.getElementById("btn-browser").addEventListener("click", function() {',
     '                vscode.postMessage({ command: "openExternal", url: previewUrl });',
-    '            });',
-    '',
-    '            // Listen for messages from BOTH the extension and the iframe',
+    "            });",
+    "",
+    "            // Listen for messages from BOTH the extension and the iframe",
     '            window.addEventListener("message", function(event) {',
-    '                var message = event.data;',
-    '                if (!message || !message.command) { return; }',
-    '',
+    "                var message = event.data;",
+    "                if (!message || !message.command) { return; }",
+    "",
     '                if (message.command === "refresh") {',
-    '                    iframe.src = previewUrl;',
+    "                    iframe.src = previewUrl;",
     '                    statusEl.textContent = "Refreshing...";',
     '                    setTimeout(function() { statusEl.textContent = "Live Preview (click to jump to source)"; }, 2000);',
-    '                }',
-    '',
+    "                }",
+    "",
     '                if (message.command === "scrollTo" && message.id) {',
     '                    console.log("[WebviewWrapper] scrollTo:", message.id);',
-    '                    try {',
+    "                    try {",
     '                        iframe.contentWindow.postMessage({ command: "scrollTo", id: message.id }, "*");',
-    '                    } catch(e) {',
+    "                    } catch(e) {",
     '                        console.log("[WebviewWrapper] postMessage to iframe failed, using hash:", e);',
     '                        var u = previewUrl.split("#")[0] + "#" + message.id;',
-    '                        iframe.src = u;',
-    '                    }',
-    '                }',
-    '',
-    '                // Navigate to a specific HTML page and scroll to an element',
+    "                        iframe.src = u;",
+    "                    }",
+    "                }",
+    "",
+    "                // Navigate to a specific HTML page and scroll to an element",
     '                if (message.command === "navigateAndScroll" && message.file && message.id) {',
     '                    console.log("[WebviewWrapper] navigateAndScroll:", message.file, message.id);',
     '                    var baseUrl = previewUrl.endsWith("/") ? previewUrl : previewUrl + "/";',
     '                    var targetUrl = baseUrl + message.file + "#" + message.id;',
     '                    console.log("[WebviewWrapper] Loading:", targetUrl);',
-    '                    iframe.src = targetUrl;',
-    '                }',
-    '',
-    '                // Inverse search: the iframe sends this via window.parent.postMessage',
+    "                    iframe.src = targetUrl;",
+    "                }",
+    "",
+    "                // Inverse search: the iframe sends this via window.parent.postMessage",
     '                if (message.command === "jumpToSource" && message.id) {',
     '                    console.log("[WebviewWrapper] received jumpToSource for id:", message.id, "text:", message.text);',
     '                    vscode.postMessage({ command: "jumpToSource", id: message.id, text: message.text || "" });',
-    '                }',
-    '            });',
-    '        })();',
-    '    </script>',
-    '</body>',
-    '</html>',
-  ].join('\n');
+    "                }",
+    "            });",
+    "        })();",
+    "    </script>",
+    "</body>",
+    "</html>",
+  ].join("\n");
 }
 
 /**
@@ -650,7 +650,7 @@ function getWebviewContent(url: string): string {
  */
 function injectInverseSearchScript(projectPath: string, target: string): void {
   // Find the HTML output directory
-  const outputDir = path.join(projectPath, 'output', target);
+  const outputDir = path.join(projectPath, "output", target);
   if (!fs.existsSync(outputDir)) {
     pretextOutputChannel.appendLine(
       `[Inverse Search] Output directory not found: ${outputDir}`,
@@ -660,83 +660,83 @@ function injectInverseSearchScript(projectPath: string, target: string): void {
 
   const scriptTag = [
     '<script data-pretext-tools-inverse-search="true">',
-    '(function() {',
-    '  if (window.__pretextInverseSearchInjected) return;',
-    '  window.__pretextInverseSearchInjected = true;',
-    '  var lastHighlighted = null;',
-    '',
-    '  function findIdAncestor(el) {',
-    '    while (el && el !== document.body && el !== document.documentElement) {',
-    '      if (el.id && el.id.length > 0) return el;',
-    '      el = el.parentElement;',
-    '    }',
-    '    return null;',
-    '  }',
-    '',
-    '  // Hover highlight',
+    "(function() {",
+    "  if (window.__pretextInverseSearchInjected) return;",
+    "  window.__pretextInverseSearchInjected = true;",
+    "  var lastHighlighted = null;",
+    "",
+    "  function findIdAncestor(el) {",
+    "    while (el && el !== document.body && el !== document.documentElement) {",
+    "      if (el.id && el.id.length > 0) return el;",
+    "      el = el.parentElement;",
+    "    }",
+    "    return null;",
+    "  }",
+    "",
+    "  // Hover highlight",
     '  document.addEventListener("mouseover", function(e) {',
-    '    var target = findIdAncestor(e.target);',
-    '    if (lastHighlighted && lastHighlighted !== target) {',
+    "    var target = findIdAncestor(e.target);",
+    "    if (lastHighlighted && lastHighlighted !== target) {",
     '      lastHighlighted.style.outline = "";',
-    '    }',
-    '    if (target) {',
+    "    }",
+    "    if (target) {",
     '      target.style.outline = "2px solid rgba(0,122,204,0.4)";',
-    '      lastHighlighted = target;',
-    '    }',
-    '  });',
-    '',
+    "      lastHighlighted = target;",
+    "    }",
+    "  });",
+    "",
     '  document.addEventListener("mouseout", function(e) {',
-    '    if (lastHighlighted) {',
+    "    if (lastHighlighted) {",
     '      lastHighlighted.style.outline = "";',
-    '      lastHighlighted = null;',
-    '    }',
-    '  });',
-    '',
-    '  // Forward search: parent webview sends scrollTo messages',
+    "      lastHighlighted = null;",
+    "    }",
+    "  });",
+    "",
+    "  // Forward search: parent webview sends scrollTo messages",
     '  window.addEventListener("message", function(event) {',
-    '    var msg = event.data;',
+    "    var msg = event.data;",
     '    if (msg && msg.command === "scrollTo" && msg.id) {',
     '      console.log("[ForwardSearch] scrollTo:", msg.id);',
-    '      var el = document.getElementById(msg.id);',
-    '      if (el) {',
+    "      var el = document.getElementById(msg.id);",
+    "      if (el) {",
     '        el.scrollIntoView({ behavior: "instant", block: "center" });',
     '        el.style.outline = "3px solid #007acc";',
     '        setTimeout(function() { el.style.outline = ""; }, 2000);',
-    '      } else {',
+    "      } else {",
     '        console.log("[ForwardSearch] element not found:", msg.id);',
-    '      }',
-    '    }',
-    '  });',
-    '',
-    '  // Single click anywhere — find nearest ancestor with an id and jump',
+    "      }",
+    "    }",
+    "  });",
+    "",
+    "  // Single click anywhere — find nearest ancestor with an id and jump",
     '  document.addEventListener("click", function(e) {',
     '    if (e.target.tagName === "A" || e.target.closest("a")) return;',
-    '    var target = findIdAncestor(e.target);',
-    '    if (target) {',
-    '      e.preventDefault();',
+    "    var target = findIdAncestor(e.target);",
+    "    if (target) {",
+    "      e.preventDefault();",
     '      target.style.outline = "3px solid #d4a017";',
     '      setTimeout(function() { target.style.outline = ""; }, 1500);',
-    '      // Extract a text snippet from the clicked element for text-based search',
+    "      // Extract a text snippet from the clicked element for text-based search",
     '      var textSnippet = "";',
     '      var clickedEl = e.target.closest(".para, p, div.para") || e.target;',
-    '      if (clickedEl) {',
+    "      if (clickedEl) {",
     '        textSnippet = (clickedEl.textContent || "").trim().substring(0, 80);',
-    '      }',
-    '      window.parent.postMessage({',
+    "      }",
+    "      window.parent.postMessage({",
     '        command: "jumpToSource",',
-    '        id: target.id,',
-    '        text: textSnippet',
+    "        id: target.id,",
+    "        text: textSnippet",
     '      }, "*");',
-    '    }',
-    '  }, true);',
-    '})();',
-    '</script>',
-  ].join('\n');
+    "    }",
+    "  }, true);",
+    "})();",
+    "</script>",
+  ].join("\n");
 
   // Find all .html files in the output directory
   let htmlFiles: string[];
   try {
-    htmlFiles = fs.readdirSync(outputDir).filter((f) => f.endsWith('.html'));
+    htmlFiles = fs.readdirSync(outputDir).filter((f) => f.endsWith(".html"));
   } catch {
     return;
   }
@@ -745,14 +745,14 @@ function injectInverseSearchScript(projectPath: string, target: string): void {
   for (const file of htmlFiles) {
     const filePath = path.join(outputDir, file);
     try {
-      let content = fs.readFileSync(filePath, 'utf-8');
+      let content = fs.readFileSync(filePath, "utf-8");
       // Don't inject twice
-      if (content.includes('data-pretext-tools-inverse-search')) {
+      if (content.includes("data-pretext-tools-inverse-search")) {
         continue;
       }
       // Inject before </body>
-      content = content.replace('</body>', scriptTag + '\n</body>');
-      fs.writeFileSync(filePath, content, 'utf-8');
+      content = content.replace("</body>", scriptTag + "\n</body>");
+      fs.writeFileSync(filePath, content, "utf-8");
       injectedCount++;
     } catch {
       // Skip files we can't read/write
@@ -780,8 +780,8 @@ function setupFileWatcher(target: string, projectPath: string): void {
 
     const autoCompile: boolean =
       workspace
-        .getConfiguration('pretext-tools')
-        .get('livePreview.autoCompile') ?? true;
+        .getConfiguration("pretext-tools")
+        .get("livePreview.autoCompile") ?? true;
 
     if (!autoCompile) {
       return;
@@ -809,49 +809,49 @@ function triggerBuildAndRefresh(target: string, projectPath: string): void {
     return;
   }
   buildInProgress = true;
-  utils.updateStatusBarItem(ptxSBItem, 'building');
+  utils.updateStatusBarItem(ptxSBItem, "building");
   pretextOutputChannel.appendLine(
     `[Live Preview] Auto-building target: ${target}`,
   );
 
-  const fullCommand = cli.cmd() + ' build ' + target;
+  const fullCommand = cli.cmd() + " build " + target;
   const buildProcess = spawn(fullCommand, [], {
     cwd: projectPath,
     shell: true,
   });
 
-  buildProcess.stdout?.on('data', (data: Buffer) => {
+  buildProcess.stdout?.on("data", (data: Buffer) => {
     pretextOutputChannel.appendLine(utils.stripColorCodes(data.toString()));
   });
 
-  buildProcess.stderr?.on('data', (data: Buffer) => {
+  buildProcess.stderr?.on("data", (data: Buffer) => {
     const text = utils.stripColorCodes(data.toString());
     if (text.trim()) {
       pretextOutputChannel.appendLine(`[build stderr] ${text}`);
     }
   });
 
-  buildProcess.on('close', (code: number | null) => {
+  buildProcess.on("close", (code: number | null) => {
     buildInProgress = false;
     if (code === 0) {
       pretextOutputChannel.appendLine(
-        '[Live Preview] Build complete. Refreshing preview.',
+        "[Live Preview] Build complete. Refreshing preview.",
       );
-      utils.updateStatusBarItem(ptxSBItem, 'success');
+      utils.updateStatusBarItem(ptxSBItem, "success");
       injectInverseSearchScript(projectPath, target);
       refreshPreview();
     } else {
       pretextOutputChannel.appendLine(
         `[Live Preview] Build failed (code ${code}).`,
       );
-      utils.updateStatusBarItem(ptxSBItem, 'ready');
+      utils.updateStatusBarItem(ptxSBItem, "ready");
       window
         .showWarningMessage(
-          'PreTeXt build failed. Check the output log for details.',
-          'Show Log',
+          "PreTeXt build failed. Check the output log for details.",
+          "Show Log",
         )
         .then((choice) => {
-          if (choice === 'Show Log') {
+          if (choice === "Show Log") {
             pretextOutputChannel.show();
           }
         });
@@ -864,7 +864,7 @@ function triggerBuildAndRefresh(target: string, projectPath: string): void {
  */
 export function refreshPreview(): void {
   if (currentPanel) {
-    currentPanel.webview.postMessage({ command: 'refresh' });
+    currentPanel.webview.postMessage({ command: "refresh" });
   }
 }
 
@@ -876,7 +876,7 @@ export function cmdForwardSearch(): void {
   const editor = window.activeTextEditor;
   if (!editor || !currentPanel) {
     if (!currentPanel) {
-      window.showInformationMessage('Open a live preview first (Ctrl+Alt+L).');
+      window.showInformationMessage("Open a live preview first (Ctrl+Alt+L).");
     }
     return;
   }
@@ -891,20 +891,20 @@ export function cmdForwardSearch(): void {
   const rawContext = fullText.substring(offset, contextEnd);
   // Strip XML tags completely
   const plainContext = rawContext
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 
   // Extract distinctive words (5+ chars to avoid common short words like
   // "the", "and", "this"). Also skip XML-ish words.
-  const skipWords = new Set(['xmlns', 'pretext', 'include']);
+  const skipWords = new Set(["xmlns", "pretext", "include"]);
   const words = plainContext
-    .replace(/[^a-zA-Z\s-]/g, ' ') // keep hyphens for compound words
+    .replace(/[^a-zA-Z\s-]/g, " ") // keep hyphens for compound words
     .split(/\s+/)
     .filter((w) => w.length >= 5 && !skipWords.has(w.toLowerCase()));
 
   pretextOutputChannel.appendLine(
-    `[Forward Search] Context words: ${words.slice(0, 6).join(', ')}`,
+    `[Forward Search] Context words: ${words.slice(0, 6).join(", ")}`,
   );
 
   if (words.length < 2) {
@@ -920,9 +920,9 @@ export function cmdForwardSearch(): void {
       pretextOutputChannel.appendLine(
         `[Forward Search] Too few words, falling back to xml:id: ${lastId}`,
       );
-      currentPanel.webview.postMessage({ command: 'scrollTo', id: lastId });
+      currentPanel.webview.postMessage({ command: "scrollTo", id: lastId });
     } else {
-      window.showInformationMessage('No identifiable content near cursor.');
+      window.showInformationMessage("No identifiable content near cursor.");
     }
     return;
   }
@@ -936,7 +936,7 @@ export function cmdForwardSearch(): void {
     );
     // Navigate to the correct page and scroll to the element
     currentPanel.webview.postMessage({
-      command: 'navigateAndScroll',
+      command: "navigateAndScroll",
       file: result.file,
       id: result.id,
     });
@@ -953,10 +953,10 @@ export function cmdForwardSearch(): void {
       pretextOutputChannel.appendLine(
         `[Forward Search] Text search failed, falling back to xml:id: ${lastId}`,
       );
-      currentPanel.webview.postMessage({ command: 'scrollTo', id: lastId });
+      currentPanel.webview.postMessage({ command: "scrollTo", id: lastId });
     } else {
       window.showInformationMessage(
-        'Could not find matching content in preview.',
+        "Could not find matching content in preview.",
       );
     }
   }
@@ -973,27 +973,27 @@ function findHtmlIdByText(
     return undefined;
   }
 
-  const htmlDir = path.join(currentProjectPath, 'output', currentTarget);
+  const htmlDir = path.join(currentProjectPath, "output", currentTarget);
   let htmlFiles: string[];
   try {
     htmlFiles = fs
       .readdirSync(htmlDir)
-      .filter((f) => f.endsWith('.html') && f !== 'index.html');
+      .filter((f) => f.endsWith(".html") && f !== "index.html");
   } catch {
     return undefined;
   }
 
   // Build a regex: word1.{1,120}?word2.{1,120}?word3...
   // Escape regex special chars in words (hyphens are literal in words like "cross-reference")
-  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const phrase = escaped.join('[\\s\\S]{1,120}?');
-  const phraseRegex = new RegExp(phrase, 'i');
+  const escaped = words.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const phrase = escaped.join("[\\s\\S]{1,120}?");
+  const phraseRegex = new RegExp(phrase, "i");
 
   for (const file of htmlFiles) {
     const filePath = path.join(htmlDir, file);
     let content: string;
     try {
-      content = fs.readFileSync(filePath, 'utf-8');
+      content = fs.readFileSync(filePath, "utf-8");
     } catch {
       continue;
     }
@@ -1011,7 +1011,7 @@ function findHtmlIdByText(
     if (idMatches.length > 0) {
       const nearestId = idMatches[idMatches.length - 1][1];
       pretextOutputChannel.appendLine(
-        `[Forward Search] Text "${words.slice(0, 3).join(' ')}" found in ${file}, nearest id: ${nearestId}`,
+        `[Forward Search] Text "${words.slice(0, 3).join(" ")}" found in ${file}, nearest id: ${nearestId}`,
       );
       return { id: nearestId, file };
     }
@@ -1032,7 +1032,7 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   // Progressively strip ALL trailing -N suffixes
   let current = xmlId;
   while (true) {
-    const stripped = current.replace(/-\d+$/, '');
+    const stripped = current.replace(/-\d+$/, "");
     if (stripped === current) {
       break;
     }
@@ -1041,7 +1041,7 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   }
   // PreTeXt HTML may use the "label" attribute (with prefixes like "section-")
   // instead of xml:id. Also try stripping common prefixes.
-  const prefixes = ['section-', 'subsection-', 'subsubsection-', 'chapter-'];
+  const prefixes = ["section-", "subsection-", "subsubsection-", "chapter-"];
   const baseIds = [...idsToTry];
   for (const id of baseIds) {
     for (const prefix of prefixes) {
@@ -1057,7 +1057,7 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   // (PreTeXt uses label for HTML id generation when present)
 
   pretextOutputChannel.appendLine(
-    `[Inverse Search] Looking for: ${idsToTry.join(', ')}${textSnippet ? ' | text: "' + textSnippet.substring(0, 40) + '..."' : ''}`,
+    `[Inverse Search] Looking for: ${idsToTry.join(", ")}${textSnippet ? ' | text: "' + textSnippet.substring(0, 40) + '..."' : ""}`,
   );
 
   // Use lastPtxEditor since the webview has focus (activeTextEditor is undefined)
@@ -1068,7 +1068,7 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
     : lastPtxEditor;
 
   pretextOutputChannel.appendLine(
-    `[Inverse Search] Editor: ${editor ? editor.document.fileName : 'NONE'}`,
+    `[Inverse Search] Editor: ${editor ? editor.document.fileName : "NONE"}`,
   );
 
   if (editor) {
@@ -1102,7 +1102,7 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
   pretextOutputChannel.appendLine(
     `[Inverse Search] Searching workspace files...`,
   );
-  workspace.findFiles('**/*.{ptx,xml}', null, 100).then((files) => {
+  workspace.findFiles("**/*.{ptx,xml}", null, 100).then((files) => {
     for (const file of files) {
       workspace.openTextDocument(file).then((doc) => {
         // Try ID search first
@@ -1119,12 +1119,12 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
         if (textSnippet && textSnippet.length > 15) {
           const text = doc.getText();
           const words = textSnippet
-            .replace(/[^a-zA-Z\s]/g, ' ')
+            .replace(/[^a-zA-Z\s]/g, " ")
             .split(/\s+/)
             .filter((w) => w.length >= 5);
           if (words.length >= 2) {
-            const phrase = words.slice(0, 4).join('[\\s\\S]{1,60}?');
-            const m = new RegExp(phrase, 'i').exec(text);
+            const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+            const m = new RegExp(phrase, "i").exec(text);
             if (m) {
               window.showTextDocument(doc, ViewColumn.One).then((ed) => {
                 const pos = doc.positionAt(m.index);
@@ -1148,14 +1148,14 @@ function jumpToSourceByXmlId(xmlId: string, textSnippet?: string): void {
  * Used when PreTeXt's auto-generated HTML IDs have no source counterpart.
  */
 function pureTextSearch(
-  editor: import('vscode').TextEditor,
+  editor: import("vscode").TextEditor,
   textSnippet: string,
 ): boolean {
   const document = editor.document;
   const text = document.getText();
 
   const words = textSnippet
-    .replace(/[^a-zA-Z\s]/g, ' ')
+    .replace(/[^a-zA-Z\s]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 5);
 
@@ -1163,12 +1163,12 @@ function pureTextSearch(
     return false;
   }
 
-  const phrase = words.slice(0, 4).join('[\\s\\S]{1,60}?');
-  const m = new RegExp(phrase, 'i').exec(text);
+  const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+  const m = new RegExp(phrase, "i").exec(text);
   if (m) {
     const pos = document.positionAt(m.index);
     pretextOutputChannel.appendLine(
-      `[Inverse Search] Pure text match: "${words.slice(0, 4).join(' ')}" at line ${pos.line + 1}`,
+      `[Inverse Search] Pure text match: "${words.slice(0, 4).join(" ")}" at line ${pos.line + 1}`,
     );
     editor.revealRange(new Range(pos, pos), 2);
     editor.selection = new Selection(pos, pos);
@@ -1187,13 +1187,13 @@ function getParaIndexFromHtml(suffixedId: string, parentId: string): number {
   if (!currentProjectPath || !currentTarget) {
     return -1;
   }
-  const htmlDir = path.join(currentProjectPath, 'output', currentTarget);
+  const htmlDir = path.join(currentProjectPath, "output", currentTarget);
   // Find the HTML file (usually the main content file, not index.html)
   let htmlFiles: string[];
   try {
     htmlFiles = fs
       .readdirSync(htmlDir)
-      .filter((f) => f.endsWith('.html') && f !== 'index.html');
+      .filter((f) => f.endsWith(".html") && f !== "index.html");
   } catch {
     return -1;
   }
@@ -1202,7 +1202,7 @@ function getParaIndexFromHtml(suffixedId: string, parentId: string): number {
     const filePath = path.join(htmlDir, file);
     let content: string;
     try {
-      content = fs.readFileSync(filePath, 'utf-8');
+      content = fs.readFileSync(filePath, "utf-8");
     } catch {
       continue;
     }
@@ -1230,7 +1230,7 @@ function getParaIndexFromHtml(suffixedId: string, parentId: string): number {
     // Count <div class="para"> elements to find which one has our ID
     const paraRegex = new RegExp(
       `<div class="para" id="(${escapeRegex(parentId)}-\\d+)"`,
-      'g',
+      "g",
     );
     let paraCount = 0;
     let m: RegExpExecArray | null;
@@ -1252,7 +1252,7 @@ function getParaIndexFromHtml(suffixedId: string, parentId: string): number {
  * Jump to the Nth <p> tag within a source block identified by xml:id.
  */
 function jumpToNthPara(
-  editor: import('vscode').TextEditor,
+  editor: import("vscode").TextEditor,
   blockId: string,
   paraIndex: number,
 ): boolean {
@@ -1311,7 +1311,7 @@ function jumpToNthPara(
  * in the source to find the right one.
  */
 function jumpToNthChild(
-  editor: import('vscode').TextEditor,
+  editor: import("vscode").TextEditor,
   blockId: string,
   childIndex: number,
 ): boolean {
@@ -1368,7 +1368,7 @@ function jumpToNthChild(
  * paragraph-level precision for inverse search.
  */
 function refineSearchByText(
-  editor: import('vscode').TextEditor,
+  editor: import("vscode").TextEditor,
   blockId: string,
   textSnippet: string,
 ): boolean {
@@ -1397,7 +1397,7 @@ function refineSearchByText(
 
   // Extract plain prose words (3+ chars, no math symbols) from the snippet
   const words = textSnippet
-    .replace(/[^a-zA-Z\s]/g, ' ')
+    .replace(/[^a-zA-Z\s]/g, " ")
     .split(/\s+/)
     .filter((w) => w.length >= 4);
 
@@ -1418,14 +1418,14 @@ function refineSearchByText(
     for (let start = 0; start <= words.length - windowSize; start++) {
       const phrase = words
         .slice(start, start + windowSize)
-        .join('\\s+(?:<[^>]*>\\s*)*');
-      const phraseRegex = new RegExp(phrase, 'i');
+        .join("\\s+(?:<[^>]*>\\s*)*");
+      const phraseRegex = new RegExp(phrase, "i");
       const phraseMatch = phraseRegex.exec(blockText);
       if (phraseMatch) {
         const absoluteIdx = searchStart + phraseMatch.index;
         const pos = document.positionAt(absoluteIdx);
         pretextOutputChannel.appendLine(
-          `[Inverse Search] Text match at line ${pos.line + 1} via words: "${words.slice(start, start + windowSize).join(' ')}"`,
+          `[Inverse Search] Text match at line ${pos.line + 1} via words: "${words.slice(start, start + windowSize).join(" ")}"`,
         );
         editor.revealRange(new Range(pos, pos), 2);
         editor.selection = new Selection(pos, pos);
@@ -1435,7 +1435,7 @@ function refineSearchByText(
   }
 
   pretextOutputChannel.appendLine(
-    `[Inverse Search] Text refinement failed. Words tried: ${words.slice(0, 6).join(', ')}`,
+    `[Inverse Search] Text refinement failed. Words tried: ${words.slice(0, 6).join(", ")}`,
   );
   return false;
 }
@@ -1445,7 +1445,7 @@ function refineSearchByText(
  * Returns true if found.
  */
 function searchDocumentForId(
-  document: import('vscode').TextDocument,
+  document: import("vscode").TextDocument,
   xmlId: string,
   textSnippet?: string,
 ): boolean {
@@ -1468,19 +1468,19 @@ function searchDocumentForId(
       // from multiple source sections.
       if (textSnippet && textSnippet.length > 15) {
         const words = textSnippet
-          .replace(/[^a-zA-Z\s]/g, ' ')
+          .replace(/[^a-zA-Z\s]/g, " ")
           .split(/\s+/)
           .filter((w) => w.length >= 4);
 
         if (words.length >= 2) {
-          const phrase = words.slice(0, 4).join('[\\s\\S]{1,60}?');
-          const phraseRegex = new RegExp(phrase, 'i');
+          const phrase = words.slice(0, 4).join("[\\s\\S]{1,60}?");
+          const phraseRegex = new RegExp(phrase, "i");
 
           const phraseMatch = phraseRegex.exec(text);
           if (phraseMatch) {
             jumpIdx = phraseMatch.index;
             pretextOutputChannel.appendLine(
-              `[searchDocumentForId] Text refined: "${words.slice(0, 4).join(' ')}" at offset ${jumpIdx}`,
+              `[searchDocumentForId] Text refined: "${words.slice(0, 4).join(" ")}" at offset ${jumpIdx}`,
             );
           }
         }
@@ -1515,7 +1515,7 @@ function searchDocumentForId(
  * Escape special regex characters in a string.
  */
 function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**
@@ -1529,7 +1529,7 @@ export function disposeLivePreview(): void {
   // Stop the pretext view server if we have project info
   if (currentProjectPath && currentTarget) {
     try {
-      const stopCmd = cli.cmd() + ' view --stop-server ' + currentTarget;
+      const stopCmd = cli.cmd() + " view --stop-server " + currentTarget;
       spawn(stopCmd, [], { cwd: currentProjectPath, shell: true });
     } catch {
       // best effort

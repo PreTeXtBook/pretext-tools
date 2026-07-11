@@ -9,14 +9,14 @@
  * that respects the spec's requiresStatement flag.
  */
 
-import type { BlockContent, DefinitionContent } from 'mdast';
-import type { ContainerDirective } from 'mdast-util-directive';
-import type { Element } from 'xast';
-import type { DirectiveSpec } from './directive-map.js';
-import { PROOF_SOLUTION_NAMES } from './directive-map.js';
-import type { VisitContext } from './context.js';
+import type { BlockContent, DefinitionContent } from "mdast";
+import type { ContainerDirective } from "mdast-util-directive";
+import type { Element } from "xast";
+import type { DirectiveSpec } from "./directive-map.js";
+import { PROOF_SOLUTION_NAMES } from "./directive-map.js";
+import type { VisitContext } from "./context.js";
 
-type XastChild = Element | { type: 'text'; value: string };
+type XastChild = Element | { type: "text"; value: string };
 
 function el(
   name: string,
@@ -24,10 +24,10 @@ function el(
   attributes?: Record<string, string>,
 ): Element {
   return {
-    type: 'element',
+    type: "element",
     name,
     attributes: attributes ?? {},
-    children: children as Element['children'],
+    children: children as Element["children"],
   };
 }
 
@@ -37,14 +37,14 @@ function el(
  */
 function isTaskNode(node: BlockContent | DefinitionContent): boolean {
   return (
-    node.type === 'containerDirective' &&
-    (node as ContainerDirective).name === 'task'
+    node.type === "containerDirective" &&
+    (node as ContainerDirective).name === "task"
   );
 }
 
 function isProofSolutionNode(node: BlockContent | DefinitionContent): boolean {
   return (
-    node.type === 'containerDirective' &&
+    node.type === "containerDirective" &&
     PROOF_SOLUTION_NAMES.has((node as ContainerDirective).name)
   );
 }
@@ -59,13 +59,13 @@ function nestListsInParagraphs(elements: Element[]): Element[] {
   const result: Element[] = [];
 
   for (const elem of elements) {
-    if (elem.name === 'ul' || elem.name === 'ol') {
-      if (result.length > 0 && result[result.length - 1]?.name === 'p') {
+    if (elem.name === "ul" || elem.name === "ol") {
+      if (result.length > 0 && result[result.length - 1]?.name === "p") {
         // Strategy 1: Append list to preceding paragraph
         (result[result.length - 1].children as XastChild[]).push(elem);
       } else {
         // Strategy 2: Wrap orphaned list in new <p>
-        result.push(el('p', [elem]));
+        result.push(el("p", [elem]));
       }
     } else {
       result.push(elem);
@@ -155,9 +155,9 @@ export function buildDirectiveWithSpec(
       if (droppedBetweenTasks.length > 0) {
         const messages = ctx.messages ?? (ctx.messages = []);
         messages.push({
-          type: 'warning',
+          type: "warning",
           reason: `Dropped ${droppedBetweenTasks.length} non-task node(s) between task directives in ${spec.type}.`,
-          category: 'dropped-content-between-tasks',
+          category: "dropped-content-between-tasks",
           position: droppedBetweenTasks[0].position?.start,
         });
       }
@@ -170,7 +170,7 @@ export function buildDirectiveWithSpec(
             .filter((n): n is Element => n !== null),
         );
         if (introChildren.length > 0) {
-          result.push(el('introduction', introChildren));
+          result.push(el("introduction", introChildren));
         }
       }
 
@@ -187,7 +187,7 @@ export function buildDirectiveWithSpec(
             .filter((n): n is Element => n !== null),
         );
         if (conclusionChildren.length > 0) {
-          result.push(el('conclusion', conclusionChildren));
+          result.push(el("conclusion", conclusionChildren));
         }
       }
 
@@ -249,7 +249,7 @@ function handleContentWithoutTasks(
 
     for (const child of children) {
       if (
-        child.type === 'containerDirective' &&
+        child.type === "containerDirective" &&
         PROOF_SOLUTION_NAMES.has((child as ContainerDirective).name)
       ) {
         const converted = convertDirective(child as ContainerDirective, ctx);
@@ -267,7 +267,7 @@ function handleContentWithoutTasks(
           .filter((n): n is Element => n !== null),
       );
       if (statementChildren.length > 0) {
-        result.push(el('statement', statementChildren));
+        result.push(el("statement", statementChildren));
       }
     }
 

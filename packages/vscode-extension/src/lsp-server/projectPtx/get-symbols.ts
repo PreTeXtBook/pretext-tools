@@ -1,18 +1,18 @@
-import { visit, EXIT } from 'unist-util-visit';
-import { DocumentSymbol, SymbolKind } from 'vscode-languageserver/node';
-import { toString } from 'xast-util-to-string';
-import { isElement, unifiedPositionToLspPosition } from '../../parse/utils';
-import { getDocumentInfo } from '../state';
-import { Element } from 'xast';
+import { visit, EXIT } from "unist-util-visit";
+import { DocumentSymbol, SymbolKind } from "vscode-languageserver/node";
+import { toString } from "xast-util-to-string";
+import { isElement, unifiedPositionToLspPosition } from "../../parse/utils";
+import { getDocumentInfo } from "../state";
+import { Element } from "xast";
 
-type Position = Element['position'] & {};
+type Position = Element["position"] & {};
 
 export async function getProjectPtxSymbols(
   uri: string,
 ): Promise<DocumentSymbol[]> {
   const info = getDocumentInfo(uri);
   if (!info) {
-    console.warn('Requested project symbols for uninitialized file', uri);
+    console.warn("Requested project symbols for uninitialized file", uri);
     return [];
   }
   const ast = await info.ast;
@@ -26,19 +26,19 @@ export async function getProjectPtxSymbols(
     if (!isElement(node)) {
       return;
     }
-    if (node.name !== 'targets') {
+    if (node.name !== "targets") {
       return;
     }
     // We've found the <targets> section. Collect all the data we need from it.
     for (const t of node.children) {
-      if (!isElement(t) || t.name !== 'target' || !t.attributes) {
+      if (!isElement(t) || t.name !== "target" || !t.attributes) {
         continue;
       }
-      const name = t.attributes['name'] || '<unknown target>';
+      const name = t.attributes["name"] || "<unknown target>";
       const formatNode = t.children.find(
-        (c) => isElement(c) && c.name === 'format',
+        (c) => isElement(c) && c.name === "format",
       );
-      const format = formatNode ? toString(formatNode) : '<unknown format>';
+      const format = formatNode ? toString(formatNode) : "<unknown format>";
       const position: Position = t.position
         ? t.position
         : {
@@ -51,7 +51,7 @@ export async function getProjectPtxSymbols(
     return EXIT;
   });
 
-  console.log('targets', targets);
+  console.log("targets", targets);
   // We convert into DocumentSymbol type.
   return targets.map((t) => ({
     kind: SymbolKind.Module,

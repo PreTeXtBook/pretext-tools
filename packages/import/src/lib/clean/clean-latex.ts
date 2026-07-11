@@ -1,8 +1,8 @@
-import { badPlainTeXdirectives } from './latex-data';
-import { fixPlainTeX, specialPreprocess } from './latex-clean';
-import { scanForAnomalies } from './latex-scan';
-import { trimJunk } from './latex-utils';
-import type { CleaningWarning } from './warnings';
+import { badPlainTeXdirectives } from "./latex-data";
+import { fixPlainTeX, specialPreprocess } from "./latex-clean";
+import { scanForAnomalies } from "./latex-scan";
+import { trimJunk } from "./latex-utils";
+import type { CleaningWarning } from "./warnings";
 
 export interface CleanLatexResult {
   output: string;
@@ -12,7 +12,7 @@ export interface CleanLatexResult {
 // Mirrors the LaTeX side of PreprocessLaTeX's describeFiles().
 export function cleanLatex(source: string): CleanLatexResult {
   const warnings: CleaningWarning[] = [];
-  let text = trimJunk(source).replace(/(\n *){3,}/g, '\n\n');
+  let text = trimJunk(source).replace(/(\n *){3,}/g, "\n\n");
 
   const special = specialPreprocess(text);
   text = special.output;
@@ -28,7 +28,7 @@ export function cleanLatex(source: string): CleanLatexResult {
   warnings.push(...fix2.warnings);
 
   const scan = scanForAnomalies(text);
-  text = scan.output.replace(/(\n *){3,}/g, '\n\n');
+  text = scan.output.replace(/(\n *){3,}/g, "\n\n");
   warnings.push(...scan.warnings);
 
   return { output: text, warnings };

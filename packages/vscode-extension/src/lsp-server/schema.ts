@@ -1,9 +1,9 @@
-import path from 'path';
-import fs from 'fs';
-import { fromXml } from 'xast-util-from-xml';
-import { CONTINUE, SKIP, visit } from 'unist-util-visit';
-import deepmerge from 'deepmerge';
-import { schemaDir } from './paths';
+import path from "path";
+import fs from "fs";
+import { fromXml } from "xast-util-from-xml";
+import { CONTINUE, SKIP, visit } from "unist-util-visit";
+import deepmerge from "deepmerge";
+import { schemaDir } from "./paths";
 
 type SchemaGroup = {
   [key: string]: {
@@ -24,28 +24,28 @@ export async function initializeSchema(schemaConfig: {
 
 function setSchema(schemaConfig: { versionName: string; customPath: string }) {
   let schemaPath: string = schemaConfig.customPath;
-  if (schemaPath !== '' && schemaConfig.versionName !== 'Custom') {
+  if (schemaPath !== "" && schemaConfig.versionName !== "Custom") {
     console.warn(
-      'Custom schema path provided, but version is not set to Custom.  Ignoring custom path.',
+      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path.",
     );
   }
   if (!fs.existsSync(schemaPath)) {
     console.error(`Schema file not found at path: ${schemaPath}`);
-    schemaPath = '';
+    schemaPath = "";
   }
-  if (schemaPath === '') {
+  if (schemaPath === "") {
     switch (schemaConfig.versionName) {
-      case 'Stable':
-        schemaPath = path.join(schemaDir, 'pretext.rng');
+      case "Stable":
+        schemaPath = path.join(schemaDir, "pretext.rng");
         break;
-      case 'Experimental':
-        schemaPath = path.join(schemaDir, 'pretext-dev.rng');
+      case "Experimental":
+        schemaPath = path.join(schemaDir, "pretext-dev.rng");
         break;
-      case 'Custom':
+      case "Custom":
         console.log(
-          'Selected custom schema, but no valid path provided.  Setting to default.',
+          "Selected custom schema, but no valid path provided.  Setting to default.",
         );
-        schemaPath = path.join(schemaDir, 'pretext.rng');
+        schemaPath = path.join(schemaDir, "pretext.rng");
         break;
     }
   }
@@ -64,17 +64,17 @@ export class Schema {
     this.schema = schemaAst;
     //console.time("visit");
     visit(schemaAst, (node) => {
-      if (node.type === 'root') {
+      if (node.type === "root") {
         return CONTINUE;
       }
-      if (node.type !== 'element') {
+      if (node.type !== "element") {
         return SKIP;
       }
-      if (node.type === 'element') {
-        if (node.name === 'start') {
+      if (node.type === "element") {
+        if (node.name === "start") {
           return SKIP;
         }
-        if (node.name === 'define') {
+        if (node.name === "define") {
           let nodeName = node.attributes?.name;
           if (nodeName) {
             aliasMap[nodeName] = deepmerge(
@@ -82,7 +82,7 @@ export class Schema {
               getChildren(node),
             );
           }
-        } else if (node.name === 'element') {
+        } else if (node.name === "element") {
           let nodeName = node.attributes?.name;
           if (nodeName) {
             tmpElementChildren[nodeName] = deepmerge(
@@ -105,7 +105,7 @@ export class Schema {
 
 function getChildren(elemNode: any) {
   if (
-    elemNode.type !== 'element' ||
+    elemNode.type !== "element" ||
     !elemNode.children ||
     elemNode.children.length === 0
   ) {
@@ -119,17 +119,17 @@ function getChildren(elemNode: any) {
     if (!parent) {
       return CONTINUE;
     }
-    if (node.name === 'element') {
+    if (node.name === "element") {
       if (node.attributes && node.attributes.name) {
         elements.push(node.attributes.name);
         return SKIP;
       }
-    } else if (node.name === 'attribute') {
+    } else if (node.name === "attribute") {
       if (node.attributes && node.attributes.name) {
         attributes.push(node.attributes.name);
         return SKIP;
       }
-    } else if (node.name === 'ref') {
+    } else if (node.name === "ref") {
       if (node.attributes && node.attributes.name) {
         refs.push(node.attributes.name);
         return SKIP;
@@ -170,16 +170,16 @@ function resolveRefs(elements: SchemaGroup, aliases: SchemaGroup) {
 }
 
 export function getAst(rngPath: string) {
-  let rngFile = fs.readFileSync(rngPath, 'utf8');
+  let rngFile = fs.readFileSync(rngPath, "utf8");
   //Look for an "include" statement:
   let importRegex = /<include href=\"(.*?)\"\s*\/>/g;
   let match = importRegex.exec(rngFile);
   while (match !== null) {
     let rngDir = path.dirname(rngPath);
     let importPath = path.join(rngDir, match[1]);
-    let importContent = fs.readFileSync(importPath, 'utf8');
+    let importContent = fs.readFileSync(importPath, "utf8");
     //remove first line (xml declaration):
-    importContent = importContent.replace(/<\?xml.*?\?>/, '');
+    importContent = importContent.replace(/<\?xml.*?\?>/, "");
     rngFile = rngFile.replace(match[0], importContent);
     match = importRegex.exec(rngFile);
   }

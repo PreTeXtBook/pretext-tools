@@ -13,7 +13,7 @@ Node `type` values match PreTeXt XML tag names exactly (`"theorem"`, `"section"`
 ## Usage
 
 ```ts
-import type { PtxRoot, Section, Theorem, P } from '@pretextbook/ptxast';
+import type { PtxRoot, Section, Theorem, P } from "@pretextbook/ptxast";
 import {
   section,
   theorem,
@@ -22,28 +22,28 @@ import {
   text,
   m,
   statement,
-} from '@pretextbook/ptxast';
-import { isPtxNode, isTheorem, isSection } from '@pretextbook/ptxast';
+} from "@pretextbook/ptxast";
+import { isPtxNode, isTheorem, isSection } from "@pretextbook/ptxast";
 
 // Build a tree with typed factory functions
 const tree = section(
   [
     theorem(
       [
-        statement([p([text('For a right triangle: '), m('a^2 + b^2 = c^2')])]),
-        proof([p([text('Left as an exercise.')])]),
+        statement([p([text("For a right triangle: "), m("a^2 + b^2 = c^2")])]),
+        proof([p([text("Left as an exercise.")])]),
       ],
-      { 'xml:id': 'thm-pythagoras' },
+      { "xml:id": "thm-pythagoras" },
     ),
   ],
-  { 'xml:id': 'sec-geometry' },
+  { "xml:id": "sec-geometry" },
 );
 
 // Narrow with type guards
 if (isSection(tree)) {
   for (const child of tree.children) {
     if (isTheorem(child)) {
-      console.log('Found a theorem:', child.attributes?.['xml:id']);
+      console.log("Found a theorem:", child.attributes?.["xml:id"]);
     }
   }
 }

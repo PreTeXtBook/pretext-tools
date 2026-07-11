@@ -1,23 +1,23 @@
 import {
   CompletionItem,
   TextDocumentPositionParams,
-} from 'vscode-languageserver/node';
-import { glob } from 'glob';
-import { documents, getDocumentInfo } from '../state';
-import * as path from 'path';
-import { URI } from 'vscode-uri';
-import { isPublicationPtx } from './utils';
+} from "vscode-languageserver/node";
+import { glob } from "glob";
+import { documents, getDocumentInfo } from "../state";
+import * as path from "path";
+import { URI } from "vscode-uri";
+import { isPublicationPtx } from "./utils";
 import {
   references,
   pretextSchema,
   projectSchema,
   publicationSchema,
-} from '../main';
-import { isProjectPtx } from '../projectPtx/is-project-ptx';
-import { Schema } from '../schema';
-import { getPretextCompletions } from '@pretextbook/completions';
-import { getCompletions as getSchemaCompletions } from '@pretextbook/schema';
-import { getValidationGrammar } from '../validation';
+} from "../main";
+import { isProjectPtx } from "../projectPtx/is-project-ptx";
+import { Schema } from "../schema";
+import { getPretextCompletions } from "@pretextbook/completions";
+import { getCompletions as getSchemaCompletions } from "@pretextbook/schema";
+import { getValidationGrammar } from "../validation";
 
 const completionCache: CompletionItem[] = [];
 
@@ -29,7 +29,7 @@ export async function getCompletions(
   const doc = documents.get(uri);
   const pos = params.position;
   if (!info || !doc) {
-    console.warn('Requested project symbols for uninitialized file', uri);
+    console.warn("Requested project symbols for uninitialized file", uri);
     return null;
   }
   // Set the schema based on the current file.
@@ -48,7 +48,7 @@ export async function getCompletions(
     schema,
     references,
     currentFileDir: path.dirname(URI.parse(uri).fsPath),
-    sourceFiles: glob.sync('source/**', { nodir: true, absolute: true }),
+    sourceFiles: glob.sync("source/**", { nodir: true, absolute: true }),
   });
 
   if (!completionItems || completionItems.length === 0) {

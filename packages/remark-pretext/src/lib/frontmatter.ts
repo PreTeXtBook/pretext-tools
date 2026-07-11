@@ -20,11 +20,11 @@ import {
   isRootDivisionType,
   isTopLevelDivisionType,
   rootChildDivision,
-} from '@pretextbook/ptxast';
+} from "@pretextbook/ptxast";
 import type {
   RootDivisionType,
   TopLevelDivisionType,
-} from '@pretextbook/ptxast';
+} from "@pretextbook/ptxast";
 
 export interface FrontmatterResult {
   /** The division a depth-1 heading (`#`) maps to, if present and valid. When
@@ -91,9 +91,9 @@ export function extractFrontmatter(markdown: string): FrontmatterResult {
     block.match(XML_ID_FIELD_RE)?.[1];
   const label = block.match(LABEL_FIELD_RE)?.[1];
   const component = block.match(COMPONENT_FIELD_RE)?.[1];
-  if (xmlid) attributes['xml:id'] = xmlid;
-  if (label) attributes['label'] = label;
-  if (component) attributes['component'] = component;
+  if (xmlid) attributes["xml:id"] = xmlid;
+  if (label) attributes["label"] = label;
+  if (component) attributes["component"] = component;
 
   const titleValue = block.match(TITLE_FIELD_RE)?.[1];
   const title = titleValue ? stripQuotes(titleValue) : undefined;

@@ -3,41 +3,41 @@
  * Licensed under the MIT License. See License.txt in the project root for license information.
  * ------------------------------------------------------------------------------------------ */
 
-import * as path from 'path';
-import { ExtensionContext, TextEditor, workspace } from 'vscode';
+import * as path from "path";
+import { ExtensionContext, TextEditor, workspace } from "vscode";
 
 import {
   LanguageClient,
   LanguageClientOptions,
   ServerOptions,
   TransportKind,
-} from 'vscode-languageclient/node';
+} from "vscode-languageclient/node";
 
-import { pretextOutputChannel } from '../ui';
+import { pretextOutputChannel } from "../ui";
 
 let client: LanguageClient;
 
 export function lspFormatDocument(editor: TextEditor) {
   if (editor) {
-    client.sendRequest('workspace/executeCommand', {
-      command: 'formatDocument',
+    client.sendRequest("workspace/executeCommand", {
+      command: "formatDocument",
       arguments: [{ uri: editor.document.uri.toString() }],
     });
   } else {
-    console.log('No active editor found to format document.');
+    console.log("No active editor found to format document.");
   }
 }
 
 export async function lspFormatText(text: string): Promise<string> {
-  const result = await client.sendRequest('workspace/executeCommand', {
-    command: 'formatText',
+  const result = await client.sendRequest("workspace/executeCommand", {
+    command: "formatText",
     arguments: [{ text: text }],
   });
-  if (typeof result === 'string') {
+  if (typeof result === "string") {
     return result;
   } else {
     throw new Error(
-      'Expected string result from formatText, got: ' + typeof result,
+      "Expected string result from formatText, got: " + typeof result,
     );
   }
 }
@@ -45,12 +45,12 @@ export async function lspFormatText(text: string): Promise<string> {
 export function activate(context: ExtensionContext) {
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(
-    path.join('out', 'lsp-server.js'),
+    path.join("out", "lsp-server.js"),
   );
 
   // The debug options for the server
   // --inspect=6009: runs the server in Node's Inspector mode so VS Code can attach to the server for debugging
-  const debugOptions = { execArgv: ['--nolazy', '--inspect=6009'] };
+  const debugOptions = { execArgv: ["--nolazy", "--inspect=6009"] };
 
   // If the extension is launched in debug mode then the debug server options are used
   // Otherwise the run options are used
@@ -66,26 +66,26 @@ export function activate(context: ExtensionContext) {
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
     // Register the server for plain text documents
-    documentSelector: [{ scheme: 'file', language: 'pretext' }],
+    documentSelector: [{ scheme: "file", language: "pretext" }],
     synchronize: {
       // Notify the server about file changes to '.clientrc files contained in the workspace
-      fileEvents: workspace.createFileSystemWatcher('**/project.ptx'),
+      fileEvents: workspace.createFileSystemWatcher("**/project.ptx"),
     },
     //markdown: { isTrusted: true },
   };
 
   // Create the language client and start the client.
   client = new LanguageClient(
-    'pretextLanguageServer',
-    'PreTeXt Language Server',
+    "pretextLanguageServer",
+    "PreTeXt Language Server",
     serverOptions,
     clientOptions,
   );
 
   // Start the client. This will also launch the server
   client.start();
-  console.log('PreTeXt LSP Launched');
-  pretextOutputChannel.appendLine('PreTeXt LSP Launched');
+  console.log("PreTeXt LSP Launched");
+  pretextOutputChannel.appendLine("PreTeXt LSP Launched");
 }
 
 export function deactivate(): Thenable<void> | undefined {

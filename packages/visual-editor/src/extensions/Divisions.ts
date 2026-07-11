@@ -3,14 +3,14 @@ import {
   Node,
   mergeAttributes,
   wrappingInputRule,
-} from '@tiptap/core';
+} from "@tiptap/core";
 
 const PtxDoc = Node.create({
-  name: 'ptxdoc',
+  name: "ptxdoc",
 
-  content: 'title? (BasicBlock|block|rawptx|division)*',
+  content: "title? (BasicBlock|block|rawptx|division)*",
 
-  group: 'root',
+  group: "root",
 
   selectable: false,
   draggable: false,
@@ -20,26 +20,26 @@ const PtxDoc = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'ptxdoc',
+        tag: "ptxdoc",
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      'div',
-      mergeAttributes({ class: 'ptxdoc', ptxtag: 'ptxdoc' }, HTMLAttributes),
+      "div",
+      mergeAttributes({ class: "ptxdoc", ptxtag: "ptxdoc" }, HTMLAttributes),
       0,
     ];
   },
 });
 
 const Introduction = Node.create({
-  name: 'introduction',
+  name: "introduction",
 
-  content: '(BasicBlock|block|rawptx)*',
+  content: "(BasicBlock|block|rawptx)*",
 
-  group: 'division introduction',
+  group: "division introduction",
 
   selectable: true,
   draggable: true,
@@ -49,16 +49,16 @@ const Introduction = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'introduction',
+        tag: "introduction",
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      'article',
+      "article",
       mergeAttributes(
-        { class: 'introduction', label: 'introduction' },
+        { class: "introduction", label: "introduction" },
         HTMLAttributes,
       ),
       0,
@@ -76,11 +76,11 @@ const Introduction = Node.create({
 });
 
 const Chapter = Node.create({
-  name: 'chapter',
+  name: "chapter",
 
-  content: 'title ((introduction?|section+)|(BasicBlock|block|rawptx)+)',
+  content: "title ((introduction?|section+)|(BasicBlock|block|rawptx)+)",
 
-  group: 'division',
+  group: "division",
 
   selectable: true,
 
@@ -91,15 +91,15 @@ const Chapter = Node.create({
   parseHTML() {
     return [
       {
-        tag: 'chapter',
+        tag: "chapter",
       },
     ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      'section',
-      mergeAttributes({ class: 'chapter', ptxtag: 'chapter' }, HTMLAttributes),
+      "section",
+      mergeAttributes({ class: "chapter", ptxtag: "chapter" }, HTMLAttributes),
       0,
     ];
   },
@@ -114,23 +114,23 @@ const Chapter = Node.create({
   },
 });
 const Section = Node.create({
-  name: 'section',
-  content: 'title ((introduction?|subsection+)|(BasicBlock|block|rawptx)+)',
-  group: 'division',
+  name: "section",
+  content: "title ((introduction?|subsection+)|(BasicBlock|block|rawptx)+)",
+  group: "division",
   selectable: true,
   draggable: true,
   defining: false,
   parseHTML() {
     return [
       {
-        tag: 'section',
+        tag: "section",
       },
     ];
   },
   renderHTML({ HTMLAttributes }) {
     return [
-      'section',
-      mergeAttributes({ class: 'section', ptxtag: 'section' }, HTMLAttributes),
+      "section",
+      mergeAttributes({ class: "section", ptxtag: "section" }, HTMLAttributes),
       0,
     ];
   },
@@ -145,16 +145,16 @@ const Section = Node.create({
 });
 
 const Subsection = Node.create({
-  name: 'subsection',
-  content: 'title (BasicBlock|block|rawptx)+',
-  group: 'division',
+  name: "subsection",
+  content: "title (BasicBlock|block|rawptx)+",
+  group: "division",
   selectable: false,
   draggable: true,
   defining: false,
   parseHTML() {
     return [
       {
-        tag: 'subsection',
+        tag: "subsection",
       },
     ];
   },
@@ -162,18 +162,18 @@ const Subsection = Node.create({
     return {
       label: {
         default: null,
-        parseHTML: (element) => element.getAttribute('label'),
+        parseHTML: (element) => element.getAttribute("label"),
       },
-      'xml:id': {
-        parseHTML: (element) => element.getAttribute('xml:id'),
+      "xml:id": {
+        parseHTML: (element) => element.getAttribute("xml:id"),
       },
     };
   },
   renderHTML({ HTMLAttributes }) {
     return [
-      'section',
+      "section",
       mergeAttributes(
-        { class: 'subsection', ptxtag: 'subsection' },
+        { class: "subsection", ptxtag: "subsection" },
         HTMLAttributes,
       ),
       0,
@@ -191,7 +191,7 @@ const Subsection = Node.create({
 });
 
 const Divisions = Extension.create({
-  name: 'divisions',
+  name: "divisions",
 
   addExtensions() {
     return [PtxDoc, Introduction, Chapter, Section, Subsection];

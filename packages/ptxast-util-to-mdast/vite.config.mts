@@ -1,50 +1,50 @@
 /// <reference types='vitest' />
-import { defineConfig } from 'vite';
-import dts from 'vite-plugin-dts';
-import * as path from 'path';
+import { defineConfig } from "vite";
+import dts from "vite-plugin-dts";
+import * as path from "path";
 
 export default defineConfig(() => ({
   root: import.meta.dirname,
-  cacheDir: '../../node_modules/.vite/packages/ptxast-util-to-mdast',
+  cacheDir: "../../node_modules/.vite/packages/ptxast-util-to-mdast",
   plugins: [
     dts({
-      entryRoot: 'src',
-      tsconfigPath: path.join(import.meta.dirname, 'tsconfig.lib.json'),
+      entryRoot: "src",
+      tsconfigPath: path.join(import.meta.dirname, "tsconfig.lib.json"),
       pathsToAliases: false,
     }),
   ],
   build: {
-    outDir: 'dist',
+    outDir: "dist",
     emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
       transformMixedEsModules: true,
     },
     lib: {
-      entry: 'src/index.ts',
-      name: 'ptxast-util-to-mdast',
-      fileName: (format) => (format === 'es' ? 'index.js' : 'index.cjs'),
-      formats: ['es', 'cjs'],
+      entry: "src/index.ts",
+      name: "ptxast-util-to-mdast",
+      fileName: (format) => (format === "es" ? "index.js" : "index.cjs"),
+      formats: ["es", "cjs"],
     },
     rollupOptions: {
       external: [
-        '@pretextbook/ptxast',
-        'mdast-util-directive',
-        'mdast-util-math',
-        'mdast-util-to-markdown',
+        "@pretextbook/ptxast",
+        "mdast-util-directive",
+        "mdast-util-math",
+        "mdast-util-to-markdown",
       ],
     },
   },
   test: {
-    name: 'ptxast-util-to-mdast',
+    name: "ptxast-util-to-mdast",
     watch: false,
     globals: true,
-    environment: 'node',
-    include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    reporters: ['default'],
+    environment: "node",
+    include: ["{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
+    reporters: ["default"],
     coverage: {
-      reportsDirectory: '../../coverage/packages/ptxast-util-to-mdast',
-      provider: 'v8' as const,
+      reportsDirectory: "../../coverage/packages/ptxast-util-to-mdast",
+      provider: "v8" as const,
     },
   },
 }));

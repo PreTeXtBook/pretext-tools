@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { validateDocument } from '../validate';
-import { compileRngToGrammar } from '../compile';
-import { testGrammar } from './helpers';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { describe, it, expect } from "vitest";
+import { validateDocument } from "../validate";
+import { compileRngToGrammar } from "../compile";
+import { testGrammar } from "./helpers";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,15 +15,15 @@ const VALID = `<?xml version="1.0" encoding="UTF-8"?>
   </article>
 </pretext>`;
 
-describe('validateDocument', () => {
-  it('reports no diagnostics for a valid document', () => {
+describe("validateDocument", () => {
+  it("reports no diagnostics for a valid document", () => {
     const result = validateDocument(VALID, testGrammar(), {
       resolveXIncludes: false,
     });
     expect(result.diagnostics).toEqual([]);
   });
 
-  it('reports a disallowed element with a precise location', () => {
+  it("reports a disallowed element with a precise location", () => {
     const doc = `<?xml version="1.0"?>
 <pretext>
   <article xml:id="a">
@@ -38,13 +38,13 @@ describe('validateDocument', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0);
     const diag = result.diagnostics[0];
     expect(diag.message).toMatch(/notathing/);
-    expect(diag.code).toBe('element-not-allowed');
+    expect(diag.code).toBe("element-not-allowed");
     // `<notathing>` is on line 5 (0-based line 4).
     expect(diag.range.start.line).toBe(4);
     expect(diag.range.start.character).toBeGreaterThanOrEqual(4);
   });
 
-  it('attaches parent/ancestor context to errors', () => {
+  it("attaches parent/ancestor context to errors", () => {
     const doc = `<pretext>
   <article xml:id="a">
     <title>Hi</title>
@@ -59,19 +59,19 @@ describe('validateDocument', () => {
       ruleset: {
         rules: [
           {
-            id: 'echo',
-            match: (e) => e.kind === 'element-not-allowed',
+            id: "echo",
+            match: (e) => e.kind === "element-not-allowed",
             message: (e) =>
-              `parent=${e.parent} ancestors=${e.ancestors?.join('>')}`,
+              `parent=${e.parent} ancestors=${e.ancestors?.join(">")}`,
           },
         ],
       },
     });
     const diag = result.diagnostics[0];
-    expect(diag.message).toBe('parent=article ancestors=pretext>article');
+    expect(diag.message).toBe("parent=article ancestors=pretext>article");
   });
 
-  it('reports a disallowed attribute', () => {
+  it("reports a disallowed attribute", () => {
     const doc = `<pretext>
   <article xml:id="a">
     <title>Hi</title>
@@ -82,13 +82,13 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     const attrDiag = result.diagnostics.find(
-      (d) => d.code === 'attribute-not-allowed',
+      (d) => d.code === "attribute-not-allowed",
     );
     expect(attrDiag).toBeDefined();
     expect(attrDiag!.message).toMatch(/bogus/);
   });
 
-  it('recovers and reports multiple errors in one pass', () => {
+  it("recovers and reports multiple errors in one pass", () => {
     const doc = `<pretext>
   <article xml:id="a">
     <title>Hi</title>
@@ -101,12 +101,12 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     const bad = result.diagnostics.filter(
-      (d) => d.code === 'element-not-allowed',
+      (d) => d.code === "element-not-allowed",
     );
     expect(bad.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('validates a section-level fragment (modular file)', () => {
+  it("validates a section-level fragment (modular file)", () => {
     const doc = `<section xml:id="sec">
   <title>A Section</title>
   <p>Body.</p>
@@ -117,7 +117,7 @@ describe('validateDocument', () => {
     expect(result.diagnostics).toEqual([]);
   });
 
-  it('reports well-formedness errors', () => {
+  it("reports well-formedness errors", () => {
     const doc = `<pretext><article><title>Hi</title></article>`; // unclosed pretext
     const result = validateDocument(doc, testGrammar(), {
       resolveXIncludes: false,
@@ -125,7 +125,7 @@ describe('validateDocument', () => {
     expect(result.diagnostics.length).toBeGreaterThan(0);
   });
 
-  it('respects an abort signal', () => {
+  it("respects an abort signal", () => {
     const controller = new AbortController();
     controller.abort();
     expect(() =>
@@ -136,7 +136,7 @@ describe('validateDocument', () => {
     ).toThrow(/abort/i);
   });
 
-  it('reports a duplicate xml:id', () => {
+  it("reports a duplicate xml:id", () => {
     const doc = `<pretext>
   <article xml:id="dup">
     <title>Hi</title>
@@ -146,12 +146,12 @@ describe('validateDocument', () => {
     const result = validateDocument(doc, testGrammar(), {
       resolveXIncludes: false,
     });
-    const dupDiag = result.diagnostics.find((d) => d.code === 'duplicate-id');
+    const dupDiag = result.diagnostics.find((d) => d.code === "duplicate-id");
     expect(dupDiag).toBeDefined();
     expect(dupDiag!.message).toMatch(/dup/);
   });
 
-  it('does not flag distinct xml:ids', () => {
+  it("does not flag distinct xml:ids", () => {
     const doc = `<pretext>
   <article xml:id="a">
     <title>Hi</title>
@@ -164,7 +164,7 @@ describe('validateDocument', () => {
     expect(result.diagnostics).toEqual([]);
   });
 
-  it('reports a duplicate label', () => {
+  it("reports a duplicate label", () => {
     const doc = `<pretext>
   <article xml:id="art">
     <title>Hi</title>
@@ -176,13 +176,13 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     const dupDiag = result.diagnostics.find(
-      (d) => d.code === 'duplicate-label',
+      (d) => d.code === "duplicate-label",
     );
     expect(dupDiag).toBeDefined();
     expect(dupDiag!.message).toMatch(/dup/);
   });
 
-  it('does not flag distinct labels', () => {
+  it("does not flag distinct labels", () => {
     const doc = `<pretext>
   <article xml:id="art">
     <title>Hi</title>
@@ -194,11 +194,11 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     expect(
-      result.diagnostics.filter((d) => d.code === 'duplicate-label'),
+      result.diagnostics.filter((d) => d.code === "duplicate-label"),
     ).toEqual([]);
   });
 
-  it('reports a dangling xref target', () => {
+  it("reports a dangling xref target", () => {
     const doc = `<pretext>
   <article xml:id="art">
     <title>Hi</title>
@@ -209,13 +209,13 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     const diag = result.diagnostics.find(
-      (d) => d.code === 'dangling-reference',
+      (d) => d.code === "dangling-reference",
     );
     expect(diag).toBeDefined();
     expect(diag!.message).toMatch(/nope/);
   });
 
-  it('resolves a forward xref target within the same document', () => {
+  it("resolves a forward xref target within the same document", () => {
     const doc = `<pretext>
   <article xml:id="art">
     <title>Hi</title>
@@ -244,13 +244,13 @@ describe('validateDocument', () => {
       resolveXIncludes: false,
     });
     expect(
-      result.diagnostics.filter((d) => d.code === 'dangling-reference'),
+      result.diagnostics.filter((d) => d.code === "dangling-reference"),
     ).toEqual([]);
   });
 
-  it('produces the same grammar whether compiled or loaded from JSON', async () => {
+  it("produces the same grammar whether compiled or loaded from JSON", async () => {
     const compiled = await compileRngToGrammar(
-      path.resolve(here, '../../../vscode-extension/assets/schema/pretext.rng'),
+      path.resolve(here, "../../../vscode-extension/assets/schema/pretext.rng"),
     );
     const result = validateDocument(VALID, compiled, {
       resolveXIncludes: false,
@@ -259,12 +259,12 @@ describe('validateDocument', () => {
   });
 });
 
-describe('performance', () => {
-  it('validates a large document quickly', () => {
+describe("performance", () => {
+  it("validates a large document quickly", () => {
     const paras = Array.from(
       { length: 4500 },
       (_, i) => `    <p>Paragraph number ${i} with some words.</p>`,
-    ).join('\n');
+    ).join("\n");
     const big = `<pretext>
   <article xml:id="a">
     <title>Big</title>

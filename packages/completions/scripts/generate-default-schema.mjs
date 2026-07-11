@@ -1,46 +1,46 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { fromXml } from 'xast-util-from-xml';
-import { CONTINUE, SKIP, visit } from 'unist-util-visit';
-import deepmerge from 'deepmerge';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { fromXml } from "xast-util-from-xml";
+import { CONTINUE, SKIP, visit } from "unist-util-visit";
+import deepmerge from "deepmerge";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(scriptDir, '../../..');
+const workspaceRoot = path.resolve(scriptDir, "../../..");
 const schemaPath = path.join(
   workspaceRoot,
-  'packages',
-  'vscode-extension',
-  'assets',
-  'schema',
-  'pretext.rng',
+  "packages",
+  "vscode-extension",
+  "assets",
+  "schema",
+  "pretext.rng",
 );
 const outputPath = path.join(
   workspaceRoot,
-  'packages',
-  'completions',
-  'src',
-  'default-dev-schema.ts',
+  "packages",
+  "completions",
+  "src",
+  "default-dev-schema.ts",
 );
 const ptxastOutputPath = path.join(
   workspaceRoot,
-  'packages',
-  'ptxast',
-  'src',
-  'types',
-  'generated.ts',
+  "packages",
+  "ptxast",
+  "src",
+  "types",
+  "generated.ts",
 );
 const ptxastTypesPath = path.join(
   workspaceRoot,
-  'packages',
-  'ptxast',
-  'src',
-  'types',
-  'index.ts',
+  "packages",
+  "ptxast",
+  "src",
+  "types",
+  "index.ts",
 );
 
 function getAst(rngPath) {
-  let rngFile = fs.readFileSync(rngPath, 'utf8');
+  let rngFile = fs.readFileSync(rngPath, "utf8");
   const includeRegex = /<include\s+href=("|')(.*?)\1\s*\/>/g;
   let match = includeRegex.exec(rngFile);
   let iterations = 0;
@@ -50,14 +50,14 @@ function getAst(rngPath) {
     const rngDir = path.dirname(rngPath);
     const includePath = path.join(rngDir, match[2]);
     try {
-      let includeContent = fs.readFileSync(includePath, 'utf8');
-      includeContent = includeContent.replace(/<\?xml.*?\?>/, '');
+      let includeContent = fs.readFileSync(includePath, "utf8");
+      includeContent = includeContent.replace(/<\?xml.*?\?>/, "");
       rngFile = rngFile.replace(match[0], includeContent);
     } catch (err) {
       console.warn(`Failed to resolve include ${match[2]}: ${err.message}`);
       // Skip this include and move on
       includeRegex.lastIndex = 0;
-      rngFile = rngFile.replace(match[0], '');
+      rngFile = rngFile.replace(match[0], "");
     }
     match = includeRegex.exec(rngFile);
     iterations++;
@@ -74,7 +74,7 @@ function getAst(rngPath) {
 
 function getChildren(elemNode) {
   if (
-    elemNode.type !== 'element' ||
+    elemNode.type !== "element" ||
     !elemNode.children ||
     elemNode.children.length === 0
   ) {
@@ -90,17 +90,17 @@ function getChildren(elemNode) {
       return CONTINUE;
     }
 
-    if (node.name === 'element') {
+    if (node.name === "element") {
       if (node.attributes && node.attributes.name) {
         elements.push(node.attributes.name);
         return SKIP;
       }
-    } else if (node.name === 'attribute') {
+    } else if (node.name === "attribute") {
       if (node.attributes && node.attributes.name) {
         attributes.push(node.attributes.name);
         return SKIP;
       }
-    } else if (node.name === 'ref') {
+    } else if (node.name === "ref") {
       if (node.attributes && node.attributes.name) {
         refs.push(node.attributes.name);
         return SKIP;
@@ -161,18 +161,18 @@ function createSchemaElementChildren(schemaAst) {
   const aliasMap = {};
 
   visit(schemaAst, (node) => {
-    if (node.type === 'root') {
+    if (node.type === "root") {
       return CONTINUE;
     }
-    if (node.type !== 'element') {
+    if (node.type !== "element") {
       return SKIP;
     }
 
-    if (node.name === 'start') {
+    if (node.name === "start") {
       return SKIP;
     }
 
-    if (node.name === 'define') {
+    if (node.name === "define") {
       const nodeName = node.attributes?.name;
       if (nodeName) {
         aliasMap[nodeName] = deepmerge(
@@ -180,7 +180,7 @@ function createSchemaElementChildren(schemaAst) {
           getChildren(node),
         );
       }
-    } else if (node.name === 'element') {
+    } else if (node.name === "element") {
       const nodeName = node.attributes?.name;
       if (nodeName) {
         tmpElementChildren[nodeName] = deepmerge(
@@ -227,7 +227,7 @@ function main() {
   const schemaAst = getAst(schemaPath);
   const elementChildren = createSchemaElementChildren(schemaAst);
   const sortedElementChildren = sortSchemaElementChildren(elementChildren);
-  const ptxastTypesSource = fs.readFileSync(ptxastTypesPath, 'utf8');
+  const ptxastTypesSource = fs.readFileSync(ptxastTypesPath, "utf8");
   const curatedElementNames = extractCuratedElementNames(ptxastTypesSource);
   const schemaElementNames = Object.keys(sortedElementChildren);
   const schemaElementNameSet = new Set(schemaElementNames);
@@ -270,7 +270,7 @@ export type GeneratedPtxAttributeName = ${
     ]
       .sort((a, b) => a.localeCompare(b))
       .map((name) => JSON.stringify(name))
-      .join(' | ') || 'never'
+      .join(" | ") || "never"
   };
 export type GeneratedPtxChildElementName<
   ElementName extends GeneratedPtxElementName,

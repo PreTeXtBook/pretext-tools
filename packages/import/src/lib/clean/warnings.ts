@@ -1,11 +1,11 @@
-export type CleaningSeverity = 'info' | 'warning' | 'error';
+export type CleaningSeverity = "info" | "warning" | "error";
 
 export type CleaningAction =
-  | 'delete'
-  | 'replace'
-  | 'rewrite'
-  | 'save'
-  | 'anomaly';
+  | "delete"
+  | "replace"
+  | "rewrite"
+  | "save"
+  | "anomaly";
 
 export interface CleaningWarning {
   action: CleaningAction;

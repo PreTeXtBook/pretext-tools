@@ -1,17 +1,17 @@
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkDirective from 'remark-directive';
-import { describe, it, expect } from 'vitest';
-import { remarkPretext, mdastToPtxast } from '../index.js';
-import type { RemarkPretextOptions } from './remark-pretext.js';
-import remarkMath from './math-parser.js';
-import { mdastToPtxastWithDiagnostics } from './mdast-to-ptxast.js';
-import { normalizeDirectiveColons } from './directive-normalizer.js';
-import type { Element, Root, Text as XastText } from 'xast';
-import { toXml } from 'xast-util-to-xml';
-import { fromXml } from 'xast-util-from-xml';
-import { getPtxTextContent } from '@pretextbook/ptxast';
-import type { Root as MdastRoot } from 'mdast';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
+import { describe, it, expect } from "vitest";
+import { remarkPretext, mdastToPtxast } from "../index.js";
+import type { RemarkPretextOptions } from "./remark-pretext.js";
+import remarkMath from "./math-parser.js";
+import { mdastToPtxastWithDiagnostics } from "./mdast-to-ptxast.js";
+import { normalizeDirectiveColons } from "./directive-normalizer.js";
+import type { Element, Root, Text as XastText } from "xast";
+import { toXml } from "xast-util-to-xml";
+import { fromXml } from "xast-util-from-xml";
+import { getPtxTextContent } from "@pretextbook/ptxast";
+import type { Root as MdastRoot } from "mdast";
 
 /** Helper: parse markdown and transform to xast Root. */
 function parse(md: string): Root {
@@ -30,11 +30,11 @@ function parseWithDiagnostics(md: string) {
 }
 
 function elName(node: unknown): string {
-  return (node as Element).name ?? '';
+  return (node as Element).name ?? "";
 }
 
 function textValue(node: unknown): string {
-  return (node as XastText).value ?? '';
+  return (node as XastText).value ?? "";
 }
 
 /** Count occurrences of each element name in the xast tree (plus 'root' and 'text'). */
@@ -48,14 +48,14 @@ function nodeNameCounts(root: Root): Record<string, number> {
       name?: unknown;
       children?: unknown;
     };
-    if (!current || typeof current !== 'object') continue;
+    if (!current || typeof current !== "object") continue;
 
-    if (current.type === 'element' && typeof current.name === 'string') {
+    if (current.type === "element" && typeof current.name === "string") {
       counts[current.name] = (counts[current.name] ?? 0) + 1;
-    } else if (current.type === 'text') {
-      counts['text'] = (counts['text'] ?? 0) + 1;
-    } else if (current.type === 'root') {
-      counts['root'] = (counts['root'] ?? 0) + 1;
+    } else if (current.type === "text") {
+      counts["text"] = (counts["text"] ?? 0) + 1;
+    } else if (current.type === "root") {
+      counts["root"] = (counts["root"] ?? 0) + 1;
     }
 
     if (Array.isArray(current.children)) {
@@ -68,285 +68,285 @@ function nodeNameCounts(root: Root): Record<string, number> {
   return counts;
 }
 
-describe('paragraph conversion', () => {
-  it('converts a paragraph to a p element', () => {
-    const tree = parse('Hello world.');
-    expect(tree.type).toBe('root');
+describe("paragraph conversion", () => {
+  it("converts a paragraph to a p element", () => {
+    const tree = parse("Hello world.");
+    expect(tree.type).toBe("root");
     expect(tree.children).toHaveLength(1);
-    expect(elName(tree.children[0])).toBe('p');
+    expect(elName(tree.children[0])).toBe("p");
   });
 
-  it('p element contains text children', () => {
-    const tree = parse('Hello world.');
+  it("p element contains text children", () => {
+    const tree = parse("Hello world.");
     const p = tree.children[0] as Element;
-    expect(p.children[0]).toEqual({ type: 'text', value: 'Hello world.' });
+    expect(p.children[0]).toEqual({ type: "text", value: "Hello world." });
   });
 
-  it('converts multiple paragraphs', () => {
-    const tree = parse('First.\n\nSecond.');
+  it("converts multiple paragraphs", () => {
+    const tree = parse("First.\n\nSecond.");
     expect(tree.children).toHaveLength(2);
-    expect(elName(tree.children[0])).toBe('p');
-    expect(elName(tree.children[1])).toBe('p');
+    expect(elName(tree.children[0])).toBe("p");
+    expect(elName(tree.children[1])).toBe("p");
   });
 });
 
-describe('inline element conversion', () => {
-  it('emphasis  em', () => {
-    const tree = parse('*italic*');
+describe("inline element conversion", () => {
+  it("emphasis  em", () => {
+    const tree = parse("*italic*");
     const p = tree.children[0] as Element;
     const em = p.children[0] as Element;
-    expect(elName(em)).toBe('em');
-    expect(textValue(em.children[0])).toBe('italic');
+    expect(elName(em)).toBe("em");
+    expect(textValue(em.children[0])).toBe("italic");
   });
 
-  it('underline emphasis  term', () => {
-    const tree = parse('_underlined_');
+  it("underline emphasis  term", () => {
+    const tree = parse("_underlined_");
     const p = tree.children[0] as Element;
     const term = p.children[0] as Element;
-    expect(elName(term)).toBe('term');
-    expect(textValue(term.children[0])).toBe('underlined');
+    expect(elName(term)).toBe("term");
+    expect(textValue(term.children[0])).toBe("underlined");
   });
 
-  it('mixed emphasis in single paragraph', () => {
-    const tree = parse('Here is *italic* and _term_ and **bold**.');
+  it("mixed emphasis in single paragraph", () => {
+    const tree = parse("Here is *italic* and _term_ and **bold**.");
     const p = tree.children[0] as Element;
     const elements = p.children.filter(
-      (n) => typeof n === 'object' && n.type === 'element',
+      (n) => typeof n === "object" && n.type === "element",
     ) as Element[];
 
-    const em = elements.find((e) => e.name === 'em');
-    const term = elements.find((e) => e.name === 'term');
-    const alert = elements.find((e) => e.name === 'alert');
+    const em = elements.find((e) => e.name === "em");
+    const term = elements.find((e) => e.name === "term");
+    const alert = elements.find((e) => e.name === "alert");
 
     expect(em).toBeDefined();
-    expect(textValue(em!.children[0])).toBe('italic');
+    expect(textValue(em!.children[0])).toBe("italic");
     expect(term).toBeDefined();
-    expect(textValue(term!.children[0])).toBe('term');
+    expect(textValue(term!.children[0])).toBe("term");
     expect(alert).toBeDefined();
-    expect(textValue(alert!.children[0])).toBe('bold');
+    expect(textValue(alert!.children[0])).toBe("bold");
   });
 
-  it('strong  alert', () => {
-    const tree = parse('**bold**');
+  it("strong  alert", () => {
+    const tree = parse("**bold**");
     const p = tree.children[0] as Element;
     const alert = p.children[0] as Element;
-    expect(elName(alert)).toBe('alert');
-    expect(textValue(alert.children[0])).toBe('bold');
+    expect(elName(alert)).toBe("alert");
+    expect(textValue(alert.children[0])).toBe("bold");
   });
 
-  it('inlineCode  c', () => {
-    const tree = parse('Use `x := 0`.');
+  it("inlineCode  c", () => {
+    const tree = parse("Use `x := 0`.");
     const p = tree.children[0] as Element;
-    const c = p.children.find((n) => elName(n) === 'c') as Element;
-    expect(elName(c)).toBe('c');
-    expect(getPtxTextContent(c)).toBe('x := 0');
+    const c = p.children.find((n) => elName(n) === "c") as Element;
+    expect(elName(c)).toBe("c");
+    expect(getPtxTextContent(c)).toBe("x := 0");
   });
 
-  it('inline math  m', () => {
-    const tree = parse('Let $x^2 + 1$.');
+  it("inline math  m", () => {
+    const tree = parse("Let $x^2 + 1$.");
     const p = tree.children[0] as Element;
-    const m = p.children.find((n) => elName(n) === 'm') as Element;
-    expect(elName(m)).toBe('m');
-    expect(getPtxTextContent(m)).toBe('x^2 + 1');
+    const m = p.children.find((n) => elName(n) === "m") as Element;
+    expect(elName(m)).toBe("m");
+    expect(getPtxTextContent(m)).toBe("x^2 + 1");
   });
 });
 
-describe('display math', () => {
-  it('display math is placed in a paragraph as md', () => {
-    const tree = parse('$$\na^2 + b^2 = c^2\n$$');
-    expect(elName(tree.children[0])).toBe('p');
+describe("display math", () => {
+  it("display math is placed in a paragraph as md", () => {
+    const tree = parse("$$\na^2 + b^2 = c^2\n$$");
+    expect(elName(tree.children[0])).toBe("p");
     const p = tree.children[0] as Element;
     const md = p.children[0] as Element;
-    expect(elName(md)).toBe('md');
+    expect(elName(md)).toBe("md");
     // Single-line display math: first child is a Text node
-    expect(md.children[0].type).toBe('text');
-    expect(getPtxTextContent(md)).toBe('a^2 + b^2 = c^2');
+    expect(md.children[0].type).toBe("text");
+    expect(getPtxTextContent(md)).toBe("a^2 + b^2 = c^2");
   });
 
-  it('display math joins previous and next paragraphs', () => {
-    const tree = parse('Before.\n\n$$\na^2 + b^2 = c^2\n$$\n\nAfter.');
+  it("display math joins previous and next paragraphs", () => {
+    const tree = parse("Before.\n\n$$\na^2 + b^2 = c^2\n$$\n\nAfter.");
     expect(tree.children).toHaveLength(1);
     const p = tree.children[0] as Element;
-    expect(elName(p)).toBe('p');
-    expect(textValue(p.children[0])).toBe('Before.');
+    expect(elName(p)).toBe("p");
+    expect(textValue(p.children[0])).toBe("Before.");
     const md = p.children[1] as Element;
-    expect(elName(md)).toBe('md');
-    expect(md.children[0].type).toBe('text');
-    expect(getPtxTextContent(md)).toBe('a^2 + b^2 = c^2');
-    expect(textValue(p.children[2])).toBe('After.');
+    expect(elName(md)).toBe("md");
+    expect(md.children[0].type).toBe("text");
+    expect(getPtxTextContent(md)).toBe("a^2 + b^2 = c^2");
+    expect(textValue(p.children[2])).toBe("After.");
   });
 
-  it('multi-line display math renders as mrows', () => {
-    const tree = parse('$$\na^2\nb^2\nc^2\n$$');
-    expect(elName(tree.children[0])).toBe('p');
+  it("multi-line display math renders as mrows", () => {
+    const tree = parse("$$\na^2\nb^2\nc^2\n$$");
+    expect(elName(tree.children[0])).toBe("p");
     const p = tree.children[0] as Element;
     const md = p.children[0] as Element;
-    expect(elName(md)).toBe('md');
+    expect(elName(md)).toBe("md");
     // Multi-line: children are mrow elements
     expect(md.children.length).toBe(3);
-    expect(elName(md.children[0])).toBe('mrow');
-    expect(getPtxTextContent(md.children[0] as Element)).toBe('a^2');
-    expect(getPtxTextContent(md.children[1] as Element)).toBe('b^2');
-    expect(getPtxTextContent(md.children[2] as Element)).toBe('c^2');
+    expect(elName(md.children[0])).toBe("mrow");
+    expect(getPtxTextContent(md.children[0] as Element)).toBe("a^2");
+    expect(getPtxTextContent(md.children[1] as Element)).toBe("b^2");
+    expect(getPtxTextContent(md.children[2] as Element)).toBe("c^2");
   });
 
-  it('empty display math produces an md element with empty text child', () => {
-    const tree = parse('$$ $$');
+  it("empty display math produces an md element with empty text child", () => {
+    const tree = parse("$$ $$");
     const p = tree.children[0] as Element;
-    const md = p.children.find((n) => elName(n) === 'md') as Element;
+    const md = p.children.find((n) => elName(n) === "md") as Element;
     expect(md).toBeDefined();
-    expect(elName(md)).toBe('md');
-    expect(getPtxTextContent(md)).toBe('');
+    expect(elName(md)).toBe("md");
+    expect(getPtxTextContent(md)).toBe("");
   });
 
-  it('inline code containing $ is not treated as math', () => {
-    const tree = parse('Use `$x$` here.');
+  it("inline code containing $ is not treated as math", () => {
+    const tree = parse("Use `$x$` here.");
     const p = tree.children[0] as Element;
-    const c = p.children.find((n) => elName(n) === 'c') as Element;
+    const c = p.children.find((n) => elName(n) === "c") as Element;
     expect(c).toBeDefined();
-    expect(getPtxTextContent(c)).toBe('$x$');
+    expect(getPtxTextContent(c)).toBe("$x$");
     expect(
-      p.children.some((n) => elName(n) === 'm' || elName(n) === 'md'),
+      p.children.some((n) => elName(n) === "m" || elName(n) === "md"),
     ).toBe(false);
   });
 
-  it('inline $$ delimiters create display math (custom parser)', () => {
-    const tree = parse('Text $$a^2+b^2=c^2$$ more text');
+  it("inline $$ delimiters create display math (custom parser)", () => {
+    const tree = parse("Text $$a^2+b^2=c^2$$ more text");
     const p = tree.children[0] as Element;
-    const hasMath = p.children.some((child) => elName(child) === 'md');
+    const hasMath = p.children.some((child) => elName(child) === "md");
     expect(hasMath).toBe(true);
-    const md = p.children.find((child) => elName(child) === 'md') as Element;
-    expect(elName(md)).toBe('md');
-    expect(md.children[0].type).toBe('text');
-    expect(getPtxTextContent(md)).toBe('a^2+b^2=c^2');
+    const md = p.children.find((child) => elName(child) === "md") as Element;
+    expect(elName(md)).toBe("md");
+    expect(md.children[0].type).toBe("text");
+    expect(getPtxTextContent(md)).toBe("a^2+b^2=c^2");
   });
 
-  it('LaTeX \\[...\\] delimiters are converted to display math', () => {
-    const tree = parse('\\[a^2+b^2=c^2\\]');
-    expect(elName(tree.children[0])).toBe('p');
+  it("LaTeX \\[...\\] delimiters are converted to display math", () => {
+    const tree = parse("\\[a^2+b^2=c^2\\]");
+    expect(elName(tree.children[0])).toBe("p");
     const p = tree.children[0] as Element;
     const md = p.children[0] as Element;
-    expect(elName(md)).toBe('md');
-    expect(md.children[0].type).toBe('text');
-    expect(getPtxTextContent(md)).toBe('a^2+b^2=c^2');
+    expect(elName(md)).toBe("md");
+    expect(md.children[0].type).toBe("text");
+    expect(getPtxTextContent(md)).toBe("a^2+b^2=c^2");
   });
 
-  it('LaTeX \\[...\\] with multiple lines creates mrows', () => {
-    const tree = parse('\\[\na^2\nb^2\nc^2\n\\]');
+  it("LaTeX \\[...\\] with multiple lines creates mrows", () => {
+    const tree = parse("\\[\na^2\nb^2\nc^2\n\\]");
     const p = tree.children[0] as Element;
     const md = p.children[0] as Element;
-    expect(elName(md)).toBe('md');
+    expect(elName(md)).toBe("md");
     expect(md.children.length).toBe(3);
-    expect(elName(md.children[0])).toBe('mrow');
-    expect(getPtxTextContent(md.children[0] as Element)).toBe('a^2');
-    expect(getPtxTextContent(md.children[1] as Element)).toBe('b^2');
-    expect(getPtxTextContent(md.children[2] as Element)).toBe('c^2');
+    expect(elName(md.children[0])).toBe("mrow");
+    expect(getPtxTextContent(md.children[0] as Element)).toBe("a^2");
+    expect(getPtxTextContent(md.children[1] as Element)).toBe("b^2");
+    expect(getPtxTextContent(md.children[2] as Element)).toBe("c^2");
   });
 
-  it('LaTeX \\(...\\) delimiters are converted to inline math', () => {
-    const tree = parse('Text \\(x^2\\) more text');
+  it("LaTeX \\(...\\) delimiters are converted to inline math", () => {
+    const tree = parse("Text \\(x^2\\) more text");
     const p = tree.children[0] as Element;
-    const hasInlineMath = p.children.some((child) => elName(child) === 'm');
+    const hasInlineMath = p.children.some((child) => elName(child) === "m");
     expect(hasInlineMath).toBe(true);
-    const m = p.children.find((child) => elName(child) === 'm') as Element;
-    expect(elName(m)).toBe('m');
-    expect(getPtxTextContent(m)).toBe('x^2');
+    const m = p.children.find((child) => elName(child) === "m") as Element;
+    expect(elName(m)).toBe("m");
+    expect(getPtxTextContent(m)).toBe("x^2");
   });
 });
 
-describe('list conversion', () => {
-  it('unordered list  ul with li children', () => {
-    const tree = parse('- alpha\n- beta\n- gamma');
+describe("list conversion", () => {
+  it("unordered list  ul with li children", () => {
+    const tree = parse("- alpha\n- beta\n- gamma");
     const ul = tree.children[0] as Element;
-    expect(elName(ul)).toBe('ul');
+    expect(elName(ul)).toBe("ul");
     expect(ul.children).toHaveLength(3);
-    expect(elName(ul.children[0])).toBe('li');
+    expect(elName(ul.children[0])).toBe("li");
   });
 
-  it('ordered list  ol', () => {
-    const tree = parse('1. first\n2. second');
+  it("ordered list  ol", () => {
+    const tree = parse("1. first\n2. second");
     const ol = tree.children[0] as Element;
-    expect(elName(ol)).toBe('ol');
+    expect(elName(ol)).toBe("ol");
     expect(ol.children).toHaveLength(2);
   });
 
-  it('li children contain p elements', () => {
-    const tree = parse('- item text');
+  it("li children contain p elements", () => {
+    const tree = parse("- item text");
     const ul = tree.children[0] as Element;
     const li = ul.children[0] as Element;
-    expect(elName(li)).toBe('li');
-    expect(elName(li.children[0])).toBe('p');
+    expect(elName(li)).toBe("li");
+    expect(elName(li.children[0])).toBe("p");
   });
 });
 
-describe('heading  section nesting', () => {
-  it('## heading  section with title', () => {
-    const tree = parse('## My Section\n\nSome text.');
+describe("heading  section nesting", () => {
+  it("## heading  section with title", () => {
+    const tree = parse("## My Section\n\nSome text.");
     const section = tree.children[0] as Element;
-    expect(elName(section)).toBe('section');
+    expect(elName(section)).toBe("section");
     const title = section.children[0] as Element;
-    expect(elName(title)).toBe('title');
-    expect(textValue(title.children[0])).toBe('My Section');
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("My Section");
   });
 
-  it('section body contains converted blocks', () => {
-    const tree = parse('## My Section\n\nA paragraph.');
+  it("section body contains converted blocks", () => {
+    const tree = parse("## My Section\n\nA paragraph.");
     const section = tree.children[0] as Element;
-    expect(elName(section.children[1])).toBe('p');
+    expect(elName(section.children[1])).toBe("p");
   });
 
-  it('# heading  chapter', () => {
-    const tree = parse('# Chapter One\n\nText.');
-    expect(elName(tree.children[0])).toBe('chapter');
+  it("# heading  chapter", () => {
+    const tree = parse("# Chapter One\n\nText.");
+    expect(elName(tree.children[0])).toBe("chapter");
   });
 
-  it('### heading  subsection', () => {
-    const tree = parse('### Deep\n\nText.');
-    expect(elName(tree.children[0])).toBe('subsection');
+  it("### heading  subsection", () => {
+    const tree = parse("### Deep\n\nText.");
+    expect(elName(tree.children[0])).toBe("subsection");
   });
 
-  it('section contains subsection from deeper heading', () => {
-    const tree = parse('## Section\n\n### Subsection\n\nText.');
+  it("section contains subsection from deeper heading", () => {
+    const tree = parse("## Section\n\n### Subsection\n\nText.");
     const section = tree.children[0] as Element;
-    expect(section.children.some((c) => elName(c) === 'subsection')).toBe(true);
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
-  it('content before any heading is wrapped in <introduction>', () => {
-    const tree = parse('Intro text.\n\n## Section\n\nBody.');
-    expect(elName(tree.children[0])).toBe('introduction');
-    expect(elName(tree.children[1])).toBe('section');
+  it("content before any heading is wrapped in <introduction>", () => {
+    const tree = parse("Intro text.\n\n## Section\n\nBody.");
+    expect(elName(tree.children[0])).toBe("introduction");
+    expect(elName(tree.children[1])).toBe("section");
   });
 
-  it('content before the first subsection heading is wrapped in <introduction>', () => {
-    const tree = parse('# Chapter\n\nIntro text.\n\n## Sub\n\nBody.');
+  it("content before the first subsection heading is wrapped in <introduction>", () => {
+    const tree = parse("# Chapter\n\nIntro text.\n\n## Sub\n\nBody.");
     const chapter = tree.children[0] as Element;
-    expect(elName(chapter.children[0])).toBe('title');
+    expect(elName(chapter.children[0])).toBe("title");
     const intro = chapter.children[1] as Element;
-    expect(elName(intro)).toBe('introduction');
-    expect(elName(intro.children[0])).toBe('p');
-    expect(elName(chapter.children[2])).toBe('section');
+    expect(elName(intro)).toBe("introduction");
+    expect(elName(intro.children[0])).toBe("p");
+    expect(elName(chapter.children[2])).toBe("section");
   });
 
-  it('no <introduction> is added when a heading has no subsection', () => {
-    const tree = parse('# Chapter\n\nJust a paragraph.');
+  it("no <introduction> is added when a heading has no subsection", () => {
+    const tree = parse("# Chapter\n\nJust a paragraph.");
     const chapter = tree.children[0] as Element;
-    expect(elName(chapter.children[1])).toBe('p');
-    expect(chapter.children.some((c) => elName(c) === 'introduction')).toBe(
+    expect(elName(chapter.children[1])).toBe("p");
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
       false,
     );
   });
 
-  it('no <introduction> is added when a subsection immediately follows the title', () => {
-    const tree = parse('# Chapter\n\n## Sub\n\nBody.');
+  it("no <introduction> is added when a subsection immediately follows the title", () => {
+    const tree = parse("# Chapter\n\n## Sub\n\nBody.");
     const chapter = tree.children[0] as Element;
-    expect(elName(chapter.children[1])).toBe('section');
-    expect(chapter.children.some((c) => elName(c) === 'introduction')).toBe(
+    expect(elName(chapter.children[1])).toBe("section");
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
       false,
     );
   });
 });
 
-describe('relative top-level division', () => {
+describe("relative top-level division", () => {
   /** Helper: parse markdown with explicit remarkPretext options. */
   function parseWithOptions(md: string, options: RemarkPretextOptions): Root {
     const processor = unified()
@@ -357,534 +357,534 @@ describe('relative top-level division', () => {
     return processor.runSync(mdast, { value: md }) as unknown as Root;
   }
 
-  it('defaults to chapter when no option or frontmatter is given', () => {
-    const tree = parse('# Title\n\n## Sub');
-    expect(elName(tree.children[0])).toBe('chapter');
+  it("defaults to chapter when no option or frontmatter is given", () => {
+    const tree = parse("# Title\n\n## Sub");
+    expect(elName(tree.children[0])).toBe("chapter");
   });
 
-  it('topLevelDivision option shifts # to section, ## to subsection', () => {
-    const tree = parseWithOptions('# Title\n\n## Sub', {
-      topLevelDivision: 'section',
+  it("topLevelDivision option shifts # to section, ## to subsection", () => {
+    const tree = parseWithOptions("# Title\n\n## Sub", {
+      topLevelDivision: "section",
     });
     const section = tree.children[0] as Element;
-    expect(elName(section)).toBe('section');
-    expect(section.children.some((c) => elName(c) === 'subsection')).toBe(true);
+    expect(elName(section)).toBe("section");
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
-  it('topLevelDivision option supports part, nesting down to chapter/section', () => {
-    const tree = parseWithOptions('# Part\n\n## Chapter\n\n### Section', {
-      topLevelDivision: 'part',
+  it("topLevelDivision option supports part, nesting down to chapter/section", () => {
+    const tree = parseWithOptions("# Part\n\n## Chapter\n\n### Section", {
+      topLevelDivision: "part",
     });
     const part = tree.children[0] as Element;
-    expect(elName(part)).toBe('part');
+    expect(elName(part)).toBe("part");
     const chapter = part.children.find(
-      (c) => elName(c) === 'chapter',
+      (c) => elName(c) === "chapter",
     ) as Element;
     expect(chapter).toBeDefined();
-    expect(chapter.children.some((c) => elName(c) === 'section')).toBe(true);
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
   });
 
-  it('clamps at paragraphs once the hierarchy is exhausted', () => {
-    const tree = parseWithOptions('#### Deep', {
-      topLevelDivision: 'subsection',
+  it("clamps at paragraphs once the hierarchy is exhausted", () => {
+    const tree = parseWithOptions("#### Deep", {
+      topLevelDivision: "subsection",
     });
-    expect(elName(tree.children[0])).toBe('paragraphs');
+    expect(elName(tree.children[0])).toBe("paragraphs");
   });
 
-  it('frontmatter division field sets the top-level division', () => {
-    const tree = parse('---\ndivision: section\n---\n\n# Title\n\nText.');
-    expect(elName(tree.children[0])).toBe('section');
+  it("frontmatter division field sets the top-level division", () => {
+    const tree = parse("---\ndivision: section\n---\n\n# Title\n\nText.");
+    expect(elName(tree.children[0])).toBe("section");
   });
 
-  it('frontmatter block is stripped from the output (no stray content)', () => {
-    const tree = parse('---\ndivision: section\n---\n\n# Title\n\nText.');
+  it("frontmatter block is stripped from the output (no stray content)", () => {
+    const tree = parse("---\ndivision: section\n---\n\n# Title\n\nText.");
     expect(tree.children).toHaveLength(1);
   });
 
-  it('explicit option overrides frontmatter', () => {
-    const tree = parseWithOptions('---\ndivision: section\n---\n\n# Title', {
-      topLevelDivision: 'part',
+  it("explicit option overrides frontmatter", () => {
+    const tree = parseWithOptions("---\ndivision: section\n---\n\n# Title", {
+      topLevelDivision: "part",
     });
-    expect(elName(tree.children[0])).toBe('part');
+    expect(elName(tree.children[0])).toBe("part");
   });
 
-  it('invalid frontmatter division value falls back to default chapter', () => {
-    const tree = parse('---\ndivision: bogus\n---\n\n# Title');
-    expect(elName(tree.children[0])).toBe('chapter');
+  it("invalid frontmatter division value falls back to default chapter", () => {
+    const tree = parse("---\ndivision: bogus\n---\n\n# Title");
+    expect(elName(tree.children[0])).toBe("chapter");
   });
 
-  it('frontmatter division accepts section-like types (e.g. worksheet)', () => {
-    const tree = parse('---\ndivision: worksheet\n---\n\n# Title\n\nText.');
-    expect(elName(tree.children[0])).toBe('worksheet');
+  it("frontmatter division accepts section-like types (e.g. worksheet)", () => {
+    const tree = parse("---\ndivision: worksheet\n---\n\n# Title\n\nText.");
+    expect(elName(tree.children[0])).toBe("worksheet");
   });
 
-  it('headings nested inside a section-like division become paragraphs', () => {
+  it("headings nested inside a section-like division become paragraphs", () => {
     const tree = parse(
-      '---\ndivision: worksheet\n---\n\n# Title\n\n## Part A\n\nText.',
+      "---\ndivision: worksheet\n---\n\n# Title\n\n## Part A\n\nText.",
     );
     const worksheet = tree.children[0] as Element;
-    expect(elName(worksheet)).toBe('worksheet');
-    expect(worksheet.children.some((c) => elName(c) === 'paragraphs')).toBe(
+    expect(elName(worksheet)).toBe("worksheet");
+    expect(worksheet.children.some((c) => elName(c) === "paragraphs")).toBe(
       true,
     );
   });
 
-  it('appendix nests like chapter: section, then subsection', () => {
+  it("appendix nests like chapter: section, then subsection", () => {
     const tree = parse(
-      '---\ndivision: appendix\n---\n\n# Title\n\n## Sec\n\n### Sub',
+      "---\ndivision: appendix\n---\n\n# Title\n\n## Sec\n\n### Sub",
     );
     const appendix = tree.children[0] as Element;
-    expect(elName(appendix)).toBe('appendix');
+    expect(elName(appendix)).toBe("appendix");
     const section = appendix.children.find(
-      (c) => elName(c) === 'section',
+      (c) => elName(c) === "section",
     ) as Element;
     expect(section).toBeDefined();
-    expect(section.children.some((c) => elName(c) === 'subsection')).toBe(true);
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
-  it('frontmatter xmlid/label/component become attributes on the top-level division', () => {
+  it("frontmatter xmlid/label/component become attributes on the top-level division", () => {
     const tree = parse(
-      '---\ndivision: section\nxmlid: my-id\nlabel: my-label\ncomponent: my-component\n---\n\n# Title',
+      "---\ndivision: section\nxmlid: my-id\nlabel: my-label\ncomponent: my-component\n---\n\n# Title",
     );
     const section = tree.children[0] as Element;
     expect(section.attributes).toEqual({
-      'xml:id': 'my-id',
-      label: 'my-label',
-      component: 'my-component',
+      "xml:id": "my-id",
+      label: "my-label",
+      component: "my-component",
     });
   });
 
-  it('frontmatter attributes apply only to the first top-level division', () => {
+  it("frontmatter attributes apply only to the first top-level division", () => {
     const tree = parse(
-      '---\ndivision: section\nxmlid: my-id\n---\n\n# First\n\n# Second',
+      "---\ndivision: section\nxmlid: my-id\n---\n\n# First\n\n# Second",
     );
-    expect((tree.children[0] as Element).attributes['xml:id']).toBe('my-id');
-    expect((tree.children[1] as Element).attributes['xml:id']).toBeUndefined();
+    expect((tree.children[0] as Element).attributes["xml:id"]).toBe("my-id");
+    expect((tree.children[1] as Element).attributes["xml:id"]).toBeUndefined();
   });
 
-  it('content before the first top-level heading is wrapped in <introduction>', () => {
-    const tree = parse('Intro text.\n\n# First\n\nBody.\n\n# Second\n\nBody2.');
-    expect(elName(tree.children[0])).toBe('introduction');
-    expect(elName(tree.children[1])).toBe('chapter');
-    expect(elName(tree.children[2])).toBe('chapter');
+  it("content before the first top-level heading is wrapped in <introduction>", () => {
+    const tree = parse("Intro text.\n\n# First\n\nBody.\n\n# Second\n\nBody2.");
+    expect(elName(tree.children[0])).toBe("introduction");
+    expect(elName(tree.children[1])).toBe("chapter");
+    expect(elName(tree.children[2])).toBe("chapter");
   });
 
-  it('no <introduction> is added when the document starts with a heading', () => {
-    const tree = parse('# First\n\nBody.\n\n# Second\n\nBody2.');
-    expect(tree.children.some((c) => elName(c) === 'introduction')).toBe(false);
+  it("no <introduction> is added when the document starts with a heading", () => {
+    const tree = parse("# First\n\nBody.\n\n# Second\n\nBody2.");
+    expect(tree.children.some((c) => elName(c) === "introduction")).toBe(false);
   });
 
-  it('explicit topLevelAttributes option overrides frontmatter attributes', () => {
+  it("explicit topLevelAttributes option overrides frontmatter attributes", () => {
     const tree = parseWithOptions(
-      '---\nxmlid: from-frontmatter\n---\n\n# Title',
-      { topLevelAttributes: { 'xml:id': 'from-option' } },
+      "---\nxmlid: from-frontmatter\n---\n\n# Title",
+      { topLevelAttributes: { "xml:id": "from-option" } },
     );
     const chapter = tree.children[0] as Element;
-    expect(chapter.attributes['xml:id']).toBe('from-option');
+    expect(chapter.attributes["xml:id"]).toBe("from-option");
   });
 
   it("division: introduction wraps the whole document, with no title, when there's no heading", () => {
     const tree = parse(
-      '---\ndivision: introduction\n---\n\nThis chapter begins by...',
+      "---\ndivision: introduction\n---\n\nThis chapter begins by...",
     );
     expect(tree.children).toHaveLength(1);
     const introduction = tree.children[0] as Element;
-    expect(elName(introduction)).toBe('introduction');
-    expect(introduction.children.some((c) => elName(c) === 'title')).toBe(
+    expect(elName(introduction)).toBe("introduction");
+    expect(introduction.children.some((c) => elName(c) === "title")).toBe(
       false,
     );
-    expect(introduction.children.some((c) => elName(c) === 'p')).toBe(true);
+    expect(introduction.children.some((c) => elName(c) === "p")).toBe(true);
   });
 
-  it('a heading inside division: introduction becomes a titled paragraphs division', () => {
-    const tree = parse('---\ndivision: introduction\n---\n\n# Part A\n\nText.');
+  it("a heading inside division: introduction becomes a titled paragraphs division", () => {
+    const tree = parse("---\ndivision: introduction\n---\n\n# Part A\n\nText.");
     const introduction = tree.children[0] as Element;
-    expect(elName(introduction)).toBe('introduction');
-    expect(introduction.children.some((c) => elName(c) === 'paragraphs')).toBe(
+    expect(elName(introduction)).toBe("introduction");
+    expect(introduction.children.some((c) => elName(c) === "paragraphs")).toBe(
       true,
     );
   });
 
-  it('division: conclusion also wraps the document titlelessly', () => {
-    const tree = parse('---\ndivision: conclusion\n---\n\nIn summary...');
+  it("division: conclusion also wraps the document titlelessly", () => {
+    const tree = parse("---\ndivision: conclusion\n---\n\nIn summary...");
     const conclusion = tree.children[0] as Element;
-    expect(elName(conclusion)).toBe('conclusion');
-    expect(conclusion.children.some((c) => elName(c) === 'title')).toBe(false);
+    expect(elName(conclusion)).toBe("conclusion");
+    expect(conclusion.children.some((c) => elName(c) === "title")).toBe(false);
   });
 
-  it('frontmatter attributes apply to the introduction/conclusion wrapper itself', () => {
+  it("frontmatter attributes apply to the introduction/conclusion wrapper itself", () => {
     const tree = parse(
-      '---\ndivision: introduction\nxmlid: intro-1\n---\n\nText.',
+      "---\ndivision: introduction\nxmlid: intro-1\n---\n\nText.",
     );
     const introduction = tree.children[0] as Element;
-    expect(introduction.attributes['xml:id']).toBe('intro-1');
+    expect(introduction.attributes["xml:id"]).toBe("intro-1");
   });
 
-  it('frontmatter accepts `xml:id` as a synonym for `xmlid`', () => {
-    const tree = parse('---\ndivision: section\nxml:id: my-id\n---\n\n# Title');
+  it("frontmatter accepts `xml:id` as a synonym for `xmlid`", () => {
+    const tree = parse("---\ndivision: section\nxml:id: my-id\n---\n\n# Title");
     const section = tree.children[0] as Element;
-    expect(section.attributes['xml:id']).toBe('my-id');
+    expect(section.attributes["xml:id"]).toBe("my-id");
   });
 
-  it('frontmatter accepts `id` as a synonym for `xmlid`', () => {
-    const tree = parse('---\ndivision: section\nid: my-id\n---\n\n# Title');
+  it("frontmatter accepts `id` as a synonym for `xmlid`", () => {
+    const tree = parse("---\ndivision: section\nid: my-id\n---\n\n# Title");
     const section = tree.children[0] as Element;
-    expect(section.attributes['xml:id']).toBe('my-id');
+    expect(section.attributes["xml:id"]).toBe("my-id");
   });
 
-  it('frontmatter `xmlid` still works alongside `label`', () => {
+  it("frontmatter `xmlid` still works alongside `label`", () => {
     const tree = parse(
-      '---\ndivision: section\nxmlid: sec-1\nlabel: sec-label\n---\n\n# Title',
+      "---\ndivision: section\nxmlid: sec-1\nlabel: sec-label\n---\n\n# Title",
     );
     const section = tree.children[0] as Element;
-    expect(section.attributes['xml:id']).toBe('sec-1');
-    expect(section.attributes['label']).toBe('sec-label');
+    expect(section.attributes["xml:id"]).toBe("sec-1");
+    expect(section.attributes["label"]).toBe("sec-label");
   });
 });
 
-describe('document roots (book / article / slideshow)', () => {
-  it('division: book wraps the document in <book> and maps # to chapter', () => {
+describe("document roots (book / article / slideshow)", () => {
+  it("division: book wraps the document in <book> and maps # to chapter", () => {
     const tree = parse(
-      '---\ndivision: book\n---\n\n# Chapter One\n\n## A Section\n\nText.',
+      "---\ndivision: book\n---\n\n# Chapter One\n\n## A Section\n\nText.",
     );
     expect(tree.children).toHaveLength(1);
     const book = tree.children[0] as Element;
-    expect(elName(book)).toBe('book');
+    expect(elName(book)).toBe("book");
     const chapter = book.children.find(
-      (c) => elName(c) === 'chapter',
+      (c) => elName(c) === "chapter",
     ) as Element;
     expect(chapter).toBeDefined();
-    expect(chapter.children.some((c) => elName(c) === 'section')).toBe(true);
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
   });
 
-  it('division: article wraps the document in <article> and maps # to section', () => {
+  it("division: article wraps the document in <article> and maps # to section", () => {
     const tree = parse(
-      '---\ndivision: article\n---\n\n# A Section\n\n## A Subsection\n\nText.',
+      "---\ndivision: article\n---\n\n# A Section\n\n## A Subsection\n\nText.",
     );
     const article = tree.children[0] as Element;
-    expect(elName(article)).toBe('article');
+    expect(elName(article)).toBe("article");
     const section = article.children.find(
-      (c) => elName(c) === 'section',
+      (c) => elName(c) === "section",
     ) as Element;
     expect(section).toBeDefined();
-    expect(section.children.some((c) => elName(c) === 'subsection')).toBe(true);
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(true);
   });
 
-  it('content before the first heading is wrapped in <introduction> inside a document root', () => {
+  it("content before the first heading is wrapped in <introduction> inside a document root", () => {
     const tree = parse(
-      '---\ndivision: article\n---\n\nIntro text.\n\n# A Section\n\nBody.',
+      "---\ndivision: article\n---\n\nIntro text.\n\n# A Section\n\nBody.",
     );
     const article = tree.children[0] as Element;
-    expect(elName(article)).toBe('article');
-    expect(elName(article.children[0])).toBe('introduction');
-    expect(elName(article.children[1])).toBe('section');
+    expect(elName(article)).toBe("article");
+    expect(elName(article.children[0])).toBe("introduction");
+    expect(elName(article.children[1])).toBe("section");
   });
 
   it("content before the first heading is wrapped in <introduction> after the root's own <title>", () => {
     const tree = parse(
-      '---\ndivision: article\ntitle: My Title\n---\n\nIntro text.\n\n# A Section\n\nBody.',
+      "---\ndivision: article\ntitle: My Title\n---\n\nIntro text.\n\n# A Section\n\nBody.",
     );
     const article = tree.children[0] as Element;
-    expect(elName(article)).toBe('article');
-    expect(elName(article.children[0])).toBe('title');
-    expect(elName(article.children[1])).toBe('introduction');
-    expect(elName(article.children[2])).toBe('section');
+    expect(elName(article)).toBe("article");
+    expect(elName(article.children[0])).toBe("title");
+    expect(elName(article.children[1])).toBe("introduction");
+    expect(elName(article.children[2])).toBe("section");
   });
 
-  it('division: slideshow wraps the document in <slideshow> and maps # to section', () => {
+  it("division: slideshow wraps the document in <slideshow> and maps # to section", () => {
     const tree = parse(
-      '---\ndivision: slideshow\n---\n\n# Section One\n\nBody.\n\n# Section Two\n\nMore.',
+      "---\ndivision: slideshow\n---\n\n# Section One\n\nBody.\n\n# Section Two\n\nMore.",
     );
     const slideshow = tree.children[0] as Element;
-    expect(elName(slideshow)).toBe('slideshow');
-    const sections = slideshow.children.filter((c) => elName(c) === 'section');
+    expect(elName(slideshow)).toBe("slideshow");
+    const sections = slideshow.children.filter((c) => elName(c) === "section");
     expect(sections).toHaveLength(2);
     const firstSection = sections[0] as Element;
     const title = firstSection.children[0] as Element;
-    expect(elName(title)).toBe('title');
-    expect(textValue(title.children[0])).toBe('Section One');
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("Section One");
   });
 
-  it('division: slideshow nests slides (##) inside sections (#)', () => {
+  it("division: slideshow nests slides (##) inside sections (#)", () => {
     const tree = parse(
-      '---\ndivision: slideshow\n---\n\n# Section One\n\n## Slide A\n\nText.\n\n## Slide B\n\nMore.',
+      "---\ndivision: slideshow\n---\n\n# Section One\n\n## Slide A\n\nText.\n\n## Slide B\n\nMore.",
     );
     const section = (tree.children[0] as Element).children.find(
-      (c) => elName(c) === 'section',
+      (c) => elName(c) === "section",
     ) as Element;
-    const slides = section.children.filter((c) => elName(c) === 'slide');
+    const slides = section.children.filter((c) => elName(c) === "slide");
     expect(slides).toHaveLength(2);
     const firstSlide = slides[0] as Element;
-    expect(elName(firstSlide.children[0])).toBe('title');
+    expect(elName(firstSlide.children[0])).toBe("title");
     expect(textValue((firstSlide.children[0] as Element).children[0])).toBe(
-      'Slide A',
+      "Slide A",
     );
   });
 
-  it('headings deeper than a slide (###) become paragraphs', () => {
+  it("headings deeper than a slide (###) become paragraphs", () => {
     const tree = parse(
-      '---\ndivision: slideshow\n---\n\n# Section\n\n## Slide\n\n### Deeper\n\nText.',
+      "---\ndivision: slideshow\n---\n\n# Section\n\n## Slide\n\n### Deeper\n\nText.",
     );
     const section = (tree.children[0] as Element).children.find(
-      (c) => elName(c) === 'section',
+      (c) => elName(c) === "section",
     ) as Element;
     const slide = section.children.find(
-      (c) => elName(c) === 'slide',
+      (c) => elName(c) === "slide",
     ) as Element;
-    expect(slide.children.some((c) => elName(c) === 'paragraphs')).toBe(true);
+    expect(slide.children.some((c) => elName(c) === "paragraphs")).toBe(true);
   });
 
-  it('frontmatter attributes are applied to the root element, not its first child', () => {
+  it("frontmatter attributes are applied to the root element, not its first child", () => {
     const tree = parse(
-      '---\ndivision: book\nxmlid: my-book\n---\n\n# Chapter One\n\nText.',
+      "---\ndivision: book\nxmlid: my-book\n---\n\n# Chapter One\n\nText.",
     );
     const book = tree.children[0] as Element;
-    expect(book.attributes['xml:id']).toBe('my-book');
+    expect(book.attributes["xml:id"]).toBe("my-book");
     const chapter = book.children.find(
-      (c) => elName(c) === 'chapter',
+      (c) => elName(c) === "chapter",
     ) as Element;
-    expect(chapter.attributes?.['xml:id']).toBeUndefined();
+    expect(chapter.attributes?.["xml:id"]).toBeUndefined();
   });
 
-  it('documentRoot option wraps the document even without frontmatter', () => {
+  it("documentRoot option wraps the document even without frontmatter", () => {
     const processor = unified()
       .use(remarkParse)
       .use(remarkDirective)
-      .use(remarkPretext, { documentRoot: 'book' });
-    const md = '# Chapter One\n\nText.';
+      .use(remarkPretext, { documentRoot: "book" });
+    const md = "# Chapter One\n\nText.";
     const tree = processor.runSync(processor.parse(md), {
       value: md,
     }) as unknown as Root;
     const book = tree.children[0] as Element;
-    expect(elName(book)).toBe('book');
-    expect(book.children.some((c) => elName(c) === 'chapter')).toBe(true);
+    expect(elName(book)).toBe("book");
+    expect(book.children.some((c) => elName(c) === "chapter")).toBe(true);
   });
 });
 
-describe('frontmatter title', () => {
+describe("frontmatter title", () => {
   it("title: sets the top-level division's title, and # starts the first subdivision", () => {
     const tree = parse(
-      '---\ndivision: section\ntitle: Limits\n---\n\n# Part A\n\nText.',
+      "---\ndivision: section\ntitle: Limits\n---\n\n# Part A\n\nText.",
     );
     const section = tree.children[0] as Element;
-    expect(elName(section)).toBe('section');
+    expect(elName(section)).toBe("section");
     const title = section.children[0] as Element;
-    expect(elName(title)).toBe('title');
-    expect(textValue(title.children[0])).toBe('Limits');
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("Limits");
     const sub = section.children.find(
-      (c) => elName(c) === 'subsection',
+      (c) => elName(c) === "subsection",
     ) as Element;
     expect(sub).toBeDefined();
     const subTitle = sub.children[0] as Element;
-    expect(elName(subTitle)).toBe('title');
-    expect(textValue(subTitle.children[0])).toBe('Part A');
+    expect(elName(subTitle)).toBe("title");
+    expect(textValue(subTitle.children[0])).toBe("Part A");
   });
 
   it("content before the first # becomes the division's <introduction>", () => {
     const tree = parse(
-      '---\ndivision: section\ntitle: Limits\n---\n\nIntro text.\n\n# Part A\n\nBody.',
+      "---\ndivision: section\ntitle: Limits\n---\n\nIntro text.\n\n# Part A\n\nBody.",
     );
     const section = tree.children[0] as Element;
-    expect(elName(section.children[0])).toBe('title');
-    expect(elName(section.children[1])).toBe('introduction');
-    expect(elName(section.children[2])).toBe('subsection');
+    expect(elName(section.children[0])).toBe("title");
+    expect(elName(section.children[1])).toBe("introduction");
+    expect(elName(section.children[2])).toBe("subsection");
   });
 
   it("without title:, # still sets the top-level division's title (legacy behavior)", () => {
-    const tree = parse('---\ndivision: section\n---\n\n# Part A\n\nText.');
+    const tree = parse("---\ndivision: section\n---\n\n# Part A\n\nText.");
     const section = tree.children[0] as Element;
-    expect(elName(section)).toBe('section');
+    expect(elName(section)).toBe("section");
     const title = section.children[0] as Element;
-    expect(textValue(title.children[0])).toBe('Part A');
-    expect(section.children.some((c) => elName(c) === 'subsection')).toBe(
+    expect(textValue(title.children[0])).toBe("Part A");
+    expect(section.children.some((c) => elName(c) === "subsection")).toBe(
       false,
     );
   });
 
-  it('defaults to chapter division when only title: is given', () => {
-    const tree = parse('---\ntitle: My Chapter\n---\n\n# Sec\n\nText.');
+  it("defaults to chapter division when only title: is given", () => {
+    const tree = parse("---\ntitle: My Chapter\n---\n\n# Sec\n\nText.");
     const chapter = tree.children[0] as Element;
-    expect(elName(chapter)).toBe('chapter');
+    expect(elName(chapter)).toBe("chapter");
     expect(textValue((chapter.children[0] as Element).children[0])).toBe(
-      'My Chapter',
+      "My Chapter",
     );
-    expect(chapter.children.some((c) => elName(c) === 'section')).toBe(true);
+    expect(chapter.children.some((c) => elName(c) === "section")).toBe(true);
   });
 
-  it('nests two levels deep: # -> subsection, ## -> subsubsection', () => {
+  it("nests two levels deep: # -> subsection, ## -> subsubsection", () => {
     const tree = parse(
-      '---\ndivision: section\ntitle: Top\n---\n\n# Sub\n\n## Deeper\n\nText.',
+      "---\ndivision: section\ntitle: Top\n---\n\n# Sub\n\n## Deeper\n\nText.",
     );
     const section = tree.children[0] as Element;
     const sub = section.children.find(
-      (c) => elName(c) === 'subsection',
+      (c) => elName(c) === "subsection",
     ) as Element;
     expect(sub).toBeDefined();
-    expect(sub.children.some((c) => elName(c) === 'subsubsection')).toBe(true);
+    expect(sub.children.some((c) => elName(c) === "subsubsection")).toBe(true);
   });
 
-  it('xmlid/label/component frontmatter attributes still apply to the top-level division', () => {
+  it("xmlid/label/component frontmatter attributes still apply to the top-level division", () => {
     const tree = parse(
-      '---\ndivision: section\ntitle: Limits\nxmlid: sec-limits\n---\n\n# Part A',
+      "---\ndivision: section\ntitle: Limits\nxmlid: sec-limits\n---\n\n# Part A",
     );
     const section = tree.children[0] as Element;
-    expect(section.attributes['xml:id']).toBe('sec-limits');
+    expect(section.attributes["xml:id"]).toBe("sec-limits");
   });
 
   it("title: on a document root (book) sets the root's own title; # is unaffected", () => {
     const tree = parse(
-      '---\ndivision: book\ntitle: My Book\n---\n\n# Chapter One\n\nText.',
+      "---\ndivision: book\ntitle: My Book\n---\n\n# Chapter One\n\nText.",
     );
     const book = tree.children[0] as Element;
-    expect(elName(book)).toBe('book');
+    expect(elName(book)).toBe("book");
     const title = book.children[0] as Element;
-    expect(elName(title)).toBe('title');
-    expect(textValue(title.children[0])).toBe('My Book');
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("My Book");
     const chapter = book.children.find(
-      (c) => elName(c) === 'chapter',
+      (c) => elName(c) === "chapter",
     ) as Element;
     expect(chapter).toBeDefined();
     const chapterTitle = chapter.children[0] as Element;
-    expect(textValue(chapterTitle.children[0])).toBe('Chapter One');
+    expect(textValue(chapterTitle.children[0])).toBe("Chapter One");
   });
 
-  it('explicit topLevelTitle option overrides frontmatter title:', () => {
+  it("explicit topLevelTitle option overrides frontmatter title:", () => {
     const processor = unified()
       .use(remarkParse)
       .use(remarkDirective)
-      .use(remarkPretext, { topLevelTitle: 'From Option' });
-    const md = '---\ntitle: From Frontmatter\n---\n\n# Sub';
+      .use(remarkPretext, { topLevelTitle: "From Option" });
+    const md = "---\ntitle: From Frontmatter\n---\n\n# Sub";
     const tree = processor.runSync(processor.parse(md), {
       value: md,
     }) as unknown as Root;
     const chapter = tree.children[0] as Element;
     expect(textValue((chapter.children[0] as Element).children[0])).toBe(
-      'From Option',
+      "From Option",
     );
   });
 
-  it('title: with quotes strips the surrounding quotes', () => {
+  it("title: with quotes strips the surrounding quotes", () => {
     const tree = parse('---\ntitle: "Quoted Title"\n---\n\n# Sub');
     const chapter = tree.children[0] as Element;
     expect(textValue((chapter.children[0] as Element).children[0])).toBe(
-      'Quoted Title',
+      "Quoted Title",
     );
   });
 });
 
-describe('container directives', () => {
-  it(':::theorem directive  theorem element', () => {
-    const tree = parse(':::theorem\nStatement text.\n:::');
+describe("container directives", () => {
+  it(":::theorem directive  theorem element", () => {
+    const tree = parse(":::theorem\nStatement text.\n:::");
     const thm = tree.children[0] as Element;
-    expect(elName(thm)).toBe('theorem');
+    expect(elName(thm)).toBe("theorem");
   });
 
-  it('theorem body is wrapped in a statement element', () => {
-    const tree = parse(':::theorem\nStatement text.\n:::');
+  it("theorem body is wrapped in a statement element", () => {
+    const tree = parse(":::theorem\nStatement text.\n:::");
     const thm = tree.children[0] as Element;
     const stmt = thm.children[0] as Element;
-    expect(elName(stmt)).toBe('statement');
-    expect(elName(stmt.children[0])).toBe('p');
+    expect(elName(stmt)).toBe("statement");
+    expect(elName(stmt.children[0])).toBe("p");
   });
 
-  it('theorem title from directive label', () => {
-    const tree = parse(':::theorem[Pythagoras]\nFor right triangles.\n:::');
+  it("theorem title from directive label", () => {
+    const tree = parse(":::theorem[Pythagoras]\nFor right triangles.\n:::");
     const thm = tree.children[0] as Element;
     const title = thm.children[0] as Element;
-    expect(elName(title)).toBe('title');
-    expect(textValue(title.children[0])).toBe('Pythagoras');
+    expect(elName(title)).toBe("title");
+    expect(textValue(title.children[0])).toBe("Pythagoras");
   });
 
-  it(':::theorem with xml:id attribute from {#id}', () => {
-    const tree = parse(':::theorem{#thm-pyth}\nText.\n:::');
+  it(":::theorem with xml:id attribute from {#id}", () => {
+    const tree = parse(":::theorem{#thm-pyth}\nText.\n:::");
     const thm = tree.children[0] as Element;
-    expect(thm.attributes?.['xml:id']).toBe('thm-pyth');
+    expect(thm.attributes?.["xml:id"]).toBe("thm-pyth");
   });
 
-  it('nested :::proof inside :::theorem becomes a proof child', () => {
+  it("nested :::proof inside :::theorem becomes a proof child", () => {
     const tree = parse(
-      ':::theorem\nStatement.\n\n:::proof\nProof body.\n:::\n:::',
+      ":::theorem\nStatement.\n\n:::proof\nProof body.\n:::\n:::",
     );
     const thm = tree.children[0] as Element;
-    const proof = thm.children.find((c) => elName(c) === 'proof') as Element;
+    const proof = thm.children.find((c) => elName(c) === "proof") as Element;
     expect(proof).toBeDefined();
-    expect(elName(proof)).toBe('proof');
-    expect(elName(proof.children[0])).toBe('p');
+    expect(elName(proof)).toBe("proof");
+    expect(elName(proof.children[0])).toBe("p");
   });
 
-  it(':::definition directive  definition element', () => {
-    const tree = parse(':::definition\nA function.\n:::');
-    expect(elName(tree.children[0])).toBe('definition');
+  it(":::definition directive  definition element", () => {
+    const tree = parse(":::definition\nA function.\n:::");
+    expect(elName(tree.children[0])).toBe("definition");
   });
 
-  it(':::remark directive  remark element', () => {
-    const tree = parse(':::remark\nA remark.\n:::');
-    expect(elName(tree.children[0])).toBe('remark');
+  it(":::remark directive  remark element", () => {
+    const tree = parse(":::remark\nA remark.\n:::");
+    expect(elName(tree.children[0])).toBe("remark");
   });
 
-  it(':::example directive  example element', () => {
-    const tree = parse(':::example\nAn example.\n:::');
-    expect(elName(tree.children[0])).toBe('example');
+  it(":::example directive  example element", () => {
+    const tree = parse(":::example\nAn example.\n:::");
+    expect(elName(tree.children[0])).toBe("example");
   });
 
-  it(':::proof directive  proof element', () => {
-    const tree = parse(':::proof\nTrivial.\n:::');
-    expect(elName(tree.children[0])).toBe('proof');
+  it(":::proof directive  proof element", () => {
+    const tree = parse(":::proof\nTrivial.\n:::");
+    expect(elName(tree.children[0])).toBe("proof");
   });
 
-  it('unknown directive is preserved as a <TODO> placeholder', () => {
-    const tree = parse(':::unknownblock\nContent.\n:::');
+  it("unknown directive is preserved as a <TODO> placeholder", () => {
+    const tree = parse(":::unknownblock\nContent.\n:::");
     expect(tree.children).toHaveLength(1);
-    expect(elName(tree.children[0])).toBe('TODO');
+    expect(elName(tree.children[0])).toBe("TODO");
     const todo = tree.children[0] as Element;
-    expect(todo.attributes?.['type']).toBe('unknown-directive');
+    expect(todo.attributes?.["type"]).toBe("unknown-directive");
     // first child is the <!-- todo: ... --> comment
-    expect(todo.children[0]?.type).toBe('comment');
+    expect(todo.children[0]?.type).toBe("comment");
     // second child is <pre> with raw source
-    expect(elName(todo.children[1] as Element)).toBe('pre');
+    expect(elName(todo.children[1] as Element)).toBe("pre");
   });
 });
 
-describe('mdastToPtxast standalone function', () => {
-  it('accepts an mdast Root and returns an xast Root', () => {
+describe("mdastToPtxast standalone function", () => {
+  it("accepts an mdast Root and returns an xast Root", () => {
     const processor = unified()
       .use(remarkParse)
       .use(remarkDirective)
       .use(remarkMath);
-    const mdast = processor.parse('Hello.') as MdastRoot;
+    const mdast = processor.parse("Hello.") as MdastRoot;
     const ptx = mdastToPtxast(mdast);
-    expect(ptx.type).toBe('root');
-    expect(elName(ptx.children[0])).toBe('p');
+    expect(ptx.type).toBe("root");
+    expect(elName(ptx.children[0])).toBe("p");
   });
 });
 
-describe('semantic round-trip (markdown -> xast -> xml -> xast)', () => {
-  it('preserves structure for representative markdown fixtures', () => {
+describe("semantic round-trip (markdown -> xast -> xml -> xast)", () => {
+  it("preserves structure for representative markdown fixtures", () => {
     const fixtures = [
       {
-        name: 'section + theorem + proof + list + math',
+        name: "section + theorem + proof + list + math",
         markdown:
-          '## Section One\n\n:::theorem[Main]{#thm-main}\nStatement with $x^2$.\n\n:::proof\nProof text.\n:::\n:::\n\n1. first\n2. second',
+          "## Section One\n\n:::theorem[Main]{#thm-main}\nStatement with $x^2$.\n\n:::proof\nProof text.\n:::\n:::\n\n1. first\n2. second",
         requiredNames: [
-          'section',
-          'title',
-          'theorem',
-          'statement',
-          'proof',
-          'ol',
-          'li',
-          'm',
+          "section",
+          "title",
+          "theorem",
+          "statement",
+          "proof",
+          "ol",
+          "li",
+          "m",
         ],
       },
       {
-        name: 'chapter with subsection and display math',
-        markdown: '# Chapter A\n\n### Sub A\n\n$$\na^2+b^2=c^2\n$$\n',
-        requiredNames: ['chapter', 'subsection', 'title', 'md'],
+        name: "chapter with subsection and display math",
+        markdown: "# Chapter A\n\n### Sub A\n\n$$\na^2+b^2=c^2\n$$\n",
+        requiredNames: ["chapter", "subsection", "title", "md"],
       },
       {
-        name: 'inline formatting paragraph',
-        markdown: 'A paragraph with *emphasis*, **alert**, and `code`.',
-        requiredNames: ['p', 'em', 'alert', 'c'],
+        name: "inline formatting paragraph",
+        markdown: "A paragraph with *emphasis*, **alert**, and `code`.",
+        requiredNames: ["p", "em", "alert", "c"],
       },
     ];
 
@@ -907,22 +907,22 @@ describe('semantic round-trip (markdown -> xast -> xml -> xast)', () => {
 });
 
 // Task support tests
-describe('tasks with nested structure', () => {
-  it(':::task directive creates task element', () => {
-    const tree = parse(':::task\nTask content.\n:::');
+describe("tasks with nested structure", () => {
+  it(":::task directive creates task element", () => {
+    const tree = parse(":::task\nTask content.\n:::");
     const task = tree.children[0] as Element;
-    expect(elName(task)).toBe('task');
+    expect(elName(task)).toBe("task");
   });
 
-  it('task without nested tasks wraps content in statement', () => {
-    const tree = parse(':::task\nTask content.\n:::');
+  it("task without nested tasks wraps content in statement", () => {
+    const tree = parse(":::task\nTask content.\n:::");
     const task = tree.children[0] as Element;
     const stmt = task.children[0] as Element;
-    expect(elName(stmt)).toBe('statement');
-    expect(elName(stmt.children[0])).toBe('p');
+    expect(elName(stmt)).toBe("statement");
+    expect(elName(stmt.children[0])).toBe("p");
   });
 
-  it('exercise with nested tasks creates introduction from intro content', () => {
+  it("exercise with nested tasks creates introduction from intro content", () => {
     const md = `:::exercise
 Exercise intro text.
 
@@ -932,38 +932,38 @@ Task 1 content.
 :::`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     // First child should be introduction
     const intro = exercise.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     // Check intro contains the text
     if (intro.children[0]) {
       const introP = intro.children[0] as Element;
-      expect(elName(introP)).toBe('p');
+      expect(elName(introP)).toBe("p");
       // Get text from first child of the paragraph
       if (introP.children[0]) {
-        expect(textValue(introP.children[0])).toBe('Exercise intro text.');
+        expect(textValue(introP.children[0])).toBe("Exercise intro text.");
       }
     }
 
     // Following child should be the task
     if (exercise.children[1]) {
       const task1 = exercise.children[1] as Element;
-      expect(elName(task1)).toBe('task');
+      expect(elName(task1)).toBe("task");
       // Tasks that don't have nested tasks get wrapped in statement
       const firstChild = task1.children[0] as Element;
-      if (elName(firstChild) === 'statement') {
+      if (elName(firstChild) === "statement") {
         // Content is inside statement, then p element
         const p = firstChild.children[0] as Element;
-        expect(elName(p)).toBe('p');
-        expect(textValue(p.children[0])).toBe('Task 1 content.');
+        expect(elName(p)).toBe("p");
+        expect(textValue(p.children[0])).toBe("Task 1 content.");
       }
     }
   });
 
-  it('task with nested task creates introduction wrapper', () => {
+  it("task with nested task creates introduction wrapper", () => {
     const md = `:::task
 Task intro text.
 
@@ -973,18 +973,18 @@ Nested task content.
 :::`;
     const tree = parse(md);
     const parentTask = tree.children[0] as Element;
-    expect(elName(parentTask)).toBe('task');
+    expect(elName(parentTask)).toBe("task");
 
     // First child should be introduction
     const intro = parentTask.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     // Second child should be nested task
     const nestedTask = parentTask.children[1] as Element;
-    expect(elName(nestedTask)).toBe('task');
+    expect(elName(nestedTask)).toBe("task");
   });
 
-  it('exercise with no intro content and nested tasks starts with task', () => {
+  it("exercise with no intro content and nested tasks starts with task", () => {
     const md = `:::exercise
 :::task
 Task 1 content.
@@ -999,17 +999,17 @@ Task 2 content.
 
     // No introduction child (no content before first task)
     const firstChild = exercise.children[0] as Element;
-    expect(elName(firstChild)).toBe('task');
+    expect(elName(firstChild)).toBe("task");
   });
 
-  it('exercise without nested tasks wraps content in statement', () => {
-    const tree = parse(':::exercise\nExercise content.\n:::');
+  it("exercise without nested tasks wraps content in statement", () => {
+    const tree = parse(":::exercise\nExercise content.\n:::");
     const exercise = tree.children[0] as Element;
     const stmt = exercise.children[0] as Element;
-    expect(elName(stmt)).toBe('statement');
+    expect(elName(stmt)).toBe("statement");
   });
 
-  it('project directive supports nested tasks like exercise', () => {
+  it("project directive supports nested tasks like exercise", () => {
     const md = `:::project
 Project intro.
 
@@ -1019,16 +1019,16 @@ Task content.
 :::`;
     const tree = parse(md);
     const project = tree.children[0] as Element;
-    expect(elName(project)).toBe('project');
+    expect(elName(project)).toBe("project");
 
     const intro = project.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     const task = project.children[1] as Element;
-    expect(elName(task)).toBe('task');
+    expect(elName(task)).toBe("task");
   });
 
-  it('drops interstitial non-task content and wraps trailing content in conclusion', () => {
+  it("drops interstitial non-task content and wraps trailing content in conclusion", () => {
     const md = `:::exercise
 Intro text.
 
@@ -1048,15 +1048,15 @@ Concluding text.
     const exercise = tree.children[0] as Element;
     const xml = toXml(tree);
 
-    expect(elName(exercise.children[0])).toBe('introduction');
-    expect(elName(exercise.children[1])).toBe('task');
-    expect(elName(exercise.children[2])).toBe('task');
-    expect(elName(exercise.children[3])).toBe('conclusion');
-    expect(xml).not.toContain('Dropped between tasks.');
-    expect(xml).toContain('Concluding text.');
+    expect(elName(exercise.children[0])).toBe("introduction");
+    expect(elName(exercise.children[1])).toBe("task");
+    expect(elName(exercise.children[2])).toBe("task");
+    expect(elName(exercise.children[3])).toBe("conclusion");
+    expect(xml).not.toContain("Dropped between tasks.");
+    expect(xml).toContain("Concluding text.");
   });
 
-  it('records warning when dropping content between tasks', () => {
+  it("records warning when dropping content between tasks", () => {
     const md = `::::exercise
 :::task
 Task 1.
@@ -1070,73 +1070,73 @@ Task 2.
 ::::`;
     const result = parseWithDiagnostics(md);
     const warning = result.messages.find(
-      (message) => message.category === 'dropped-content-between-tasks',
+      (message) => message.category === "dropped-content-between-tasks",
     );
 
     expect(warning).toBeDefined();
   });
 });
 
-describe('plus include leaf directives', () => {
-  it('::section{ref} → empty plus:section element with ref', () => {
+describe("plus include leaf directives", () => {
+  it("::section{ref} → empty plus:section element with ref", () => {
     const tree = parse('::section{ref="ch-intro"}');
     const include = tree.children[0] as Element;
-    expect(elName(include)).toBe('plus:section');
-    expect(include.attributes?.['ref']).toBe('ch-intro');
+    expect(elName(include)).toBe("plus:section");
+    expect(include.attributes?.["ref"]).toBe("ch-intro");
     expect(include.children).toHaveLength(0);
   });
 
-  it('passes extra attributes through verbatim (no id→xml:id remap)', () => {
+  it("passes extra attributes through verbatim (no id→xml:id remap)", () => {
     const tree = parse('::image{ref="fig-1" width="50%"}');
     const include = tree.children[0] as Element;
-    expect(elName(include)).toBe('plus:image');
-    expect(include.attributes).toMatchObject({ ref: 'fig-1', width: '50%' });
+    expect(elName(include)).toBe("plus:image");
+    expect(include.attributes).toMatchObject({ ref: "fig-1", width: "50%" });
   });
 
-  it('any kind becomes plus:KIND (converter is not gated on a name list)', () => {
+  it("any kind becomes plus:KIND (converter is not gated on a name list)", () => {
     const tree = parse('::doenet{ref="activity-3"}');
-    expect(elName(tree.children[0])).toBe('plus:doenet');
+    expect(elName(tree.children[0])).toBe("plus:doenet");
   });
 
-  it('serializes to a self-referencing plus element', () => {
+  it("serializes to a self-referencing plus element", () => {
     const tree = parse('::section{ref="ch-intro"}');
     const xml = toXml(tree.children[0] as Element);
-    expect(xml).toContain('plus:section');
+    expect(xml).toContain("plus:section");
     expect(xml).toContain('ref="ch-intro"');
   });
 
-  it('include survives inside a section body', () => {
+  it("include survives inside a section body", () => {
     const tree = parse('## A\n\n::section{ref="sub-a"}');
     const section = tree.children[0] as Element;
     const include = section.children.find(
-      (c) => elName(c) === 'plus:section',
+      (c) => elName(c) === "plus:section",
     ) as Element;
     expect(include).toBeDefined();
-    expect(include.attributes?.['ref']).toBe('sub-a');
+    expect(include.attributes?.["ref"]).toBe("sub-a");
   });
 
-  it('content before a division-typed leaf directive is wrapped in <introduction>', () => {
+  it("content before a division-typed leaf directive is wrapped in <introduction>", () => {
     const tree = parse('# Chapter\n\nIntro text.\n\n::subsection{ref="foo"}');
     const chapter = tree.children[0] as Element;
-    expect(elName(chapter.children[0])).toBe('title');
+    expect(elName(chapter.children[0])).toBe("title");
     const intro = chapter.children[1] as Element;
-    expect(elName(intro)).toBe('introduction');
-    expect(elName(intro.children[0])).toBe('p');
-    expect(elName(chapter.children[2])).toBe('plus:subsection');
+    expect(elName(intro)).toBe("introduction");
+    expect(elName(intro.children[0])).toBe("p");
+    expect(elName(chapter.children[2])).toBe("plus:subsection");
   });
 
-  it('a non-division leaf directive (e.g. ::image) does not trigger <introduction> wrapping', () => {
+  it("a non-division leaf directive (e.g. ::image) does not trigger <introduction> wrapping", () => {
     const tree = parse('# Chapter\n\nIntro text.\n\n::image{ref="fig-1"}');
     const chapter = tree.children[0] as Element;
-    expect(chapter.children.some((c) => elName(c) === 'introduction')).toBe(
+    expect(chapter.children.some((c) => elName(c) === "introduction")).toBe(
       false,
     );
-    expect(elName(chapter.children[1])).toBe('p');
+    expect(elName(chapter.children[1])).toBe("p");
   });
 });
 
-describe('colon normalization (flexible directive syntax)', () => {
-  it('single ::: markers for nested directives (normalizer equalizes outer)', () => {
+describe("colon normalization (flexible directive syntax)", () => {
+  it("single ::: markers for nested directives (normalizer equalizes outer)", () => {
     const md = `:::exercise
 Intro
 
@@ -1146,16 +1146,16 @@ Task content
 :::`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     const intro = exercise.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     const task = exercise.children[1] as Element;
-    expect(elName(task)).toBe('task');
+    expect(elName(task)).toBe("task");
   });
 
-  it('mixed colon counts (4 outer, 3 inner) still parse correctly', () => {
+  it("mixed colon counts (4 outer, 3 inner) still parse correctly", () => {
     const md = `::::exercise
 Intro
 
@@ -1165,16 +1165,16 @@ Content
 ::::`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     const intro = exercise.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     const task = exercise.children[1] as Element;
-    expect(elName(task)).toBe('task');
+    expect(elName(task)).toBe("task");
   });
 
-  it('multiple siblings at same depth with uniform colons', () => {
+  it("multiple siblings at same depth with uniform colons", () => {
     const md = `:::exercise
 Intro
 
@@ -1190,13 +1190,13 @@ Task 2
     const exercise = tree.children[0] as Element;
 
     const intro = exercise.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     // Should have intro + 1 task (due to remark-directive limitation on sibling parsing)
     expect(exercise.children.length).toBeGreaterThan(0);
   });
 
-  it('deeply nested (3 levels) with flexible colons', () => {
+  it("deeply nested (3 levels) with flexible colons", () => {
     const md = `:::exercise
 Intro
 
@@ -1210,16 +1210,16 @@ Proof content
 :::`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     const intro = exercise.children[0] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
 
     const task = exercise.children[1] as Element;
-    expect(elName(task)).toBe('task');
+    expect(elName(task)).toBe("task");
   });
 
-  it('mismatched closing markers (no matching open) leave literal text', () => {
+  it("mismatched closing markers (no matching open) leave literal text", () => {
     // If user writes ::: with no matching open, normalizer leaves it as-is
     // remark-directive treats it as literal text
     const md = `:::
@@ -1230,10 +1230,10 @@ Orphan closing marker
     expect(tree.children.length).toBeGreaterThan(0);
     const firstChild = tree.children[0] as Element;
     // Orphan markers become text, not directives
-    expect(firstChild.name).not.toBe('exercise');
+    expect(firstChild.name).not.toBe("exercise");
   });
 
-  it('user reported case: mixed colon counts (3 outer, 4 inner, 3 inner)', () => {
+  it("user reported case: mixed colon counts (3 outer, 4 inner, 3 inner)", () => {
     // User reported: :::exercise with ::::task followed by :::task dropped second task
     // After normalization should become: :::::exercise with ::::task and :::task
     const md = `:::exercise[Pythagorean Theorem]{#thm-pythagoras}
@@ -1249,16 +1249,16 @@ Another proof.
 :::`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     // With title [Pythagorean Theorem], first child is 'title', not 'introduction'
     let introIdx = 0;
-    if (elName(exercise.children[0]) === 'title') {
+    if (elName(exercise.children[0]) === "title") {
       introIdx = 1;
     }
 
     const intro = exercise.children[introIdx] as Element;
-    expect(elName(intro)).toBe('introduction');
+    expect(elName(intro)).toBe("introduction");
     expect(intro.children.length).toBeGreaterThan(0);
 
     // Should have: title + intro + at least one task (or intro + task if no title)
@@ -1266,12 +1266,12 @@ Another proof.
 
     // Find a task element in the exercise children
     const taskChild = exercise.children.find(
-      (child: any) => elName(child) === 'task',
+      (child: any) => elName(child) === "task",
     );
     expect(taskChild).toBeDefined();
   });
 
-  it('does not rewrite ::: markers inside fenced code blocks', () => {
+  it("does not rewrite ::: markers inside fenced code blocks", () => {
     const md = `\`\`\`md
 :::exercise
 :::task
@@ -1281,11 +1281,11 @@ Another proof.
     const tree = parse(md);
     const program = tree.children[0] as Element;
 
-    expect(elName(program)).toBe('program');
-    expect(getPtxTextContent(program)).toBe(':::exercise\n:::task\n:::\n:::');
+    expect(elName(program)).toBe("program");
+    expect(getPtxTextContent(program)).toBe(":::exercise\n:::task\n:::\n:::");
   });
 
-  it('does not keep malformed non-top stack matches open', () => {
+  it("does not keep malformed non-top stack matches open", () => {
     const md = `::::exercise
 :::task
 ::::
@@ -1293,22 +1293,22 @@ Another proof.
 :::
 ::::`;
     const normalized = normalizeDirectiveColons(md);
-    const lines = normalized.split('\n');
+    const lines = normalized.split("\n");
 
-    expect(lines[2]).toBe('::::');
-    expect(lines[3]).toBe(':::example');
-    expect(lines[4]).toBe(':::');
+    expect(lines[2]).toBe("::::");
+    expect(lines[3]).toBe(":::example");
+    expect(lines[4]).toBe(":::");
   });
 
-  it('accepts mixed-case directive names', () => {
-    const tree = parse(':::Theorem\nContent.\n:::');
+  it("accepts mixed-case directive names", () => {
+    const tree = parse(":::Theorem\nContent.\n:::");
     const theorem = tree.children[0] as Element;
-    expect(elName(theorem)).toBe('theorem');
+    expect(elName(theorem)).toBe("theorem");
   });
 });
 
-describe('indentation-based directive syntax', () => {
-  it('basic single directive with indented content', () => {
+describe("indentation-based directive syntax", () => {
+  it("basic single directive with indented content", () => {
     const md = `Theorem[Pythagorean]{#thm}:
   The statement goes here.
   
@@ -1317,16 +1317,16 @@ describe('indentation-based directive syntax', () => {
 Plain text.`;
     const tree = parse(md);
     const theorem = tree.children[0] as Element;
-    expect(elName(theorem)).toBe('theorem');
+    expect(elName(theorem)).toBe("theorem");
 
     // Should have title + statement
     const statement = theorem.children.find(
-      (child: any) => elName(child) === 'statement',
+      (child: any) => elName(child) === "statement",
     );
     expect(statement).toBeDefined();
   });
 
-  it('nested directives with indentation', () => {
+  it("nested directives with indentation", () => {
     const md = `Exercise[Basic]{#ex1}:
   Solve this problem.
   
@@ -1336,22 +1336,22 @@ Plain text.`;
 More text.`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     // Should have statement (since no nested tasks)
     const statement = exercise.children.find(
-      (child: any) => elName(child) === 'statement',
+      (child: any) => elName(child) === "statement",
     );
     expect(statement).toBeDefined();
 
     // Should have a proof directive nested inside
     const proof = exercise.children.find(
-      (child: any) => elName(child) === 'proof',
+      (child: any) => elName(child) === "proof",
     );
     expect(proof).toBeDefined();
   });
 
-  it('deeply nested (3 levels) with indentation', () => {
+  it("deeply nested (3 levels) with indentation", () => {
     const md = `Exercise:
   An exercise.
   
@@ -1364,27 +1364,27 @@ More text.`;
 Outside.`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     const intro = exercise.children.find(
-      (child: any) => elName(child) === 'introduction',
+      (child: any) => elName(child) === "introduction",
     );
     expect(intro).toBeDefined();
 
     const task = exercise.children.find(
-      (child: any) => elName(child) === 'task',
+      (child: any) => elName(child) === "task",
     );
     expect(task).toBeDefined();
 
     if (task) {
       const proof = task.children.find(
-        (child: any) => elName(child) === 'proof',
+        (child: any) => elName(child) === "proof",
       );
       expect(proof).toBeDefined();
     }
   });
 
-  it('case-insensitive directive keywords', () => {
+  it("case-insensitive directive keywords", () => {
     const md = `theorem:
   Statement here.
 
@@ -1392,15 +1392,15 @@ PROOF:
   Proof here.`;
     const tree = parse(md);
     const theorem = tree.children[0] as Element;
-    expect(elName(theorem)).toBe('theorem');
+    expect(elName(theorem)).toBe("theorem");
 
     // The PROOF should be nested if it's indented, or a sibling if not
     // In this case it's not indented, so it's a sibling
     const proof = tree.children[1] as Element;
-    expect(elName(proof)).toBe('proof');
+    expect(elName(proof)).toBe("proof");
   });
 
-  it('mixed indentation and colon syntax in same document', () => {
+  it("mixed indentation and colon syntax in same document", () => {
     const md = `Exercise[First]:
   Using indentation.
 
@@ -1411,17 +1411,17 @@ Using colons.
 
     // Should have exercise and theorem as siblings
     const exercise = tree.children.find(
-      (child: any) => elName(child) === 'exercise',
+      (child: any) => elName(child) === "exercise",
     );
     const theorem = tree.children.find(
-      (child: any) => elName(child) === 'theorem',
+      (child: any) => elName(child) === "theorem",
     );
 
     expect(exercise).toBeDefined();
     expect(theorem).toBeDefined();
   });
 
-  it('code and math blocks not treated as directives', () => {
+  it("code and math blocks not treated as directives", () => {
     const md = `Example:
   Consider this code block:
   
@@ -1432,13 +1432,13 @@ Using colons.
   And $Theorem: x = y$ is inline math.`;
     const tree = parse(md);
     const example = tree.children[0] as Element;
-    expect(elName(example)).toBe('example');
+    expect(elName(example)).toBe("example");
 
     // The example should successfully parse without treating code/math as directives
     expect(example.children.length).toBeGreaterThan(0);
   });
 
-  it('preserves relative indentation of nested lists', () => {
+  it("preserves relative indentation of nested lists", () => {
     const md = `Exercise:
   Solve the following:
   
@@ -1448,38 +1448,38 @@ Using colons.
   - Item 2`;
     const tree = parse(md);
     const exercise = tree.children[0] as Element;
-    expect(elName(exercise)).toBe('exercise');
+    expect(elName(exercise)).toBe("exercise");
 
     // Find the statement inside exercise (where content is wrapped)
     const statement = exercise.children.find(
-      (child: any) => elName(child) === 'statement',
+      (child: any) => elName(child) === "statement",
     ) as Element;
     expect(statement).toBeDefined();
 
     // Find the p element inside statement (text is now wrapped in paragraph)
     const p = statement?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     expect(p).toBeDefined();
 
     // Find the ul inside the paragraph (list is nested inside paragraph)
-    const ul = p?.children?.find((c: any) => elName(c) === 'ul') as Element;
+    const ul = p?.children?.find((c: any) => elName(c) === "ul") as Element;
     expect(ul).toBeDefined();
 
     // First li should have p element containing nested ul
     const firstLi = ul?.children?.[0] as Element;
     const firstLiP = firstLi?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     const nestedUl = firstLiP?.children?.find(
-      (c: any) => elName(c) === 'ul',
+      (c: any) => elName(c) === "ul",
     ) as Element;
 
     expect(nestedUl).toBeDefined();
     expect(nestedUl?.children?.length).toBe(2); // Sub-item 1a and 1b
   });
 
-  it('deeply nested lists (3 levels)', () => {
+  it("deeply nested lists (3 levels)", () => {
     const md = `Theorem:
   Main statement.
   
@@ -1490,47 +1490,47 @@ Using colons.
     - Level 2b`;
     const tree = parse(md);
     const theorem = tree.children[0] as Element;
-    expect(elName(theorem)).toBe('theorem');
+    expect(elName(theorem)).toBe("theorem");
 
     // Find statement inside theorem
     const statement = theorem.children.find(
-      (child: any) => elName(child) === 'statement',
+      (child: any) => elName(child) === "statement",
     ) as Element;
     expect(statement).toBeDefined();
 
     // Find the p element inside statement (text is wrapped in paragraph)
     const p = statement?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     expect(p).toBeDefined();
 
     // Find the ul inside the paragraph (list is nested inside paragraph)
-    const ul = p?.children?.find((c: any) => elName(c) === 'ul') as Element;
+    const ul = p?.children?.find((c: any) => elName(c) === "ul") as Element;
     expect(ul).toBeDefined();
 
     // Verify structure is preserved (not flattened) with 3 levels of nesting
     const level1Li = ul?.children?.[0] as Element;
     const level1P = level1Li?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     const level2Ul = level1P?.children?.find(
-      (c: any) => elName(c) === 'ul',
+      (c: any) => elName(c) === "ul",
     ) as Element;
 
     expect(level2Ul).toBeDefined();
     const level2Li = level2Ul?.children?.[0] as Element;
     const level2P = level2Li?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     const level3Ul = level2P?.children?.find(
-      (c: any) => elName(c) === 'ul',
+      (c: any) => elName(c) === "ul",
     ) as Element;
 
     expect(level3Ul).toBeDefined();
     expect(level3Ul?.children?.length).toBe(2); // Level 3a and 3b
   });
 
-  it('nested list with surrounding text', () => {
+  it("nested list with surrounding text", () => {
     const md = `Solution:
   First part of solution.
   
@@ -1542,19 +1542,19 @@ Using colons.
   Conclusion here.`;
     const tree = parse(md);
     const solution = tree.children[0] as Element;
-    expect(elName(solution)).toBe('solution');
+    expect(elName(solution)).toBe("solution");
 
     // Solution doesn't wrap content in a statement, so look directly in solution
     // Find the p element that contains "Key steps:" (second p element)
     const pWithList = solution.children?.find((c: any) => {
-      if (elName(c) !== 'p') return false;
-      return c.children?.some((child: any) => child.value === 'Key steps:');
+      if (elName(c) !== "p") return false;
+      return c.children?.some((child: any) => child.value === "Key steps:");
     }) as Element;
     expect(pWithList).toBeDefined();
 
     // Find the ul inside that paragraph
     const ul = pWithList?.children?.find(
-      (c: any) => elName(c) === 'ul',
+      (c: any) => elName(c) === "ul",
     ) as Element;
     expect(ul).toBeDefined();
 
@@ -1563,15 +1563,15 @@ Using colons.
 
     const step1Li = listItems?.[0] as Element;
     const step1P = step1Li?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     const step1NestedUl = step1P?.children?.find(
-      (c: any) => elName(c) === 'ul',
+      (c: any) => elName(c) === "ul",
     ) as Element;
     expect(step1NestedUl).toBeDefined();
   });
 
-  it('4-space indented body is not parsed as code block', () => {
+  it("4-space indented body is not parsed as code block", () => {
     // Regression: body with 4-space indent was previously parsed as a <pre> code block
     const md = `Theorem:
     This is the theorem statement.
@@ -1579,20 +1579,20 @@ Using colons.
 Plain text after.`;
     const tree = parse(md);
     const theorem = tree.children[0] as Element;
-    expect(elName(theorem)).toBe('theorem');
+    expect(elName(theorem)).toBe("theorem");
     const statement = theorem.children.find(
-      (c: any) => elName(c) === 'statement',
+      (c: any) => elName(c) === "statement",
     ) as Element;
     expect(statement).toBeDefined();
     // The content must be a paragraph, not a code block
     const p = statement?.children?.find(
-      (c: any) => elName(c) === 'p',
+      (c: any) => elName(c) === "p",
     ) as Element;
     expect(p).toBeDefined();
-    expect(tree.children.some((c: any) => elName(c) === 'pre')).toBe(false);
+    expect(tree.children.some((c: any) => elName(c) === "pre")).toBe(false);
   });
 
-  it('4-space indented list inside directive is parsed as a list', () => {
+  it("4-space indented list inside directive is parsed as a list", () => {
     const md = `Example:
     Some intro text.
 
@@ -1600,10 +1600,10 @@ Plain text after.`;
     - Second item`;
     const tree = parse(md);
     const example = tree.children[0] as Element;
-    expect(elName(example)).toBe('example');
+    expect(elName(example)).toBe("example");
     // The list should be preserved, not turned into a code block
     const allNames = nodeNameCounts(tree);
-    expect(allNames['ul']).toBeGreaterThanOrEqual(1);
-    expect(allNames['pre']).toBeUndefined();
+    expect(allNames["ul"]).toBeGreaterThanOrEqual(1);
+    expect(allNames["pre"]).toBeUndefined();
   });
 });

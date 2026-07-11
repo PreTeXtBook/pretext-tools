@@ -8,11 +8,11 @@
 //
 // Run automatically by the root `refresh:schemas` script after the .rng files
 // are refreshed from upstream.
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
-import { createRequire } from 'module';
-import { convertRNGToPattern, writeTreeToJSON } from 'salve-annos';
+import fs from "fs";
+import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+import { createRequire } from "module";
+import { convertRNGToPattern, writeTreeToJSON } from "salve-annos";
 
 // salve-annos bug workaround: InternalSimplifier.parse is passed to step1 as a
 // Parser callback (filePath: URL) => Promise<Element>, but the implementation
@@ -22,7 +22,7 @@ import { convertRNGToPattern, writeTreeToJSON } from 'salve-annos';
 // not supplied.
 const _require = createRequire(import.meta.url);
 const internal = _require(
-  'salve-annos/lib/salve/conversion/schema-simplifiers/internal.js',
+  "salve-annos/lib/salve/conversion/schema-simplifiers/internal.js",
 );
 const origParse = internal.InternalSimplifier.prototype.parse;
 internal.InternalSimplifier.prototype.parse = async function patchedParse(
@@ -39,20 +39,20 @@ internal.InternalSimplifier.prototype.parse = async function patchedParse(
 };
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(scriptDir, '../../..');
+const workspaceRoot = path.resolve(scriptDir, "../../..");
 const extensionSchemaDir = path.join(
   workspaceRoot,
-  'packages',
-  'vscode-extension',
-  'assets',
-  'schema',
+  "packages",
+  "vscode-extension",
+  "assets",
+  "schema",
 );
-const packageAssetsDir = path.join(scriptDir, '..', 'assets');
+const packageAssetsDir = path.join(scriptDir, "..", "assets");
 
 // [rng filename, whether a failure is fatal to the build]
 // Note: pretext-dev.rng has upstream dangling refs and causes build hangs; removed.
 // LSP falls back to stable pretext.json if pretext-dev.json is unavailable.
-const targets = [['pretext.rng', true]];
+const targets = [["pretext.rng", true]];
 
 async function compileOne(rngName, fatal) {
   const rngPath = path.join(extensionSchemaDir, rngName);
@@ -66,7 +66,7 @@ async function compileOne(rngName, fatal) {
       console.warn(`  [${rngName}] warning: ${warning}`);
     }
     const json = writeTreeToJSON(result.simplified, 3);
-    const outName = rngName.replace(/\.rng$/, '.json');
+    const outName = rngName.replace(/\.rng$/, ".json");
 
     fs.mkdirSync(packageAssetsDir, { recursive: true });
     fs.writeFileSync(path.join(extensionSchemaDir, outName), json);

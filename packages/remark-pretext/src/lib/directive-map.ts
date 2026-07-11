@@ -9,15 +9,15 @@
  */
 
 export type DirectiveCategory =
-  | 'theorem-like'
-  | 'proof-like'
-  | 'definition-like'
-  | 'axiom-like'
-  | 'remark-like'
-  | 'example-like'
-  | 'project-like'
-  | 'exercise-like'
-  | 'solution-like';
+  | "theorem-like"
+  | "proof-like"
+  | "definition-like"
+  | "axiom-like"
+  | "remark-like"
+  | "example-like"
+  | "project-like"
+  | "exercise-like"
+  | "solution-like";
 
 /**
  * Semantic specification for how a directive type should be converted.
@@ -68,147 +68,147 @@ export interface DirectiveInfo {
 export const DIRECTIVE_SPEC_TABLE: Readonly<Record<string, DirectiveSpec>> = {
   // theorem-like (requires statement wrapping)
   theorem: {
-    type: 'theorem',
-    category: 'theorem-like',
+    type: "theorem",
+    category: "theorem-like",
     requiresStatement: true,
   },
-  lemma: { type: 'lemma', category: 'theorem-like', requiresStatement: true },
+  lemma: { type: "lemma", category: "theorem-like", requiresStatement: true },
   corollary: {
-    type: 'corollary',
-    category: 'theorem-like',
+    type: "corollary",
+    category: "theorem-like",
     requiresStatement: true,
   },
   proposition: {
-    type: 'proposition',
-    category: 'theorem-like',
+    type: "proposition",
+    category: "theorem-like",
     requiresStatement: true,
   },
-  claim: { type: 'claim', category: 'theorem-like', requiresStatement: true },
-  fact: { type: 'fact', category: 'theorem-like', requiresStatement: true },
+  claim: { type: "claim", category: "theorem-like", requiresStatement: true },
+  fact: { type: "fact", category: "theorem-like", requiresStatement: true },
   conjecture: {
-    type: 'conjecture',
-    category: 'theorem-like',
+    type: "conjecture",
+    category: "theorem-like",
     requiresStatement: true,
   },
-  axiom: { type: 'axiom', category: 'theorem-like', requiresStatement: true },
+  axiom: { type: "axiom", category: "theorem-like", requiresStatement: true },
   principle: {
-    type: 'principle',
-    category: 'theorem-like',
+    type: "principle",
+    category: "theorem-like",
     requiresStatement: true,
   },
   hypothesis: {
-    type: 'hypothesis',
-    category: 'theorem-like',
+    type: "hypothesis",
+    category: "theorem-like",
     requiresStatement: true,
   },
   algorithm: {
-    type: 'algorithm',
-    category: 'theorem-like',
+    type: "algorithm",
+    category: "theorem-like",
     requiresStatement: true,
   },
 
   // definition-like (requires statement wrapping)
   definition: {
-    type: 'definition',
-    category: 'definition-like',
+    type: "definition",
+    category: "definition-like",
     requiresStatement: true,
   },
   notation: {
-    type: 'notation',
-    category: 'definition-like',
+    type: "notation",
+    category: "definition-like",
     requiresStatement: true,
   },
 
   // remark-like (no statement wrapping)
-  remark: { type: 'remark', category: 'remark-like', requiresStatement: false },
-  note: { type: 'note', category: 'remark-like', requiresStatement: false },
+  remark: { type: "remark", category: "remark-like", requiresStatement: false },
+  note: { type: "note", category: "remark-like", requiresStatement: false },
   observation: {
-    type: 'observation',
-    category: 'remark-like',
+    type: "observation",
+    category: "remark-like",
     requiresStatement: false,
   },
   warning: {
-    type: 'warning',
-    category: 'remark-like',
+    type: "warning",
+    category: "remark-like",
     requiresStatement: false,
   },
   insight: {
-    type: 'insight',
-    category: 'remark-like',
+    type: "insight",
+    category: "remark-like",
     requiresStatement: false,
   },
   assemblage: {
-    type: 'assemblage',
-    category: 'remark-like',
+    type: "assemblage",
+    category: "remark-like",
     requiresStatement: false,
   },
 
   // example-like (exercise/project/task support nested tasks; require statement if no nested tasks)
   example: {
-    type: 'example',
-    category: 'example-like',
+    type: "example",
+    category: "example-like",
     requiresStatement: false,
   },
   question: {
-    type: 'question',
-    category: 'example-like',
+    type: "question",
+    category: "example-like",
     requiresStatement: false,
   },
   problem: {
-    type: 'problem',
-    category: 'example-like',
+    type: "problem",
+    category: "example-like",
     requiresStatement: false,
   },
   exercise: {
-    type: 'exercise',
-    category: 'example-like',
+    type: "exercise",
+    category: "example-like",
     requiresStatement: true,
     hasNestedTasks: true,
   },
   activity: {
-    type: 'activity',
-    category: 'example-like',
+    type: "activity",
+    category: "example-like",
     requiresStatement: false,
   },
   exploration: {
-    type: 'exploration',
-    category: 'example-like',
+    type: "exploration",
+    category: "example-like",
     requiresStatement: false,
   },
   investigation: {
-    type: 'investigation',
-    category: 'example-like',
+    type: "investigation",
+    category: "example-like",
     requiresStatement: false,
   },
   project: {
-    type: 'project',
-    category: 'example-like',
+    type: "project",
+    category: "example-like",
     requiresStatement: true,
     hasNestedTasks: true,
   },
 
   // task (can have nested tasks, requires statement if no nested tasks)
   task: {
-    type: 'task',
-    category: 'example-like',
+    type: "task",
+    category: "example-like",
     requiresStatement: true,
     hasNestedTasks: true,
   },
 
   // proof-like (no statement wrapping)
-  proof: { type: 'proof', category: 'proof-like', requiresStatement: false },
-  case: { type: 'case', category: 'proof-like', requiresStatement: false },
+  proof: { type: "proof", category: "proof-like", requiresStatement: false },
+  case: { type: "case", category: "proof-like", requiresStatement: false },
 
   // solution-like (no statement wrapping)
   solution: {
-    type: 'solution',
-    category: 'solution-like',
+    type: "solution",
+    category: "solution-like",
     requiresStatement: false,
   },
-  hint: { type: 'hint', category: 'solution-like', requiresStatement: false },
+  hint: { type: "hint", category: "solution-like", requiresStatement: false },
   answer: {
-    type: 'answer',
-    category: 'solution-like',
+    type: "answer",
+    category: "solution-like",
     requiresStatement: false,
   },
 };
@@ -230,7 +230,7 @@ export const PROOF_SOLUTION_NAMES = new Set(
   Object.entries(DIRECTIVE_SPEC_TABLE)
     .filter(
       ([_, spec]) =>
-        spec.category === 'proof-like' || spec.category === 'solution-like',
+        spec.category === "proof-like" || spec.category === "solution-like",
     )
     .map(([name]) => name),
 );

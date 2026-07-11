@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import './App.css';
-import './styles.scss';
-import VisualEditor from './components/VisualEditor';
+import { useState } from "react";
+import "./App.css";
+import "./styles.scss";
+import VisualEditor from "./components/VisualEditor";
 
 /**
  * Simple demo app for the visual editor.
@@ -19,7 +19,7 @@ function App() {
 
   const handleChange = (ptx: string) => {
     setContent(ptx);
-    console.log('Content changed:', ptx);
+    console.log("Content changed:", ptx);
   };
 
   return (

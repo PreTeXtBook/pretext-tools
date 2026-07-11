@@ -1,14 +1,14 @@
-import { execSync } from 'child_process';
-import * as path from 'path';
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import { SpellCheckScope } from './types';
-import { cli } from './cli';
+import { execSync } from "child_process";
+import * as path from "path";
+import * as vscode from "vscode";
+import * as fs from "fs";
+import { SpellCheckScope } from "./types";
+import { cli } from "./cli";
 import {
   getProjectFolder,
   stripColorCodes,
   buildSpellCheckIgnorePatterns,
-} from './pure-utils';
+} from "./pure-utils";
 
 export let currentPanel: vscode.WebviewPanel | undefined;
 
@@ -57,17 +57,17 @@ async function experiment(context: vscode.ExtensionContext) {
   //const panelSrc = currentPanel?.webview.asWebviewUri(outputUri);
   //console.log("Output URI is: ", outputUri);
 
-  console.log('Current panel is: ', currentPanel);
-  console.log('Current panel is visible? ', currentPanel?.visible);
-  console.log('Current panel is active? ', currentPanel?.active);
+  console.log("Current panel is: ", currentPanel);
+  console.log("Current panel is visible? ", currentPanel?.visible);
+  console.log("Current panel is active? ", currentPanel?.active);
   if (currentPanel) {
     // If we already have a panel, show it.
     currentPanel.reveal(columnToShowIn);
   } else {
     // Otherwise, create a new panel.
     currentPanel = vscode.window.createWebviewPanel(
-      'boxEditor',
-      'Box Editor',
+      "boxEditor",
+      "Box Editor",
       columnToShowIn || vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -79,15 +79,15 @@ async function experiment(context: vscode.ExtensionContext) {
     // every 5 seconds
     let iteration = 0;
     const updateWebview = () => {
-      const color = iteration++ % 2 === 0 ? 'red' : 'blue';
+      const color = iteration++ % 2 === 0 ? "red" : "blue";
       currentPanel!.title = `Box Editor - ${iteration}`;
       //currentPanel!.webview.html = getWebviewContent(color);
       console.log(`Webview updated to color: ${color}`);
-      currentPanel!.webview.postMessage({ content: 'hello' });
+      currentPanel!.webview.postMessage({ content: "hello" });
     };
 
     const scriptUri = currentPanel?.webview.asWebviewUri(
-      vscode.Uri.joinPath(context.extensionUri, 'src', 'views', 'dist'),
+      vscode.Uri.joinPath(context.extensionUri, "src", "views", "dist"),
     );
     currentPanel.webview.html = getWebviewContent(scriptUri);
 
@@ -95,7 +95,7 @@ async function experiment(context: vscode.ExtensionContext) {
     currentPanel.webview.onDidReceiveMessage(
       (message) => {
         switch (message.command) {
-          case 'alert':
+          case "alert":
             vscode.window.showErrorMessage(message.text);
             return;
         }
@@ -108,7 +108,7 @@ async function experiment(context: vscode.ExtensionContext) {
 
     currentPanel.onDidDispose(
       () => {
-        console.log('Webview closed');
+        console.log("Webview closed");
         currentPanel = undefined;
         clearInterval(interval);
       },
@@ -157,45 +157,45 @@ async function installPretext(progress: vscode.Progress<{}>) {
   let pythonExec = cli.pythonPath();
   if (!pythonExec) {
     vscode.window.showErrorMessage(
-      'Unable to install PreTeXt without python.  Please install python and try again.',
+      "Unable to install PreTeXt without python.  Please install python and try again.",
     );
     return;
   }
-  progress.report({ message: 'Checking pip version' });
-  let pipExec = '';
-  for (let command of ['pipx', 'pip']) {
+  progress.report({ message: "Checking pip version" });
+  let pipExec = "";
+  for (let command of ["pipx", "pip"]) {
     try {
       let pipVersion = execSync(
-        pythonExec + ' -m ' + command + ' --version',
+        pythonExec + " -m " + command + " --version",
       ).toString();
-      console.log('pip version result: ', pipVersion);
+      console.log("pip version result: ", pipVersion);
       pipExec = command;
       break;
     } catch (err) {
-      console.log('Error: ', err);
+      console.log("Error: ", err);
     }
   }
   // Now try to install pretext (using 1.0 command):
-  progress.report({ message: 'Installing pretext' });
+  progress.report({ message: "Installing pretext" });
   try {
-    if (pipExec === 'pipx') {
-      execSync(pipExec + ' install pretext');
+    if (pipExec === "pipx") {
+      execSync(pipExec + " install pretext");
     } else {
-      execSync(pythonExec + ' -m ' + 'pip' + ' install --upgrade pretext');
+      execSync(pythonExec + " -m " + "pip" + " install --upgrade pretext");
       vscode.window.showInformationMessage(
-        'Successfully installed or upgraded pretext.',
-        'Dismiss',
+        "Successfully installed or upgraded pretext.",
+        "Dismiss",
       );
     }
   } catch (err) {
     vscode.window.showErrorMessage(
-      'Unable to install PreTeXt using pip.  Please see the pretext documentation for further assistance.',
-      'Dismiss',
+      "Unable to install PreTeXt using pip.  Please see the pretext documentation for further assistance.",
+      "Dismiss",
     );
     console.log(err);
-    throw new Error('Installation failed');
+    throw new Error("Installation failed");
   }
-  progress.report({ message: 'Done' });
+  progress.report({ message: "Done" });
 }
 
 /**
@@ -205,80 +205,80 @@ async function installPretext(progress: vscode.Progress<{}>) {
 //const ptxVersion = getPtxVersion();
 
 function setSpellCheckConfig() {
-  const cSpellConfig = vscode.workspace.getConfiguration('cSpell');
+  const cSpellConfig = vscode.workspace.getConfiguration("cSpell");
   // Now update which scopes should be checked or ignored for spell checking.
   const spellCheckScopes: SpellCheckScope | undefined = vscode.workspace
-    .getConfiguration('pretext-tools')
-    .get('spellCheck.checkErrorsInsideScope');
+    .getConfiguration("pretext-tools")
+    .get("spellCheck.checkErrorsInsideScope");
   console.log(
-    'Current value of spellCheck.checkErrorsInsideScope is',
+    "Current value of spellCheck.checkErrorsInsideScope is",
     spellCheckScopes,
   );
   const ignorePatterns = buildSpellCheckIgnorePatterns(spellCheckScopes);
   // Get current languageSettings for cSpell and update those for pretext
-  let languageSettings: any = cSpellConfig.get('languageSettings');
+  let languageSettings: any = cSpellConfig.get("languageSettings");
   for (let dicts of languageSettings) {
-    if (dicts['languageId'] === 'pretext') {
-      console.log('Current value of languageSettings for Pretext is', dicts);
-      dicts['ignoreRegExpList'] = ignorePatterns;
+    if (dicts["languageId"] === "pretext") {
+      console.log("Current value of languageSettings for Pretext is", dicts);
+      dicts["ignoreRegExpList"] = ignorePatterns;
       break;
     }
   }
-  console.log('Updated languageSettings for Pretext to', languageSettings);
-  cSpellConfig.update('languageSettings', languageSettings);
+  console.log("Updated languageSettings for Pretext to", languageSettings);
+  cSpellConfig.update("languageSettings", languageSettings);
 }
 
 function setSchema(context: vscode.ExtensionContext) {
   let schemaPath: string | undefined = vscode.workspace
-    .getConfiguration('pretext-tools')
-    .get('schema.customPath');
+    .getConfiguration("pretext-tools")
+    .get("schema.customPath");
   let schemaVersion: string | undefined = vscode.workspace
-    .getConfiguration('pretext-tools')
-    .get('schema.versionName');
-  if (schemaPath !== '' && schemaVersion !== 'Custom') {
+    .getConfiguration("pretext-tools")
+    .get("schema.versionName");
+  if (schemaPath !== "" && schemaVersion !== "Custom") {
     console.warn(
-      'Custom schema path provided, but version is not set to Custom.  Ignoring custom path.',
+      "Custom schema path provided, but version is not set to Custom.  Ignoring custom path.",
     );
   }
   if (!schemaPath || !fs.existsSync(schemaPath)) {
     console.error(`Schema file not found at path: ${schemaPath}`);
-    schemaPath = '';
+    schemaPath = "";
   }
-  if (schemaPath === '') {
+  if (schemaPath === "") {
     //get the extensions installed path:
     const extensionPath = context.extensionPath;
-    console.log('Extension path is: ', extensionPath);
-    let schemaDir = path.join(extensionPath, 'assets', 'schema');
-    console.log('Schema directory is: ', schemaDir);
+    console.log("Extension path is: ", extensionPath);
+    let schemaDir = path.join(extensionPath, "assets", "schema");
+    console.log("Schema directory is: ", schemaDir);
     const schemaConfig = vscode.workspace
-      .getConfiguration('pretext-tools')
-      .get('schema.versionName');
+      .getConfiguration("pretext-tools")
+      .get("schema.versionName");
     switch (schemaConfig) {
-      case 'Stable':
-        schemaPath = path.join(schemaDir, 'pretext.rng');
+      case "Stable":
+        schemaPath = path.join(schemaDir, "pretext.rng");
         break;
-      case 'Experimental':
-        schemaPath = path.join(schemaDir, 'pretext-dev.rng');
+      case "Experimental":
+        schemaPath = path.join(schemaDir, "pretext-dev.rng");
         break;
-      case 'Custom':
+      case "Custom":
         console.log(
-          'Selected custom schema, but no valid path provided.  Setting to default.',
+          "Selected custom schema, but no valid path provided.  Setting to default.",
         );
-        schemaPath = path.join(schemaDir, 'pretext.rng');
+        schemaPath = path.join(schemaDir, "pretext.rng");
         break;
     }
   }
-  const configuration = vscode.workspace.getConfiguration('xml');
-  let schemas: any = configuration.get('fileAssociations');
+  const configuration = vscode.workspace.getConfiguration("xml");
+  let schemas: any = configuration.get("fileAssociations");
   for (let dicts of schemas) {
-    if (dicts['pattern'] === '**/source/**.ptx') {
-      console.log('The value of your setting is', dicts);
-      dicts['systemId'] = schemaPath;
+    if (dicts["pattern"] === "**/source/**.ptx") {
+      console.log("The value of your setting is", dicts);
+      dicts["systemId"] = schemaPath;
       break;
     }
   }
-  console.log('Schema set to: ', schemaPath);
-  configuration.update('fileAssociations', schemas);
+  console.log("Schema set to: ", schemaPath);
+  configuration.update("fileAssociations", schemas);
 }
 
 function updateStatusBarItem(
@@ -286,19 +286,19 @@ function updateStatusBarItem(
   state?: string,
 ): void {
   ptxSBItem.show();
-  if (state === 'ready' || state === undefined) {
+  if (state === "ready" || state === undefined) {
     ptxSBItem.text = `$(debug-run) PreTeXt`;
     ptxSBItem.tooltip = `Run PreTeXt command`;
     ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === 'running') {
+  } else if (state === "running") {
     ptxSBItem.text = `$(loading~spin) PreTeXt`;
     ptxSBItem.tooltip = `running pretext ... (click for log)`;
     ptxSBItem.command = `pretext-tools.showLog`;
-  } else if (state === 'success') {
+  } else if (state === "success") {
     ptxSBItem.text = `$(pass) PreTeXt`;
     ptxSBItem.tooltip = `Success!`;
     ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === 'error') {
+  } else if (state === "error") {
     ptxSBItem.text = `$(warning) PreTeXt`;
     ptxSBItem.tooltip = `Something went wrong; click for log`;
     ptxSBItem.command = `pretext-tools.showLog`;
@@ -310,7 +310,7 @@ function setupTerminal(
   projectPath?: string,
 ): vscode.Terminal {
   if (!terminal) {
-    terminal = vscode.window.createTerminal('PreTeXt Terminal', projectPath);
+    terminal = vscode.window.createTerminal("PreTeXt Terminal", projectPath);
   }
   terminal.show();
   return terminal;
@@ -321,9 +321,9 @@ function setupTerminal(
  * @returns A random nonce string.
  */
 export function getNonce() {
-  let text = '';
+  let text = "";
   const possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   for (let i = 0; i < 32; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }

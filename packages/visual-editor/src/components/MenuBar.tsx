@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import './MenuBar.css';
+import type { ReactNode } from "react";
+import "./MenuBar.css";
 
 export interface MenuBarProps {
   isChecked: boolean;
@@ -34,15 +34,15 @@ const MenuBar = (props: MenuBarProps) => {
           <span
             className={`pretext-plus-editor__preview-toggle-slider ${
               props.isChecked
-                ? 'pretext-plus-editor__preview-toggle-slider--active'
-                : ''
+                ? "pretext-plus-editor__preview-toggle-slider--active"
+                : ""
             }`}
           >
             <span
               className={`pretext-plus-editor__preview-toggle-dot ${
                 props.isChecked
-                  ? 'pretext-plus-editor__preview-toggle-dot--active'
-                  : ''
+                  ? "pretext-plus-editor__preview-toggle-dot--active"
+                  : ""
               }`}
             ></span>
           </span>
@@ -68,7 +68,7 @@ const MenuBar = (props: MenuBarProps) => {
       <div className="pretext-plus-editor__menu-left">
         {props.title !== undefined && props.onTitleChange && (
           <label className="pretext-plus-editor__title-label">
-            Title{' '}
+            Title{" "}
             <input
               className="pretext-plus-editor__title-input"
               type="text"
@@ -84,7 +84,7 @@ const MenuBar = (props: MenuBarProps) => {
             className="pretext-plus-editor__button pretext-plus-editor__button--save"
             onClick={props.onSaveButton}
           >
-            {props.saveButtonLabel || 'Save'}
+            {props.saveButtonLabel || "Save"}
           </button>
         )}
         {props.onCancelButton && (
@@ -92,7 +92,7 @@ const MenuBar = (props: MenuBarProps) => {
             className="pretext-plus-editor__button pretext-plus-editor__button--cancel"
             onClick={props.onCancelButton}
           >
-            {props.cancelButtonLabel || 'Cancel'}
+            {props.cancelButtonLabel || "Cancel"}
           </button>
         )}
         {props.feedbackControl}

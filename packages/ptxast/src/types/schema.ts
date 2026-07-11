@@ -1,9 +1,9 @@
-import type { Root, Element } from 'xast';
+import type { Root, Element } from "xast";
 import {
   ptxCuratedElementNames,
   ptxSchemaElementChildren,
   ptxUnmodeledSchemaElementNames,
-} from './generated.js';
+} from "./generated.js";
 import type {
   GeneratedPtxCuratedElementName,
   GeneratedPtxAttributeForElement,
@@ -11,7 +11,7 @@ import type {
   GeneratedPtxChildElementName,
   GeneratedPtxElementName,
   GeneratedPtxUnmodeledSchemaElementName,
-} from './generated.js';
+} from "./generated.js";
 
 // Keep repo-specific refinements here so schema refreshes can overwrite
 // generated.ts without clobbering local customizations.
@@ -101,7 +101,7 @@ export function collectPtxSchemaViolations(root: Root | Element): string[] {
   const violations: string[] = [];
 
   function visit(node: Root | Element, nodePath: string): void {
-    if (node.type === 'element') {
+    if (node.type === "element") {
       const elementName = (node as Element).name;
       if (!isPtxSchemaElementName(elementName)) {
         violations.push(
@@ -127,7 +127,7 @@ export function collectPtxSchemaViolations(root: Root | Element): string[] {
     if (!Array.isArray(children)) return;
 
     const elementName =
-      node.type === 'element' ? (node as Element).name : undefined;
+      node.type === "element" ? (node as Element).name : undefined;
     const allowedChildTypes =
       !elementName || !isPtxSchemaElementName(elementName)
         ? undefined
@@ -137,8 +137,8 @@ export function collectPtxSchemaViolations(root: Root | Element): string[] {
 
     children.forEach((child: unknown, index: number) => {
       const c = child as Root | Element | { type: string };
-      if (c.type === 'text') return;
-      if (c.type !== 'element') return;
+      if (c.type === "text") return;
+      if (c.type !== "element") return;
       const childEl = c as Element;
       const childPath = `${nodePath}/${childEl.name}[${index}]`;
       if (allowedChildTypes && !allowedChildTypes.has(childEl.name)) {
@@ -150,6 +150,6 @@ export function collectPtxSchemaViolations(root: Root | Element): string[] {
     });
   }
 
-  visit(root, root.type === 'root' ? 'root' : `<${(root as Element).name}>`);
+  visit(root, root.type === "root" ? "root" : `<${(root as Element).name}>`);
   return violations;
 }

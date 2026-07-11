@@ -1,11 +1,11 @@
-import { SaxesParser } from 'saxes';
-import { DefaultNameResolver } from 'salve-annos';
+import { SaxesParser } from "saxes";
+import { DefaultNameResolver } from "salve-annos";
 import type {
   CompletionContext,
   CompletionItem,
   Grammar,
   Position,
-} from './types';
+} from "./types";
 
 /** CompletionItemKind numeric values (mirrors vscode-languageserver-types). */
 const Kind = {
@@ -13,12 +13,12 @@ const Kind = {
   Property: 10,
 };
 
-const XMLNS_NS = 'http://www.w3.org/2000/xmlns/';
+const XMLNS_NS = "http://www.w3.org/2000/xmlns/";
 
 /** Conventional prefixes for the namespaces PreTeXt uses. */
 const NS_PREFIXES: Record<string, string> = {
-  'http://www.w3.org/XML/1998/namespace': 'xml',
-  'http://www.w3.org/2001/XInclude': 'xi',
+  "http://www.w3.org/XML/1998/namespace": "xml",
+  "http://www.w3.org/2001/XInclude": "xi",
 };
 
 /** Render a name as it would appear in source, prefixing known namespaces. */
@@ -60,26 +60,26 @@ export function getCompletions(context: CompletionContext): CompletionItem[] {
   const offset = positionToOffset(text, position);
   const prefix = text.slice(0, offset);
 
-  const lastLt = prefix.lastIndexOf('<');
-  const lastGt = prefix.lastIndexOf('>');
+  const lastLt = prefix.lastIndexOf("<");
+  const lastGt = prefix.lastIndexOf(">");
   const insideTag = lastLt > lastGt;
 
   if (!insideTag) {
     // In element content: offer child elements of the current open element.
-    return elementCompletions(grammar, prefix, '', uri);
+    return elementCompletions(grammar, prefix, "", uri);
   }
 
   const tagText = prefix.slice(lastLt);
   if (
-    tagText.startsWith('</') ||
-    tagText.startsWith('<!') ||
-    tagText.startsWith('<?')
+    tagText.startsWith("</") ||
+    tagText.startsWith("<!") ||
+    tagText.startsWith("<?")
   ) {
     return [];
   }
 
   const nameMatch = tagText.match(/^<([A-Za-z_][\w.:-]*)?/);
-  const tagName = nameMatch?.[1] ?? '';
+  const tagName = nameMatch?.[1] ?? "";
   const afterName = tagText.slice(1 + tagName.length);
 
   if (!/\s/.test(afterName)) {
@@ -112,7 +112,7 @@ function elementCompletions(
   if (!walker) {
     return [];
   }
-  const names = collectNames(walker.possible(), 'enterStartTag');
+  const names = collectNames(walker.possible(), "enterStartTag");
   return toItems(names, partial, Kind.Class);
 }
 
@@ -131,7 +131,7 @@ function attributeCompletions(
   // Enter the element being typed on a clone, so the cached walker (which only
   // reflects the document text actually written so far) is left untouched.
   const walker = cached.clone();
-  const ret = walker.fireEvent('enterStartTag', ['', tagName]);
+  const ret = walker.fireEvent("enterStartTag", ["", tagName]);
   if (Array.isArray(ret)) {
     // Element not valid here; no meaningful attribute suggestions.
     return [];
@@ -142,7 +142,7 @@ function attributeCompletions(
   const source = walker.possibleAttributes
     ? walker.possibleAttributes()
     : walker.possible();
-  const names = collectNames(source, 'attributeName').filter(
+  const names = collectNames(source, "attributeName").filter(
     (n) => !present.has(qualify(n.ns, n.name!)),
   );
   return toItems(names, partial, Kind.Property);
@@ -159,7 +159,7 @@ class WalkerSession {
   readonly grammar: Grammar;
   readonly walker: WalkerLike;
   private readonly parser: SaxesParser<{ xmlns: true; position: true }>;
-  prefix = '';
+  prefix = "";
   private depth = 0;
   private failed = false;
 
@@ -180,9 +180,9 @@ class WalkerSession {
       this.walker.fireEvent(name, params); // ignore errors: we only want walker state
     };
 
-    this.parser.on('opentag', (node) => {
+    this.parser.on("opentag", (node) => {
       this.depth++;
-      fire('enterStartTag', [node.uri ?? '', node.local ?? node.name]);
+      fire("enterStartTag", [node.uri ?? "", node.local ?? node.name]);
       for (const key of Object.keys(node.attributes)) {
         const attr = node.attributes[key] as {
           uri?: string;
@@ -192,27 +192,27 @@ class WalkerSession {
           value: string;
         };
         if (
-          attr.prefix === 'xmlns' ||
-          attr.name === 'xmlns' ||
+          attr.prefix === "xmlns" ||
+          attr.name === "xmlns" ||
           attr.uri === XMLNS_NS
         ) {
           continue;
         }
-        fire('attributeName', [attr.uri ?? '', attr.local ?? attr.name]);
-        fire('attributeValue', [attr.value]);
+        fire("attributeName", [attr.uri ?? "", attr.local ?? attr.name]);
+        fire("attributeValue", [attr.value]);
       }
-      fire('leaveStartTag', []);
+      fire("leaveStartTag", []);
     });
-    this.parser.on('closetag', (node) => {
-      fire('endTag', [node.uri ?? '', node.local ?? node.name]);
+    this.parser.on("closetag", (node) => {
+      fire("endTag", [node.uri ?? "", node.local ?? node.name]);
       this.depth = Math.max(0, this.depth - 1);
     });
-    this.parser.on('text', (t) => {
+    this.parser.on("text", (t) => {
       if (this.depth > 0 && t.length > 0) {
-        fire('text', [t]);
+        fire("text", [t]);
       }
     });
-    this.parser.on('error', () => {
+    this.parser.on("error", () => {
       this.failed = true;
     });
   }
@@ -305,10 +305,10 @@ function collectNames(
         ? [ev.namePattern.toObject()]
         : [];
     for (const n of names) {
-      if (!n || typeof n.name !== 'string') {
+      if (!n || typeof n.name !== "string") {
         continue;
       }
-      const key = `${n.ns ?? ''}:${n.name}`;
+      const key = `${n.ns ?? ""}:${n.name}`;
       if (seen.has(key)) {
         continue;
       }
@@ -332,7 +332,7 @@ function toItems(
     .map((n) => {
       const item: CompletionItem = {
         label: n.display,
-        kind: kind as CompletionItem['kind'],
+        kind: kind as CompletionItem["kind"],
       };
       if (n.doc) {
         item.documentation = n.doc;
@@ -347,9 +347,9 @@ function toItems(
  */
 function currentAttributePartial(tagText: string): string | null {
   // Count quotes after the tag name to detect being inside a value.
-  const afterFirstSpace = tagText.replace(/^<[\w.:-]*/, '');
+  const afterFirstSpace = tagText.replace(/^<[\w.:-]*/, "");
   let inValue = false;
-  let quote = '';
+  let quote = "";
   for (let i = 0; i < afterFirstSpace.length; i++) {
     const c = afterFirstSpace[i];
     if (inValue) {
@@ -365,7 +365,7 @@ function currentAttributePartial(tagText: string): string | null {
     return null;
   }
   const tail = tagText.match(/([A-Za-z_][\w.:-]*)?$/);
-  return tail?.[1] ?? '';
+  return tail?.[1] ?? "";
 }
 
 /** Extract already-written attributes from an in-progress start tag. */
@@ -376,7 +376,7 @@ function existingAttributes(
   const re = /([A-Za-z_][\w.:-]*)\s*=\s*("([^"]*)"|'([^']*)')/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(tagText)) !== null) {
-    attrs.push({ name: m[1], value: m[3] ?? m[4] ?? '' });
+    attrs.push({ name: m[1], value: m[3] ?? m[4] ?? "" });
   }
   return attrs;
 }
@@ -385,7 +385,7 @@ function positionToOffset(text: string, position: Position): number {
   let line = 0;
   let offset = 0;
   while (line < position.line) {
-    const nl = text.indexOf('\n', offset);
+    const nl = text.indexOf("\n", offset);
     if (nl === -1) {
       return text.length;
     }

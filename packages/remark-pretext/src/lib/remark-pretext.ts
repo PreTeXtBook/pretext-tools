@@ -22,26 +22,26 @@
  * ptxast nodes (sections, blocks, directives, etc.).
  */
 
-import type { Plugin } from 'unified';
-import type { Root as MdastRoot } from 'mdast';
-import type { Root } from 'xast';
+import type { Plugin } from "unified";
+import type { Root as MdastRoot } from "mdast";
+import type { Root } from "xast";
 import type {
   RootDivisionType,
   TopLevelDivisionType,
-} from '@pretextbook/ptxast';
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkDirective from 'remark-directive';
-import { mdastToPtxast } from './mdast-to-ptxast.js';
+} from "@pretextbook/ptxast";
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
+import { mdastToPtxast } from "./mdast-to-ptxast.js";
 import {
   applyMathDelimiters,
   applyMathTokens,
   tokenizeMathInMarkdown,
-} from './math-parser.js';
-import { normalizeDirectiveColons } from './directive-normalizer.js';
-import { normalizeIndentationDirectives } from './indentation-normalizer.js';
-import { extractFrontmatter } from './frontmatter.js';
-import { rootChildDivision } from '@pretextbook/ptxast';
+} from "./math-parser.js";
+import { normalizeDirectiveColons } from "./directive-normalizer.js";
+import { normalizeIndentationDirectives } from "./indentation-normalizer.js";
+import { extractFrontmatter } from "./frontmatter.js";
+import { rootChildDivision } from "@pretextbook/ptxast";
 
 /** Options for the remark-pretext plugin. */
 export interface RemarkPretextOptions {
@@ -82,13 +82,13 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> =
     ): Root {
       // Preferred path: tokenize raw markdown first so LaTeX delimiters are parsed
       // from source text (no heuristic inference from parsed text nodes).
-      if (typeof file?.value === 'string') {
+      if (typeof file?.value === "string") {
         const frontmatter = extractFrontmatter(file.value);
         const documentRoot = options?.documentRoot ?? frontmatter.documentRoot;
         const topLevelDivision =
           options?.topLevelDivision ??
           frontmatter.division ??
-          (documentRoot ? rootChildDivision(documentRoot) : 'chapter');
+          (documentRoot ? rootChildDivision(documentRoot) : "chapter");
         const topLevelAttributes =
           options?.topLevelAttributes ?? frontmatter.attributes;
         const topLevelTitle = options?.topLevelTitle ?? frontmatter.title;
@@ -104,8 +104,8 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> =
         // Must use processor.data('micromarkExtensions') — remark-parse v11 ignores
         // 'extensions' passed directly as plugin options and only reads from data().
         const parser = unified()
-          .data('micromarkExtensions', [
-            { disable: { null: ['codeIndented'] } },
+          .data("micromarkExtensions", [
+            { disable: { null: ["codeIndented"] } },
           ])
           .use(remarkParse)
           .use(remarkDirective);
@@ -127,7 +127,7 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> =
           options?.topLevelDivision ??
           (options?.documentRoot
             ? rootChildDivision(options.documentRoot)
-            : 'chapter'),
+            : "chapter"),
         documentRoot: options?.documentRoot,
         topLevelAttributes: options?.topLevelAttributes,
         topLevelTitle: options?.topLevelTitle,
@@ -136,6 +136,6 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> =
   };
 
 export default remarkPretext;
-export { mdastToPtxast } from './mdast-to-ptxast.js';
-export { DIRECTIVE_MAP, PROOF_SOLUTION_NAMES } from './directive-map.js';
-export type { DirectiveInfo, DirectiveCategory } from './directive-map.js';
+export { mdastToPtxast } from "./mdast-to-ptxast.js";
+export { DIRECTIVE_MAP, PROOF_SOLUTION_NAMES } from "./directive-map.js";
+export type { DirectiveInfo, DirectiveCategory } from "./directive-map.js";

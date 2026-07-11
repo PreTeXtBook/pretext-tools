@@ -1,19 +1,19 @@
-import { Extension, Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer } from '@tiptap/react';
-import { TheoremLikeComponent } from '../components/TheoremLike';
-import { generateInputRules } from '../utils';
+import { Extension, Node, mergeAttributes } from "@tiptap/core";
+import { ReactNodeViewRenderer } from "@tiptap/react";
+import { TheoremLikeComponent } from "../components/TheoremLike";
+import { generateInputRules } from "../utils";
 
 const AxiomLikeElements = [
-  'assumption',
-  'axiom',
-  'conjecture',
-  'heuristic',
-  'hypothesis',
-  'principle',
+  "assumption",
+  "axiom",
+  "conjecture",
+  "heuristic",
+  "hypothesis",
+  "principle",
 ];
 
 const AxiomLike = Extension.create({
-  name: 'axiomLike',
+  name: "axiomLike",
 
   addExtensions() {
     const array = [];
@@ -21,8 +21,8 @@ const AxiomLike = Extension.create({
       array.push(
         Node.create({
           name: element,
-          content: 'title? statement',
-          group: 'block axiomLike',
+          content: "title? statement",
+          group: "block axiomLike",
           selectable: true,
           draggable: true,
           parseHTML() {
@@ -34,7 +34,7 @@ const AxiomLike = Extension.create({
           },
           renderHTML({ HTMLAttributes }) {
             return [
-              'article',
+              "article",
               mergeAttributes(
                 { class: `${element} axiom-like`, label: element },
                 HTMLAttributes,

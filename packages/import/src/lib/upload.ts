@@ -1,18 +1,18 @@
-import JSZip from 'jszip';
-import { convertSourceToPretext } from './convert';
-import { detectSourceFormat } from './detect-source-format';
+import JSZip from "jszip";
+import { convertSourceToPretext } from "./convert";
+import { detectSourceFormat } from "./detect-source-format";
 import {
   expandPretextIncludes,
   findLikelyMainPretextPath,
-} from './clean/pretext-includes';
-import { type BuildProjectFilesOptions } from './layout';
-import { buildDivisionPool, serializeProjectToFiles } from './pool';
+} from "./clean/pretext-includes";
+import { type BuildProjectFilesOptions } from "./layout";
+import { buildDivisionPool, serializeProjectToFiles } from "./pool";
 import type {
   ImportedProjectResult,
   SourceFormat,
   UploadSourceType,
   UploadStatusMessage,
-} from './types';
+} from "./types";
 
 export interface ImportProjectOptions extends BuildProjectFilesOptions {
   /** When true (default), the layout splitter runs and outputFiles is populated. */
@@ -25,50 +25,50 @@ const SUPPORTED_UPLOAD_PATTERN =
   /\.(tex|zip|md|markdown|ptx|xml|tar\.gz|tgz)$/i;
 
 const TRACKED_FILE_TYPES = [
-  'tex',
-  'md',
-  'markdown',
-  'ptx',
-  'xml',
-  'bib',
-  'sty',
-  'txt',
-  'pdf',
-  'eps',
-  'png',
-  'ps',
-  'bbl',
+  "tex",
+  "md",
+  "markdown",
+  "ptx",
+  "xml",
+  "bib",
+  "sty",
+  "txt",
+  "pdf",
+  "eps",
+  "png",
+  "ps",
+  "bbl",
 ] as const;
 
 const BINARY_EXTENSIONS = new Set([
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'pdf',
-  'eps',
-  'ps',
-  'bmp',
-  'tiff',
-  'tif',
-  'webp',
-  'ico',
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "pdf",
+  "eps",
+  "ps",
+  "bmp",
+  "tiff",
+  "tif",
+  "webp",
+  "ico",
 ]);
 
 const IMAGE_EXTENSIONS = new Set([
-  'png',
-  'jpg',
-  'jpeg',
-  'gif',
-  'svg',
-  'bmp',
-  'tiff',
-  'tif',
-  'webp',
-  'ico',
-  'pdf',
-  'eps',
-  'ps',
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "bmp",
+  "tiff",
+  "tif",
+  "webp",
+  "ico",
+  "pdf",
+  "eps",
+  "ps",
 ]);
 
 function isBinaryExtension(ext: string): boolean {
@@ -76,7 +76,7 @@ function isBinaryExtension(ext: string): boolean {
 }
 
 function basenameOf(pathName: string): string {
-  return pathName.split('/').pop() ?? pathName;
+  return pathName.split("/").pop() ?? pathName;
 }
 
 function routeAssetPath(originalPath: string): string | null {
@@ -91,36 +91,36 @@ function routeAssetPath(originalPath: string): string | null {
 function routeTextAuxiliaryPath(originalPath: string): string | null {
   const base = basenameOf(originalPath);
   const ext = extension(base);
-  if (ext === 'bib') {
+  if (ext === "bib") {
     return `source/${base}`;
   }
   return null;
 }
 
 function normalizeText(value: string): string {
-  return value.replace(/\r\n?/g, '\n').replace(/(\n *){3,}/g, '\n\n');
+  return value.replace(/\r\n?/g, "\n").replace(/(\n *){3,}/g, "\n\n");
 }
 
 function normalizePath(value: string): string {
-  return value.replace(/\\/g, '/').replace(/^\.\//, '');
+  return value.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
 function getUploadSourceType(fileName: string): UploadSourceType | null {
   const normalized = fileName.toLowerCase();
-  if (normalized.endsWith('.tar.gz') || normalized.endsWith('.tgz')) {
-    return 'tar.gz';
+  if (normalized.endsWith(".tar.gz") || normalized.endsWith(".tgz")) {
+    return "tar.gz";
   }
-  if (normalized.endsWith('.zip')) {
-    return 'zip';
+  if (normalized.endsWith(".zip")) {
+    return "zip";
   }
-  if (normalized.endsWith('.tex')) {
-    return 'tex';
+  if (normalized.endsWith(".tex")) {
+    return "tex";
   }
-  if (normalized.endsWith('.md') || normalized.endsWith('.markdown')) {
-    return 'markdown';
+  if (normalized.endsWith(".md") || normalized.endsWith(".markdown")) {
+    return "markdown";
   }
-  if (normalized.endsWith('.ptx') || normalized.endsWith('.xml')) {
-    return 'pretext';
+  if (normalized.endsWith(".ptx") || normalized.endsWith(".xml")) {
+    return "pretext";
   }
   return null;
 }
@@ -131,7 +131,7 @@ function parseTarHeader(headerBytes: Uint8Array): {
   type: string;
 } {
   const decode = (start: number, end: number) =>
-    new TextDecoder().decode(headerBytes.slice(start, end)).split('\0')[0];
+    new TextDecoder().decode(headerBytes.slice(start, end)).split("\0")[0];
 
   return {
     name: decode(0, 100),
@@ -141,8 +141,8 @@ function parseTarHeader(headerBytes: Uint8Array): {
 }
 
 async function decompressGzip(buffer: ArrayBuffer): Promise<ArrayBuffer> {
-  if (typeof DecompressionStream === 'undefined') {
-    throw new Error('This runtime does not support gzip decompression.');
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("This runtime does not support gzip decompression.");
   }
 
   const stream = new ReadableStream({
@@ -153,7 +153,7 @@ async function decompressGzip(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   });
 
   const decompressedStream = stream.pipeThrough(
-    new DecompressionStream('gzip'),
+    new DecompressionStream("gzip"),
   );
   const reader = decompressedStream.getReader();
   const chunks: Uint8Array[] = [];
@@ -204,7 +204,7 @@ function parseTar(data: Uint8Array): ExtractedUpload {
 
     const fileSize = header.size;
     const paddedSize = Math.ceil(fileSize / 512) * 512;
-    if (header.type === '0' || header.type === '') {
+    if (header.type === "0" || header.type === "") {
       const fileData = data.slice(offset, offset + fileSize);
       const normalizedPath = normalizePath(header.name);
       if (isBinaryExtension(extension(normalizedPath))) {
@@ -226,14 +226,14 @@ async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
 
   if (!sourceType) {
     throw new Error(
-      'File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.',
+      "File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.",
     );
   }
 
   if (
-    sourceType === 'tex' ||
-    sourceType === 'markdown' ||
-    sourceType === 'pretext'
+    sourceType === "tex" ||
+    sourceType === "markdown" ||
+    sourceType === "pretext"
   ) {
     const content = await file.text();
     return {
@@ -242,7 +242,7 @@ async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
     };
   }
 
-  if (sourceType === 'zip') {
+  if (sourceType === "zip") {
     const zip = new JSZip();
     const contents = await zip.loadAsync(file);
     const files: Record<string, string> = {};
@@ -254,9 +254,9 @@ async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
       }
       const normalizedPath = normalizePath(entryPath);
       if (isBinaryExtension(extension(normalizedPath))) {
-        assets[normalizedPath] = await zipEntry.async('uint8array');
+        assets[normalizedPath] = await zipEntry.async("uint8array");
       } else {
-        const content = await zipEntry.async('string');
+        const content = await zipEntry.async("string");
         files[normalizedPath] = normalizeText(content);
       }
     }
@@ -272,12 +272,12 @@ async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
 
 function extension(pathName: string): string {
   const match = pathName.toLowerCase().match(/\.([^.\/]+)$/);
-  return match ? match[1] : '';
+  return match ? match[1] : "";
 }
 
 function findLikelyMainTexPath(files: Record<string, string>): string | null {
   const texPaths = Object.keys(files)
-    .filter((pathName) => extension(pathName) === 'tex')
+    .filter((pathName) => extension(pathName) === "tex")
     .sort();
 
   if (texPaths.length === 0) {
@@ -292,8 +292,8 @@ function findLikelyMainTexPath(files: Record<string, string>): string | null {
 }
 
 function findDirectory(pathName: string): string {
-  const slashIndex = pathName.lastIndexOf('/');
-  return slashIndex >= 0 ? pathName.slice(0, slashIndex) : '';
+  const slashIndex = pathName.lastIndexOf("/");
+  return slashIndex >= 0 ? pathName.slice(0, slashIndex) : "";
 }
 
 function resolveInputTarget(
@@ -367,32 +367,32 @@ function pickPrimarySourcePath(files: Record<string, string>): {
 } {
   const texPath = findLikelyMainTexPath(files);
   if (texPath) {
-    return { sourcePath: texPath, sourceType: 'tex' };
+    return { sourcePath: texPath, sourceType: "tex" };
   }
 
   const sortedPaths = Object.keys(files).sort();
   const markdownPath = sortedPaths.find((pathName) => {
     const ext = extension(pathName);
-    return ext === 'md' || ext === 'markdown';
+    return ext === "md" || ext === "markdown";
   });
   if (markdownPath) {
-    return { sourcePath: markdownPath, sourceType: 'markdown' };
+    return { sourcePath: markdownPath, sourceType: "markdown" };
   }
 
   const pretextPath = findLikelyMainPretextPath(files);
   if (pretextPath) {
-    return { sourcePath: pretextPath, sourceType: 'pretext' };
+    return { sourcePath: pretextPath, sourceType: "pretext" };
   }
 
   if (sortedPaths.length === 0) {
-    throw new Error('No files were found in the uploaded source.');
+    throw new Error("No files were found in the uploaded source.");
   }
 
   const fallbackPath = sortedPaths[0];
   const detected = detectSourceFormat(files[fallbackPath]);
   return {
     sourcePath: fallbackPath,
-    sourceType: detected === 'latex' ? 'tex' : detected,
+    sourceType: detected === "latex" ? "tex" : detected,
   };
 }
 
@@ -409,7 +409,7 @@ function getTrackedTypeCounts(
     if (ext in counts) {
       counts[ext] += 1;
     } else {
-      counts['other'] += 1;
+      counts["other"] += 1;
     }
   }
 
@@ -421,24 +421,24 @@ function appendCountsStatus(
   files: Record<string, string>,
 ): void {
   const counts = getTrackedTypeCounts(files);
-  statusMessages.push({ type: 'success', message: 'File types:' });
+  statusMessages.push({ type: "success", message: "File types:" });
 
   for (const key of Object.keys(counts).sort()) {
     if (!counts[key]) {
       continue;
     }
-    statusMessages.push({ type: 'success', message: `${key}: ${counts[key]}` });
+    statusMessages.push({ type: "success", message: `${key}: ${counts[key]}` });
   }
 }
 
 function toConversionSourceFormat(sourceType: UploadSourceType): SourceFormat {
-  if (sourceType === 'tex') {
-    return 'latex';
+  if (sourceType === "tex") {
+    return "latex";
   }
-  if (sourceType === 'markdown') {
-    return 'markdown';
+  if (sourceType === "markdown") {
+    return "markdown";
   }
-  return 'pretext';
+  return "pretext";
 }
 
 export function importProjectFromFiles(
@@ -457,18 +457,18 @@ export function importProjectFromFiles(
 
     const fileCount = Object.keys(normalizedFiles).length;
     statusMessages.push({
-      type: 'success',
-      message: `Found ${fileCount} file${fileCount === 1 ? '' : 's'}.`,
+      type: "success",
+      message: `Found ${fileCount} file${fileCount === 1 ? "" : "s"}.`,
     });
     appendCountsStatus(statusMessages, normalizedFiles);
 
     const { sourcePath, sourceType } = pickPrimarySourcePath(normalizedFiles);
-    let sourceText = normalizedFiles[sourcePath] ?? '';
+    let sourceText = normalizedFiles[sourcePath] ?? "";
 
-    if (sourceType === 'tex') {
+    if (sourceType === "tex") {
       const texFiles = Object.fromEntries(
         Object.entries(normalizedFiles).filter(
-          ([pathName]) => extension(pathName) === 'tex',
+          ([pathName]) => extension(pathName) === "tex",
         ),
       );
 
@@ -481,21 +481,21 @@ export function importProjectFromFiles(
 
       if (expandedCount > 0) {
         statusMessages.push({
-          type: 'success',
-          message: `Expanded ${expandedCount} input/include reference${expandedCount === 1 ? '' : 's'}.`,
+          type: "success",
+          message: `Expanded ${expandedCount} input/include reference${expandedCount === 1 ? "" : "s"}.`,
         });
       }
       if (missingInputs.length > 0) {
         statusMessages.push({
-          type: 'error',
-          message: `Missing input/include files: ${missingInputs.join(', ')}.`,
+          type: "error",
+          message: `Missing input/include files: ${missingInputs.join(", ")}.`,
         });
       }
-    } else if (sourceType === 'pretext') {
+    } else if (sourceType === "pretext") {
       const ptxFiles = Object.fromEntries(
         Object.entries(normalizedFiles).filter(([pathName]) => {
           const ext = extension(pathName);
-          return ext === 'ptx' || ext === 'xml';
+          return ext === "ptx" || ext === "xml";
         }),
       );
       const { expandedText, expandedCount, missingIncludes } =
@@ -504,27 +504,27 @@ export function importProjectFromFiles(
 
       if (expandedCount > 0) {
         statusMessages.push({
-          type: 'success',
-          message: `Expanded ${expandedCount} xi:include reference${expandedCount === 1 ? '' : 's'}.`,
+          type: "success",
+          message: `Expanded ${expandedCount} xi:include reference${expandedCount === 1 ? "" : "s"}.`,
         });
       }
       if (missingIncludes.length > 0) {
         statusMessages.push({
-          type: 'error',
-          message: `Missing xi:include targets: ${missingIncludes.join(', ')}.`,
+          type: "error",
+          message: `Missing xi:include targets: ${missingIncludes.join(", ")}.`,
         });
       }
     }
 
     statusMessages.push({
-      type: 'success',
+      type: "success",
       message: `Main source file: ${sourcePath}`,
     });
 
     // Now do the conversion to conversionFormat
     const conversionFormat = toConversionSourceFormat(sourceType);
     const result = convertSourceToPretext(sourceText, conversionFormat);
-    if ('pretextError' in result) {
+    if ("pretextError" in result) {
       return {
         pretextError: result.pretextError,
         statusMessages,
@@ -567,7 +567,7 @@ export function importProjectFromFiles(
           publicationPath: layoutOptions.publicationPath,
           projectFilePath: layoutOptions.projectFilePath,
         }).files
-      : { 'source/main.ptx': result.pretextSource };
+      : { "source/main.ptx": result.pretextSource };
 
     // Route text auxiliaries (e.g., .bib) into output as well.
     for (const [originalPath, content] of Object.entries(normalizedFiles)) {
@@ -585,18 +585,18 @@ export function importProjectFromFiles(
       result.cleanedNativeSource !== undefined &&
       result.cleanedNativeSource.length > 0
     ) {
-      if (result.sourceFormat === 'latex') {
-        nativeOutputFiles = { 'source/main.tex': result.cleanedNativeSource };
-      } else if (result.sourceFormat === 'markdown') {
-        nativeOutputFiles = { 'source/main.md': result.cleanedNativeSource };
+      if (result.sourceFormat === "latex") {
+        nativeOutputFiles = { "source/main.tex": result.cleanedNativeSource };
+      } else if (result.sourceFormat === "markdown") {
+        nativeOutputFiles = { "source/main.md": result.cleanedNativeSource };
       }
     }
 
     if (Object.keys(rawAssets).length > 0) {
       statusMessages.push({
-        type: 'success',
+        type: "success",
         message: `Routed ${Object.keys(outputAssets).length} binary asset${
-          Object.keys(outputAssets).length === 1 ? '' : 's'
+          Object.keys(outputAssets).length === 1 ? "" : "s"
         }.`,
       });
     }
@@ -605,7 +605,7 @@ export function importProjectFromFiles(
       ...result,
       warnings: combinedWarnings,
       sourcePath,
-      sourceName: sourcePath.split('/').pop() ?? sourcePath,
+      sourceName: sourcePath.split("/").pop() ?? sourcePath,
       sourceType,
       project: pool.project,
       files: normalizedFiles,
@@ -618,7 +618,7 @@ export function importProjectFromFiles(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    statusMessages.push({ type: 'error', message });
+    statusMessages.push({ type: "error", message });
     return {
       pretextError: message,
       statusMessages,
@@ -636,12 +636,12 @@ export async function handleImportUploadFile(
   if (!SUPPORTED_UPLOAD_PATTERN.test(sourceName.toLowerCase())) {
     return {
       pretextError:
-        'File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.',
+        "File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.",
       statusMessages: [
         {
-          type: 'error',
+          type: "error",
           message:
-            'File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.',
+            "File format not supported: please upload .tex, .md, .ptx, .xml, .zip, or .tar.gz.",
         },
       ],
       warnings: [],
@@ -649,7 +649,7 @@ export async function handleImportUploadFile(
   }
 
   statusMessages.push({
-    type: 'loading',
+    type: "loading",
     message: `Processing ${sourceName}...`,
   });
 
@@ -664,7 +664,7 @@ export async function handleImportUploadFile(
     const message = error instanceof Error ? error.message : String(error);
     return {
       pretextError: message,
-      statusMessages: [...statusMessages, { type: 'error', message }],
+      statusMessages: [...statusMessages, { type: "error", message }],
       warnings: [],
     };
   }

@@ -1,13 +1,13 @@
-import { getCursorPos } from './getCursorPos';
-import { Extension } from '@tiptap/core';
+import { getCursorPos } from "./getCursorPos";
+import { Extension } from "@tiptap/core";
 
 const KeyboardCommands = Extension.create({
-  name: 'keyboardCommands',
+  name: "keyboardCommands",
 
   addKeyboardShortcuts() {
     const cursor = getCursorPos(this.editor);
     return {
-      'Mod-i': () => {
+      "Mod-i": () => {
         console.log(cursor.anchor());
         return true;
       },
@@ -22,7 +22,7 @@ const KeyboardCommands = Extension.create({
           this.editor.commands.scrollIntoView();
           return true;
         } else {
-          this.editor.commands.focus('start', { scrollIntoView: true });
+          this.editor.commands.focus("start", { scrollIntoView: true });
           return true;
         }
       },
@@ -78,11 +78,11 @@ const KeyboardCommands = Extension.create({
           //           return true
         }
       },
-      'Mod-q': () => this.editor.commands.blur(),
+      "Mod-q": () => this.editor.commands.blur(),
       // Escape moves focus to parent node.
       Escape: () => this.editor.commands.selectParentNode(),
-      'Mod-Right': () => this.editor.commands.selectNodeForward(),
-      'Mod-Down': () => this.editor.commands.selectNodeForward(),
+      "Mod-Right": () => this.editor.commands.selectNodeForward(),
+      "Mod-Down": () => this.editor.commands.selectNodeForward(),
       // 'Alt-ArrowUp': () => this.editor.commands.setNodeSelection(currentPos.before ? currentPos.before.pos : currentPos.pos),
       // 'Alt-ArrowDown': () => this.editor.commands.setNodeSelection(currentPos.after ? currentPos.after.pos : currentPos.pos),
     };

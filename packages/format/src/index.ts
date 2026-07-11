@@ -1,2 +1,2 @@
-export * from './lib/format';
-export * from './lib/docStructure';
+export * from "./lib/format";
+export * from "./lib/docStructure";

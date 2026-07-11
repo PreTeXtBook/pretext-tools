@@ -1,8 +1,8 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { URI } from 'vscode-uri';
-import { Diagnostic } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import * as fs from "fs";
+import * as path from "path";
+import { URI } from "vscode-uri";
+import { Diagnostic } from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   validateDocument,
   loadGrammarFromJSON,
@@ -11,12 +11,12 @@ import {
   type Grammar,
   type FileReader,
   type Ruleset,
-} from '@pretextbook/schema';
-import { schemaDir } from './paths';
-import { documents } from './state';
-import { isProjectPtx } from './projectPtx/is-project-ptx';
-import { findProjectRootDocuments } from './projectPtx/find-root-documents';
-import { isPublicationPtx } from './completions/utils';
+} from "@pretextbook/schema";
+import { schemaDir } from "./paths";
+import { documents } from "./state";
+import { isProjectPtx } from "./projectPtx/is-project-ptx";
+import { findProjectRootDocuments } from "./projectPtx/find-root-documents";
+import { isPublicationPtx } from "./completions/utils";
 
 let grammar: Grammar | undefined;
 
@@ -29,7 +29,7 @@ let ruleset: Ruleset = defaultRuleset;
  * else (including undefined) uses the strict default ruleset.
  */
 export function setValidationMode(mode: string | undefined): void {
-  ruleset = mode === 'Relaxed' ? relaxedRuleset : defaultRuleset;
+  ruleset = mode === "Relaxed" ? relaxedRuleset : defaultRuleset;
 }
 
 /**
@@ -39,14 +39,14 @@ export function setValidationMode(mode: string | undefined): void {
  */
 export function loadValidationGrammar(versionName: string | undefined): void {
   const candidates =
-    versionName === 'Experimental'
-      ? ['pretext-dev.json', 'pretext.json']
-      : ['pretext.json'];
+    versionName === "Experimental"
+      ? ["pretext-dev.json", "pretext.json"]
+      : ["pretext.json"];
   for (const name of candidates) {
     const file = path.join(schemaDir, name);
     try {
       if (fs.existsSync(file)) {
-        grammar = loadGrammarFromJSON(fs.readFileSync(file, 'utf8'));
+        grammar = loadGrammarFromJSON(fs.readFileSync(file, "utf8"));
         console.log(`Loaded validation grammar: ${name}`);
         return;
       }
@@ -94,7 +94,7 @@ function makeReadFile(): FileReader {
       return open.getText();
     }
     try {
-      return fs.readFileSync(absolutePath, 'utf8');
+      return fs.readFileSync(absolutePath, "utf8");
     } catch {
       return undefined;
     }
@@ -167,8 +167,8 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
     }
     publishedFor.set(uri, currentTargets);
   } catch (error) {
-    if ((error as Error)?.name !== 'AbortError') {
-      console.error('Schema validation failed:', error);
+    if ((error as Error)?.name !== "AbortError") {
+      console.error("Schema validation failed:", error);
     }
   } finally {
     inflight.delete(uri);

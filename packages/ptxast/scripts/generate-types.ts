@@ -7,13 +7,13 @@
  * Writes output to packages/ptxast/src/types/generated-interfaces.ts
  */
 
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { unified } from 'unified';
-import { fromXml } from 'xast-util-from-xml';
-import { toXml } from 'xast-util-to-xml';
-import type { Root } from 'xast';
+import fs from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { unified } from "unified";
+import { fromXml } from "xast-util-from-xml";
+import { toXml } from "xast-util-to-xml";
+import type { Root } from "xast";
 
 // Import from the relax-ng-to-typescript TypeScript source (no built dist).
 import {
@@ -21,20 +21,20 @@ import {
   doSimplificationPlugin,
   makeTypesForGrammar,
   renameRefsPlugin,
-} from '../../../node_modules/relax-ng-to-typescript/src/index.ts';
+} from "../../../node_modules/relax-ng-to-typescript/src/index.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const workspaceRoot = path.resolve(__dirname, '../../..');
+const workspaceRoot = path.resolve(__dirname, "../../..");
 
 const rngPath = path.join(
   workspaceRoot,
-  'extension',
-  'assets',
-  'schema',
-  'pretext-dev.rng',
+  "extension",
+  "assets",
+  "schema",
+  "pretext-dev.rng",
 );
 
-const outPath = path.join(__dirname, '../src/types/generated-interfaces.ts');
+const outPath = path.join(__dirname, "../src/types/generated-interfaces.ts");
 
 function unifiedXml() {
   return unified()
@@ -49,15 +49,15 @@ function unifiedXml() {
 }
 
 async function resolveIncludes(rngFilePath: string): Promise<string> {
-  let content = await fs.readFile(rngFilePath, 'utf-8');
+  let content = await fs.readFile(rngFilePath, "utf-8");
   const includeRegex = /<include\s+href=("|')(.*?)\1\s*\/>/g;
   let match: RegExpExecArray | null;
   while ((match = includeRegex.exec(content)) !== null) {
     const includePath = path.join(path.dirname(rngFilePath), match[2]);
-    let included = await fs.readFile(includePath, 'utf-8');
-    included = included.replace(/<\?xml.*?\?>/, '');
-    included = included.replace(/<grammar[^>]*>/, '');
-    included = included.replace(/<\/grammar>/, '');
+    let included = await fs.readFile(includePath, "utf-8");
+    included = included.replace(/<\?xml.*?\?>/, "");
+    included = included.replace(/<grammar[^>]*>/, "");
+    included = included.replace(/<\/grammar>/, "");
     content = content.replace(match[0], included);
   }
   return content;
@@ -102,7 +102,7 @@ async function main() {
   );
 
   const output = header + processedTypes;
-  await fs.writeFile(outPath, output, 'utf-8');
+  await fs.writeFile(outPath, output, "utf-8");
   console.log(`Wrote xast interfaces to: ${outPath}`);
 }
 

@@ -27,10 +27,10 @@ Left as an exercise.
 ## Usage
 
 ```ts
-import { unified } from 'unified';
-import remarkParse from 'remark-parse';
-import remarkDirective from 'remark-directive';
-import { remarkPretext } from '@pretextbook/remark-pretext';
+import { unified } from "unified";
+import remarkParse from "remark-parse";
+import remarkDirective from "remark-directive";
+import { remarkPretext } from "@pretextbook/remark-pretext";
 
 const processor = unified()
   .use(remarkParse)
@@ -80,9 +80,9 @@ There are two ways to change it:
    precedence over frontmatter when both are present.
 
    ```ts
-   import { markdownToPretext } from '@pretextbook/remark-pretext';
+   import { markdownToPretext } from "@pretextbook/remark-pretext";
 
-   markdownToPretext('# Title\n\n## Sub', { topLevelDivision: 'section' });
+   markdownToPretext("# Title\n\n## Sub", { topLevelDivision: "section" });
    // → '<section><title>Title</title><subsection>...'
    ```
 

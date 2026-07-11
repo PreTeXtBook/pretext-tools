@@ -28,19 +28,19 @@ The `prettier` executable is now installed and ready for use:
 
 Below are the options (from [`src/plugin.ts`](src/plugin.ts)) that `@prettier/plugin-xml` currently supports:
 
-| API Option               | CLI Option                    | Default | Description                                                                                                   |
-| ------------------------ | ----------------------------- | :-----: | ------------------------------------------------------------------------------------------------------------- |
-| `printWidth`             | `--print-width`               |  `80`   | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#print-width)).              |
-| `singleAttributePerLine` | `--single-attribute-per-line` | `false` | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#single-attribute-per-line)) |
-| `tabWidth`               | `--tab-width`                 |   `4`   | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#tab-width)).                |
-| `useTabs`                | `--use-tabs`                  | `true`  | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#use-tabs)).                 |
+| API Option                 | CLI Option                     |  Default   | Description                                                                                                   |
+| -------------------------- | ------------------------------ | :--------: | ------------------------------------------------------------------------------------------------------------- |
+| `printWidth`               | `--print-width`                |    `80`    | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#print-width)).              |
+| `singleAttributePerLine`   | `--single-attribute-per-line`  |  `false`   | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#single-attribute-per-line)) |
+| `tabWidth`                 | `--tab-width`                  |    `4`     | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#tab-width)).                |
+| `useTabs`                 | `--use-tabs`                  |    `true`     | Same as in Prettier ([see prettier docs](https://prettier.io/docs/en/options.html#use-tabs)).                |
 
 Any of these can be added to your existing [prettier configuration
 file](https://prettier.io/docs/en/configuration.html). For example:
 
 ```json
 {
-  "tabWidth": 4
+    "tabWidth": 4
 }
 ```
 

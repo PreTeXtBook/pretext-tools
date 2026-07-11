@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
-import { getNonce } from './utils';
-import { pretextOutputChannel } from './ui';
+import * as vscode from "vscode";
+import { getNonce } from "./utils";
+import { pretextOutputChannel } from "./ui";
 
 // Hosts the shared ImportWizard React component (from @pretextbook/import)
 // in a webview panel. The whole import pipeline runs inside the webview; the
@@ -8,8 +8,8 @@ import { pretextOutputChannel } from './ui';
 // packages/import/SPEC.md §6 for the design.
 
 interface ImportConfirmMessage {
-  type: 'import-confirm';
-  mode: 'converted' | 'native';
+  type: "import-confirm";
+  mode: "converted" | "native";
   files: Record<string, string>;
   assetsBase64: Record<string, string>;
   sourceName: string;
@@ -19,8 +19,8 @@ interface ImportConfirmMessage {
 
 export function cmdImportProject(context: vscode.ExtensionContext) {
   const panel = vscode.window.createWebviewPanel(
-    'pretext.importWizard',
-    'Import to PreTeXt',
+    "pretext.importWizard",
+    "Import to PreTeXt",
     vscode.ViewColumn.One,
     {
       enableScripts: true,
@@ -31,11 +31,11 @@ export function cmdImportProject(context: vscode.ExtensionContext) {
 
   panel.webview.onDidReceiveMessage(
     async (message: { type?: string }) => {
-      if (message?.type === 'import-cancel') {
+      if (message?.type === "import-cancel") {
         panel.dispose();
         return;
       }
-      if (message?.type === 'import-confirm') {
+      if (message?.type === "import-confirm") {
         try {
           const written = await writeImportedProject(
             message as ImportConfirmMessage,
@@ -64,15 +64,15 @@ function isSafeRelativePath(relPath: string): boolean {
   }
   return !relPath
     .split(/[\\/]/)
-    .some((segment) => segment === '..' || segment === '');
+    .some((segment) => segment === ".." || segment === "");
 }
 
 async function writeImportedProject(
   message: ImportConfirmMessage,
 ): Promise<boolean> {
   const picked = await vscode.window.showOpenDialog({
-    title: 'Select destination folder for the imported project',
-    openLabel: 'Import here',
+    title: "Select destination folder for the imported project",
+    openLabel: "Import here",
     canSelectMany: false,
     canSelectFiles: false,
     canSelectFolders: true,
@@ -93,20 +93,20 @@ async function writeImportedProject(
     const choice = await vscode.window.showWarningMessage(
       `The folder "${destination.fsPath}" is not empty.`,
       { modal: true },
-      'Create Subfolder',
-      'Write Here Anyway',
+      "Create Subfolder",
+      "Write Here Anyway",
     );
     if (!choice) {
       return false;
     }
-    if (choice === 'Create Subfolder') {
+    if (choice === "Create Subfolder") {
       const defaultName =
         message.sourceName
-          .replace(/\.[^.]*$/, '')
-          .replace(/[^\w-]+/g, '-')
-          .replace(/^-+|-+$/g, '') || 'imported-project';
+          .replace(/\.[^.]*$/, "")
+          .replace(/[^\w-]+/g, "-")
+          .replace(/^-+|-+$/g, "") || "imported-project";
       const subfolder = await vscode.window.showInputBox({
-        prompt: 'Name for the new project folder',
+        prompt: "Name for the new project folder",
         value: defaultName,
       });
       if (!subfolder) {
@@ -127,7 +127,7 @@ async function writeImportedProject(
     ...Object.entries(message.assetsBase64).map(
       ([relPath, base64]): [string, Uint8Array] => [
         relPath,
-        new Uint8Array(Buffer.from(base64, 'base64')),
+        new Uint8Array(Buffer.from(base64, "base64")),
       ],
     ),
   ];
@@ -142,19 +142,19 @@ async function writeImportedProject(
   await vscode.workspace.fs.createDirectory(destination);
   const directories = new Set<string>();
   for (const [relPath] of safeEntries) {
-    const slash = relPath.lastIndexOf('/');
+    const slash = relPath.lastIndexOf("/");
     if (slash > 0) {
       directories.add(relPath.slice(0, slash));
     }
   }
   for (const dir of directories) {
     await vscode.workspace.fs.createDirectory(
-      vscode.Uri.joinPath(destination, ...dir.split('/')),
+      vscode.Uri.joinPath(destination, ...dir.split("/")),
     );
   }
   for (const [relPath, bytes] of safeEntries) {
     await vscode.workspace.fs.writeFile(
-      vscode.Uri.joinPath(destination, ...relPath.split('/')),
+      vscode.Uri.joinPath(destination, ...relPath.split("/")),
       bytes,
     );
   }
@@ -178,13 +178,13 @@ async function writeImportedProject(
 
   const action = await vscode.window.showInformationMessage(
     `Imported ${message.sourceName}: ${safeEntries.length} files written to ${destination.fsPath}.`,
-    'Open Folder',
-    'Open in New Window',
+    "Open Folder",
+    "Open in New Window",
   );
-  if (action === 'Open Folder') {
-    await vscode.commands.executeCommand('vscode.openFolder', destination);
-  } else if (action === 'Open in New Window') {
-    await vscode.commands.executeCommand('vscode.openFolder', destination, {
+  if (action === "Open Folder") {
+    await vscode.commands.executeCommand("vscode.openFolder", destination);
+  } else if (action === "Open in New Window") {
+    await vscode.commands.executeCommand("vscode.openFolder", destination, {
       forceNewWindow: true,
     });
   }
@@ -196,15 +196,15 @@ function getHtmlForWebview(
   extensionUri: vscode.Uri,
 ): string {
   const scriptUri = webview.asWebviewUri(
-    vscode.Uri.joinPath(extensionUri, 'out', 'media', 'importWizard.js'),
+    vscode.Uri.joinPath(extensionUri, "out", "media", "importWizard.js"),
   );
   const styleUri = webview.asWebviewUri(
     vscode.Uri.joinPath(
       extensionUri,
-      'out',
-      'media',
-      'assets',
-      'importWizard.css',
+      "out",
+      "media",
+      "assets",
+      "importWizard.css",
     ),
   );
   const nonce = getNonce();

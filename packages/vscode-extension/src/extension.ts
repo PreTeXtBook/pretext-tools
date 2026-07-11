@@ -1,5 +1,5 @@
-import { ExtensionContext, workspace, commands, window } from 'vscode';
-import * as utils from './utils';
+import { ExtensionContext, workspace, commands, window } from "vscode";
+import * as utils from "./utils";
 
 import {
   pretextOutputChannel,
@@ -7,77 +7,77 @@ import {
   ptxSBItem,
   refreshProjects,
   showLog,
-} from './ui';
+} from "./ui";
 import {
   cmdView,
   cmdViewCLI,
   cmdViewCodeChat,
   cmdViewVisualEditor,
-} from './commands/view';
+} from "./commands/view";
 import {
   cmdLivePreview,
   cmdForwardSearch,
   disposeLivePreview,
-} from './livePreview';
+} from "./livePreview";
 import {
   PretextDocumentOutlineProvider,
   cmdOutlineJumpToLine,
-} from './documentOutline';
-import { cmdNew } from './commands/new';
-import { cmdDeploy } from './commands/deploy';
-import { cmdUpdate } from './commands/update';
+} from "./documentOutline";
+import { cmdNew } from "./commands/new";
+import { cmdDeploy } from "./commands/deploy";
+import { cmdUpdate } from "./commands/update";
 //import { ptxExperiment } from "./commands/experiment";
 import {
   cmdConvertFile,
   cmdExperimentConvert,
   cmdConvertText,
-} from './commands/convert';
+} from "./commands/convert";
 import {
   cmdBuildAny,
   cmdBuildFile,
   cmdBuildLast,
   cmdGenerate,
-} from './commands/build';
-import { cmdSelectCommand } from './commands/select';
+} from "./commands/build";
+import { cmdSelectCommand } from "./commands/select";
 // Set up types:
 import {
   activate as lspActivate,
   deactivate as lspDeactivate,
   lspFormatDocument,
   lspFormatText,
-} from './lsp-client/main';
-import { projects } from './project';
+} from "./lsp-client/main";
+import { projects } from "./project";
 //import { cmdInstallSage } from "./commands/installSage";
-import { PretextVisualEditorProvider } from './visualEditor';
-import { convertToPretext } from './importFiles';
-import { cmdImportProject } from './importWizardPanel';
+import { PretextVisualEditorProvider } from "./visualEditor";
+import { convertToPretext } from "./importFiles";
+import { cmdImportProject } from "./importWizardPanel";
 
 // this method is called when your extension is activated
 export async function activate(context: ExtensionContext) {
-  pretextOutputChannel.appendLine('Welcome to the pretext-tools extension.');
+  pretextOutputChannel.appendLine("Welcome to the pretext-tools extension.");
   console.log('Extension "pretext-tools" is now active!');
 
   ///////////////// General Setup //////////////////////
   //_context = context;
 
   workspace.onDidChangeConfiguration((event) => {
-    let affected = event.affectsConfiguration('pretext-tools');
-    if (event.affectsConfiguration('pretext-tools.schema')) {
-      console.log('PreTeXt Tools schema configuration changed');
+    let affected = event.affectsConfiguration("pretext-tools");
+    if (event.affectsConfiguration("pretext-tools.schema")) {
+      console.log("PreTeXt Tools schema configuration changed");
       // Set schema for pretext files:
       try {
         utils.setSchema(context);
       } catch {
-        console.log('Error setting schema');
+        console.log("Error setting schema");
       }
     }
-    if (event.affectsConfiguration('pretext-tools.spellCheck')) {
-      console.log('PreTeXt Tools spell check configuration changed');
+    if (event.affectsConfiguration("pretext-tools.spellCheck")) {
+      console.log("PreTeXt Tools spell check configuration changed");
       // Set spell check options:
       try {
         utils.setSpellCheckConfig();
       } catch {
-        console.log('Error setting spell check');
+        console.log("Error setting spell check");
       }
     }
   });
@@ -86,7 +86,7 @@ export async function activate(context: ExtensionContext) {
   try {
     utils.setSpellCheckConfig();
   } catch {
-    console.log('Error setting spell check');
+    console.log("Error setting spell check");
   }
 
   // Set schema for pretext files:
@@ -94,7 +94,7 @@ export async function activate(context: ExtensionContext) {
   try {
     utils.setSchema(context);
   } catch {
-    console.log('Error setting schema');
+    console.log("Error setting schema");
   }
 
   context.subscriptions.push(ptxSBItem);
@@ -108,68 +108,68 @@ export async function activate(context: ExtensionContext) {
   // Import or define the client instance for LSP communication
 
   context.subscriptions.push(
-    commands.registerCommand('pretext-tools.experiment', () => {
-      console.log('Running PreTeXt experiment command');
+    commands.registerCommand("pretext-tools.experiment", () => {
+      console.log("Running PreTeXt experiment command");
       // Notify that no experiment command is currently available
-      pretextOutputChannel.appendLine('No experiment command is implemented.');
+      pretextOutputChannel.appendLine("No experiment command is implemented.");
       //cmdConvertMixedTextToPretextViaXast();
       //console.log("Experiment command executed.");
       //utils.experiment(context);
     }),
     commands.registerCommand(
-      'pretext-tools.experimentConvert',
+      "pretext-tools.experimentConvert",
       cmdExperimentConvert,
     ),
     commands.registerCommand(
-      'pretext-tools.selectPretextCommand',
+      "pretext-tools.selectPretextCommand",
       cmdSelectCommand,
     ),
-    commands.registerCommand('pretext-tools.buildAny', cmdBuildAny),
-    commands.registerCommand('pretext-tools.buildLast', cmdBuildLast),
-    commands.registerCommand('pretext-tools.buildFile', cmdBuildFile),
-    commands.registerCommand('pretext-tools.generate', cmdGenerate),
-    commands.registerCommand('pretext-tools.view', cmdView),
-    commands.registerCommand('pretext-tools.viewCLI', cmdViewCLI),
-    commands.registerCommand('pretext-tools.viewCodeChat', cmdViewCodeChat),
+    commands.registerCommand("pretext-tools.buildAny", cmdBuildAny),
+    commands.registerCommand("pretext-tools.buildLast", cmdBuildLast),
+    commands.registerCommand("pretext-tools.buildFile", cmdBuildFile),
+    commands.registerCommand("pretext-tools.generate", cmdGenerate),
+    commands.registerCommand("pretext-tools.view", cmdView),
+    commands.registerCommand("pretext-tools.viewCLI", cmdViewCLI),
+    commands.registerCommand("pretext-tools.viewCodeChat", cmdViewCodeChat),
     commands.registerCommand(
-      'pretext-tools.viewVisualEditor',
+      "pretext-tools.viewVisualEditor",
       cmdViewVisualEditor,
     ),
-    commands.registerCommand('pretext-tools.livePreview', cmdLivePreview),
-    commands.registerCommand('pretext-tools.forwardSearch', cmdForwardSearch),
+    commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand(
-      'pretext-tools.outlineJumpToLine',
+      "pretext-tools.outlineJumpToLine",
       cmdOutlineJumpToLine,
     ),
-    commands.registerCommand('pretext-tools.new', cmdNew),
-    commands.registerCommand('pretext-tools.importProject', () =>
+    commands.registerCommand("pretext-tools.new", cmdNew),
+    commands.registerCommand("pretext-tools.importProject", () =>
       cmdImportProject(context),
     ),
-    commands.registerCommand('pretext-tools.deploy', cmdDeploy),
-    commands.registerCommand('pretext-tools.updatePTX', cmdUpdate),
-    commands.registerCommand('pretext-tools.format', () => {
+    commands.registerCommand("pretext-tools.deploy", cmdDeploy),
+    commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
+    commands.registerCommand("pretext-tools.format", () => {
       const activeEditor = window.activeTextEditor;
       if (activeEditor) {
         return lspFormatDocument(activeEditor);
       } else {
-        console.log('No document provided to format');
+        console.log("No document provided to format");
       }
     }),
-    commands.registerCommand('pretext-tools.convertText', cmdConvertText),
-    commands.registerCommand('pretext-tools.convertFile', cmdConvertFile),
+    commands.registerCommand("pretext-tools.convertText", cmdConvertText),
+    commands.registerCommand("pretext-tools.convertFile", cmdConvertFile),
     commands.registerCommand(
-      'pretext-tools.convertFilePandoc',
+      "pretext-tools.convertFilePandoc",
       convertToPretext,
     ),
-    commands.registerCommand('pretext-tools.showLog', showLog),
-    commands.registerCommand('pretext-tools.refreshTargets', refreshProjects),
+    commands.registerCommand("pretext-tools.showLog", showLog),
+    commands.registerCommand("pretext-tools.refreshTargets", refreshProjects),
     //commands.registerCommand("pretext-tools.installSage", cmdInstallSage),
-    commands.registerCommand('pretext-tools.gettingStarted', () => {
-      console.log('Opening getting started walkthrough');
+    commands.registerCommand("pretext-tools.gettingStarted", () => {
+      console.log("Opening getting started walkthrough");
       // Open the walkthrough
       commands.executeCommand(
-        'workbench.action.openWalkthrough',
-        'oscarlevin.pretext-tools#gettingStarted',
+        "workbench.action.openWalkthrough",
+        "oscarlevin.pretext-tools#gettingStarted",
       );
     }),
   );
@@ -177,26 +177,26 @@ export async function activate(context: ExtensionContext) {
   // Register the document outline tree view
   const outlineProvider = new PretextDocumentOutlineProvider();
   context.subscriptions.push(
-    window.registerTreeDataProvider('pretextDocumentOutline', outlineProvider),
-    commands.registerCommand('pretext-tools.refreshOutline', () =>
+    window.registerTreeDataProvider("pretextDocumentOutline", outlineProvider),
+    commands.registerCommand("pretext-tools.refreshOutline", () =>
       outlineProvider.refresh(),
     ),
   );
 
-  console.log('Current projects: ', projects);
+  console.log("Current projects: ", projects);
 
   // Start the LSP
   try {
     lspActivate(context);
   } catch {
-    console.log('Error starting LSP client');
+    console.log("Error starting LSP client");
     pretextOutputChannel.appendLine(
-      'Error starting language server.  Some features may not be available.',
+      "Error starting language server.  Some features may not be available.",
     );
   }
 
   pretextOutputChannel.appendLine(
-    'PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P).',
+    "PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P).",
   );
 }
 

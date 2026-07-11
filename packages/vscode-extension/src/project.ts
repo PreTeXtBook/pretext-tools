@@ -1,18 +1,18 @@
-import { window, workspace } from 'vscode';
-import { Project, Target } from './types';
-import { getProjectFolder } from './utils';
-import { parseTargetsFromManifest } from './project-manifest';
-import * as path from 'path';
-import * as fs from 'fs';
-import { cli } from './cli';
+import { window, workspace } from "vscode";
+import { Project, Target } from "./types";
+import { getProjectFolder } from "./utils";
+import { parseTargetsFromManifest } from "./project-manifest";
+import * as path from "path";
+import * as fs from "fs";
+import { cli } from "./cli";
 
-const DEFAULTMANIFEST = 'project.ptx';
+const DEFAULTMANIFEST = "project.ptx";
 
 export let projects: Project[] = [];
 
 export async function ensureProjectList() {
   if (projects.length === 0) {
-    console.log('No projects found, updating project list.');
+    console.log("No projects found, updating project list.");
     await updateProjectList();
   }
 }
@@ -20,7 +20,7 @@ export async function ensureProjectList() {
 export async function resetProjectList() {
   projects = [];
   await updateProjectList();
-  window.showInformationMessage('Refreshed projects and targets.');
+  window.showInformationMessage("Refreshed projects and targets.");
 }
 
 export function projectTargetList({
@@ -69,7 +69,7 @@ async function updateProjectList() {
       root = getProjectFolder(window.activeTextEditor.document.uri.fsPath);
     } else {
       root = await userSpecifiedProject();
-      console.log('root: ', root);
+      console.log("root: ", root);
     }
     if (root) {
       projects.push({
@@ -82,10 +82,10 @@ async function updateProjectList() {
   // These should always be standalone targets and we can expect that they will have sensible default output locations.
   const homeDir = process.env.HOME || process.env.USERPROFILE;
   if (homeDir) {
-    const ptxDir = path.join(homeDir, '.ptx', cli.version());
-    console.log('Looking for default project in ', ptxDir);
+    const ptxDir = path.join(homeDir, ".ptx", cli.version());
+    console.log("Looking for default project in ", ptxDir);
     if (fs.existsSync(ptxDir)) {
-      console.log('Found default project in ', ptxDir);
+      console.log("Found default project in ", ptxDir);
       projects.push({
         root: ptxDir,
         targets: getTargets({ projectRoot: ptxDir }),
@@ -108,20 +108,20 @@ function getTargets({
   projectRoot: string;
   manifest?: string;
 }): Target[] {
-  console.log('Getting targets for project root: ', projectRoot);
+  console.log("Getting targets for project root: ", projectRoot);
   if (manifest) {
     console.error(
-      'You tried to set a manifest, but this is no longer supported.  Your manifest was: ',
+      "You tried to set a manifest, but this is no longer supported.  Your manifest was: ",
       manifest,
     );
   }
-  const projectManifest = path.join(projectRoot, 'project.ptx');
-  console.log('Project manifest is ', projectManifest);
+  const projectManifest = path.join(projectRoot, "project.ptx");
+  console.log("Project manifest is ", projectManifest);
   if (fs.existsSync(projectManifest)) {
     // Parse the project.ptx xml and look for target elements
-    const contents = fs.readFileSync(projectManifest, 'utf8');
+    const contents = fs.readFileSync(projectManifest, "utf8");
     const targets = parseTargetsFromManifest(contents, projectRoot);
-    console.log('Targets are ', targets);
+    console.log("Targets are ", targets);
     return targets;
   }
   return [];
@@ -132,23 +132,23 @@ async function userSpecifiedProject() {
   let root = null;
   await window
     .showInformationMessage(
-      'No PreTeXt project found in workspace.  Choose a project folder?',
+      "No PreTeXt project found in workspace.  Choose a project folder?",
       {
         modal: true,
         detail:
           "Pick a folder containing the 'project.ptx' manifest of your project.",
       },
-      'Choose project folder',
+      "Choose project folder",
     )
     .then(async (option) => {
-      if (option === 'Choose project folder') {
+      if (option === "Choose project folder") {
         await window
           .showOpenDialog({
             canSelectFiles: false,
             canSelectFolders: true,
             canSelectMany: false,
-            title: 'Select project folder...',
-            openLabel: 'Select',
+            title: "Select project folder...",
+            openLabel: "Select",
           })
           .then((uri) => {
             if (uri) {

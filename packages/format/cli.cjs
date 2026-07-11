@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-const fs = require('node:fs');
-const { parseArgs } = require('node:util');
-const { formatPretext } = require('./index.cjs');
+const fs = require("node:fs");
+const { parseArgs } = require("node:util");
+const { formatPretext } = require("./index.cjs");
 
 function printHelp() {
   process.stdout.write(`Usage: pretext-format [options] [files...]
@@ -32,16 +32,16 @@ function parseCli() {
   try {
     return parseArgs({
       options: {
-        write: { type: 'boolean', short: 'w', default: false },
-        check: { type: 'boolean', default: false },
-        stdin: { type: 'boolean', default: false },
-        'break-lines': { type: 'string' },
-        'break-sentences': { type: 'boolean', default: false },
-        'break-long-attributes': { type: 'boolean', default: false },
-        'tab-size': { type: 'string' },
-        'use-tabs': { type: 'boolean', default: false },
-        help: { type: 'boolean', short: 'h', default: false },
-        version: { type: 'boolean', short: 'v', default: false },
+        write: { type: "boolean", short: "w", default: false },
+        check: { type: "boolean", default: false },
+        stdin: { type: "boolean", default: false },
+        "break-lines": { type: "string" },
+        "break-sentences": { type: "boolean", default: false },
+        "break-long-attributes": { type: "boolean", default: false },
+        "tab-size": { type: "string" },
+        "use-tabs": { type: "boolean", default: false },
+        help: { type: "boolean", short: "h", default: false },
+        version: { type: "boolean", short: "v", default: false },
       },
       allowPositionals: true,
       strict: true,
@@ -54,23 +54,23 @@ function parseCli() {
 function parseOptions(values) {
   /** @type {{breakLines?: "few" | "some" | "many"; breakSentences?: boolean; breakLongAttributes?: boolean; insertSpaces?: boolean; tabSize?: number}} */
   const formatOptions = {};
-  if (values['break-lines'] !== undefined) {
-    if (!['few', 'some', 'many'].includes(values['break-lines'])) {
+  if (values["break-lines"] !== undefined) {
+    if (!["few", "some", "many"].includes(values["break-lines"])) {
       fail(`--break-lines must be one of: few, some, many`);
     }
-    formatOptions.breakLines = values['break-lines'];
+    formatOptions.breakLines = values["break-lines"];
   }
-  if (values['break-sentences']) {
+  if (values["break-sentences"]) {
     formatOptions.breakSentences = true;
   }
-  if (values['break-long-attributes']) {
+  if (values["break-long-attributes"]) {
     formatOptions.breakLongAttributes = true;
   }
-  if (values['use-tabs']) {
+  if (values["use-tabs"]) {
     formatOptions.insertSpaces = false;
   }
-  if (values['tab-size'] !== undefined) {
-    const tabSize = Number.parseInt(values['tab-size'], 10);
+  if (values["tab-size"] !== undefined) {
+    const tabSize = Number.parseInt(values["tab-size"], 10);
     if (!Number.isInteger(tabSize) || tabSize <= 0) {
       fail(`--tab-size must be a positive integer`);
     }
@@ -81,7 +81,7 @@ function parseOptions(values) {
 
 function readFile(filePath) {
   try {
-    return fs.readFileSync(filePath, 'utf8');
+    return fs.readFileSync(filePath, "utf8");
   } catch (error) {
     fail(`Could not read ${filePath}: ${error.message}`);
   }
@@ -89,7 +89,7 @@ function readFile(filePath) {
 
 function writeFile(filePath, text) {
   try {
-    fs.writeFileSync(filePath, text, 'utf8');
+    fs.writeFileSync(filePath, text, "utf8");
   } catch (error) {
     fail(`Could not write ${filePath}: ${error.message}`);
   }
@@ -103,7 +103,7 @@ function main() {
     return;
   }
   if (values.version) {
-    process.stdout.write(`${require('./package.json').version}\n`);
+    process.stdout.write(`${require("./package.json").version}\n`);
     return;
   }
 
@@ -123,11 +123,11 @@ function main() {
   const formatOptions = parseOptions(values);
 
   if (values.stdin) {
-    const input = fs.readFileSync(0, 'utf8');
+    const input = fs.readFileSync(0, "utf8");
     const formatted = formatPretext(input, formatOptions);
     if (values.check) {
       if (formatted !== input) {
-        process.stderr.write('stdin is not formatted\n');
+        process.stderr.write("stdin is not formatted\n");
         process.exit(1);
       }
       return;

@@ -31,7 +31,7 @@
  * 5. Preserve all non-directive content and indentation outside directives and code fences
  */
 
-import { DIRECTIVE_SPEC_TABLE } from './directive-map.js';
+import { DIRECTIVE_SPEC_TABLE } from "./directive-map.js";
 
 interface IndentationState {
   level: number; // Current indentation level (in spaces/tabs)
@@ -59,7 +59,7 @@ function parseIndentationDirective(line: string): string | null {
   const trimmed = line.trim();
 
   // Must end with colon
-  if (!trimmed.endsWith(':')) return null;
+  if (!trimmed.endsWith(":")) return null;
 
   // Remove trailing colon
   const withoutColon = trimmed.slice(0, -1);
@@ -96,9 +96,9 @@ function parseIndentationDirective(line: string): string | null {
 function getIndentLevel(line: string): number {
   let level = 0;
   for (let i = 0; i < line.length; i++) {
-    if (line[i] === ' ') {
+    if (line[i] === " ") {
       level += 1;
-    } else if (line[i] === '\t') {
+    } else if (line[i] === "\t") {
       level += 4;
     } else {
       break;
@@ -130,7 +130,7 @@ function hasIndentedBody(lines: string[], currentIndex: number): boolean {
  * Check if a line is blank or whitespace-only
  */
 function isBlankLine(line: string): boolean {
-  return line.trim() === '';
+  return line.trim() === "";
 }
 
 /**
@@ -141,10 +141,10 @@ function stripLeadingSpaces(line: string, count: number): string {
   let stripped = 0;
   let i = 0;
   while (i < line.length && stripped < count) {
-    if (line[i] === ' ') {
+    if (line[i] === " ") {
       stripped++;
       i++;
-    } else if (line[i] === '\t') {
+    } else if (line[i] === "\t") {
       stripped += 4;
       i++;
     } else {
@@ -158,7 +158,7 @@ function stripLeadingSpaces(line: string, count: number): string {
  * Normalize indentation-based syntax to colon-based syntax
  */
 export function normalizeIndentationDirectives(markdown: string): string {
-  const lines = markdown.split('\n');
+  const lines = markdown.split("\n");
   const output: string[] = [];
   const stack: IndentationState = {
     level: 0,
@@ -203,7 +203,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
 
     // Blank lines are always preserved
     if (isBlankLine(line)) {
-      output.push('');
+      output.push("");
       continue;
     }
 
@@ -223,7 +223,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
         // Close this directive
         const closing = stack.openDirectives.pop();
         if (closing) {
-          output.push(':'.repeat(closing.colonCount));
+          output.push(":".repeat(closing.colonCount));
         }
       }
 
@@ -231,7 +231,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
       // directiveLabel is like "Theorem[...]" or "theorem[...]" etc.
       const nameMatch = directiveLabel.match(/^([a-zA-Z][a-zA-Z0-9_-]*)(.*)/);
       const lowercaseLabel = nameMatch
-        ? nameMatch[1].toLowerCase() + (nameMatch[2] || '')
+        ? nameMatch[1].toLowerCase() + (nameMatch[2] || "")
         : directiveLabel;
 
       // Compute colon count for the new directive
@@ -240,7 +240,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
       const colonCount = stack.openDirectives.length * 1 + 3; // 3 is the base
 
       // Open the new directive with colon syntax (lowercase directive name)
-      output.push(':'.repeat(colonCount) + lowercaseLabel);
+      output.push(":".repeat(colonCount) + lowercaseLabel);
       stack.openDirectives.push({
         label: lowercaseLabel,
         indentLevel,
@@ -260,7 +260,7 @@ export function normalizeIndentationDirectives(markdown: string): string {
       ) {
         const closing = stack.openDirectives.pop();
         if (closing) {
-          output.push(':'.repeat(closing.colonCount));
+          output.push(":".repeat(closing.colonCount));
         }
       }
 
@@ -286,9 +286,9 @@ export function normalizeIndentationDirectives(markdown: string): string {
   while (stack.openDirectives.length > 0) {
     const closing = stack.openDirectives.pop();
     if (closing) {
-      output.push(':'.repeat(closing.colonCount));
+      output.push(":".repeat(closing.colonCount));
     }
   }
 
-  return output.join('\n');
+  return output.join("\n");
 }

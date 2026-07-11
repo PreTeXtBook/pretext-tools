@@ -1,5 +1,5 @@
-import { ExtensionContext } from 'vscode';
+import { ExtensionContext } from "vscode";
 
 export async function ptxExperiment(context: ExtensionContext) {
-  console.log('context: ', context);
+  console.log("context: ", context);
 }
