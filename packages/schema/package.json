@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/schema",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "RELAX NG validation and context-aware completions for PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
