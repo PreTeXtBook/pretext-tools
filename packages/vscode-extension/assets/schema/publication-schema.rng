@@ -31,6 +31,12 @@
           <ref name="Epub"/>
         </optional>
         <optional>
+          <ref name="Jupyter"/>
+        </optional>
+        <optional>
+          <ref name="Braille"/>
+        </optional>
+        <optional>
           <ref name="Webwork"/>
         </optional>
       </interleave>
@@ -1268,6 +1274,32 @@
     <element name="epub">
       <element name="cover">
         <attribute name="front"/>
+      </element>
+    </element>
+  </define>
+  <define name="Jupyter">
+    <element name="jupyter">
+      <attribute name="kernel">
+        <choice>
+          <value>sagemath</value>
+          <value>python3</value>
+        </choice>
+      </attribute>
+    </element>
+  </define>
+  <define name="Braille">
+    <element name="braille">
+      <element name="page">
+        <optional>
+          <attribute name="width">
+            <data type="positiveInteger"/>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="height">
+            <data type="positiveInteger"/>
+          </attribute>
+        </optional>
       </element>
     </element>
   </define>
