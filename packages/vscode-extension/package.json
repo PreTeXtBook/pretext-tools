@@ -466,7 +466,7 @@
             "markdownEnumDescriptions": [
               "Use the stable schema matching your installed version of PreTeXt (default).",
               "Use the experimental/development schema matching your installed version of PreTeXt.",
-              "Use a custom schema file, which you can set using the `pretext-tools.customSchemaPath` setting."
+              "Currently not supported.  Please contact the developer if you need this feature."
             ],
             "markdownDescription": "Select the version of the PreTeXt schema to validate against.  If you are using newer features, you might try to experimental schema, which isn't as stable, but will give you fewer warnings."
           },
@@ -474,7 +474,7 @@
             "order": 2,
             "type": "string",
             "default": "",
-            "markdownDescription": "Provide a path to your custom schema file.  This will override the schema version setting."
+            "markdownDescription": "Currently not supported.  Please contact the developer if you need this feature."
           },
           "pretext-tools.schema.validationMode": {
             "order": 3,
