@@ -96,8 +96,13 @@ function pandocInstalled() {
 
 function ensurePretextLua() {
   const pretextLuaFile = path.join(homedir(), ".ptx", "pandoc", "pretext.lua");
-  if (!fs.existsSync(pretextLuaFile)) {
-    console.log("pretext.lua not found.  Installing...");
+  // Ensure that the pretext.lua was created after 2026-07-14:
+  const minDate = new Date("2026-07-14");
+  const pretextLuaStat = fs.existsSync(pretextLuaFile)
+    ? fs.statSync(pretextLuaFile)
+    : null;
+  if (!pretextLuaStat || pretextLuaStat.mtime < minDate) {
+    console.log("pretext.lua not found or outdated.  Installing...");
     if (!fs.existsSync(path.join(homedir(), ".ptx", "pandoc"))) {
       fs.mkdirSync(path.join(homedir(), ".ptx", "pandoc"), {
         recursive: true,
