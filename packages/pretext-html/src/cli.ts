@@ -31,6 +31,8 @@ Options:
   --docinfo-source <file>   Complete source file (e.g. main.ptx) to lift the
                             <docinfo> from for --fragment mode, resolving
                             xi:includes (used when --docinfo is not given)
+  --source-map <file>       Also write a JSON source map: HTML id → source
+                            file/line for every element (for editor sync)
   -h, --help                Show this help
 `;
 
@@ -38,12 +40,14 @@ interface CliArgs {
   options: RenderOptions;
   output?: string;
   docinfoPath?: string;
+  sourceMapPath?: string;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
   let sourcePath: string | undefined;
   let output: string | undefined;
   let docinfoPath: string | undefined;
+  let sourceMapPath: string | undefined;
   const options: Partial<RenderOptions> = {};
   const stringParams: Record<string, string> = {};
 
@@ -84,6 +88,10 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--docinfo-source":
         options.docinfoSourcePath = next();
         break;
+      case "--source-map":
+        sourceMapPath = next();
+        options.sourceMap = true;
+        break;
       case "--param": {
         const pair = next();
         const eq = pair.indexOf("=");
@@ -110,17 +118,26 @@ export function parseArgs(argv: string[]): CliArgs {
   if (Object.keys(stringParams).length > 0) {
     options.stringParams = stringParams;
   }
-  return { options: { ...options, sourcePath }, output, docinfoPath };
+  return {
+    options: { ...options, sourcePath },
+    output,
+    docinfoPath,
+    sourceMapPath,
+  };
 }
 
 export async function main(argv: string[]): Promise<void> {
-  const { options, output, docinfoPath } = parseArgs(argv);
+  const { options, output, docinfoPath, sourceMapPath } = parseArgs(argv);
   if (docinfoPath) {
     options.docinfo = await readFile(docinfoPath, "utf8");
   }
   const started = Date.now();
-  const { html } = await renderHtml(options);
+  const { html, sourceMap } = await renderHtml(options);
   process.stderr.write(`pretext-html: rendered in ${Date.now() - started}ms\n`);
+  if (sourceMapPath && sourceMap) {
+    await writeFile(sourceMapPath, JSON.stringify(sourceMap, null, 2));
+    process.stderr.write(`pretext-html: wrote ${sourceMapPath}\n`);
+  }
   if (output) {
     await writeFile(output, html);
     process.stderr.write(`pretext-html: wrote ${output}\n`);

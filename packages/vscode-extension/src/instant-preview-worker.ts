@@ -19,7 +19,12 @@
  * - One-shot CLI mode (no `--serve`): render one document to stdout and exit.
  *   Retained for standalone use and debugging.
  */
-import { renderHtml, runCli, type RenderOptions } from "@pretextbook/pretext-html";
+import {
+  renderHtml,
+  runCli,
+  type PtxSourceMap,
+  type RenderOptions,
+} from "@pretextbook/pretext-html";
 
 /** Request sent by the extension over IPC. */
 interface RenderRequest {
@@ -33,11 +38,19 @@ interface RenderRequest {
   docinfo?: string;
   /** Main source file to lift <docinfo> from (fragment mode); see renderer. */
   docinfoSourcePath?: string;
+  /** Also compute the id → file/line source map (for editor sync). */
+  sourceMap?: boolean;
 }
 
 /** Response sent back over IPC. */
 type RenderResponse =
-  | { id: number; ok: true; html: string; elapsedMs: number }
+  | {
+      id: number;
+      ok: true;
+      html: string;
+      elapsedMs: number;
+      sourceMap?: PtxSourceMap;
+    }
   | { id: number; ok: false; error: string };
 
 function isRenderRequest(value: unknown): value is RenderRequest {
@@ -102,14 +115,16 @@ function serve(): void {
         fragment: request.fragment,
         docinfo: request.docinfo,
         docinfoSourcePath: request.docinfoSourcePath,
+        sourceMap: request.sourceMap,
       };
       try {
-        const { html } = await renderHtml(options);
+        const { html, sourceMap } = await renderHtml(options);
         const response: RenderResponse = {
           id: request.id,
           ok: true,
           html,
           elapsedMs: Date.now() - started,
+          sourceMap,
         };
         send(response);
       } catch (error) {

@@ -285,6 +285,61 @@ describe("renderHtml", () => {
     }
   });
 
+  it("returns a source map whose ids appear in the rendered HTML", async () => {
+    const { html, sourceMap } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      publicationPath: path.join(projectDir, "publication.xml"),
+      sourceMap: true,
+    });
+    expect(sourceMap).toBeDefined();
+    const byId = new Map(sourceMap!.map((entry) => [entry.id, entry]));
+
+    // Authored xml:ids pass through...
+    expect(html).toContain('id="inc-article"');
+    expect(byId.get("inc-article")?.file).toBe(
+      path.join(projectDir, "source", "main.ptx"),
+    );
+    // ...and auto-generated assembly ids match the page exactly. The <p>
+    // inside the included section is its second element child (after
+    // <title>), so its id hangs off the section's xml:id.
+    expect(html).toContain('id="sec-included-2"');
+    const includedP = byId.get("sec-included-2");
+    expect(includedP?.file).toBe(
+      path.join(projectDir, "source", "section.ptx"),
+    );
+    expect(includedP?.line).toBe(4);
+    expect(includedP?.parent).toBe("sec-included");
+  });
+
+  it("maps a wrapped fragment with the wrapper id prefix", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fmap-"));
+    try {
+      const sourcePath = path.join(dir, "sec-frag.ptx");
+      fs.writeFileSync(
+        sourcePath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<section xml:id="sec-frag"><title>Frag</title>` +
+          `<p>Mapped paragraph.</p></section>\n`,
+      );
+      const { html, sourceMap } = await renderHtml({
+        sourcePath,
+        fragment: true,
+        sourceMap: true,
+      });
+      const byId = new Map(sourceMap!.map((entry) => [entry.id, entry]));
+      // Fragment root keeps its xml:id, parented on the synthesized wrapper
+      // <article> (root-1-1), whose id really is in the page.
+      expect(byId.get("sec-frag")?.parent).toBe("root-1-1");
+      expect(html).toContain('id="root-1-1"');
+      // The fragment's own auto ids match the page too.
+      expect(html).toContain('id="sec-frag-2"');
+      expect(byId.get("sec-frag-2")?.file).toBe(sourcePath);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("lifts an xi:included docinfo from the main file for a fragment", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdis-"));
     try {

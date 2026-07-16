@@ -18,6 +18,9 @@
 import {
   ConfigurationTarget,
   Disposable,
+  Position,
+  Range,
+  TextEditorSelectionChangeKind,
   ViewColumn,
   WebviewPanel,
   window,
@@ -27,6 +30,9 @@ import { ChildProcess, fork, spawn, spawnSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 import { parseString } from "xml2js";
+// Type-only: the runtime package is ESM and lives in the worker process; the
+// extension host only ever sees the JSON-serialized map.
+import type { SourceMapEntry } from "@pretextbook/pretext-html";
 import { pretextOutputChannel, ptxSBItem } from "./ui";
 import * as utils from "./utils";
 
@@ -35,6 +41,15 @@ let panelHasContent = false;
 let saveWatcher: Disposable | undefined;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 let currentSource: SourceInfo | undefined;
+
+// Source map of the last successful render (see @pretextbook/pretext-html's
+// sourcemap.ts): HTML element ids ↔ source file/line, powering two-way sync.
+// Indexed by (normalized) file for cursor-follow and by id for click-to-source.
+let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
+let sourceMapById: Map<string, SourceMapEntry> | undefined;
+let selectionWatcher: Disposable | undefined;
+let panelMessageWatcher: Disposable | undefined;
+let syncTimer: ReturnType<typeof setTimeout> | undefined;
 
 // The persistent render worker. Kept alive across renders so the loaded WASM
 // module and compiled stylesheet (the ~600ms cold start) are reused; each
@@ -53,6 +68,7 @@ let crashRetries = 0;
 let disposing = false;
 
 const DEBOUNCE_MS = 400;
+const SYNC_DEBOUNCE_MS = 150;
 const MAX_CRASH_RETRIES = 2;
 
 interface RenderResponse {
@@ -61,6 +77,7 @@ interface RenderResponse {
   html?: string;
   error?: string;
   elapsedMs?: number;
+  sourceMap?: SourceMapEntry[];
 }
 
 interface SourceInfo {
@@ -124,7 +141,18 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
       currentPanel = undefined;
       disposeInstantPreview();
     });
+    // Reverse sync: the webview's bootstrap posts the ancestor id chain of a
+    // double-clicked element; resolve it against the source map.
+    panelMessageWatcher = currentPanel.webview.onDidReceiveMessage(
+      (message: unknown) => {
+        const msg = message as { command?: unknown; ids?: unknown };
+        if (msg?.command === "revealSource" && Array.isArray(msg.ids)) {
+          void revealSource(msg.ids.filter((x) => typeof x === "string"));
+        }
+      },
+    );
     setupSaveWatcher(extensionPath);
+    setupSelectionWatcher();
   } else {
     currentPanel.reveal(ViewColumn.Beside, true);
   }
@@ -532,6 +560,8 @@ function renderToPanel(extensionPath: string): void {
     // scope); a complete document carries its own docinfo, so it is ignored
     // there, including project scope where renderPath is the main file itself.
     docinfoSourcePath: currentSource.mainSourcePath,
+    // id ↔ file/line map for two-way sync; costs a few ms per render.
+    sourceMap: true,
   };
   child.send(request, (err) => {
     if (err && pendingRequestId === id) {
@@ -559,6 +589,7 @@ function handleRenderResponse(message: RenderResponse): void {
       return;
     }
     crashRetries = 0;
+    applySourceMap(message.sourceMap);
     updatePanelContent(prepareWebviewHtml(html));
     utils.updateStatusBarItem(ptxSBItem, "success");
     pretextOutputChannel.appendLine(
@@ -637,6 +668,17 @@ function prepareWebviewHtml(html: string): string {
   // window. Likewise the old message listener survives the rewrite in some
   // engines, so it is explicitly removed before re-adding.
   const bootstrapScript = [
+    // Faint amber flash on the element the forward sync scrolls to; the
+    // animation fades to nothing so the page returns to normal on its own.
+    "<style>",
+    "@keyframes ptx-sync-flash {",
+    "  from { background-color: rgba(255, 193, 61, 0.18);",
+    "         box-shadow: 0 0 0 5px rgba(255, 193, 61, 0.18); }",
+    "  to   { background-color: transparent; box-shadow: none; }",
+    "}",
+    ".ptx-sync-flash { animation: ptx-sync-flash 1.6s ease-out;",
+    "  border-radius: 4px; }",
+    "</style>",
     "<script>",
     "(function () {",
     "  var api = window.__ptxPreviewApi ||",
@@ -663,8 +705,35 @@ function prepareWebviewHtml(html: string): string {
     "  }",
     "  window.__ptxUpdateHandler = function (event) {",
     "    var msg = event.data;",
-    "    if (!msg || msg.command !== 'update' ||",
-    "        typeof msg.html !== 'string') {",
+    "    if (!msg) { return; }",
+    "    if (msg.command === 'scrollTo' && msg.ids && msg.ids.length) {",
+    "      // Forward sync: try the id chain innermost-first; not every",
+    "      // element in the source map gets an HTML id.",
+    "      for (var k = 0; k < msg.ids.length; k++) {",
+    "        var target = document.getElementById(msg.ids[k]);",
+    "        if (target) {",
+    "          // Center small elements; for anything too tall to fit (a",
+    "          // subsection, a p with a long list) centering would push its",
+    "          // top — the part that was clicked — above the viewport, so",
+    "          // pin the top just below the window top instead.",
+    "          var rect = target.getBoundingClientRect();",
+    "          if (rect.height > window.innerHeight - 140) {",
+    "            window.scrollTo(0, rect.top + window.pageYOffset - 70);",
+    "          } else {",
+    "            target.scrollIntoView({ block: 'center' });",
+    "          }",
+    "          if (window.__ptxFlashEl && window.__ptxFlashEl.classList) {",
+    "            window.__ptxFlashEl.classList.remove('ptx-sync-flash');",
+    "          }",
+    "          void target.offsetWidth; // restart the fade animation",
+    "          target.classList.add('ptx-sync-flash');",
+    "          window.__ptxFlashEl = target;",
+    "          break;",
+    "        }",
+    "      }",
+    "      return;",
+    "    }",
+    "    if (msg.command !== 'update' || typeof msg.html !== 'string') {",
     "      return;",
     "    }",
     "    api.setState({ scrollY: window.scrollY });",
@@ -673,6 +742,24 @@ function prepareWebviewHtml(html: string): string {
     "    document.close();",
     "  };",
     "  window.addEventListener('message', window.__ptxUpdateHandler);",
+    "  // Reverse sync: report a double-clicked element's ancestor id chain",
+    "  // (innermost first); the extension resolves it against the source map.",
+    "  if (window.__ptxSyncClickHandler) {",
+    "    window.removeEventListener('dblclick', window.__ptxSyncClickHandler);",
+    "  }",
+    "  window.__ptxSyncClickHandler = function (event) {",
+    "    var ids = [];",
+    "    var el = event.target;",
+    "    while (el && el.getAttribute && ids.length < 8) {",
+    "      var id = el.getAttribute('id');",
+    "      if (id) { ids.push(id); }",
+    "      el = el.parentElement;",
+    "    }",
+    "    if (ids.length) {",
+    "      api.postMessage({ command: 'revealSource', ids: ids });",
+    "    }",
+    "  };",
+    "  window.addEventListener('dblclick', window.__ptxSyncClickHandler);",
     "})();",
     "</script>",
   ].join("\n");
@@ -707,14 +794,148 @@ function setupSaveWatcher(extensionPath: string): void {
   });
 }
 
+/**
+ * Case/separator-insensitive key for comparing the map's worker-resolved
+ * absolute paths with editor document paths (drive-letter case differs on
+ * Windows depending on who produced the path).
+ */
+function fileKey(filePath: string): string {
+  const normalized = path.normalize(filePath);
+  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+/** Index a freshly received source map for both sync directions. */
+function applySourceMap(map: SourceMapEntry[] | undefined): void {
+  if (!map) {
+    return; // keep the previous map rather than losing sync entirely
+  }
+  sourceMapByFile = new Map();
+  sourceMapById = new Map();
+  for (const entry of map) {
+    sourceMapById.set(entry.id, entry);
+    const key = fileKey(entry.file);
+    const list = sourceMapByFile.get(key);
+    if (list) {
+      list.push(entry);
+    } else {
+      sourceMapByFile.set(key, [entry]);
+    }
+  }
+}
+
+/**
+ * Forward sync: follow the cursor. Only user-initiated selection changes
+ * (mouse/keyboard) count — programmatic reveals, including our own reverse
+ * sync, would otherwise bounce the preview around.
+ */
+function setupSelectionWatcher(): void {
+  selectionWatcher?.dispose();
+  selectionWatcher = window.onDidChangeTextEditorSelection((event) => {
+    if (!currentPanel || !sourceMapByFile) {
+      return;
+    }
+    if (
+      event.kind !== TextEditorSelectionChangeKind.Mouse &&
+      event.kind !== TextEditorSelectionChangeKind.Keyboard
+    ) {
+      return;
+    }
+    const fileName = event.textEditor.document.fileName;
+    if (!fileName.match(/\.(ptx|xml)$/)) {
+      return;
+    }
+    const line = (event.selections[0]?.active.line ?? 0) + 1;
+    if (syncTimer) {
+      clearTimeout(syncTimer);
+    }
+    syncTimer = setTimeout(
+      () => syncPreviewToCursor(fileName, line),
+      SYNC_DEBOUNCE_MS,
+    );
+  });
+}
+
+/**
+ * Scroll the preview to the element nearest the cursor: the last map entry
+ * for this file starting at or before the line (entries are in document
+ * order, so that is the deepest/nearest element above the cursor). The
+ * webview walks the id chain outward until one exists in the page — not
+ * every element gets an HTML id.
+ */
+function syncPreviewToCursor(fileName: string, line: number): void {
+  if (!currentPanel || !sourceMapByFile || !sourceMapById) {
+    return;
+  }
+  const entries = sourceMapByFile.get(fileKey(fileName));
+  if (!entries || entries.length === 0) {
+    return; // file not part of the last render (other project, other scope)
+  }
+  let entry: SourceMapEntry | undefined;
+  for (const candidate of entries) {
+    if (candidate.line <= line) {
+      entry = candidate;
+    }
+  }
+  entry = entry ?? entries[0];
+  const ids = [entry.id];
+  let parent = entry.parent;
+  for (let depth = 0; parent && depth < 6; depth++) {
+    ids.push(parent);
+    parent = sourceMapById.get(parent)?.parent;
+  }
+  void currentPanel.webview.postMessage({ command: "scrollTo", ids });
+}
+
+/**
+ * Reverse sync: a double-click in the preview arrives as the element's
+ * ancestor id chain (innermost first); open the innermost one we can map.
+ */
+async function revealSource(ids: string[]): Promise<void> {
+  if (!sourceMapById) {
+    return;
+  }
+  let entry: SourceMapEntry | undefined;
+  for (const id of ids) {
+    entry = sourceMapById.get(id);
+    if (entry) {
+      break;
+    }
+  }
+  if (!entry) {
+    return;
+  }
+  try {
+    const document = await workspace.openTextDocument(entry.file);
+    const position = new Position(entry.line - 1, Math.max(0, entry.column - 1));
+    await window.showTextDocument(document, {
+      viewColumn: ViewColumn.One,
+      selection: new Range(position, position),
+    });
+  } catch (err) {
+    pretextOutputChannel.appendLine(
+      `[Instant Preview] Could not open ${entry.file}: ${String(err)}`,
+    );
+  }
+}
+
 /** Clean up watchers and shut down the persistent worker. */
 export function disposeInstantPreview(): void {
   saveWatcher?.dispose();
   saveWatcher = undefined;
+  selectionWatcher?.dispose();
+  selectionWatcher = undefined;
+  panelMessageWatcher?.dispose();
+  panelMessageWatcher = undefined;
   if (debounceTimer) {
     clearTimeout(debounceTimer);
     debounceTimer = undefined;
   }
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = undefined;
+  }
+  sourceMapByFile = undefined;
+  sourceMapById = undefined;
   disposing = true;
   if (worker) {
     // disconnect() lets the worker exit cleanly on its 'disconnect' handler;

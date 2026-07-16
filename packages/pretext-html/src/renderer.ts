@@ -17,7 +17,12 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import { forcePortablePublication } from "./publication.js";
-import { extractDocinfo, resolveXIncludes } from "./xinclude.js";
+import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
+import {
+  extractDocinfo,
+  resolveXIncludes,
+  resolveXIncludesToTree,
+} from "./xinclude.js";
 
 export interface RenderOptions {
   /** Path to the root PreTeXt source file (typically source/main.ptx). */
@@ -73,11 +78,21 @@ export interface RenderOptions {
    * the book's chapters. Only used in fragment mode.
    */
   docinfoSourcePath?: string;
+  /**
+   * Also compute a source map: one entry per element, in document order,
+   * mapping the element's @unique-id (its HTML id, when the page emits one)
+   * to the file/line it was authored in — through xi:includes. Powers
+   * editor/preview sync; the rendered page itself is unchanged. See
+   * sourcemap.ts for the id contract with pretext-assembly.xsl.
+   */
+  sourceMap?: boolean;
 }
 
 export interface RenderResult {
   /** Complete standalone HTML page (CDN-hosted css/js/MathJax). */
   html: string;
+  /** Present when RenderOptions.sourceMap was set. */
+  sourceMap?: PtxSourceMap;
 }
 
 // Computed with path functions rather than `new URL(..., import.meta.url)`
@@ -319,18 +334,36 @@ export async function renderHtml(
     setVirtualFile(publicationUrl, publicationXml);
 
     // xi:includes are resolved in JS before parsing: the WASM build cannot
-    // suspend inside libxml2's own XInclude pass (see src/xinclude.ts).
-    let mergedContent = await resolveXIncludes(
-      sourceContent,
-      sourcePath,
-      projectDir,
-    );
+    // suspend inside libxml2's own XInclude pass (see src/xinclude.ts). When
+    // a source map is wanted, keep the merged tree too — its nodes carry the
+    // per-file line positions the map is built from.
+    let mergedTree;
+    let mergedContent: string;
+    if (options.sourceMap) {
+      const resolved = await resolveXIncludesToTree(
+        sourceContent,
+        sourcePath,
+        projectDir,
+      );
+      mergedTree = resolved.tree;
+      mergedContent = resolved.content;
+    } else {
+      mergedContent = await resolveXIncludes(
+        sourceContent,
+        sourcePath,
+        projectDir,
+      );
+    }
 
     // The PreTeXt stylesheets silently produce a near-empty page (just a
     // doctype) for anything that is not a whole document. In fragment mode,
     // wrap fragments in a minimal complete document; otherwise reject them
     // with a real error.
     const rootElement = documentRootName(mergedContent);
+    // Where the source map's id walk starts. For a complete document the
+    // document element is a child of the (virtual) root: parent "root",
+    // position 1 → "root-1". Fragment wrapping re-seats the walk (below).
+    let mapRoot = { parentId: "root", position: 1 };
     if (rootElement !== "pretext" && rootElement !== "mathbook") {
       if (options.fragment) {
         // Prefer an explicit docinfo string; otherwise lift one (resolving
@@ -343,6 +376,11 @@ export async function renderHtml(
             ? await docinfoFromSource(options.docinfoSourcePath, projectDir)
             : undefined);
         mergedContent = wrapFragment(mergedContent, rootElement, docinfo);
+        // Mirror the wrapper's ids: <pretext> is root-1; the <article>/<book>
+        // is its first element child — second when a docinfo precedes it —
+        // and the fragment root sits after the wrapper's empty <title/>.
+        const wrapperId = docinfo?.trim() ? "root-1-2" : "root-1-1";
+        mapRoot = { parentId: wrapperId, position: 2 };
       } else {
         throw new Error(
           `The document root is <${rootElement ?? "?"}>, not <pretext> — ` +
@@ -351,6 +389,10 @@ export async function renderHtml(
         );
       }
     }
+
+    const sourceMap = mergedTree
+      ? computeSourceMap(mergedTree, sourcePath, mapRoot)
+      : undefined;
 
     const doc = await XmlDocument.fromString(mergedContent, {
       url: `${srcBase}/${relSource.split(path.sep).join("/")}`,
@@ -380,7 +422,10 @@ export async function renderHtml(
       doc.delete();
     }
     try {
-      return { html: fixMathJaxImport(result.toHtmlString()) };
+      return {
+        html: fixMathJaxImport(result.toHtmlString()),
+        ...(sourceMap ? { sourceMap } : {}),
+      };
     } catch (error) {
       throwIfWasmStackOverflow(error);
       throw error;

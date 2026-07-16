@@ -42,6 +42,32 @@ export async function resolveXIncludes(
   if (!sourceContent.includes("include")) {
     return sourceContent; // fast path: nothing that could be an include
   }
+  return (await resolveXIncludesToTree(sourceContent, sourcePath, projectDir))
+    .content;
+}
+
+/** Result of resolveXIncludesToTree. */
+export interface ResolvedTree {
+  /**
+   * The merged xast tree. Every node keeps the line/column position of its
+   * OWN source file's parse, and the root element of each spliced-in subtree
+   * is tagged with that file (see includedFileOf) — together, enough to map
+   * any element back to a file and line (see computeSourceMap).
+   */
+  tree: Root;
+  /** The merged document serialized, as resolveXIncludes would return it. */
+  content: string;
+}
+
+/**
+ * Like resolveXIncludes, but also return the merged tree with per-file
+ * position attribution, for source-map computation.
+ */
+export async function resolveXIncludesToTree(
+  sourceContent: string,
+  sourcePath: string,
+  projectDir: string,
+): Promise<ResolvedTree> {
   const tree = fromXml(sourceContent);
   const context: ResolveContext = {
     projectDir: path.resolve(projectDir),
@@ -53,7 +79,24 @@ export async function resolveXIncludes(
     { "": "" },
     context,
   );
-  return changed ? toXml(tree) : sourceContent;
+  return { tree, content: changed ? toXml(tree) : sourceContent };
+}
+
+/**
+ * File a spliced-in element was parsed from, tagged by expandInclude.
+ * Undefined for nodes of the file being resolved (callers track that file
+ * themselves). Stored on the unist `data` field, which serializers ignore.
+ */
+export function includedFileOf(element: Element): string | undefined {
+  return (element.data as { ptxIncludedFile?: string } | undefined)
+    ?.ptxIncludedFile;
+}
+
+function tagIncludedFile(element: Element, file: string): void {
+  const data = (element.data ?? (element.data = {})) as {
+    ptxIncludedFile?: string;
+  };
+  data.ptxIncludedFile = file;
 }
 
 /** Prefix → namespace URI bindings in scope. */
@@ -191,7 +234,15 @@ async function expandInclude(
   }
   // Splice in the elements (skipping prolog comments/PIs), mirroring
   // libxml2's behavior of replacing the include with the document element.
-  return subtree.children.filter((node) => node.type === "element");
+  // Tag each with its origin file: their positions are from `target`'s own
+  // parse, which is exactly what source-map attribution needs.
+  const elements = subtree.children.filter(
+    (node): node is Element => node.type === "element",
+  );
+  for (const element of elements) {
+    tagIncludedFile(element, target);
+  }
+  return elements;
 }
 
 /** True for an unprefixed <docinfo> element (PreTeXt uses no namespace). */

@@ -55,6 +55,17 @@ const { html } = await renderHtml({
   `xi:include`s, including a docinfo that is itself included), or `docinfo` (a
   `<docinfo>` element as a string, if you already have it). Both are ignored
   for complete documents, which carry their own docinfo.
+- `sourceMap: true` additionally returns a **source map** for editor/preview
+  sync: one entry per element, in document order, mapping the element's HTML
+  id to the source `file`/`line` it was authored in — through `xi:include`s.
+  This works because HTML ids are the `@unique-id` values that
+  `pretext-assembly.xsl` stamps with a deterministic walk
+  (`@label ?? @xml:id ?? parent-id + "-" + sibling-position`), which is
+  replicated over the merged tree in JS; the rendered page itself is
+  unchanged. Entries carry a `parent` id so clients can fall outward when an
+  element has no HTML id of its own, and `findSourceMapEntry(entries, line)`
+  picks the element nearest a cursor line. (This powers the two-way sync in
+  the VS Code Instant Preview; the same map works for any embedder.)
 - The user's publication file is respected, except
   `<html><platform portable="yes"/></html>` is always forced — that is what
   makes single-page in-memory output possible.
