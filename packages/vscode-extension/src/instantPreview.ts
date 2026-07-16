@@ -16,6 +16,7 @@
  */
 
 import {
+  ConfigurationTarget,
   Disposable,
   ViewColumn,
   WebviewPanel,
@@ -30,6 +31,7 @@ import { pretextOutputChannel, ptxSBItem } from "./ui";
 import * as utils from "./utils";
 
 let currentPanel: WebviewPanel | undefined;
+let panelHasContent = false;
 let saveWatcher: Disposable | undefined;
 let renderProcess: ChildProcess | undefined;
 let renderQueued = false;
@@ -39,12 +41,27 @@ let currentSource: SourceInfo | undefined;
 const DEBOUNCE_MS = 400;
 
 interface SourceInfo {
-  /** Root source file handed to the transform. */
-  sourcePath: string;
+  /**
+   * The content file the preview follows (the last relevant .ptx in the
+   * editor). Rendered directly — as a wrapped fragment when needed — in
+   * "current-file" scope.
+   */
+  activePath: string;
+  /** The project's main source file, when one could be located. */
+  mainSourcePath?: string;
   /** Directory the transform may read from (project root). */
   projectDir: string;
   /** Publication file, when one was found. */
   publicationPath?: string;
+}
+
+type PreviewScope = "current-file" | "project";
+
+function previewScope(): PreviewScope {
+  const scope = workspace
+    .getConfiguration("pretext-tools")
+    .get<string>("instantPreview.scope", "current-file");
+  return scope === "project" ? "project" : "current-file";
 }
 
 /**
@@ -52,6 +69,17 @@ interface SourceInfo {
  * document's project.
  */
 export async function cmdInstantPreview(extensionPath: string): Promise<void> {
+  const experimentalEnabled = workspace
+    .getConfiguration("pretext-tools")
+    .get<boolean>("experimentalFeatures", false);
+  if (!experimentalEnabled) {
+    window.showInformationMessage(
+      "The instant preview is experimental. Enable the " +
+        '"pretext-tools.experimentalFeatures" setting to try it.',
+    );
+    return;
+  }
+
   const source = resolveSource();
   if (!source) {
     window.showErrorMessage(
@@ -68,6 +96,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
       ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: true },
     );
+    panelHasContent = false;
     currentPanel.onDidDispose(() => {
       currentPanel = undefined;
       disposeInstantPreview();
@@ -81,9 +110,57 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
 }
 
 /**
+ * Command handler: pick what the instant preview renders — the active source
+ * file (wrapped as a standalone preview when it is a fragment) or the whole
+ * project. Re-renders immediately when the preview panel is open.
+ */
+export async function cmdInstantPreviewScope(
+  extensionPath: string,
+): Promise<void> {
+  const current = previewScope();
+  const picked = await window.showQuickPick(
+    [
+      {
+        label: "Current file",
+        description:
+          "Render only the active source file — fast, but numbering and " +
+          "cross-references outside the file are placeholders",
+        scope: "current-file" as PreviewScope,
+        picked: current === "current-file",
+      },
+      {
+        label: "Whole project",
+        description: "Render the project's main source file with all includes",
+        scope: "project" as PreviewScope,
+        picked: current === "project",
+      },
+    ],
+    { placeHolder: `Instant preview scope (currently: ${current})` },
+  );
+  if (!picked || picked.scope === current) {
+    return;
+  }
+  await workspace
+    .getConfiguration("pretext-tools")
+    .update(
+      "instantPreview.scope",
+      picked.scope,
+      workspace.workspaceFolders
+        ? ConfigurationTarget.Workspace
+        : ConfigurationTarget.Global,
+    );
+  if (currentPanel) {
+    currentSource = resolveSource() ?? currentSource;
+    renderToPanel(extensionPath);
+  }
+}
+
+/**
  * Work out what to build: walk up from the active editor to a project.ptx,
  * then read main source and publication file out of the manifest (with the
- * pretext-cli defaults as fallback). Files without a project build alone.
+ * pretext-cli defaults as fallback). The active file itself is kept as
+ * `activePath` for current-file scope; the worker's --fragment mode makes
+ * xi:included fragments renderable on their own.
  */
 function resolveSource(): SourceInfo | undefined {
   const editor = window.activeTextEditor;
@@ -91,12 +168,21 @@ function resolveSource(): SourceInfo | undefined {
     return currentSource; // keep previewing the last known project
   }
   const filePath = editor.document.fileName;
+  // Manifest-ish files (project.ptx, publication files) are not renderable
+  // content — keep following the previously active content file (their save
+  // still triggers a rebuild through the save watcher).
+  const activeRoot = rootElementOf(filePath);
+  const isContent = activeRoot !== "project" && activeRoot !== "publication";
+
   const projectDir = utils.getProjectFolder(path.dirname(filePath));
   if (!projectDir) {
-    return { sourcePath: filePath, projectDir: path.dirname(filePath) };
+    if (!isContent) {
+      return currentSource;
+    }
+    return { activePath: filePath, projectDir: path.dirname(filePath) };
   }
 
-  let sourcePath: string | undefined;
+  let mainSourcePath: string | undefined;
   let publicationPath: string | undefined;
   try {
     const manifest = fs.readFileSync(
@@ -117,7 +203,7 @@ function resolveSource(): SourceInfo | undefined {
         targets.find((t: any) => t.$?.format === "html") ?? targets[0];
       const targetSource = htmlTarget?.$?.source ?? "main.ptx";
       const targetPublication = htmlTarget?.$?.publication ?? "publication.ptx";
-      sourcePath = path.resolve(projectDir, sourceDir, targetSource);
+      mainSourcePath = path.resolve(projectDir, sourceDir, targetSource);
       publicationPath = path.resolve(
         projectDir,
         publicationDir,
@@ -128,14 +214,64 @@ function resolveSource(): SourceInfo | undefined {
     // fall through to defaults below
   }
 
-  if (!sourcePath || !fs.existsSync(sourcePath)) {
+  if (!mainSourcePath || !fs.existsSync(mainSourcePath)) {
     const fallback = path.join(projectDir, "source", "main.ptx");
-    sourcePath = fs.existsSync(fallback) ? fallback : filePath;
+    if (fs.existsSync(fallback)) {
+      mainSourcePath = fallback;
+    } else if (isContent && isCompleteDocument(filePath)) {
+      mainSourcePath = filePath;
+    } else {
+      mainSourcePath = undefined;
+    }
   }
   if (!publicationPath || !fs.existsSync(publicationPath)) {
     publicationPath = undefined;
   }
-  return { sourcePath, projectDir, publicationPath };
+
+  const activePath = isContent
+    ? filePath
+    : (currentSource?.activePath ?? mainSourcePath);
+  if (!activePath) {
+    return currentSource;
+  }
+  return { activePath, mainSourcePath, projectDir, publicationPath };
+}
+
+/**
+ * Name of the root element of an XML file, or undefined when unreadable.
+ * Reads only the first 4KB; a prolog comment longer than that gives
+ * undefined, which callers treat conservatively.
+ */
+function rootElementOf(filePath: string): string | undefined {
+  let head: string;
+  try {
+    const fd = fs.openSync(filePath, "r");
+    try {
+      const buf = Buffer.alloc(4096);
+      const bytes = fs.readSync(fd, buf, 0, buf.length, 0);
+      head = buf.toString("utf8", 0, bytes);
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return undefined;
+  }
+  // Strip the prolog (xml declaration, PIs, comments, doctype) and look at
+  // the first real element.
+  const prolog = head
+    .replace(/<\?[\s\S]*?\?>/g, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<!DOCTYPE[^>]*>/gi, " ");
+  return prolog.match(/<\s*([A-Za-z][\w:-]*)/)?.[1];
+}
+
+/**
+ * True when the file is a complete PreTeXt document (<pretext> or legacy
+ * <mathbook> root element) rather than an xi:included fragment.
+ */
+function isCompleteDocument(filePath: string): boolean {
+  const root = rootElementOf(filePath);
+  return root === "pretext" || root === "mathbook";
 }
 
 /** Cached result of probing which runtime/flags give us WebAssembly JSPI. */
@@ -218,16 +354,35 @@ function renderToPanel(extensionPath: string): void {
     "out",
     "instant-preview-worker.mjs",
   );
+  const scope = previewScope();
+  const renderPath =
+    scope === "project"
+      ? (currentSource.mainSourcePath ?? currentSource.activePath)
+      : currentSource.activePath;
+  // --fragment lets a lone chapter/section render as a wrapped preview
+  // document; complete documents are unaffected by it.
   const args = [
-    currentSource.sourcePath,
+    renderPath,
     "--project-dir",
     currentSource.projectDir,
+    "--fragment",
   ];
   if (currentSource.publicationPath) {
     args.push("--publication", currentSource.publicationPath);
   }
 
+  currentPanel.title =
+    scope === "project"
+      ? "PreTeXt Preview: project"
+      : `PreTeXt Preview: ${path.basename(renderPath)}`;
+
   utils.updateStatusBarItem(ptxSBItem, "building");
+  pretextOutputChannel.appendLine(
+    `[Instant Preview] Rendering ${renderPath} (scope: ${scope})` +
+      (currentSource.publicationPath
+        ? ` (publication: ${path.basename(currentSource.publicationPath)})`
+        : ""),
+  );
   const started = Date.now();
   let child: ChildProcess;
   try {
@@ -271,11 +426,20 @@ function renderToPanel(extensionPath: string): void {
     renderProcess = undefined;
     if (code === 0 && currentPanel) {
       const html = Buffer.concat(stdout).toString("utf8");
-      currentPanel.webview.html = prepareWebviewHtml(html);
-      utils.updateStatusBarItem(ptxSBItem, "success");
-      pretextOutputChannel.appendLine(
-        `[Instant Preview] Rebuilt in ${Date.now() - started}ms`,
-      );
+      if (!html.includes("</html>")) {
+        // Defensive: never blank the panel on incomplete worker output.
+        utils.updateStatusBarItem(ptxSBItem, "ready");
+        pretextOutputChannel.appendLine(
+          `[Instant Preview] Worker exited 0 but produced incomplete HTML ` +
+            `(${html.length} bytes); keeping previous preview.`,
+        );
+      } else {
+        updatePanelContent(prepareWebviewHtml(html));
+        utils.updateStatusBarItem(ptxSBItem, "success");
+        pretextOutputChannel.appendLine(
+          `[Instant Preview] Rebuilt in ${Date.now() - started}ms`,
+        );
+      }
     } else if (code !== 0) {
       utils.updateStatusBarItem(ptxSBItem, "ready");
       window
@@ -297,9 +461,39 @@ function renderToPanel(extensionPath: string): void {
 }
 
 /**
+ * Deliver a freshly rendered page to the panel. The first page is set via
+ * webview.html; after that, the new page is posted into the live webview,
+ * whose bootstrap script rewrites the document in place
+ * (document.open/write/close). Replacing webview.html on every rebuild forces
+ * a full webview reload, which VS Code sometimes never completes — the panel
+ * just goes blank — and also refetches all CDN assets and loses scroll.
+ */
+function updatePanelContent(preparedHtml: string): void {
+  const panel = currentPanel;
+  if (!panel) {
+    return;
+  }
+  if (!panelHasContent) {
+    panel.webview.html = preparedHtml;
+    panelHasContent = true;
+    return;
+  }
+  Promise.resolve(
+    panel.webview.postMessage({ command: "update", html: preparedHtml }),
+  ).then((delivered) => {
+    if (!delivered && currentPanel === panel) {
+      // Webview not live (should not happen with retainContextWhenHidden,
+      // but don't drop the render on the floor).
+      panel.webview.html = preparedHtml;
+    }
+  });
+}
+
+/**
  * Adapt the standalone page for a VS Code webview: allow CDN assets through
- * a CSP meta tag and preserve the scroll position across content replacement
- * (replacing webview.html reloads the page).
+ * a CSP meta tag, and add a bootstrap script that (a) preserves the scroll
+ * position across rebuilds and (b) applies "update" messages from the
+ * extension by rewriting the document in place (see updatePanelContent).
  */
 function prepareWebviewHtml(html: string): string {
   const csp = [
@@ -313,32 +507,56 @@ function prepareWebviewHtml(html: string): string {
     "frame-src https:",
   ].join("; ");
   const cspTag = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
-  const scrollScript = [
+  // Runs once per document, including documents written by the update path
+  // below (the extension injects this same script into every rendered page).
+  // acquireVsCodeApi may only be called once per webview *session*, and
+  // document.write keeps the same Window, so the api handle is stashed on
+  // window. Likewise the old message listener survives the rewrite in some
+  // engines, so it is explicitly removed before re-adding.
+  const bootstrapScript = [
     "<script>",
     "(function () {",
-    "  const vscode = acquireVsCodeApi();",
-    "  const prior = vscode.getState();",
-    "  if (prior && typeof prior.scrollY === 'number') {",
-    "    window.addEventListener('load', function () {",
+    "  var api = window.__ptxPreviewApi ||",
+    "    (window.__ptxPreviewApi = acquireVsCodeApi());",
+    "  var prior = api.getState();",
+    "  function restoreScroll() {",
+    "    if (prior && typeof prior.scrollY === 'number') {",
     "      window.scrollTo(0, prior.scrollY);",
-    "    });",
+    "    }",
     "  }",
-    "  let ticking = false;",
+    "  restoreScroll();",
+    "  window.addEventListener('load', restoreScroll);",
+    "  var ticking = false;",
     "  window.addEventListener('scroll', function () {",
     "    if (ticking) { return; }",
     "    ticking = true;",
     "    setTimeout(function () {",
-    "      vscode.setState({ scrollY: window.scrollY });",
+    "      api.setState({ scrollY: window.scrollY });",
     "      ticking = false;",
     "    }, 100);",
     "  });",
+    "  if (window.__ptxUpdateHandler) {",
+    "    window.removeEventListener('message', window.__ptxUpdateHandler);",
+    "  }",
+    "  window.__ptxUpdateHandler = function (event) {",
+    "    var msg = event.data;",
+    "    if (!msg || msg.command !== 'update' ||",
+    "        typeof msg.html !== 'string') {",
+    "      return;",
+    "    }",
+    "    api.setState({ scrollY: window.scrollY });",
+    "    document.open();",
+    "    document.write(msg.html);",
+    "    document.close();",
+    "  };",
+    "  window.addEventListener('message', window.__ptxUpdateHandler);",
     "})();",
     "</script>",
   ].join("\n");
 
   return html
     .replace(/<head([^>]*)>/i, `<head$1>\n${cspTag}`)
-    .replace(/<\/body>/i, `${scrollScript}\n</body>`);
+    .replace(/<\/body>/i, `${bootstrapScript}\n</body>`);
 }
 
 /** Rebuild on save of any .ptx/.xml file (debounced), unless disabled. */
@@ -380,4 +598,5 @@ export function disposeInstantPreview(): void {
   renderProcess = undefined;
   renderQueued = false;
   currentSource = undefined;
+  panelHasContent = false;
 }

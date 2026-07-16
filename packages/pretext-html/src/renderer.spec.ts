@@ -199,4 +199,75 @@ describe("renderHtml", () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+
+  it("rejects an xi:included fragment instead of emitting an empty page", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-frag-"));
+    try {
+      const sourcePath = path.join(dir, "ch-intro.ptx");
+      fs.writeFileSync(
+        sourcePath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<!-- a chapter pulled in via xi:include -->\n` +
+          `<chapter xml:id="ch-intro"><title>Intro</title>` +
+          `<p>Fragment content.</p></chapter>\n`,
+      );
+      await expect(renderHtml({ sourcePath })).rejects.toThrow(
+        /root is <chapter>.*fragment/,
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("wraps a section fragment in an article in fragment mode", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fsec-"));
+    try {
+      const sourcePath = path.join(dir, "sec-one.ptx");
+      fs.writeFileSync(
+        sourcePath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<section xml:id="sec-one"><title>Lonely Section</title>` +
+          `<p>Some math: <m>x^2</m> and an <em>emphasis</em>.</p></section>\n`,
+      );
+      const { html } = await renderHtml({ sourcePath, fragment: true });
+      expect(html).toContain("</html>");
+      expect(html).toContain("Lonely Section");
+      expect(html).toContain("emphasis");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("wraps a chapter fragment in a book in fragment mode", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fch-"));
+    try {
+      const sourcePath = path.join(dir, "ch-intro.ptx");
+      fs.writeFileSync(
+        sourcePath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<chapter xml:id="ch-intro"><title>Intro Chapter</title>` +
+          `<section xml:id="sec-a"><title>First Section</title>` +
+          `<p>Chapter fragment content.</p></section></chapter>\n`,
+      );
+      const { html } = await renderHtml({ sourcePath, fragment: true });
+      expect(html).toContain("</html>");
+      expect(html).toContain("Intro Chapter");
+      expect(html).toContain("First Section");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("renders a complete document unchanged in fragment mode", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdoc-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, SIMPLE_ARTICLE);
+      const { html } = await renderHtml({ sourcePath, fragment: true });
+      expect(html).toContain("Test Article");
+      expect(html).toContain("</html>");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });

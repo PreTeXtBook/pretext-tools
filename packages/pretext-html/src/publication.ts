@@ -16,6 +16,9 @@ import type { Element, Root } from "xast";
 
 const MINIMAL_PUBLICATION = `<?xml version="1.0" encoding="UTF-8"?>
 <publication>
+  <source>
+    <directories external="../assets" generated="../generated-assets" />
+  </source>
   <html>
     <platform portable="yes"/>
   </html>

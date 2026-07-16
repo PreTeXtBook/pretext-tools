@@ -199,10 +199,18 @@
       },
       {
         "command": "pretext-tools.instantPreview",
-        "title": "Instant Preview (no PreTeXt install needed)",
+        "title": "Instant Preview (experimental)",
         "icon": "$(zap)",
         "category": "PreTeXt",
-        "description": "Render the current project to HTML instantly with the built-in XSLT engine (experimental; no PreTeXt installation required)."
+        "description": "Render the current project to HTML instantly with the built-in XSLT engine (experimental; no PreTeXt installation required).",
+        "enablement": "config.pretext-tools.experimentalFeatures"
+      },
+      {
+        "command": "pretext-tools.instantPreviewScope",
+        "title": "Instant Preview: Choose Scope (Current File / Whole Project)",
+        "category": "PreTeXt",
+        "description": "Pick whether the instant preview renders just the active source file or the whole project.",
+        "enablement": "config.pretext-tools.experimentalFeatures"
       },
       {
         "command": "pretext-tools.forwardSearch",
@@ -361,6 +369,17 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Automatically rebuild the instant preview when a `.ptx` file is saved."
+          },
+          "pretext-tools.instantPreview.scope": {
+            "order": 4,
+            "type": "string",
+            "enum": ["current-file", "project"],
+            "enumDescriptions": [
+              "Render only the active source file. Fragments (a chapter or section pulled in via xi:include) are wrapped in a minimal document; numbering and cross-references outside the file are placeholders.",
+              "Render the project's main source file with all xi:includes."
+            ],
+            "default": "current-file",
+            "markdownDescription": "What the instant preview renders: the current source file (fast) or the whole project."
           },
           "pretext-tools.instantPreview.nodePath": {
             "order": 4,

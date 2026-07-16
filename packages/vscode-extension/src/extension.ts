@@ -19,7 +19,11 @@ import {
   cmdForwardSearch,
   disposeLivePreview,
 } from "./livePreview";
-import { cmdInstantPreview, disposeInstantPreview } from "./instantPreview";
+import {
+  cmdInstantPreview,
+  cmdInstantPreviewScope,
+  disposeInstantPreview,
+} from "./instantPreview";
 import {
   PretextDocumentOutlineProvider,
   cmdOutlineJumpToLine,
@@ -139,6 +143,9 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
     commands.registerCommand("pretext-tools.instantPreview", () =>
       cmdInstantPreview(context.extensionPath),
+    ),
+    commands.registerCommand("pretext-tools.instantPreviewScope", () =>
+      cmdInstantPreviewScope(context.extensionPath),
     ),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand(

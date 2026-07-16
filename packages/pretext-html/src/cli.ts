@@ -22,6 +22,9 @@ Options:
   --param <name=value>      Extra XSLT string parameter (repeatable)
   --xsl-dir <dir>           Use PreTeXt stylesheets from this directory
                             instead of the vendored copy
+  --fragment                Allow a non-root source file: wrap the fragment
+                            in a minimal <pretext> document (an <article>,
+                            or a <book> for <chapter>/<part> fragments)
   -h, --help                Show this help
 `;
 
@@ -63,6 +66,9 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--xsl-dir":
         options.xslDir = next();
+        break;
+      case "--fragment":
+        options.fragment = true;
         break;
       case "--param": {
         const pair = next();

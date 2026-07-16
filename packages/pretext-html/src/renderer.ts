@@ -45,6 +45,16 @@ export interface RenderOptions {
   stringParams?: Record<string, string>;
   /** Directory of PreTeXt XSL stylesheets. Defaults to the vendored copy. */
   xslDir?: string;
+  /**
+   * Allow rendering a file that is not a complete PreTeXt document. After
+   * xi:includes are resolved, a fragment (a lone <section>, <chapter>, ...)
+   * is wrapped in a minimal complete document — <pretext><book> for
+   * <chapter>/<part> fragments, <pretext><article> otherwise — and built as
+   * normal. Numbering restarts at the fragment, cross-references leaving the
+   * fragment are unresolved, and docinfo (custom LaTeX macros, ...) from the
+   * project's real main file is absent. Complete documents are unaffected.
+   */
+  fragment?: boolean;
 }
 
 export interface RenderResult {
@@ -109,6 +119,65 @@ function fixMathJaxImport(html: string): string {
     /from '\.\/(https:\/\/[^']+)'/g,
     (_match, url: string) => `from '${url}'`,
   );
+}
+
+/**
+ * Name of the first element in an XML string (the document root), or
+ * undefined if none is found. Prolog constructs (declaration, processing
+ * instructions, comments, doctype) are skipped textually.
+ */
+function documentRootName(xml: string): string | undefined {
+  const prolog = xml
+    .slice(0, 65536)
+    .replace(/<\?[\s\S]*?\?>/g, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<!DOCTYPE[^>]*>/gi, " ");
+  return prolog.match(/<\s*([A-Za-z][\w:-]*)/)?.[1];
+}
+
+/**
+ * Wrap a fragment (xinclude-merged content whose root is not <pretext>) in a
+ * minimal complete document so the stylesheets can process it. <chapter> and
+ * <part> fragments become a one-chapter/one-part <book>; everything else
+ * becomes an <article>. The fragment's own division heading renders normally;
+ * the wrapper itself is untitled, so PreTeXt emits an empty top-level heading
+ * (the same "empty article" preview approach used elsewhere). The explicit
+ * empty <title/> keeps a title node present for stylesheets that dereference
+ * one without guarding.
+ */
+function wrapFragment(
+  mergedContent: string,
+  rootName: string | undefined,
+): string {
+  const body = mergedContent
+    .replace(/^\uFEFF/, "")
+    .replace(/<\?xml[\s\S]*?\?>/, "")
+    .replace(/<!DOCTYPE[^>]*>/i, "");
+  const wrapper =
+    rootName === "chapter" || rootName === "part" ? "book" : "article";
+  return `<pretext>\n<${wrapper}>\n<title/>\n${body}\n</${wrapper}>\n</pretext>\n`;
+}
+
+/**
+ * Map the WASM engine's out-of-bounds errors ("memory access out of bounds",
+ * "out of bounds memory access", depending on engine/version) to an
+ * actionable message. libxslt recurses per node and the published WASM build
+ * has a small (~64KB) stack, so very large documents (whole books) blow it.
+ * Needs a rebuild of libxslt-wasm with a bigger STACK_SIZE; see the README.
+ */
+function throwIfWasmStackOverflow(error: unknown): void {
+  if (
+    error instanceof Error &&
+    /memory access|out of bounds/i.test(error.message)
+  ) {
+    throw new Error(
+      "The document is too large for the current WebAssembly build " +
+        "(stack overflow). Whole-book builds are a known limitation; " +
+        "try a smaller document, or see the README about rebuilding " +
+        "libxslt-wasm with a larger stack.",
+      { cause: error },
+    );
+  }
 }
 
 // libxslt-wasm is imported lazily so that merely importing this module (e.g.
@@ -211,11 +280,28 @@ export async function renderHtml(
 
     // xi:includes are resolved in JS before parsing: the WASM build cannot
     // suspend inside libxml2's own XInclude pass (see src/xinclude.ts).
-    const mergedContent = await resolveXIncludes(
+    let mergedContent = await resolveXIncludes(
       sourceContent,
       sourcePath,
       projectDir,
     );
+
+    // The PreTeXt stylesheets silently produce a near-empty page (just a
+    // doctype) for anything that is not a whole document. In fragment mode,
+    // wrap fragments in a minimal complete document; otherwise reject them
+    // with a real error.
+    const rootElement = documentRootName(mergedContent);
+    if (rootElement !== "pretext" && rootElement !== "mathbook") {
+      if (options.fragment) {
+        mergedContent = wrapFragment(mergedContent, rootElement);
+      } else {
+        throw new Error(
+          `The document root is <${rootElement ?? "?"}>, not <pretext> — ` +
+            `this looks like an xi:included fragment. Render the project's ` +
+            `main source file instead, or pass the fragment option.`,
+        );
+      }
+    }
 
     const doc = await XmlDocument.fromString(mergedContent, {
       url: `${srcBase}/${relSource.split(path.sep).join("/")}`,
@@ -233,21 +319,7 @@ export async function renderHtml(
     try {
       result = await xslt.apply(doc, params);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message.includes("memory access out of bounds")
-      ) {
-        // libxslt recurses per node and the published WASM build has a small
-        // (~64KB) stack, so very large documents (whole books) blow it. Needs
-        // a rebuild of libxslt-wasm with a bigger STACK_SIZE; see the README.
-        throw new Error(
-          "The document is too large for the current WebAssembly build " +
-            "(stack overflow). Whole-book builds are a known limitation; " +
-            "try a smaller document, or see the README about rebuilding " +
-            "libxslt-wasm with a larger stack.",
-          { cause: error },
-        );
-      }
+      throwIfWasmStackOverflow(error);
       // libxslt already printed the real diagnostics (PTX:ERROR/PTX:FATAL,
       // xsl:message output) on stderr; the thrown error itself is generic.
       throw new Error(
@@ -260,6 +332,9 @@ export async function renderHtml(
     }
     try {
       return { html: fixMathJaxImport(result.toHtmlString()) };
+    } catch (error) {
+      throwIfWasmStackOverflow(error);
+      throw error;
     } finally {
       result.delete();
     }
