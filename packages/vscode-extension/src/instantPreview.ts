@@ -33,12 +33,35 @@ import * as utils from "./utils";
 let currentPanel: WebviewPanel | undefined;
 let panelHasContent = false;
 let saveWatcher: Disposable | undefined;
-let renderProcess: ChildProcess | undefined;
-let renderQueued = false;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 let currentSource: SourceInfo | undefined;
 
+// The persistent render worker. Kept alive across renders so the loaded WASM
+// module and compiled stylesheet (the ~600ms cold start) are reused; each
+// subsequent render is just a ~100ms transform.
+let worker: ChildProcess | undefined;
+let workerExtensionPath: string | undefined;
+let nextRequestId = 1;
+// Id of the render we are currently waiting on (undefined when idle). Only one
+// render is in flight at a time; the worker serializes internally too.
+let pendingRequestId: number | undefined;
+let pendingStarted = 0;
+// A newer render requested while one was in flight; collapses bursts of saves.
+let renderQueued = false;
+// Guards against a crash loop when the worker dies mid-render.
+let crashRetries = 0;
+let disposing = false;
+
 const DEBOUNCE_MS = 400;
+const MAX_CRASH_RETRIES = 2;
+
+interface RenderResponse {
+  id: number;
+  ok: boolean;
+  html?: string;
+  error?: string;
+  elapsedMs?: number;
+}
 
 interface SourceInfo {
   /**
@@ -296,13 +319,131 @@ function launchWorker(
   // The extension's ts lib has no WebAssembly declarations; go via globalThis.
   const wasm = (globalThis as { WebAssembly?: object }).WebAssembly;
   if (wasm && "Suspending" in wasm) {
+    // fork() always sets up an IPC channel; silent pipes stdio so we can read
+    // the worker's stderr for diagnostics.
     return fork(workerPath, args, { execArgv: [], silent: true, env });
   }
   const { command, flags } = resolveNodeLaunch();
+  // The 'ipc' stdio slot gives the spawned Node the same message channel a
+  // fork would, so the serve protocol works identically on either path.
   return spawn(command, [...flags, workerPath, ...args], {
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
     env,
   });
+}
+
+/**
+ * Return the live render worker, launching it (in persistent serve mode) if
+ * needed and wiring its message/exit handlers exactly once. Returns undefined
+ * if the worker could not be started (an error is surfaced to the user).
+ */
+function ensureWorker(extensionPath: string): ChildProcess | undefined {
+  if (worker) {
+    return worker;
+  }
+  workerExtensionPath = extensionPath;
+  const workerPath = path.join(
+    extensionPath,
+    "out",
+    "instant-preview-worker.mjs",
+  );
+  let child: ChildProcess;
+  try {
+    child = launchWorker(workerPath, ["--serve"], {
+      ...process.env,
+      PRETEXT_HTML_ASSETS: path.join(extensionPath, "assets", "pretext-html"),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    utils.updateStatusBarItem(ptxSBItem, "ready");
+    pretextOutputChannel.appendLine(`[Instant Preview] ${message}`);
+    window.showErrorMessage(message);
+    return undefined;
+  }
+
+  child.stderr?.on("data", (data: Buffer) => {
+    const text = data.toString().trim();
+    if (text) {
+      pretextOutputChannel.appendLine(`[Instant Preview] ${text}`);
+    }
+  });
+
+  child.on("message", (message: unknown) =>
+    handleWorkerMessage(message as RenderResponse),
+  );
+
+  child.on("error", (err) => {
+    pretextOutputChannel.appendLine(`[Instant Preview] ${String(err)}`);
+    if (worker === child) {
+      worker = undefined;
+    }
+    pendingRequestId = undefined;
+    utils.updateStatusBarItem(ptxSBItem, "ready");
+    window.showErrorMessage(
+      "Instant preview could not start its Node.js worker. Check the PreTeXt output log.",
+    );
+  });
+
+  child.on("exit", (code, signal) => {
+    if (worker === child) {
+      worker = undefined;
+    }
+    if (disposing) {
+      return;
+    }
+    // Unexpected death (crash, OOM). If it took a render down with it, retry a
+    // bounded number of times; otherwise the next render simply relaunches.
+    pretextOutputChannel.appendLine(
+      `[Instant Preview] Worker exited unexpectedly ` +
+        `(code=${code ?? "null"}, signal=${signal ?? "null"}).`,
+    );
+    const wasRendering = pendingRequestId !== undefined;
+    pendingRequestId = undefined;
+    if ((wasRendering || renderQueued) && crashRetries < MAX_CRASH_RETRIES) {
+      crashRetries += 1;
+      renderQueued = false;
+      pretextOutputChannel.appendLine(
+        `[Instant Preview] Restarting worker (attempt ${crashRetries}).`,
+      );
+      if (workerExtensionPath) {
+        renderToPanel(workerExtensionPath);
+      }
+    } else if (wasRendering || renderQueued) {
+      renderQueued = false;
+      utils.updateStatusBarItem(ptxSBItem, "ready");
+      window
+        .showErrorMessage(
+          "Instant preview worker keeps crashing. Check the PreTeXt output log.",
+          "Show Log",
+        )
+        .then((choice) => {
+          if (choice === "Show Log") {
+            pretextOutputChannel.show();
+          }
+        });
+    }
+  });
+
+  worker = child;
+  return worker;
+}
+
+/** Handle a render response from the worker (see handleRenderResponse). */
+function handleWorkerMessage(message: RenderResponse): void {
+  if (
+    !message ||
+    typeof message.id !== "number" ||
+    message.id !== pendingRequestId
+  ) {
+    // Stale response from a superseded/relaunched render — ignore.
+    return;
+  }
+  pendingRequestId = undefined;
+  handleRenderResponse(message);
+  if (renderQueued && workerExtensionPath) {
+    renderQueued = false;
+    renderToPanel(workerExtensionPath);
+  }
 }
 
 /**
@@ -336,40 +477,29 @@ function resolveNodeLaunch(): { command: string; flags: string[] } {
 }
 
 /**
- * Fork the worker and replace the panel content with the fresh page. If a
- * render is already running, remember to run once more when it finishes
- * (collapsing any number of intermediate saves into one rebuild).
+ * Send a render request to the persistent worker. If one is already in flight,
+ * remember to run once more when it finishes (collapsing a burst of saves into
+ * a single rebuild).
  */
 function renderToPanel(extensionPath: string): void {
   if (!currentSource || !currentPanel) {
     return;
   }
-  if (renderProcess) {
+  if (pendingRequestId !== undefined) {
     renderQueued = true;
     return;
   }
 
-  const workerPath = path.join(
-    extensionPath,
-    "out",
-    "instant-preview-worker.mjs",
-  );
+  const child = ensureWorker(extensionPath);
+  if (!child) {
+    return;
+  }
+
   const scope = previewScope();
   const renderPath =
     scope === "project"
       ? (currentSource.mainSourcePath ?? currentSource.activePath)
       : currentSource.activePath;
-  // --fragment lets a lone chapter/section render as a wrapped preview
-  // document; complete documents are unaffected by it.
-  const args = [
-    renderPath,
-    "--project-dir",
-    currentSource.projectDir,
-    "--fragment",
-  ];
-  if (currentSource.publicationPath) {
-    args.push("--publication", currentSource.publicationPath);
-  }
 
   currentPanel.title =
     scope === "project"
@@ -383,81 +513,68 @@ function renderToPanel(extensionPath: string): void {
         ? ` (publication: ${path.basename(currentSource.publicationPath)})`
         : ""),
   );
-  const started = Date.now();
-  let child: ChildProcess;
-  try {
-    child = launchWorker(workerPath, args, {
-      ...process.env,
-      PRETEXT_HTML_ASSETS: path.join(extensionPath, "assets", "pretext-html"),
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    utils.updateStatusBarItem(ptxSBItem, "ready");
-    pretextOutputChannel.appendLine(`[Instant Preview] ${message}`);
-    window.showErrorMessage(message);
-    return;
-  }
-  renderProcess = child;
 
-  const stdout: Buffer[] = [];
-  child.stdout?.on("data", (data: Buffer) => stdout.push(data));
-  child.stderr?.on("data", (data: Buffer) => {
-    const text = data.toString().trim();
-    if (text) {
-      pretextOutputChannel.appendLine(`[Instant Preview] ${text}`);
+  const id = nextRequestId++;
+  pendingRequestId = id;
+  pendingStarted = Date.now();
+  // --fragment behaviour: a lone chapter/section renders as a wrapped preview
+  // document; complete documents are unaffected.
+  const request = {
+    id,
+    type: "render" as const,
+    sourcePath: renderPath,
+    projectDir: currentSource.projectDir,
+    publicationPath: currentSource.publicationPath,
+    fragment: true,
+  };
+  child.send(request, (err) => {
+    if (err && pendingRequestId === id) {
+      // The channel died between ensureWorker and send; the exit handler will
+      // relaunch/retry. Just clear this in-flight marker.
+      pendingRequestId = undefined;
+      pretextOutputChannel.appendLine(
+        `[Instant Preview] Failed to send render request: ${String(err)}`,
+      );
     }
   });
+}
 
-  let spawnFailed = false;
-  child.on("error", (err) => {
-    spawnFailed = true;
-    renderProcess = undefined;
-    utils.updateStatusBarItem(ptxSBItem, "ready");
-    pretextOutputChannel.appendLine(`[Instant Preview] ${String(err)}`);
-    window.showErrorMessage(
-      "Instant preview could not start its Node.js worker. Check the PreTeXt output log.",
-    );
-  });
-
-  child.on("close", (code) => {
-    if (spawnFailed) {
+/** Apply a worker render response to the panel and status bar. */
+function handleRenderResponse(message: RenderResponse): void {
+  if (message.ok && message.html && currentPanel) {
+    const html = message.html;
+    if (!html.includes("</html>")) {
+      // Defensive: never blank the panel on incomplete output.
+      utils.updateStatusBarItem(ptxSBItem, "ready");
+      pretextOutputChannel.appendLine(
+        `[Instant Preview] Worker returned incomplete HTML ` +
+          `(${html.length} bytes); keeping previous preview.`,
+      );
       return;
     }
-    renderProcess = undefined;
-    if (code === 0 && currentPanel) {
-      const html = Buffer.concat(stdout).toString("utf8");
-      if (!html.includes("</html>")) {
-        // Defensive: never blank the panel on incomplete worker output.
-        utils.updateStatusBarItem(ptxSBItem, "ready");
-        pretextOutputChannel.appendLine(
-          `[Instant Preview] Worker exited 0 but produced incomplete HTML ` +
-            `(${html.length} bytes); keeping previous preview.`,
-        );
-      } else {
-        updatePanelContent(prepareWebviewHtml(html));
-        utils.updateStatusBarItem(ptxSBItem, "success");
-        pretextOutputChannel.appendLine(
-          `[Instant Preview] Rebuilt in ${Date.now() - started}ms`,
-        );
+    crashRetries = 0;
+    updatePanelContent(prepareWebviewHtml(html));
+    utils.updateStatusBarItem(ptxSBItem, "success");
+    pretextOutputChannel.appendLine(
+      `[Instant Preview] Rebuilt in ${message.elapsedMs ?? Date.now() - pendingStarted}ms`,
+    );
+    return;
+  }
+
+  utils.updateStatusBarItem(ptxSBItem, "ready");
+  if (message.error) {
+    pretextOutputChannel.appendLine(`[Instant Preview] ${message.error}`);
+  }
+  window
+    .showErrorMessage(
+      "Instant preview build failed. Check the PreTeXt output log.",
+      "Show Log",
+    )
+    .then((choice) => {
+      if (choice === "Show Log") {
+        pretextOutputChannel.show();
       }
-    } else if (code !== 0) {
-      utils.updateStatusBarItem(ptxSBItem, "ready");
-      window
-        .showErrorMessage(
-          "Instant preview build failed. Check the PreTeXt output log.",
-          "Show Log",
-        )
-        .then((choice) => {
-          if (choice === "Show Log") {
-            pretextOutputChannel.show();
-          }
-        });
-    }
-    if (renderQueued) {
-      renderQueued = false;
-      renderToPanel(extensionPath);
-    }
-  });
+    });
 }
 
 /**
@@ -584,7 +701,7 @@ function setupSaveWatcher(extensionPath: string): void {
   });
 }
 
-/** Clean up watchers and any in-flight render. */
+/** Clean up watchers and shut down the persistent worker. */
 export function disposeInstantPreview(): void {
   saveWatcher?.dispose();
   saveWatcher = undefined;
@@ -592,11 +709,21 @@ export function disposeInstantPreview(): void {
     clearTimeout(debounceTimer);
     debounceTimer = undefined;
   }
-  if (renderProcess && !renderProcess.killed) {
-    renderProcess.kill();
+  disposing = true;
+  if (worker) {
+    // disconnect() lets the worker exit cleanly on its 'disconnect' handler;
+    // kill() is the backstop if it is wedged.
+    worker.disconnect?.();
+    if (!worker.killed) {
+      worker.kill();
+    }
+    worker = undefined;
   }
-  renderProcess = undefined;
+  pendingRequestId = undefined;
   renderQueued = false;
+  crashRetries = 0;
   currentSource = undefined;
   panelHasContent = false;
+  workerExtensionPath = undefined;
+  disposing = false;
 }
