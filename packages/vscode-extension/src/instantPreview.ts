@@ -526,6 +526,12 @@ function renderToPanel(extensionPath: string): void {
     projectDir: currentSource.projectDir,
     publicationPath: currentSource.publicationPath,
     fragment: true,
+    // The worker lifts <docinfo> (LaTeX macros, custom settings) from the
+    // main file — resolving xi:includes — and injects it into the fragment
+    // wrapper. Only consulted when renderPath is a fragment (current-file
+    // scope); a complete document carries its own docinfo, so it is ignored
+    // there, including project scope where renderPath is the main file itself.
+    docinfoSourcePath: currentSource.mainSourcePath,
   };
   child.send(request, (err) => {
     if (err && pendingRequestId === id) {

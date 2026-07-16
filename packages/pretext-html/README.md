@@ -3,9 +3,12 @@
 Convert [PreTeXt](https://pretextbook.org) documents to HTML in pure
 JavaScript — no Python, no PreTeXt installation. This runs the **official,
 unmodified PreTeXt XSLT stylesheets** with
-[libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm), a WebAssembly
-build of libxml2/libxslt/libexslt (the same C libraries the Python CLI uses
-via lxml), so the HTML matches a real `pretext build`.
+[`@pretextbook/libxslt-wasm`](https://github.com/oscarlevin/libxslt-wasm), a
+WebAssembly build of libxml2/libxslt/libexslt (the same C libraries the Python
+CLI uses via lxml), so the HTML matches a real `pretext build`. It is a fork of
+[jeremy-code/libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm) built
+with a larger WASM stack so whole-book documents render without overflowing
+(see [Forking libxslt-wasm](#forking-libxslt-wasm)).
 
 The output is a single, standalone HTML page: PreTeXt's _portable HTML_ mode
 is forced on, so theme css/js and MathJax load from public CDNs and the whole
@@ -45,6 +48,13 @@ const { html } = await renderHtml({
 
 - `sourceContent` lets you render unsaved editor text (with `sourcePath` still
   anchoring relative `xi:include`s).
+- `fragment: true` renders a non-root file (a lone `<section>`, `<chapter>`, …)
+  by wrapping it in a minimal `<pretext>` document. To keep the project's LaTeX
+  macros and custom settings, give it the docinfo: either `docinfoSourcePath`
+  (the project main file, whose `<docinfo>` is lifted out — resolving
+  `xi:include`s, including a docinfo that is itself included), or `docinfo` (a
+  `<docinfo>` element as a string, if you already have it). Both are ignored
+  for complete documents, which carry their own docinfo.
 - The user's publication file is respected, except
   `<html><platform portable="yes"/></html>` is always forced — that is what
   makes single-page in-memory output possible.
@@ -92,41 +102,43 @@ const { html } = await renderHtml({
 
 ## Limitations (current WASM build)
 
-| Limitation                                                 | Cause                                             | Fix                                                                         |
-| ---------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
-| Whole-book documents crash ("memory access out of bounds") | ~64KB WASM stack vs. libxslt's per-node recursion | Rebuild libxslt-wasm with `STACK_SIZE=8MB`                                  |
-| No multi-file output (`exsl:document`)                     | Compiled with `FILESYSTEM=0`                      | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
-| Node only, JSPI flag required                              | Loader fetches resources mid-transform via JSPI   | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
-| No generated images (latex-image, sageplot, …)             | Produced by the Python toolchain, not XSLT        | Out of scope; run `pretext generate` and the preview will pick the files up |
-| `xi:include` with `xpointer` unsupported                   | JS resolver stands in for libxml2's               | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+| Limitation                                          | Cause                                           | Fix                                                                         |
+| --------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
+| No multi-file output (`exsl:document`)              | Compiled with `FILESYSTEM=0`                    | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
+| Node only, JSPI flag required                       | Loader fetches resources mid-transform via JSPI | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
+| No generated images (latex-image, sageplot, …)      | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
+| `xi:include` with `xpointer` unsupported            | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+
+The whole-book stack overflow ("memory access out of bounds") that the stock
+`libxslt-wasm` build hit on large documents is **fixed** in the
+`@pretextbook/libxslt-wasm` fork, which links with a larger WASM stack.
 
 Missing generated assets degrade gracefully: the transform serves a stub for
 missing files, PreTeXt emits its usual `PTX:ERROR` advice, and the preview
 renders without the image.
 
-## Forking libxslt-wasm (phase 2)
+## Forking libxslt-wasm
 
-The limitations above are compile flags, not architecture. When ready:
+This package depends on [`@pretextbook/libxslt-wasm`](https://github.com/oscarlevin/libxslt-wasm),
+a fork of [jeremy-code/libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm)
+(MIT) rebuilt with different Emscripten link flags. The remaining limitations
+above are also flag changes, not architecture — when ready to tackle them:
 
-1. Fork [jeremy-code/libxslt-wasm](https://github.com/jeremy-code/libxslt-wasm)
-   (MIT). The Emscripten build configuration is in its `Makefile`/build
-   scripts.
-2. Change the Emscripten link flags:
-   - `-sFILESYSTEM=1` — enables `exsl:document` writes into in-memory MEMFS,
-     readable back from JS; unlocks real multi-file builds.
-   - `-sSTACK_SIZE=8388608` (8MB, matching native defaults) and
-     `-sALLOW_MEMORY_GROWTH=1` — fixes whole-book stack overflows.
-3. Add `xmlXIncludeProcessFlags` to the JSPI exports list (the
-   `Asyncify`/JSPI `exportPattern` — see `ASYNCIFY_EXPORTS` in the build) so
-   native XInclude can suspend for fetches; then the JS resolver in
-   `src/xinclude.ts` can be retired (or kept as a fallback).
-4. Optional, to drop the JSPI requirement entirely (needed for
-   Firefox/Safari/browser use): preload `assets/xsl/` into MEMFS at module
-   init so no fetch ever happens mid-transform, and switch the entity loader
-   to synchronous MEMFS reads.
-5. Publish as `@pretextbook/libxslt-wasm` (or vendor the artifacts) and swap
-   the dependency in this package's `package.json`. Everything else —
-   wrapper stylesheet, mounts, API — stays the same.
+- `-sSTACK_SIZE` (already raised in the fork) — fixes whole-book stack
+  overflows; pair with `-sALLOW_MEMORY_GROWTH=1`.
+- `-sFILESYSTEM=1` — enables `exsl:document` writes into in-memory MEMFS,
+  readable back from JS; unlocks real multi-file builds.
+- Add `xmlXIncludeProcessFlags` to the JSPI exports list (the `Asyncify`/JSPI
+  `exportPattern` — see `ASYNCIFY_EXPORTS` in the build) so native XInclude can
+  suspend for fetches; then the JS resolver in `src/xinclude.ts` can be retired.
+- To drop the JSPI requirement entirely (needed for Firefox/Safari/browser
+  use): preload `assets/xsl/` into MEMFS at module init so no fetch happens
+  mid-transform, and switch the entity loader to synchronous MEMFS reads.
+
+**Refreshing the fork:** rebuild the WASM in the fork, `npm version` + `npm
+publish` it, then bump the `@pretextbook/libxslt-wasm` version in this
+package's `package.json`. Everything else — wrapper stylesheet, mounts, API —
+stays the same.
 
 ## Development
 

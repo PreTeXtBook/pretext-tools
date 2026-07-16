@@ -23,13 +23,13 @@ export default defineConfig(() => ({
         index: "src/index.ts",
         cli: "src/cli.ts",
       },
-      // ESM only: libxslt-wasm is ESM-only and needs JSPI anyway, so there is
-      // no CommonJS audience for this package.
+      // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI anyway,
+      // so there is no CommonJS audience for this package.
       formats: ["es" as const],
     },
     rollupOptions: {
       external: [
-        /^libxslt-wasm/,
+        /^@pretextbook\/libxslt-wasm/,
         "xast-util-from-xml",
         "xast-util-to-xml",
         /^node:/,

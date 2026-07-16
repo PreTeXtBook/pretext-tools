@@ -258,6 +258,80 @@ describe("renderHtml", () => {
     }
   });
 
+  it("injects a supplied docinfo into a fragment wrapper", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdi-"));
+    try {
+      const sourcePath = path.join(dir, "sec-macro.ptx");
+      fs.writeFileSync(
+        sourcePath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<section xml:id="sec-macro"><title>Macro Section</title>` +
+          `<p>Math with a custom macro: <m>\\uniquefragmacro</m>.</p></section>\n`,
+      );
+      const { html } = await renderHtml({
+        sourcePath,
+        fragment: true,
+        docinfo:
+          `<docinfo>\n` +
+          `  <macros>\\newcommand{\\uniquefragmacro}{Z}</macros>\n` +
+          `</docinfo>`,
+      });
+      expect(html).toContain("</html>");
+      // PreTeXt emits the docinfo macros into the page for MathJax; if the
+      // wrapper had dropped docinfo, the macro would be absent.
+      expect(html).toContain("uniquefragmacro");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("lifts an xi:included docinfo from the main file for a fragment", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdis-"));
+    try {
+      fs.mkdirSync(path.join(dir, "source"));
+      // main.ptx pulls docinfo in via xi:include (the common author pattern),
+      // and docinfo.ptx factors its macros out into yet another include.
+      fs.writeFileSync(
+        path.join(dir, "source", "main.ptx"),
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">\n` +
+          `  <xi:include href="docinfo.ptx"/>\n` +
+          `  <book xml:id="bk"><title>Bk</title>\n` +
+          `    <xi:include href="ch1.ptx"/>\n` +
+          `  </book>\n</pretext>\n`,
+      );
+      fs.writeFileSync(
+        path.join(dir, "source", "docinfo.ptx"),
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<docinfo xmlns:xi="http://www.w3.org/2001/XInclude">\n` +
+          `  <xi:include href="macros.ptx"/>\n</docinfo>\n`,
+      );
+      fs.writeFileSync(
+        path.join(dir, "source", "macros.ptx"),
+        `<macros>\\newcommand{\\uniquefragmacro}{Z}</macros>\n`,
+      );
+      // A missing chapter include would break a full merge — proving we only
+      // read the docinfo, never the book's chapters.
+      const fragmentPath = path.join(dir, "source", "sec-macro.ptx");
+      fs.writeFileSync(
+        fragmentPath,
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+          `<section xml:id="sec-macro"><title>Macro Section</title>` +
+          `<p>Uses <m>\\uniquefragmacro</m>.</p></section>\n`,
+      );
+      const { html } = await renderHtml({
+        sourcePath: fragmentPath,
+        projectDir: dir,
+        fragment: true,
+        docinfoSourcePath: path.join(dir, "source", "main.ptx"),
+      });
+      expect(html).toContain("</html>");
+      expect(html).toContain("uniquefragmacro");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("renders a complete document unchanged in fragment mode", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdoc-"));
     try {

@@ -66,6 +66,7 @@ fs.cpSync(pretextHtmlAssets, pretextHtmlAssetsTarget, { recursive: true });
 const wasmSource = path.join(
   workspaceRoot,
   "node_modules",
+  "@pretextbook",
   "libxslt-wasm",
   "dist",
   "output",

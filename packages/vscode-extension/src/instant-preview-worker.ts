@@ -29,6 +29,10 @@ interface RenderRequest {
   projectDir?: string;
   publicationPath?: string;
   fragment?: boolean;
+  /** A <docinfo> element (as a string) injected into a fragment wrapper. */
+  docinfo?: string;
+  /** Main source file to lift <docinfo> from (fragment mode); see renderer. */
+  docinfoSourcePath?: string;
 }
 
 /** Response sent back over IPC. */
@@ -96,6 +100,8 @@ function serve(): void {
         projectDir: request.projectDir,
         publicationPath: request.publicationPath,
         fragment: request.fragment,
+        docinfo: request.docinfo,
+        docinfoSourcePath: request.docinfoSourcePath,
       };
       try {
         const { html } = await renderHtml(options);

@@ -17,7 +17,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import { forcePortablePublication } from "./publication.js";
-import { resolveXIncludes } from "./xinclude.js";
+import { extractDocinfo, resolveXIncludes } from "./xinclude.js";
 
 export interface RenderOptions {
   /** Path to the root PreTeXt source file (typically source/main.ptx). */
@@ -50,11 +50,29 @@ export interface RenderOptions {
    * xi:includes are resolved, a fragment (a lone <section>, <chapter>, ...)
    * is wrapped in a minimal complete document — <pretext><book> for
    * <chapter>/<part> fragments, <pretext><article> otherwise — and built as
-   * normal. Numbering restarts at the fragment, cross-references leaving the
-   * fragment are unresolved, and docinfo (custom LaTeX macros, ...) from the
-   * project's real main file is absent. Complete documents are unaffected.
+   * normal. Numbering restarts at the fragment and cross-references leaving the
+   * fragment are unresolved; supply `docinfo` to restore the project's custom
+   * LaTeX macros and settings. Complete documents are unaffected.
    */
   fragment?: boolean;
+  /**
+   * A `<docinfo>` element, as an XML string, to place inside the synthesized
+   * <pretext> wrapper (before the <article>/<book>) when a fragment is
+   * rendered. Lets a lone fragment keep the project's LaTeX macros, custom
+   * settings, etc., that live in the real main file's docinfo. Only used in
+   * fragment mode; complete documents carry their own docinfo and ignore this.
+   * Takes precedence over `docinfoSourcePath`.
+   */
+  docinfo?: string;
+  /**
+   * Path to a complete PreTeXt source file (typically the project's main.ptx)
+   * to lift the `<docinfo>` from for fragment mode, when `docinfo` is not
+   * given. The docinfo is resolved through xi:includes — both a top-level
+   * `<xi:include href="docinfo.ptx"/>` and includes nested inside docinfo —
+   * which is how most projects factor it out. Only the docinfo is read, not
+   * the book's chapters. Only used in fragment mode.
+   */
+  docinfoSourcePath?: string;
 }
 
 export interface RenderResult {
@@ -136,6 +154,24 @@ function documentRootName(xml: string): string | undefined {
 }
 
 /**
+ * Read and extract the `<docinfo>` from a project main file (resolving
+ * xi:includes). Best-effort: returns undefined if the file cannot be read.
+ */
+async function docinfoFromSource(
+  docinfoSourcePath: string,
+  projectDir: string,
+): Promise<string | undefined> {
+  const resolved = path.resolve(docinfoSourcePath);
+  let content: string;
+  try {
+    content = await readFile(resolved, "utf8");
+  } catch {
+    return undefined;
+  }
+  return extractDocinfo(content, resolved, projectDir);
+}
+
+/**
  * Wrap a fragment (xinclude-merged content whose root is not <pretext>) in a
  * minimal complete document so the stylesheets can process it. <chapter> and
  * <part> fragments become a one-chapter/one-part <book>; everything else
@@ -143,11 +179,14 @@ function documentRootName(xml: string): string | undefined {
  * the wrapper itself is untitled, so PreTeXt emits an empty top-level heading
  * (the same "empty article" preview approach used elsewhere). The explicit
  * empty <title/> keeps a title node present for stylesheets that dereference
- * one without guarding.
+ * one without guarding. A caller-supplied <docinfo> element (LaTeX macros,
+ * custom settings) is placed inside <pretext> before the division so the
+ * fragment renders with the project's real docinfo.
  */
 function wrapFragment(
   mergedContent: string,
   rootName: string | undefined,
+  docinfo?: string,
 ): string {
   const body = mergedContent
     .replace(/^\uFEFF/, "")
@@ -155,7 +194,8 @@ function wrapFragment(
     .replace(/<!DOCTYPE[^>]*>/i, "");
   const wrapper =
     rootName === "chapter" || rootName === "part" ? "book" : "article";
-  return `<pretext>\n<${wrapper}>\n<title/>\n${body}\n</${wrapper}>\n</pretext>\n`;
+  const docinfoBlock = docinfo?.trim() ? `${docinfo.trim()}\n` : "";
+  return `<pretext>\n${docinfoBlock}<${wrapper}>\n<title/>\n${body}\n</${wrapper}>\n</pretext>\n`;
 }
 
 /**
@@ -182,14 +222,14 @@ function throwIfWasmStackOverflow(error: unknown): void {
 
 // libxslt-wasm is imported lazily so that merely importing this module (e.g.
 // to call isJspiAvailable) works without the JSPI flag.
-type LibXslt = typeof import("libxslt-wasm");
+type LibXslt = typeof import("@pretextbook/libxslt-wasm");
 let libxsltPromise: Promise<LibXslt> | undefined;
 async function loadLibXslt(): Promise<LibXslt> {
   if (!libxsltPromise) {
     libxsltPromise = (async () => {
       const [lib, exslt] = await Promise.all([
-        import("libxslt-wasm"),
-        import("libxslt-wasm/exslt"),
+        import("@pretextbook/libxslt-wasm"),
+        import("@pretextbook/libxslt-wasm/exslt"),
       ]);
       exslt.registerAll();
       return lib;
@@ -293,7 +333,16 @@ export async function renderHtml(
     const rootElement = documentRootName(mergedContent);
     if (rootElement !== "pretext" && rootElement !== "mathbook") {
       if (options.fragment) {
-        mergedContent = wrapFragment(mergedContent, rootElement);
+        // Prefer an explicit docinfo string; otherwise lift one (resolving
+        // xi:includes) from the project's main file so the fragment keeps its
+        // macros. Reads only the docinfo, so the chapters are not merged.
+        // Best-effort: a missing/unreadable main file just means no macros.
+        const docinfo =
+          options.docinfo ??
+          (options.docinfoSourcePath
+            ? await docinfoFromSource(options.docinfoSourcePath, projectDir)
+            : undefined);
+        mergedContent = wrapFragment(mergedContent, rootElement, docinfo);
       } else {
         throw new Error(
           `The document root is <${rootElement ?? "?"}>, not <pretext> — ` +

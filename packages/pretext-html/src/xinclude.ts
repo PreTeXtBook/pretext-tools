@@ -194,6 +194,84 @@ async function expandInclude(
   return subtree.children.filter((node) => node.type === "element");
 }
 
+/** True for an unprefixed <docinfo> element (PreTeXt uses no namespace). */
+function isDocinfo(element: Element): boolean {
+  return element.name === "docinfo";
+}
+
+/**
+ * Extract the `<docinfo>` element from a complete PreTeXt source file as an XML
+ * string, resolving xi:includes along the way. Handles the two shapes authors
+ * actually write: a literal `<docinfo>` (whose children may themselves be
+ * xi:included — e.g. a factored-out macros file), and a top-level
+ * `<xi:include href="docinfo.ptx"/>` standing in for the whole docinfo.
+ *
+ * Only the docinfo is resolved: scanning stops at the document element
+ * (<book>/<article>/…), which `<docinfo>` must precede, so the book's chapter
+ * includes are never read. Best-effort — returns undefined when there is no
+ * docinfo, or if resolution fails (a fragment preview without the project
+ * macros beats a failed render). `mainPath` anchors relative hrefs;
+ * `projectDir` bounds which files may be read.
+ */
+export async function extractDocinfo(
+  mainContent: string,
+  mainPath: string,
+  projectDir: string,
+): Promise<string | undefined> {
+  try {
+    const tree = fromXml(mainContent);
+    const root = tree.children.find(
+      (node): node is Element => node.type === "element",
+    );
+    if (!root) {
+      return undefined;
+    }
+    const rootPath = path.resolve(mainPath);
+    const baseDir = path.dirname(rootPath);
+    const context: ResolveContext = {
+      projectDir: path.resolve(projectDir),
+      stack: [rootPath],
+    };
+    const rootBindings = bindingsWithElement({ "": "" }, root);
+    for (const child of root.children) {
+      if (child.type !== "element") {
+        continue;
+      }
+      const childBindings = bindingsWithElement(rootBindings, child);
+      if (isDocinfo(child)) {
+        // A literal <docinfo>; resolve any includes nested inside it.
+        await resolveInTree(child, baseDir, childBindings, context);
+        return toXml(child);
+      }
+      if (isXInclude(child, childBindings)) {
+        // <docinfo> pulled in via xi:include (with its own nested includes
+        // resolved relative to the included file by expandInclude).
+        const expanded = await expandInclude(
+          child,
+          baseDir,
+          childBindings,
+          context,
+        );
+        const docinfo = expanded.find(
+          (node): node is Element =>
+            node.type === "element" && isDocinfo(node),
+        );
+        if (docinfo) {
+          return toXml(docinfo);
+        }
+        // Some other include before the document element — keep scanning.
+        continue;
+      }
+      // The document element (<book>/<article>/…). <docinfo> must come first,
+      // so there is none; stop before touching chapter includes.
+      break;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function findFallback(
   include: Element,
   bindings: NsBindings,

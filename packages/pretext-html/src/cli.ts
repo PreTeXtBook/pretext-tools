@@ -5,7 +5,7 @@
  * be piped or captured by a parent process (the VS Code extension does this).
  */
 
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import * as process from "node:process";
 import { renderHtml, type RenderOptions } from "./renderer.js";
 
@@ -25,17 +25,25 @@ Options:
   --fragment                Allow a non-root source file: wrap the fragment
                             in a minimal <pretext> document (an <article>,
                             or a <book> for <chapter>/<part> fragments)
+  --docinfo <file>          File whose contents (a <docinfo> element) are
+                            injected into the wrapper in --fragment mode, so
+                            the fragment keeps the project's LaTeX macros
+  --docinfo-source <file>   Complete source file (e.g. main.ptx) to lift the
+                            <docinfo> from for --fragment mode, resolving
+                            xi:includes (used when --docinfo is not given)
   -h, --help                Show this help
 `;
 
 interface CliArgs {
   options: RenderOptions;
   output?: string;
+  docinfoPath?: string;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
   let sourcePath: string | undefined;
   let output: string | undefined;
+  let docinfoPath: string | undefined;
   const options: Partial<RenderOptions> = {};
   const stringParams: Record<string, string> = {};
 
@@ -70,6 +78,12 @@ export function parseArgs(argv: string[]): CliArgs {
       case "--fragment":
         options.fragment = true;
         break;
+      case "--docinfo":
+        docinfoPath = next();
+        break;
+      case "--docinfo-source":
+        options.docinfoSourcePath = next();
+        break;
       case "--param": {
         const pair = next();
         const eq = pair.indexOf("=");
@@ -96,11 +110,14 @@ export function parseArgs(argv: string[]): CliArgs {
   if (Object.keys(stringParams).length > 0) {
     options.stringParams = stringParams;
   }
-  return { options: { ...options, sourcePath }, output };
+  return { options: { ...options, sourcePath }, output, docinfoPath };
 }
 
 export async function main(argv: string[]): Promise<void> {
-  const { options, output } = parseArgs(argv);
+  const { options, output, docinfoPath } = parseArgs(argv);
+  if (docinfoPath) {
+    options.docinfo = await readFile(docinfoPath, "utf8");
+  }
   const started = Date.now();
   const { html } = await renderHtml(options);
   process.stderr.write(`pretext-html: rendered in ${Date.now() - started}ms\n`);
