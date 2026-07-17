@@ -5,6 +5,7 @@ import { pretextOutputChannel, pretextTerminal, ptxSBItem } from "../ui";
 import { cli } from "../cli";
 import { spawn } from "child_process";
 import { ensureProjectList, projectTargetList } from "../project";
+import { Target } from "../types";
 
 export function cmdView(runInTerminal: boolean = false) {
   const selectedViewMethod: string =
@@ -47,6 +48,24 @@ export function cmdView(runInTerminal: boolean = false) {
   });
 }
 
+/**
+ * View a single target's built output directly, without a quick pick.
+ *
+ * Shared by `cmdViewCLI`'s quick-pick callback and the Targets tree view's
+ * inline view button. Runs `pretext view` in a terminal inside Codespaces (or
+ * when asked), otherwise spawns it and streams output to the log.
+ */
+export function viewTarget(target: Target, runInTerminal: boolean = false) {
+  const isCodespace = !!process.env.CODESPACES;
+  if (runInTerminal || isCodespace) {
+    let terminal = utils.setupTerminal(pretextTerminal);
+    terminal.sendText("pretext view " + target.name);
+  } else {
+    console.log("Viewing " + target.name);
+    runView(target.name, target.path);
+  }
+}
+
 export function cmdViewCLI(runInTerminal: boolean = false) {
   ensureProjectList();
   let targetSelection = projectTargetList({});
@@ -55,14 +74,10 @@ export function cmdViewCLI(runInTerminal: boolean = false) {
     if (!qpSelection) {
       return;
     }
-    const isCodespace = !!process.env.CODESPACES;
-    if (runInTerminal || isCodespace) {
-      let terminal = utils.setupTerminal(pretextTerminal);
-      terminal.sendText("pretext view " + qpSelection.label);
-    } else {
-      console.log("Viewing " + qpSelection.label);
-      runView(qpSelection.label, qpSelection.description);
-    }
+    viewTarget(
+      { name: qpSelection.label, path: qpSelection.description },
+      runInTerminal,
+    );
     // Move selected target to front of list for next command.
     targetSelection = targetSelection.filter((item) => item !== qpSelection);
     targetSelection.unshift(qpSelection);

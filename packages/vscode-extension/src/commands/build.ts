@@ -9,6 +9,7 @@ import {
 } from "../ui";
 import { cli } from "../cli";
 import { ensureProjectList, projects, projectTargetList } from "../project";
+import { Target } from "../types";
 
 export async function cmdBuildFile(runInTerminal: boolean = false) {
   // get the active text editor's file name
@@ -65,6 +66,29 @@ export async function cmdBuildFile(runInTerminal: boolean = false) {
   //}
 }
 
+/**
+ * Build a single (non-standalone) target directly, without a quick pick.
+ *
+ * Shared by `cmdBuildAny`'s quick-pick callback and the Targets tree view's
+ * inline build button. Records the target as the "last target" so
+ * `cmdBuildLast` and the status bar reflect it.
+ */
+export function buildTarget(target: Target, runInTerminal: boolean = false) {
+  if (runInTerminal) {
+    let terminal = utils.setupTerminal(pretextTerminal, target.path);
+    terminal.sendText("pretext build " + target.name);
+  } else {
+    runPretext(cli.cmd(), "build", target.name, target.path);
+  }
+  updateLastTarget({
+    name: target.name,
+    path: target.path,
+    standalone: false,
+    filename: "",
+  });
+  setTopCommand("Build target: " + target.name);
+}
+
 export async function cmdBuildAny(runInTerminal: boolean = false) {
   await ensureProjectList();
   let targetSelection = projectTargetList({ standalones: false });
@@ -73,27 +97,10 @@ export async function cmdBuildAny(runInTerminal: boolean = false) {
     if (!qpSelection) {
       return;
     }
-    if (runInTerminal) {
-      let terminal = utils.setupTerminal(
-        pretextTerminal,
-        qpSelection.description,
-      );
-      terminal.sendText("pretext build " + qpSelection.label);
-    } else {
-      runPretext(
-        cli.cmd(),
-        "build",
-        qpSelection.label,
-        qpSelection.description,
-      );
-    }
-    updateLastTarget({
-      name: qpSelection.label,
-      path: qpSelection.description,
-      standalone: false,
-      filename: "",
-    });
-    setTopCommand("Build target: " + lastTarget.name);
+    buildTarget(
+      { name: qpSelection.label, path: qpSelection.description },
+      runInTerminal,
+    );
   });
 }
 

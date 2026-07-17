@@ -47,12 +47,32 @@
     "views": {
       "pretext-sidebar": [
         {
+          "id": "pretextActions",
+          "name": "Actions",
+          "icon": "logo.svg"
+        },
+        {
+          "id": "pretextTargets",
+          "name": "Targets",
+          "icon": "logo.svg"
+        },
+        {
           "id": "pretextDocumentOutline",
           "name": "Document Outline",
           "icon": "logo.svg"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "pretextTargets",
+        "contents": "No PreTeXt project found in this workspace.\n[New Project](command:pretext-tools.new)\n[Import Project](command:pretext-tools.importProject)"
+      },
+      {
+        "view": "pretextDocumentOutline",
+        "contents": "Open a PreTeXt (.ptx) file to see its outline."
+      }
+    ],
     "grammars": [
       {
         "language": "pretext",
@@ -138,6 +158,24 @@
       {
         "command": "pretext-tools.refreshTargets",
         "title": "Refresh target list",
+        "icon": "$(refresh)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.buildTreeTarget",
+        "title": "Build target",
+        "icon": "$(play)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.viewTreeTarget",
+        "title": "View target",
+        "icon": "$(open-preview)",
+        "category": "PreTeXt"
+      },
+      {
+        "command": "pretext-tools.revealTargetDefinition",
+        "title": "Open target definition",
         "category": "PreTeXt"
       },
       {
@@ -228,6 +266,18 @@
         "title": "Refresh Document Outline",
         "category": "PreTeXt",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "pretext-tools.outlineScopeProject",
+        "title": "Outline: show whole project",
+        "category": "PreTeXt",
+        "icon": "$(book)"
+      },
+      {
+        "command": "pretext-tools.outlineScopeFile",
+        "title": "Outline: show current file only",
+        "category": "PreTeXt",
+        "icon": "$(file)"
       },
       {
         "command": "pretext-tools.viewCLI",
@@ -325,9 +375,50 @@
     "menus": {
       "view/title": [
         {
+          "command": "pretext-tools.outlineScopeProject",
+          "when": "view == pretextDocumentOutline && pretextOutline.scope == 'file'",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pretext-tools.outlineScopeFile",
+          "when": "view == pretextDocumentOutline && pretextOutline.scope == 'project'",
+          "group": "navigation@1"
+        },
+        {
           "command": "pretext-tools.refreshOutline",
           "when": "view == pretextDocumentOutline",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pretext-tools.refreshTargets",
+          "when": "view == pretextTargets",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pretext-tools.buildTreeTarget",
+          "when": "view == pretextTargets && viewItem == target",
+          "group": "inline@1"
+        },
+        {
+          "command": "pretext-tools.viewTreeTarget",
+          "when": "view == pretextTargets && viewItem == target",
+          "group": "inline@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "pretext-tools.buildTreeTarget",
+          "when": "false"
+        },
+        {
+          "command": "pretext-tools.viewTreeTarget",
+          "when": "false"
+        },
+        {
+          "command": "pretext-tools.revealTargetDefinition",
+          "when": "false"
         }
       ]
     },

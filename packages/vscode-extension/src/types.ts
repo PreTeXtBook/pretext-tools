@@ -30,6 +30,9 @@ export type Target = {
   path: string;
   standalone?: boolean;
   filename?: string;
+  format?: string;
+  /** Absolute path to the target's main source file, resolved from project.ptx. */
+  source?: string;
 };
 // Types for snippets
 type Snippet = {

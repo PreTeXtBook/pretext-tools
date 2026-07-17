@@ -60,6 +60,100 @@ describe("parseOutline", () => {
     );
     expect(section.character).toBe(4);
   });
+
+  it("does not let an untitled division steal a following division's title", () => {
+    const src = [
+      "<chapter>",
+      '  <section xml:id="s">',
+      "    <title>Real Section</title>",
+      "  </section>",
+      "</chapter>",
+    ].join("\n");
+
+    const [chapter] = parseOutline(src);
+    expect(chapter.title).toBe("");
+    expect(chapter.children.map((c) => c.title)).toEqual(["Real Section"]);
+  });
+
+  it("recognizes parts and nests chapters inside them", () => {
+    const src = [
+      "<book>",
+      "  <part>",
+      "    <title>Part One</title>",
+      "    <chapter><title>Ch A</title></chapter>",
+      "  </part>",
+      "</book>",
+    ].join("\n");
+
+    const [book] = parseOutline(src);
+    const part = book.children[0];
+    expect(part.tag).toBe("part");
+    expect(part.title).toBe("Part One");
+    expect(part.children.map((c) => c.title)).toEqual(["Ch A"]);
+  });
+
+  it("finds a tag on a line that also opens a comment", () => {
+    const src = [
+      "<chapter>",
+      '  <section xml:id="x"> <!-- TODO: write this -->',
+      "    <title>Kept</title>",
+      "  </section>",
+      "</chapter>",
+    ].join("\n");
+
+    const [chapter] = parseOutline(src);
+    expect(chapter.children).toHaveLength(1);
+    expect(chapter.children[0].xmlId).toBe("x");
+    expect(chapter.children[0].title).toBe("Kept");
+  });
+
+  it("still ignores tags inside a multi-line comment", () => {
+    const src = [
+      "<chapter>",
+      "  <!--",
+      "    <section><title>Ghost</title></section>",
+      "  -->",
+      "  <section><title>Real</title></section>",
+      "</chapter>",
+    ].join("\n");
+
+    const [chapter] = parseOutline(src);
+    expect(chapter.children.map((c) => c.title)).toEqual(["Real"]);
+  });
+
+  it("processes two closing tags on one line in textual order", () => {
+    const src = [
+      "<book>",
+      "  <chapter>",
+      "    <section><title>One</title>",
+      "  </section></chapter>",
+      "  <chapter><title>Two</title></chapter>",
+      "</book>",
+    ].join("\n");
+
+    const [book] = parseOutline(src);
+    // Both chapters are siblings under the book (the section did not swallow
+    // the second chapter, and the book stayed on the stack).
+    expect(book.children.map((c) => c.tag)).toEqual(["chapter", "chapter"]);
+    expect(book.children[1].title).toBe("Two");
+  });
+
+  it("sees both opening tags when two appear on one line", () => {
+    const src = ["<chapter><section><title>Inline</title></section>"].join("\n");
+    const [chapter] = parseOutline(src);
+    expect(chapter.tag).toBe("chapter");
+    expect(chapter.children.map((c) => c.tag)).toEqual(["section"]);
+  });
+
+  it("survives a stray closing tag with nothing open", () => {
+    const src = [
+      "</chapter>",
+      "<chapter><title>After</title></chapter>",
+    ].join("\n");
+
+    const roots = parseOutline(src);
+    expect(roots.map((r) => r.title)).toEqual(["After"]);
+  });
 });
 
 describe("extractTitle", () => {
