@@ -110,7 +110,7 @@
         "when": "editorTextFocus && editorLangId == 'pretext'"
       },
       {
-        "command": "pretext-tools.livePreview",
+        "command": "pretext-tools.instantPreview",
         "key": "ctrl+alt+l",
         "mac": "cmd+alt+l",
         "when": "editorTextFocus && editorLangId == 'pretext'"
@@ -192,16 +192,31 @@
       },
       {
         "command": "pretext-tools.livePreview",
-        "title": "Live Preview (side-by-side)",
+        "title": "Live Preview via CLI build (experimental)",
         "icon": "$(open-preview)",
         "category": "PreTeXt",
-        "description": "Open a live side-by-side HTML preview that auto-refreshes on save."
+        "description": "Open a side-by-side preview of built output, rebuilding with the PreTeXt CLI on save (experimental).",
+        "enablement": "config.pretext-tools.experimentalFeatures"
+      },
+      {
+        "command": "pretext-tools.instantPreview",
+        "title": "View Live Preview",
+        "icon": "$(zap)",
+        "category": "PreTeXt",
+        "description": "Open a live side-by-side HTML preview rendered with the built-in XSLT engine (no PreTeXt installation required); refreshes on save."
+      },
+      {
+        "command": "pretext-tools.instantPreviewScope",
+        "title": "Live Preview: Choose Scope (Current File / Whole Project)",
+        "category": "PreTeXt",
+        "description": "Pick whether the live preview renders just the active source file or the whole project."
       },
       {
         "command": "pretext-tools.forwardSearch",
-        "title": "Forward Search (scroll preview to cursor)",
+        "title": "Forward Search (scroll CLI live preview to cursor)",
         "category": "PreTeXt",
-        "description": "Scroll the live preview to the element at the cursor position."
+        "description": "Scroll the CLI-based live preview to the element at the cursor position (experimental).",
+        "enablement": "config.pretext-tools.experimentalFeatures"
       },
       {
         "command": "pretext-tools.outlineJumpToLine",
@@ -213,12 +228,6 @@
         "title": "Refresh Document Outline",
         "category": "PreTeXt",
         "icon": "$(refresh)"
-      },
-      {
-        "command": "pretext-tools.viewCodeChat",
-        "title": "Preview file with CodeChat",
-        "icon": "$(open-preview)",
-        "category": "PreTeXt"
       },
       {
         "command": "pretext-tools.viewCLI",
@@ -332,13 +341,11 @@
             "enum": [
               "Ask",
               "Live Preview",
-              "CodeChat",
               "PreTeXT-CLI View"
             ],
             "markdownEnumDescriptions": [
               "Ask for view method each time (default).",
-              "Open a live side-by-side HTML preview inside VS Code that auto-refreshes on save.",
-              "Use CodeChat to view the 'web' target in a separate tab of VS Code.  Auto-refreshes when a ptx files is saved (not recommended for large projects).  Requires CodeChat extension and CodeChat_Server installed via pip.",
+              "Open a live side-by-side HTML preview inside VS Code, rendered with the built-in XSLT engine and refreshed on save (no PreTeXt installation required).",
               "Use the `pretext view` command from the PreTeXt CLI.  Works with all targets.  Opens the output in a separate application."
             ],
             "markdownDescription": "Select which method to use when viewing the output of a pretext project.  Leaving this at the default will ask for available methods each time.  Your choice will likely depend on the size of your project and whether you are building output other than the 'web' target."
@@ -347,7 +354,34 @@
             "order": 3,
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Automatically rebuild and refresh the live preview when a `.ptx` file is saved."
+            "markdownDescription": "Automatically rebuild and refresh the CLI-based live preview (experimental) when a `.ptx` file is saved."
+          },
+          "pretext-tools.instantPreview.autoRefresh": {
+            "order": 4,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Automatically rebuild the live preview when a `.ptx` file is saved."
+          },
+          "pretext-tools.instantPreview.scope": {
+            "order": 4,
+            "type": "string",
+            "enum": [
+              "current-file",
+              "project"
+            ],
+            "enumDescriptions": [
+              "Render only the active source file. Fragments (a chapter or section pulled in via xi:include) are wrapped in a minimal document; numbering and cross-references outside the file are placeholders.",
+              "Render the project's main source file with all xi:includes."
+            ],
+            "default": "current-file",
+            "markdownDescription": "What the live preview renders: the current source file (fast) or the whole project."
+          },
+          "pretext-tools.instantPreview.nodePath": {
+            "order": 4,
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "markdownDescription": "Path to a Node.js (version 22+) executable for the live preview worker. Only used when VS Code's built-in runtime lacks WebAssembly JSPI support; leave empty to use `node` from your PATH."
           },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
@@ -608,6 +642,7 @@
     "@pretextbook/format": "*",
     "@pretextbook/import": "*",
     "@pretextbook/latex-pretext": "*",
+    "@pretextbook/pretext-html": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
     "@pretextbook/schema": "*",

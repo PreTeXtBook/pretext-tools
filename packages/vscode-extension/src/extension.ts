@@ -8,17 +8,17 @@ import {
   refreshProjects,
   showLog,
 } from "./ui";
-import {
-  cmdView,
-  cmdViewCLI,
-  cmdViewCodeChat,
-  cmdViewVisualEditor,
-} from "./commands/view";
+import { cmdView, cmdViewCLI, cmdViewVisualEditor } from "./commands/view";
 import {
   cmdLivePreview,
   cmdForwardSearch,
   disposeLivePreview,
 } from "./livePreview";
+import {
+  cmdInstantPreview,
+  cmdInstantPreviewScope,
+  disposeInstantPreview,
+} from "./instantPreview";
 import {
   PretextDocumentOutlineProvider,
   cmdOutlineJumpToLine,
@@ -130,12 +130,17 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("pretext-tools.generate", cmdGenerate),
     commands.registerCommand("pretext-tools.view", cmdView),
     commands.registerCommand("pretext-tools.viewCLI", cmdViewCLI),
-    commands.registerCommand("pretext-tools.viewCodeChat", cmdViewCodeChat),
     commands.registerCommand(
       "pretext-tools.viewVisualEditor",
       cmdViewVisualEditor,
     ),
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    commands.registerCommand("pretext-tools.instantPreview", () =>
+      cmdInstantPreview(context.extensionPath),
+    ),
+    commands.registerCommand("pretext-tools.instantPreviewScope", () =>
+      cmdInstantPreviewScope(context.extensionPath),
+    ),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand(
       "pretext-tools.outlineJumpToLine",
@@ -203,6 +208,7 @@ export async function activate(context: ExtensionContext) {
 // this method is called when your extension is deactivated
 export function deactivate() {
   disposeLivePreview();
+  disposeInstantPreview();
   lspDeactivate();
   if (pretextTerminal) {
     pretextTerminal.dispose();

@@ -1,0 +1,52 @@
+{
+  "name": "@pretextbook/pretext-html",
+  "version": "0.1.0",
+  "description": "Convert PreTeXt documents to HTML in pure JavaScript using the official PreTeXt XSLT stylesheets via libxslt-wasm. No Python or PreTeXt installation required.",
+  "author": "Oscar Levin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PreTeXtBook/pretext-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
+  },
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/packages/pretext-html#readme",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "pretext-html": "./cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./cli": "./dist/cli.js"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "assets",
+    "cli.mjs"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "refresh-xsl": "node scripts/refresh-xsl.mjs"
+  },
+  "dependencies": {
+    "@pretextbook/libxslt-wasm": "^0.1.1",
+    "xast-util-from-xml": "^4.0.0",
+    "xast-util-to-xml": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

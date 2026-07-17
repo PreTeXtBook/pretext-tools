@@ -1,4 +1,4 @@
-import { commands, extensions, ViewColumn, window, workspace } from "vscode";
+import { commands, ViewColumn, window, workspace } from "vscode";
 import * as utils from "../utils";
 import { pretextOutputChannel, pretextTerminal, ptxSBItem } from "../ui";
 
@@ -9,43 +9,42 @@ import { ensureProjectList, projectTargetList } from "../project";
 export function cmdView(runInTerminal: boolean = false) {
   const selectedViewMethod: string =
     workspace.getConfiguration("pretext-tools").get("viewMethod") || "Ask";
-  // Create and use a quick-select box if user has not set a configuration for view:
-  if (selectedViewMethod === "Ask") {
-    let viewMethods = [];
-    // Live Preview is always available as the first option
+  switch (selectedViewMethod) {
+    case "Live Preview":
+      commands.executeCommand("pretext-tools.instantPreview");
+      return;
+    case "PreTeXT-CLI View":
+      commands.executeCommand("pretext-tools.viewCLI", runInTerminal);
+      return;
+  }
+  // "Ask" (default) — also the fallback for retired settings values such as
+  // the removed "CodeChat" method.
+  let viewMethods = [
+    {
+      label: "Live preview (side-by-side)",
+      command: "pretext-tools.instantPreview",
+    },
+  ];
+  if (
+    workspace
+      .getConfiguration("pretext-tools")
+      .get<boolean>("experimentalFeatures", false)
+  ) {
     viewMethods.push({
-      label: "Live Preview (side-by-side)",
+      label: "Live Preview via CLI build (experimental)",
       command: "pretext-tools.livePreview",
     });
-    if (extensions.getExtension("CodeChat.codechat")) {
-      viewMethods.push({
-        label: "Use CodeChat",
-        command: "pretext-tools.viewCodeChat",
-      });
-    }
-    viewMethods.push({
-      label: "Use PreTeXt's view command (external browser)",
-      command: "pretext-tools.viewCLI",
-    });
-    window.showQuickPick(viewMethods).then((qpSelection) => {
-      if (!qpSelection) {
-        return;
-      }
-      commands.executeCommand(qpSelection.command);
-    });
-  } else if (selectedViewMethod === "Live Preview") {
-    commands.executeCommand("pretext-tools.livePreview");
-  } else {
-    // otherwise honor the users setting choice.
-    switch (selectedViewMethod) {
-      case "CodeChat":
-        commands.executeCommand("pretext-tools.viewCodeChat");
-        break;
-      case "PreTeXT-CLI View":
-        commands.executeCommand("pretext-tools.viewCLI", runInTerminal);
-        break;
-    }
   }
+  viewMethods.push({
+    label: "Use PreTeXt's view command (external browser)",
+    command: "pretext-tools.viewCLI",
+  });
+  window.showQuickPick(viewMethods).then((qpSelection) => {
+    if (!qpSelection) {
+      return;
+    }
+    commands.executeCommand(qpSelection.command);
+  });
 }
 
 export function cmdViewCLI(runInTerminal: boolean = false) {
@@ -69,16 +68,6 @@ export function cmdViewCLI(runInTerminal: boolean = false) {
     targetSelection.unshift(qpSelection);
     return undefined;
   });
-}
-
-export function cmdViewCodeChat() {
-  if (extensions.getExtension("CodeChat.codechat")) {
-    commands.executeCommand("extension.codeChatActivate");
-  } else {
-    window.showErrorMessage(
-      "Unable to start CodeChat preview.  Is the 'CodeChat' extension and CodeChat_Server (through pip) installed?",
-    );
-  }
 }
 
 // The main function to run pretext commands:
