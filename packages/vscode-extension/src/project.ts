@@ -17,10 +17,14 @@ export async function ensureProjectList() {
   }
 }
 
-export async function resetProjectList() {
+export async function resetProjectList({
+  silent = false,
+}: { silent?: boolean } = {}) {
   projects = [];
   await updateProjectList();
-  window.showInformationMessage("Refreshed projects and targets.");
+  if (!silent) {
+    window.showInformationMessage("Refreshed projects and targets.");
+  }
 }
 
 export function projectTargetList({

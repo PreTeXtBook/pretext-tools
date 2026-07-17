@@ -24,11 +24,11 @@ export function showLog() {
   updateStatusBarItem(ptxSBItem);
 }
 
-export function refreshProjects() {
+export async function refreshProjects() {
   pretextOutputChannel.append("Refreshing project/target list.");
   console.log("Refreshing project/target list.");
   //reset projects:
-  resetProjectList();
+  await resetProjectList();
 }
 
 export let pretextTerminal: Terminal;

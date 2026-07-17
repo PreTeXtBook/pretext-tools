@@ -8,7 +8,12 @@ import {
   refreshProjects,
   showLog,
 } from "./ui";
-import { cmdView, cmdViewCLI, cmdViewVisualEditor } from "./commands/view";
+import {
+  cmdView,
+  cmdViewCLI,
+  cmdViewVisualEditor,
+  viewTarget,
+} from "./commands/view";
 import {
   cmdLivePreview,
   cmdForwardSearch,
@@ -23,6 +28,12 @@ import {
   PretextDocumentOutlineProvider,
   cmdOutlineJumpToLine,
 } from "./documentOutline";
+import { PretextActionsProvider } from "./actionsView";
+import {
+  PretextTargetsProvider,
+  TargetNode,
+  cmdRevealTargetDefinition,
+} from "./targetsView";
 import { cmdNew } from "./commands/new";
 import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
@@ -33,6 +44,7 @@ import {
   cmdConvertText,
 } from "./commands/convert";
 import {
+  buildTarget,
   cmdBuildAny,
   cmdBuildFile,
   cmdBuildLast,
@@ -46,7 +58,7 @@ import {
   lspFormatDocument,
   lspFormatText,
 } from "./lsp-client/main";
-import { projects } from "./project";
+import { projects, resetProjectList } from "./project";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
 import { convertToPretext } from "./importFiles";
@@ -106,6 +118,9 @@ export async function activate(context: ExtensionContext) {
   ///////////////// Commands //////////////////////
 
   // Import or define the client instance for LSP communication
+
+  // Targets tree view — declared here so the target/refresh commands can drive it.
+  const targetsProvider = new PretextTargetsProvider();
 
   context.subscriptions.push(
     commands.registerCommand("pretext-tools.experiment", () => {
@@ -167,7 +182,22 @@ export async function activate(context: ExtensionContext) {
       convertToPretext,
     ),
     commands.registerCommand("pretext-tools.showLog", showLog),
-    commands.registerCommand("pretext-tools.refreshTargets", refreshProjects),
+    commands.registerCommand("pretext-tools.refreshTargets", async () => {
+      await refreshProjects();
+      targetsProvider.refresh();
+    }),
+    commands.registerCommand(
+      "pretext-tools.buildTreeTarget",
+      (node: TargetNode) => buildTarget(node.target),
+    ),
+    commands.registerCommand(
+      "pretext-tools.viewTreeTarget",
+      (node: TargetNode) => viewTarget(node.target),
+    ),
+    commands.registerCommand(
+      "pretext-tools.revealTargetDefinition",
+      cmdRevealTargetDefinition,
+    ),
     //commands.registerCommand("pretext-tools.installSage", cmdInstallSage),
     commands.registerCommand("pretext-tools.gettingStarted", () => {
       console.log("Opening getting started walkthrough");
@@ -179,13 +209,44 @@ export async function activate(context: ExtensionContext) {
     }),
   );
 
-  // Register the document outline tree view
-  const outlineProvider = new PretextDocumentOutlineProvider();
+  // Register the actions tree view
   context.subscriptions.push(
+    window.registerTreeDataProvider(
+      "pretextActions",
+      new PretextActionsProvider(),
+    ),
+  );
+
+  // Register the document outline tree view
+  const outlineProvider = new PretextDocumentOutlineProvider(context);
+  context.subscriptions.push(
+    outlineProvider,
     window.registerTreeDataProvider("pretextDocumentOutline", outlineProvider),
     commands.registerCommand("pretext-tools.refreshOutline", () =>
       outlineProvider.refresh(),
     ),
+    commands.registerCommand("pretext-tools.outlineScopeProject", () =>
+      outlineProvider.setScope("project"),
+    ),
+    commands.registerCommand("pretext-tools.outlineScopeFile", () =>
+      outlineProvider.setScope("file"),
+    ),
+  );
+
+  // Register the targets tree view and keep both it and the project outline in
+  // sync with project.ptx.
+  const manifestWatcher = workspace.createFileSystemWatcher("**/project.ptx");
+  const onManifestChange = async () => {
+    await resetProjectList({ silent: true });
+    targetsProvider.refresh();
+    outlineProvider.refresh();
+  };
+  context.subscriptions.push(
+    window.registerTreeDataProvider("pretextTargets", targetsProvider),
+    manifestWatcher,
+    manifestWatcher.onDidChange(onManifestChange),
+    manifestWatcher.onDidCreate(onManifestChange),
+    manifestWatcher.onDidDelete(onManifestChange),
   );
 
   console.log("Current projects: ", projects);
