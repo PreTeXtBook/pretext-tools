@@ -139,17 +139,18 @@ describe("parseOutline", () => {
   });
 
   it("sees both opening tags when two appear on one line", () => {
-    const src = ["<chapter><section><title>Inline</title></section>"].join("\n");
+    const src = ["<chapter><section><title>Inline</title></section>"].join(
+      "\n",
+    );
     const [chapter] = parseOutline(src);
     expect(chapter.tag).toBe("chapter");
     expect(chapter.children.map((c) => c.tag)).toEqual(["section"]);
   });
 
   it("survives a stray closing tag with nothing open", () => {
-    const src = [
-      "</chapter>",
-      "<chapter><title>After</title></chapter>",
-    ].join("\n");
+    const src = ["</chapter>", "<chapter><title>After</title></chapter>"].join(
+      "\n",
+    );
 
     const roots = parseOutline(src);
     expect(roots.map((r) => r.title)).toEqual(["After"]);

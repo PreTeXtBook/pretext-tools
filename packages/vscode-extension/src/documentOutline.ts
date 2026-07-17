@@ -93,9 +93,7 @@ class OutlineNode {
  * TreeDataProvider that parses PreTeXt source and provides the document
  * structure as a tree for the VS Code sidebar.
  */
-export class PretextDocumentOutlineProvider
-  implements TreeDataProvider<OutlineNode>
-{
+export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineNode> {
   private _onDidChangeTreeData = new EventEmitter<
     OutlineNode | undefined | null
   >();
@@ -339,9 +337,7 @@ export class PretextDocumentOutlineProvider
     const groups: OutlineNode[] = [];
     for (const source of sources) {
       const items = await parseProjectOutline(source, readProjectFile);
-      const children = items.map((item) =>
-        this.toNode(item, Uri.file(source)),
-      );
+      const children = items.map((item) => this.toNode(item, Uri.file(source)));
       groups.push(
         new OutlineNode(
           "project-source",
