@@ -304,8 +304,7 @@ export async function extractDocinfo(
           context,
         );
         const docinfo = expanded.find(
-          (node): node is Element =>
-            node.type === "element" && isDocinfo(node),
+          (node): node is Element => node.type === "element" && isDocinfo(node),
         );
         if (docinfo) {
           return toXml(docinfo);

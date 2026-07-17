@@ -17,9 +17,9 @@ export const ptxCommandList = [
     command: "pretext-tools.buildFile",
   },
   {
-    label: "Preview file with CodeChat",
-    description: "show in CodeChat preview",
-    command: "pretext-tools.viewCodeChat",
+    label: "View live preview",
+    description: "side-by-side, refreshes on save",
+    command: "pretext-tools.instantPreview",
   },
   {
     label: "View full document",

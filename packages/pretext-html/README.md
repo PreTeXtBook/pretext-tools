@@ -113,12 +113,12 @@ const { html } = await renderHtml({
 
 ## Limitations (current WASM build)
 
-| Limitation                                          | Cause                                           | Fix                                                                         |
-| --------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
-| No multi-file output (`exsl:document`)              | Compiled with `FILESYSTEM=0`                    | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
-| Node only, JSPI flag required                       | Loader fetches resources mid-transform via JSPI | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
-| No generated images (latex-image, sageplot, …)      | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
-| `xi:include` with `xpointer` unsupported            | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+| Limitation                                     | Cause                                           | Fix                                                                         |
+| ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
+| No multi-file output (`exsl:document`)         | Compiled with `FILESYSTEM=0`                    | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
+| Node only, JSPI flag required                  | Loader fetches resources mid-transform via JSPI | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
+| No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
+| `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
 
 The whole-book stack overflow ("memory access out of bounds") that the stock
 `libxslt-wasm` build hit on large documents is **fixed** in the

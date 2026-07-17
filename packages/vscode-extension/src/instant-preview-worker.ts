@@ -150,7 +150,9 @@ function serve(): void {
   // A render failure is reported per-request; never let a stray async error
   // take down the long-lived process.
   process.on("unhandledRejection", (reason) => {
-    console.error(`instant-preview-worker: unhandled rejection: ${String(reason)}`);
+    console.error(
+      `instant-preview-worker: unhandled rejection: ${String(reason)}`,
+    );
   });
 
   // Exit when the parent disconnects (panel closed / extension deactivated).

@@ -1,11 +1,12 @@
 /**
- * Instant Preview panel for PreTeXt documents.
+ * Live Preview panel for PreTeXt documents (the extension's main preview,
+ * surfaced as "View Live Preview"; historically "Instant Preview").
  *
- * Unlike the Live Preview (livePreview.ts), which shells out to the `pretext`
- * CLI and needs a Python installation, the Instant Preview runs the official
- * PreTeXt XSLT in-process via @pretextbook/pretext-html (libxslt compiled to
- * WebAssembly). No PreTeXt installation is required and rebuilds take well
- * under a second for article-sized documents.
+ * Unlike the experimental CLI-based preview (livePreview.ts), which shells
+ * out to the `pretext` CLI and needs a Python installation, this preview runs
+ * the official PreTeXt XSLT in-process via @pretextbook/pretext-html (libxslt
+ * compiled to WebAssembly). No PreTeXt installation is required and rebuilds
+ * take well under a second for article-sized documents.
  *
  * The transform runs in a separate worker process
  * (out/instant-preview-worker.mjs) because WebAssembly JSPI may need to be
@@ -109,21 +110,10 @@ function previewScope(): PreviewScope {
  * document's project.
  */
 export async function cmdInstantPreview(extensionPath: string): Promise<void> {
-  const experimentalEnabled = workspace
-    .getConfiguration("pretext-tools")
-    .get<boolean>("experimentalFeatures", false);
-  if (!experimentalEnabled) {
-    window.showInformationMessage(
-      "The instant preview is experimental. Enable the " +
-        '"pretext-tools.experimentalFeatures" setting to try it.',
-    );
-    return;
-  }
-
   const source = resolveSource();
   if (!source) {
     window.showErrorMessage(
-      "Open a PreTeXt (.ptx) file to use the instant preview.",
+      "Open a PreTeXt (.ptx) file to use the live preview.",
     );
     return;
   }
@@ -132,7 +122,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
   if (!currentPanel) {
     currentPanel = window.createWebviewPanel(
       "pretextInstantPreview",
-      "PreTeXt Instant Preview",
+      "PreTeXt Live Preview",
       ViewColumn.Beside,
       { enableScripts: true, retainContextWhenHidden: true },
     );
@@ -186,7 +176,7 @@ export async function cmdInstantPreviewScope(
         picked: current === "project",
       },
     ],
-    { placeHolder: `Instant preview scope (currently: ${current})` },
+    { placeHolder: `Live preview scope (currently: ${current})` },
   );
   if (!picked || picked.scope === current) {
     return;
@@ -906,7 +896,10 @@ async function revealSource(ids: string[]): Promise<void> {
   }
   try {
     const document = await workspace.openTextDocument(entry.file);
-    const position = new Position(entry.line - 1, Math.max(0, entry.column - 1));
+    const position = new Position(
+      entry.line - 1,
+      Math.max(0, entry.column - 1),
+    );
     await window.showTextDocument(document, {
       viewColumn: ViewColumn.One,
       selection: new Range(position, position),

@@ -13,7 +13,7 @@ A Visual Studio Code extension to make writing PreTeXt documents easier.
 - Schema support via the [vscode-xml](https://github.com/redhat-developer/vscode-xml) extension (which also provides many xml tools).
 - A large collection of snippets for most PreTeXt elements. Smart completions based on the schema.
 - A front-end for the [PreTeXt-CLI](https://github.com/PreTeXtBook/pretext-cli), with commands available through a statusbar menu, keyboard shortcuts (Ctrl+Alt+P for command menu, Ctrl-Alt-B to build, Ctrl-Alt-V to view, etc.), and the command pallet (search for PreTeXT).
-- Support for the CodeChat extension to view output, as well as via the PreTeXt-CLI.
+- A built-in live preview: view your document side-by-side with the source, rendered in-editor with no PreTeXt installation required, refreshing on save with two-way sync between source and preview.
 - Use pandoc to convert almost any file format to PreTeXt.
 - Convert small passages of LaTeX to PreTeXt (experimental).
 - Formatter specific to PreTeXt (experimental).

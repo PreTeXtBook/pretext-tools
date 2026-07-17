@@ -1,5 +1,6 @@
 Generic Video Preview Image
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+```
 
 2023-02-07: This image was previously provided for LaTeX output as a macro that resolves to a TikZ version.  See removed code and comments below.  In HTML we use an SVG we have mildly edited.  Search the HTML conversion for a template with name "generic-preview-svg".
 
@@ -42,3 +43,4 @@ The purpose of the PNG image is to be the static version created via the pre-pro
 (64.0200,47.9100) -- (38.2800,61.4100) -- cycle;
 \end{tikzpicture}
 }
+```

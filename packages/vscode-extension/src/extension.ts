@@ -8,12 +8,7 @@ import {
   refreshProjects,
   showLog,
 } from "./ui";
-import {
-  cmdView,
-  cmdViewCLI,
-  cmdViewCodeChat,
-  cmdViewVisualEditor,
-} from "./commands/view";
+import { cmdView, cmdViewCLI, cmdViewVisualEditor } from "./commands/view";
 import {
   cmdLivePreview,
   cmdForwardSearch,
@@ -135,7 +130,6 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("pretext-tools.generate", cmdGenerate),
     commands.registerCommand("pretext-tools.view", cmdView),
     commands.registerCommand("pretext-tools.viewCLI", cmdViewCLI),
-    commands.registerCommand("pretext-tools.viewCodeChat", cmdViewCodeChat),
     commands.registerCommand(
       "pretext-tools.viewVisualEditor",
       cmdViewVisualEditor,
