@@ -38,11 +38,7 @@ import { cmdNew } from "./commands/new";
 import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
 //import { ptxExperiment } from "./commands/experiment";
-import {
-  cmdConvertFile,
-  cmdExperimentConvert,
-  cmdConvertText,
-} from "./commands/convert";
+import { cmdExperimentConvert, cmdConvertText } from "./commands/convert";
 import {
   buildTarget,
   cmdBuildAny,
@@ -61,7 +57,6 @@ import {
 import { projects, resetProjectList } from "./project";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
-import { convertToPretext } from "./importFiles";
 import { cmdImportProject } from "./importWizardPanel";
 
 // this method is called when your extension is activated
@@ -176,11 +171,6 @@ export async function activate(context: ExtensionContext) {
       }
     }),
     commands.registerCommand("pretext-tools.convertText", cmdConvertText),
-    commands.registerCommand("pretext-tools.convertFile", cmdConvertFile),
-    commands.registerCommand(
-      "pretext-tools.convertFilePandoc",
-      convertToPretext,
-    ),
     commands.registerCommand("pretext-tools.showLog", showLog),
     commands.registerCommand("pretext-tools.refreshTargets", async () => {
       await refreshProjects();

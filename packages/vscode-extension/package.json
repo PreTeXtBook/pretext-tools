@@ -318,19 +318,6 @@
         "description": "Spell checks the PreTeXt source file using Code Spell Checker."
       },
       {
-        "command": "pretext-tools.convertFilePandoc",
-        "title": "Convert external file to PreTeXt using Pandoc",
-        "category": "PreTeXt",
-        "description": "Converts a selected external file to PreTeXt pandoc (if installed)."
-      },
-      {
-        "command": "pretext-tools.convertFile",
-        "title": "Convert external file to PreTeXt",
-        "category": "PreTeXt",
-        "description": "Converts a selected external file to PreTeXt using plastex or pandoc (if installed).",
-        "enablement": "config.pretext-tools.experimentalFeatures"
-      },
-      {
         "command": "pretext-tools.convertText",
         "title": "Convert to PreTeXt",
         "category": "PreTeXt",
@@ -715,7 +702,7 @@
     "esbuild-base": "node build.mjs",
     "esbuild": "npm run esbuild-base -- --sourcemap",
     "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
-    "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && npm run copy-assets && concurrently --kill-others -n \"visual-editor,extension,webview\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\"",
+    "watch:all": "npm --prefix ../visual-editor run build && npm run build:webview && npm run copy-assets && concurrently --kill-others -n \"visual-editor,extension,webview,import\" \"npm --prefix ../visual-editor run watch\" \"npm run esbuild-watch\" \"vite build --watch --config vite.webview.config.mts\" \"vite build --watch --config vite.webview-import.config.mts\"",
     "watch": "npm run copy-assets && npm run esbuild-watch",
     "copy-assets": "node ../../scripts/copy-vscode-extension-assets.mjs",
     "test-compile": "tsc -p ./ --noEmit",
