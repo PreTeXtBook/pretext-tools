@@ -57,7 +57,6 @@ Quick reference for other test suites:
 
 ```bash
 npm run test -w @pretextbook/completions    # Vitest
-npm run test -w prettier-plugin-pretext     # Vitest  
 npm run test -w @pretextbook/schema         # Vitest
 npm run test:reliability                    # Conversion reliability matrix (remark-pretext, etc.)
 ```

@@ -56,11 +56,6 @@ const packages = [
     oldPrefix: "visual-editor-v",
   },
   {
-    dir: "prettier-plugin-pretext",
-    name: "prettier-plugin-pretext",
-    oldPrefix: null,
-  },
-  {
     dir: "vscode-extension",
     name: "pretext-tools",
     oldPrefix: "v",
