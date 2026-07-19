@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.0.0] - 2026-07-19
+
 ### Added
 
 - New sidebar view for PreTeXt commands, build/view per target, and document outline (can be full document or just the current file).
