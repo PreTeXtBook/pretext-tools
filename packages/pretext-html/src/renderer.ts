@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import { forcePortablePublication } from "./publication.js";
 import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
+import { injectThemeBridge, type PreviewTheme } from "./theme.js";
 import {
   extractDocinfo,
   resolveXIncludes,
@@ -86,6 +87,15 @@ export interface RenderOptions {
    * sourcemap.ts for the id contract with pretext-assembly.xsl.
    */
   sourceMap?: boolean;
+  /**
+   * Let the embedding app control the preview's light/dark theme. When set, a
+   * small bridge script is injected into the page that applies this value as
+   * the initial theme and then follows `postMessage`s from the embedder (see
+   * `previewThemeMessage` / theme.ts). Omit to leave the page's native
+   * behaviour (localStorage + `prefers-color-scheme`) untouched — the output
+   * is then byte-identical to a render without this option.
+   */
+  theme?: PreviewTheme;
 }
 
 export interface RenderResult {
@@ -422,8 +432,12 @@ export async function renderHtml(
       doc.delete();
     }
     try {
+      let html = fixMathJaxImport(result.toHtmlString());
+      if (options.theme) {
+        html = injectThemeBridge(html, options.theme);
+      }
       return {
-        html: fixMathJaxImport(result.toHtmlString()),
+        html,
         ...(sourceMap ? { sourceMap } : {}),
       };
     } catch (error) {

@@ -16,6 +16,13 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "theme": [
+        "./dist/theme.d.ts"
+      ]
+    }
+  },
   "bin": {
     "pretext-html": "./cli.mjs"
   },
@@ -24,6 +31,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.ts",
+      "import": "./dist/theme.js",
+      "default": "./dist/theme.js"
     },
     "./cli": "./dist/cli.js"
   },

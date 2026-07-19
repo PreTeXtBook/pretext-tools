@@ -10,6 +10,19 @@ export type { RenderOptions, RenderResult } from "./renderer.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
 export { forcePortablePublication } from "./publication.js";
+// Runtime light/dark theme control (see theme.ts). The renderer injects the
+// bridge when RenderOptions.theme is set; embedders post previewThemeMessage()
+// to update it live. Also published as the dependency-free
+// "@pretextbook/pretext-html/theme" subpath for embedders that only need the
+// message protocol and not the WASM renderer.
+export {
+  PREVIEW_THEME_MESSAGE,
+  isPreviewTheme,
+  previewThemeMessage,
+  themeBridgeScript,
+  injectThemeBridge,
+} from "./theme.js";
+export type { PreviewTheme, PreviewThemeMessage } from "./theme.js";
 // The CLI driver, re-exported so embedders that fork a bundled worker (the
 // VS Code extension) can reuse the argument parsing and stdout protocol.
 export { main as runCli } from "./cli.js";

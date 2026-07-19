@@ -71,6 +71,43 @@ const { html } = await renderHtml({
   makes single-page in-memory output possible.
 - The compiled stylesheet is cached per `xslDir` (~1s to compile, then
   ~100ms–1s per render depending on document size).
+- `theme: "dark" | "light" | "system"` makes the preview follow the embedding
+  app's light/dark theme (see [Theme control](#theme-control)).
+
+### Theme control
+
+A rendered page can already switch between light and dark — pretext-core.js
+exposes `window.setDarkMode(isDark)` — but on its own it only decides which to
+use from `localStorage` and `prefers-color-scheme`. Neither reflects an
+embedder's surroundings ("VS Code is in a dark editor theme", "pretext.plus is
+in dark mode"). The `theme` render option lets the app drive it instead:
+
+```js
+import { renderHtml } from "@pretextbook/pretext-html";
+// dependency-free subpath — no WASM renderer pulled in:
+import { previewThemeMessage } from "@pretextbook/pretext-html/theme";
+
+const { html } = await renderHtml({
+  sourcePath: "source/main.ptx",
+  theme: "dark", // initial theme baked in (no light-then-dark flash)
+});
+
+// Later, when the host theme changes, post an update — no re-render needed:
+iframe.contentWindow.postMessage(previewThemeMessage("light"), "*");
+// (VS Code webview: webview.postMessage(previewThemeMessage("light")))
+// (inline render:  window.postMessage(previewThemeMessage("light"), "*"))
+```
+
+When `theme` is set, the renderer injects a small script into the page `<head>`
+that (1) applies the initial theme and (2) listens for
+`postMessage({ type: "pretext-html:set-theme", theme })` from the embedder and
+re-applies live. `"system"` follows `prefers-color-scheme`. Omit `theme`
+entirely and the output is byte-identical to a plain render — the page keeps
+its native `localStorage`/`prefers-color-scheme` behaviour. The
+`@pretextbook/pretext-html/theme` subpath exports the protocol
+(`PreviewTheme`, `PREVIEW_THEME_MESSAGE`, `previewThemeMessage`,
+`isPreviewTheme`) with no dependency on the renderer, so a host can import just
+the message helper.
 
 ## Requirements
 
