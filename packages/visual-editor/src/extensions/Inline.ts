@@ -140,7 +140,17 @@ const Inline = Extension.create({
   name: "myinline",
 
   addExtensions() {
-    return [MyText, MyHardBreak, Term, Emph, Alert, CodeInline];
+    // NOTE: the order of the marks here is significant. ProseMirror stores
+    // a node's marks in schema-rank order (= registration order), and
+    // json2ptx serializes nested marks in that same order. Marks are SETS
+    // in ProseMirror — the original nesting order of the source is not
+    // recorded — so only nesting that matches this rank order can be
+    // reproduced on save. The order below makes the natural direction
+    // work: <em>/<alert> as outer phrase emphasis, <term> inside, and <c>
+    // (inline code) innermost. Reverse nesting (e.g. <term><em>…</em></term>)
+    // is canonicalized and therefore refused by the round-trip guard; see
+    // roundtrip.gaps.spec.ts.
+    return [MyText, MyHardBreak, Emph, Alert, Term, CodeInline];
   },
 });
 

@@ -158,17 +158,8 @@ const Subsection = Node.create({
       },
     ];
   },
-  addAttributes() {
-    return {
-      label: {
-        default: null,
-        parseHTML: (element) => element.getAttribute("label"),
-      },
-      "xml:id": {
-        parseHTML: (element) => element.getAttribute("xml:id"),
-      },
-    };
-  },
+  // Source attributes (xml:id etc.) are captured generically by the
+  // PtxSourceAttributes extension in editorExtensions.ts.
   renderHTML({ HTMLAttributes }) {
     return [
       "section",

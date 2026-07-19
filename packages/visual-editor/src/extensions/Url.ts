@@ -15,13 +15,10 @@ const Url = Node.create({
     ];
   },
 
-  addAttributes() {
-    return {
-      href: {
-        parseHTML: (element) => element.getAttribute("href"),
-      },
-    };
-  },
+  // href (and any other source attribute) is captured generically by the
+  // PtxSourceAttributes extension in editorExtensions.ts; its renderHTML
+  // spreads the captured attributes onto the rendered <a>, so the link
+  // still works in the editor view.
 
   renderHTML({ HTMLAttributes }) {
     return ["a", mergeAttributes({ ptxtag: "url" }, HTMLAttributes), 0];

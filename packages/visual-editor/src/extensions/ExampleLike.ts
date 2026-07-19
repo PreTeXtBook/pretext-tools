@@ -29,19 +29,8 @@ const ExampleLike = Extension.create({
               },
             ];
           },
-          addAttributes() {
-            return {
-              label: {
-                parseHTML: (element) => element.getAttribute("label"),
-              },
-              "xml:id": {
-                parseHTML: (element) => element.getAttribute("xml:id"),
-              },
-              component: {
-                parseHTML: (element) => element.getAttribute("component"),
-              },
-            };
-          },
+          // Source attributes are captured generically by the
+          // PtxSourceAttributes extension in editorExtensions.ts.
 
           renderHTML({ HTMLAttributes }) {
             return [
@@ -79,19 +68,8 @@ const ExampleLike = Extension.create({
               },
             ];
           },
-          addAttributes() {
-            return {
-              label: {
-                parseHTML: (element) => element.getAttribute("label"),
-              },
-              "xml:id": {
-                parseHTML: (element) => element.getAttribute("xml:id"),
-              },
-              component: {
-                parseHTML: (element) => element.getAttribute("component"),
-              },
-            };
-          },
+          // Source attributes are captured generically by the
+          // PtxSourceAttributes extension in editorExtensions.ts.
 
           renderHTML({ HTMLAttributes }) {
             return [

@@ -167,6 +167,20 @@
     color: var(--text-primary);
   }
 
+  /* Inline chip for unknown inline elements (<xref>, <fn>, ...) wrapped by
+     cleanPtx as <rawptx-inline>. Shows the raw source in the paragraph's
+     text flow; the text is editable in place. */
+  .rawptx-inline {
+    font-family: "JetBrainsMono", monospace;
+    font-size: 0.85em;
+    background-color: var(--code-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color, #d0d0d0);
+    border-radius: 4px;
+    padding: 0 0.3em;
+    white-space: pre-wrap;
+  }
+
   .p {
     display: block;
     margin: 1ex 1ex 0 1ex;

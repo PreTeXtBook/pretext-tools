@@ -13,7 +13,7 @@ export { default as ExampleLike } from "./extensions/ExampleLike";
 export { default as Inline } from "./extensions/Inline";
 export { default as KeyboardCommands } from "./extensions/Keyboard";
 export { MathDisplay, MathEquation, MathInline } from "./extensions/Math";
-export { default as RawPtx } from "./extensions/RawPtx";
+export { default as RawPtx, RawPtxInline } from "./extensions/RawPtx";
 export { default as Statement } from "./extensions/Statement";
 export { default as TheoremLikeExtension } from "./extensions/TheoremLike";
 export { default as Title } from "./extensions/Title";
@@ -37,8 +37,10 @@ export { KNOWN_TAGS } from "./knownTags";
 // The canonical extension list shared by the live editor, the round-trip
 // guard, and the test harness. External consumers (e.g. pretext.plus) that
 // build their own TipTap editor should use this list so their schema matches
-// what checkRoundTrip verifies.
-export { editorExtensions } from "./editorExtensions";
+// what checkRoundTrip verifies. editorSourceTags is the schema-derived set
+// of PreTeXt tags the editor can represent (KNOWN_TAGS is its hand-written
+// twin, kept in sync by a test).
+export { editorExtensions, editorSourceTags } from "./editorExtensions";
 
 // Round-trip machinery: parse/serialize helpers plus the checkRoundTrip
 // safety guard that decides whether a document can be edited without data
