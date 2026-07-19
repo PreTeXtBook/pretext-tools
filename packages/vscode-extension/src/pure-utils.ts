@@ -67,3 +67,41 @@ export function buildSpellCheckIgnorePatterns(
   }
   return ignorePatterns;
 }
+
+/** A single cSpell `languageSettings` entry (only the fields we touch). */
+type CSpellLanguageSetting = {
+  languageId?: unknown;
+  ignoreRegExpList?: unknown;
+  [key: string]: unknown;
+};
+
+/**
+ * Merge the PreTeXt ignore regexes into cSpell's `languageSettings` array.
+ *
+ * Updates the existing `pretext` entry's `ignoreRegExpList` if one is present,
+ * otherwise appends a fresh entry. Previously the extension relied on a static
+ * `cSpell.languageSettings` default in the manifest to seed this entry; that
+ * default was removed, so we must create the entry when it is missing or cSpell
+ * never learns to skip PreTeXt tags/math/code. Returns a new array and does not
+ * mutate the input (which may be `undefined` before cSpell has any config).
+ */
+export function upsertPretextLanguageSettings(
+  languageSettings: unknown,
+  ignorePatterns: string[],
+): CSpellLanguageSetting[] {
+  const existing: CSpellLanguageSetting[] = Array.isArray(languageSettings)
+    ? (languageSettings as CSpellLanguageSetting[])
+    : [];
+  let found = false;
+  const next = existing.map((entry) => {
+    if (entry && entry.languageId === "pretext") {
+      found = true;
+      return { ...entry, ignoreRegExpList: ignorePatterns };
+    }
+    return entry;
+  });
+  if (!found) {
+    next.push({ languageId: "pretext", ignoreRegExpList: ignorePatterns });
+  }
+  return next;
+}

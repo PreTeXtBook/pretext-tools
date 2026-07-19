@@ -171,6 +171,7 @@ export async function activate(context: ExtensionContext) {
       }
     }),
     commands.registerCommand("pretext-tools.convertText", cmdConvertText),
+    commands.registerCommand("pretext-tools.spellCheck", utils.cmdSpellCheck),
     commands.registerCommand("pretext-tools.showLog", showLog),
     commands.registerCommand("pretext-tools.refreshTargets", async () => {
       await refreshProjects();
