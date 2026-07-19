@@ -12,6 +12,10 @@ export default defineConfig({
       exclude: [
         "src/**/*.test.ts",
         "src/**/*.test.tsx",
+        // The round-trip test harness (roundtrip.spec.ts etc.) must not be
+        // type-declared into the published library.
+        "src/**/*.spec.ts",
+        "src/**/*.spec.tsx",
         "src/main.tsx",
         "src/App.tsx",
         "src/ptxSourceSlice.ts",

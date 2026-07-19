@@ -4,7 +4,7 @@ import {
   TheoremLikeComponent,
   ProofComponent,
 } from "../components/TheoremLike";
-import { blockAttributes, generateInputRules } from "../utils";
+import { generateInputRules } from "../utils";
 
 const TheoremLikeElements = [
   "theorem",
@@ -36,9 +36,9 @@ const TheoremLike = Extension.create({
               },
             ];
           },
-          addAttributes() {
-            return blockAttributes();
-          },
+          // Source attributes (xml:id, label, component, ...) are captured
+          // generically by the PtxSourceAttributes extension in
+          // editorExtensions.ts — no per-node whitelist needed.
 
           renderHTML({ HTMLAttributes }) {
             return [

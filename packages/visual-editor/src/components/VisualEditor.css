@@ -52,3 +52,21 @@
   overflow-y: auto;
   padding: 1rem;
 }
+
+/* Warning banner shown by the round-trip safety guard (see roundtrip.ts)
+   when a document contains constructs the editor cannot yet edit without
+   losing content. The document is still shown below it, read-only. */
+.pretext-plus-editor__roundtrip-warning {
+  margin: 0 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #f0c36d;
+  border-left-width: 4px;
+  border-radius: 0.25rem;
+  background-color: #fef7e0;
+  color: #6b5310;
+  font-size: 0.875rem;
+}
+
+.pretext-plus-editor__roundtrip-warning p {
+  margin: 0;
+}
