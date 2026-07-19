@@ -32,6 +32,23 @@ describe("findProjectRootDocuments", () => {
     expect(result).toEqual([path.join(root, "src", "book.ptx")]);
   });
 
+  it("resolves a v2 target's <source> child element relative to the project root", () => {
+    // A v2 manifest may declare its source as a *child element* (holding a path
+    // already relative to the project root) rather than a `source` attribute.
+    // The former regex resolver ignored child-element sources and fell back to
+    // the `source/main.ptx` default; the shared xml2js resolver handles it.
+    const readFile = (p: string) => {
+      const normalized = p.replace(/\\/g, "/");
+      if (normalized === path.join(root, "project.ptx").replace(/\\/g, "/")) {
+        return `<project ptx-version="2"><targets><target name="web" format="html"><source>mybook/main.ptx</source></target></targets></project>`;
+      }
+      return undefined;
+    };
+    const docUri = uriFor("mybook", "ch1.ptx");
+    const result = findProjectRootDocuments(docUri, readFile);
+    expect(result).toEqual([path.join(root, "mybook", "main.ptx")]);
+  });
+
   it("defaults to source/main.ptx when the manifest declares no sources", () => {
     const readFile = (p: string) => {
       const normalized = p.replace(/\\/g, "/");

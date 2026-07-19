@@ -49,7 +49,9 @@ npm run refresh:xsl
 
 **LSP debugger:** The LSP server auto-attaches on port 6009 when launched via the compound config. Set breakpoints in `packages/vscode-extension/src/lsp-server/`.
 
-**What `npm test` actually runs:** the root `test` script only covers `completions`, `schema`, `pretext-html`, `vscode-extension` unit specs, and a fixed list of "reliability" spec files (`remark-pretext`, `ptxast-util-to-mdast`, `latex-pretext`). It does **not** run `format`'s or `ptxast`'s own Vitest suites, nor `vscode-extension`'s integration tests — run those with `npm run test -w <package>` directly. `vscode-extension`'s test script (`vscode-test`) launches a real VS Code instance and is also runnable from the editor via the "Extension Tests" debug configuration.
+**What `npm test` actually runs:** the root `test` script chains three groups: `test:libraries` (the `completions`, `schema`, `format`, `ptxast`, and `pretext-html` unit suites), `vscode-extension`'s unit specs (`test:unit`), and `test:reliability` (a fixed list of conversion spec files: `remark-pretext`, `ptxast-util-to-mdast`, `latex-pretext`). It does **not** run `vscode-extension`'s integration tests — run those with `npm run test:integration -w pretext-tools`. `vscode-extension`'s integration test script (`vscode-test`) launches a real VS Code instance and is also runnable from the editor via the "Extension Tests" debug configuration.
+
+**CI coverage:** `.github/workflows/pull-request-tests.yml` mirrors this in parallel jobs — `checks` (prettier, `check:schema-generated`, `build:utils`, `test:reliability`), `library-unit` (`test:libraries`), `vscode-extension-unit` (`test:unit`), and `vscode-extension-integration` (`test:integration` under `xvfb`) — all gated by the `test-results` job.
 
 **JSPI note (`pretext-html`):** `@pretextbook/pretext-html` runs libxslt as WebAssembly and needs the `--experimental-wasm-jspi` Node flag, which is banned in `NODE_OPTIONS`. Its vitest config passes the flag via `test.execArgv`; its CLI (`cli.mjs`) re-launches itself with the flag; the VS Code extension forks `out/instant-preview-worker.mjs` with the flag in `execArgv`.
 

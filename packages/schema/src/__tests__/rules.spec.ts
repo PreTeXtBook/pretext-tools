@@ -21,7 +21,9 @@ describe("applyRules", () => {
   it("tags diagnostics with a stable rule id and default severity", () => {
     const [diag] = applyRules([err({ name: "foo" })]);
     expect(diag.code).toBe("element-not-allowed");
-    expect(diag.severity).toBe(Severity.Error);
+    // The default ruleset intentionally reports structural violations as
+    // warnings (not errors) so mid-edit documents aren't flooded with red.
+    expect(diag.severity).toBe(Severity.Warning);
     expect(diag.source).toBe("pretext");
     expect(diag.message).toMatch(/<foo> is not allowed/);
   });
