@@ -50,9 +50,13 @@ const extensionSchemaDir = path.join(
 const packageAssetsDir = path.join(scriptDir, "..", "assets");
 
 // [rng filename, whether a failure is fatal to the build]
-// Note: pretext-dev.rng has upstream dangling refs and causes build hangs; removed.
-// LSP falls back to stable pretext.json if pretext-dev.json is unavailable.
-const targets = [["pretext.rng", true]];
+// pretext-dev.rng (the "Experimental" schema) is compiled non-fatally: if a
+// future upstream refresh reintroduces dangling refs that break compilation,
+// the build still succeeds and the LSP falls back to stable pretext.json.
+const targets = [
+  ["pretext.rng", true],
+  ["pretext-dev.rng", false],
+];
 
 async function compileOne(rngName, fatal) {
   const rngPath = path.join(extensionSchemaDir, rngName);
