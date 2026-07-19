@@ -74,7 +74,8 @@ function encodeAssets(
 const builtinEngine: ImportEngine = {
   id: "builtin",
   label: "Built-in converter",
-  description: "Convert LaTeX, Markdown, or PreTeXt — no external tools needed.",
+  description:
+    "Convert LaTeX, Markdown, or PreTeXt — no external tools needed.",
   acceptExtensions: [
     ".tex",
     ".md",

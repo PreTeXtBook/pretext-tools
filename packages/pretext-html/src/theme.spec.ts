@@ -85,17 +85,17 @@ describe("themeBridgeScript (executed)", () => {
   it("applies an explicit initial dark theme", async () => {
     const { window, calls } = await runBridge("dark");
     expect(calls.at(-1)).toBe(true);
-    expect(window.document.documentElement.classList.contains("dark-mode")).toBe(
-      true,
-    );
+    expect(
+      window.document.documentElement.classList.contains("dark-mode"),
+    ).toBe(true);
   });
 
   it("applies an explicit initial light theme", async () => {
     const { window, calls } = await runBridge("light");
     expect(calls.at(-1)).toBe(false);
-    expect(window.document.documentElement.classList.contains("dark-mode")).toBe(
-      false,
-    );
+    expect(
+      window.document.documentElement.classList.contains("dark-mode"),
+    ).toBe(false);
   });
 
   it("follows a set-theme message posted by the embedder", async () => {
@@ -124,9 +124,9 @@ describe("themeBridgeScript (executed)", () => {
       html: '<!doctype html><html data-darkmode="disabled"><head></head><body></body></html>',
     });
     expect(calls).toEqual([]);
-    expect(window.document.documentElement.classList.contains("dark-mode")).toBe(
-      false,
-    );
+    expect(
+      window.document.documentElement.classList.contains("dark-mode"),
+    ).toBe(false);
   });
 
   it("does not throw when setDarkMode is not defined yet", async () => {

@@ -51,7 +51,8 @@ export interface ImportEngine {
 const BUILTIN_ENGINE: ImportEngine = {
   id: "builtin",
   label: "Built-in converter",
-  description: "Create a new project starting with LaTeX, Markdown, or PreTeXt files.",
+  description:
+    "Create a new project starting with LaTeX, Markdown, or PreTeXt files.",
   acceptExtensions: DEFAULT_ACCEPT_EXTENSIONS,
   convertFile: handleImportUploadFile,
 };
