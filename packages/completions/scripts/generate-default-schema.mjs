@@ -30,13 +30,25 @@ const ptxastOutputPath = path.join(
   "types",
   "generated.ts",
 );
-const ptxastTypesPath = path.join(
+// The curated element set is whatever the hand-written curated layer
+// (`curated.ts`) gives a friendly type to — either inline (`Element & { name:
+// "x" }`) or by aliasing a generated `ElementXxx` interface (whose element name
+// lives in `generated-interfaces.ts`). Both files are needed to resolve it.
+const ptxastCuratedPath = path.join(
   workspaceRoot,
   "packages",
   "ptxast",
   "src",
   "types",
-  "index.ts",
+  "curated.ts",
+);
+const ptxastInterfacesPath = path.join(
+  workspaceRoot,
+  "packages",
+  "ptxast",
+  "src",
+  "types",
+  "generated-interfaces.ts",
 );
 
 function getAst(rngPath) {
@@ -216,19 +228,56 @@ function sortSchemaElementChildren(elementChildren) {
   return sorted;
 }
 
-function extractCuratedElementNames(typesSource) {
-  const matches = [...typesSource.matchAll(/type:\s*'([^']+)'/g)];
-  return [...new Set(matches.map((match) => match[1]))].sort((a, b) =>
-    a.localeCompare(b),
-  );
+/**
+ * Map every generated `ElementXxx` interface to its PreTeXt element name, e.g.
+ * `ElementSection` -> `"section"`, `ElementParagraph` -> `"p"`. Each interface
+ * declares its name as the first member: `export interface ElementSection
+ * extends XMLElement { name: "section"; ... }`.
+ */
+function buildInterfaceNameToElementName(interfacesSource) {
+  const map = new Map();
+  const re =
+    /export interface (Element[A-Za-z0-9_]+)\s+extends[^{]*\{\s*name:\s*"([^"]+)"/g;
+  let match;
+  while ((match = re.exec(interfacesSource)) !== null) {
+    map.set(match[1], match[2]);
+  }
+  return map;
+}
+
+/**
+ * Derive the curated element names from the hand-written curated layer
+ * (`curated.ts`): every element it names inline (`name: "x"`) plus every element
+ * it aliases via a generated `ElementXxx` interface. This is the post-xast-
+ * rewrite source of truth for "curated" — the friendly, hand-modeled subset —
+ * as opposed to schema elements that only exist as generated interfaces.
+ */
+function extractCuratedElementNames(curatedSource, interfacesSource) {
+  const interfaceNameToElement =
+    buildInterfaceNameToElementName(interfacesSource);
+  const names = new Set();
+  for (const match of curatedSource.matchAll(/name:\s*"([^"]+)"/g)) {
+    names.add(match[1]);
+  }
+  for (const match of curatedSource.matchAll(/\bElement[A-Za-z0-9_]+\b/g)) {
+    const elementName = interfaceNameToElement.get(match[0]);
+    if (elementName !== undefined) {
+      names.add(elementName);
+    }
+  }
+  return [...names].sort((a, b) => a.localeCompare(b));
 }
 
 function main() {
   const schemaAst = getAst(schemaPath);
   const elementChildren = createSchemaElementChildren(schemaAst);
   const sortedElementChildren = sortSchemaElementChildren(elementChildren);
-  const ptxastTypesSource = fs.readFileSync(ptxastTypesPath, "utf8");
-  const curatedElementNames = extractCuratedElementNames(ptxastTypesSource);
+  const curatedSource = fs.readFileSync(ptxastCuratedPath, "utf8");
+  const interfacesSource = fs.readFileSync(ptxastInterfacesPath, "utf8");
+  const curatedElementNames = extractCuratedElementNames(
+    curatedSource,
+    interfacesSource,
+  );
   const schemaElementNames = Object.keys(sortedElementChildren);
   const schemaElementNameSet = new Set(schemaElementNames);
   const curatedSchemaElementNames = curatedElementNames.filter((name) =>

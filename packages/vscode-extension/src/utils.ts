@@ -8,6 +8,7 @@ import {
   getProjectFolder,
   stripColorCodes,
   buildSpellCheckIgnorePatterns,
+  upsertPretextLanguageSettings,
 } from "./pure-utils";
 
 export let currentPanel: vscode.WebviewPanel | undefined;
@@ -17,6 +18,7 @@ export {
   installPretext,
   setSchema,
   setSpellCheckConfig,
+  cmdSpellCheck,
   updateStatusBarItem,
   setupTerminal,
   stripColorCodes,
@@ -215,17 +217,72 @@ function setSpellCheckConfig() {
     spellCheckScopes,
   );
   const ignorePatterns = buildSpellCheckIgnorePatterns(spellCheckScopes);
-  // Get current languageSettings for cSpell and update those for pretext
-  let languageSettings: any = cSpellConfig.get("languageSettings");
-  for (let dicts of languageSettings) {
-    if (dicts["languageId"] === "pretext") {
-      console.log("Current value of languageSettings for Pretext is", dicts);
-      dicts["ignoreRegExpList"] = ignorePatterns;
-      break;
-    }
+  // Merge the pretext ignore patterns into cSpell's languageSettings, creating
+  // the pretext entry if cSpell doesn't already have one.
+  const languageSettings = cSpellConfig.get("languageSettings");
+  const updated = upsertPretextLanguageSettings(
+    languageSettings,
+    ignorePatterns,
+  );
+  console.log("Updated languageSettings for Pretext to", updated);
+  cSpellConfig.update("languageSettings", updated);
+}
+
+/** Marketplace id of the Code Spell Checker extension we drive. */
+const CSPELL_EXTENSION_ID = "streetsidesoftware.code-spell-checker";
+
+/**
+ * Command handler for `pretext-tools.spellCheck`.
+ *
+ * The actual checking is done by the Code Spell Checker extension; our job is to
+ * make sure it is installed, teach it the PreTeXt-aware ignore patterns, enable
+ * it for `.ptx` files, and surface the results in the Problems panel.
+ */
+async function cmdSpellCheck() {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor || editor.document.languageId !== "pretext") {
+    vscode.window.showWarningMessage(
+      "Open a PreTeXt (.ptx) file to spell check it.",
+    );
+    return;
   }
-  console.log("Updated languageSettings for Pretext to", languageSettings);
-  cSpellConfig.update("languageSettings", languageSettings);
+
+  const cSpellExt = vscode.extensions.getExtension(CSPELL_EXTENSION_ID);
+  if (!cSpellExt) {
+    const choice = await vscode.window.showInformationMessage(
+      "PreTeXt spell checking relies on the Code Spell Checker extension, which is not installed.",
+      "Install",
+      "Cancel",
+    );
+    if (choice === "Install") {
+      await vscode.commands.executeCommand(
+        "workbench.extensions.installExtension",
+        CSPELL_EXTENSION_ID,
+      );
+    }
+    return;
+  }
+  if (!cSpellExt.isActive) {
+    await cSpellExt.activate();
+  }
+
+  // Make sure cSpell is enabled for pretext files, apply the PreTeXt-aware
+  // ignore patterns, then reveal the results.
+  const cSpellConfig = vscode.workspace.getConfiguration("cSpell");
+  const enabledFileTypes: Record<string, boolean> =
+    cSpellConfig.get("enabledFileTypes") ?? {};
+  if (enabledFileTypes["pretext"] !== true) {
+    await cSpellConfig.update("enabledFileTypes", {
+      ...enabledFileTypes,
+      pretext: true,
+    });
+  }
+  try {
+    setSpellCheckConfig();
+  } catch (err) {
+    console.log("Error setting spell check", err);
+  }
+  await vscode.commands.executeCommand("workbench.actions.view.problems");
 }
 
 function setSchema(context: vscode.ExtensionContext) {

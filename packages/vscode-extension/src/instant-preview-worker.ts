@@ -22,6 +22,7 @@
 import {
   renderHtml,
   runCli,
+  type PreviewTheme,
   type PtxSourceMap,
   type RenderOptions,
 } from "@pretextbook/pretext-html";
@@ -40,6 +41,8 @@ interface RenderRequest {
   docinfoSourcePath?: string;
   /** Also compute the id → file/line source map (for editor sync). */
   sourceMap?: boolean;
+  /** Initial light/dark theme baked into the page (see @pretextbook/pretext-html). */
+  theme?: PreviewTheme;
 }
 
 /** Response sent back over IPC. */
@@ -116,6 +119,7 @@ function serve(): void {
         docinfo: request.docinfo,
         docinfoSourcePath: request.docinfoSourcePath,
         sourceMap: request.sourceMap,
+        theme: request.theme,
       };
       try {
         const { html, sourceMap } = await renderHtml(options);

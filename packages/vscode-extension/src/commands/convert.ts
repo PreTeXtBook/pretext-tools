@@ -1,7 +1,6 @@
 import { Range, window, workspace } from "vscode";
 import { markdownToPretext as md2ptx } from "md2ptx";
 import { pretextOutputChannel } from "../ui";
-import { convertToPretext } from "../importFiles";
 // @ts-expect-error frankenmarkup does not publish types.
 import { FlexTeXtConvert } from "frankenmarkup";
 import { lspFormatText } from "../lsp-client/main";
@@ -14,22 +13,6 @@ import { markdownToPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
 import type { Element } from "xast";
-
-export function cmdConvertFile() {
-  pretextOutputChannel.append("Converting selected file to PreTeXt");
-  // show quick pick to select whether to convert with pandoc or plastex
-  window
-    .showQuickPick(["plastex", "pandoc"], {
-      placeHolder: "Select a converter",
-    })
-    .then((qpSelection) => {
-      if (qpSelection === "pandoc") {
-        convertToPretext("pandoc");
-      } else if (qpSelection === "plastex") {
-        convertToPretext("plastex");
-      }
-    });
-}
 
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;

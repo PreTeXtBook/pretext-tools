@@ -61,7 +61,6 @@ The repo has **12 npm packages** under `packages/` plus a non-package `extension
 **Core packages** (user-facing):
 - **`vscode-extension`** (`pretext-tools`) — The main VS Code extension. Contains the extension host, LSP client, commands, and webview UI. Built with **esbuild** into two bundles: `out/extension.js` and `out/lsp-server.js`.
 - **`visual-editor`** — React/TipTap-based WYSIWYG editor rendered in a VS Code webview. Built with **Vite**.
-- **`prettier-plugin-pretext`** — Prettier plugin for PreTeXt XML. Built with **esbuild** (ESM + CJS).
 
 **Library packages** (reusable):
 - **`completions`** — Reusable completion/intellisense engine, consumed by the LSP server. Exports raw TypeScript source (no build step).
@@ -103,7 +102,7 @@ Packages have different build tools but must build in dependency order:
    - `vscode-extension` (depends on everything; esbuild produces extension.js and lsp-server.js)
 
 Build tools used:
-- **esbuild**: `vscode-extension`, `prettier-plugin-pretext` (fast, bundles everything into single files)
+- **esbuild**: `vscode-extension` (fast, bundles everything into single files)
 - **Vite**: `format`, `visual-editor` (library build with dual ESM/CJS exports)
 - **No build**: `completions`, `latex-pretext` (consumed as TypeScript source or by downstream bundlers)
 
@@ -115,7 +114,7 @@ Build tools used:
 - **Formatting**: Prettier with 2-space indentation (configured in root `package.json`). Use `npm run build` or IDE format-on-save.
 - **TypeScript**: Strict mode enabled. Root `tsconfig.json` uses CommonJS module resolution with ESNext target.
 - **Schema files**: PreTeXt completion schemas (`.rng`) live in `packages/vscode-extension/src/lsp-server/assets/`. Precomputed schemas committed to repo; refresh with `npm run refresh:schemas` when upstream changes.
-- **Package naming**: Most packages are `@pretextbook/*` except `prettier-plugin-pretext` (not scoped).
+- **Package naming**: Most packages are `@pretextbook/*`.
 
 ## Important Paths
 

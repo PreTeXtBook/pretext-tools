@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { stripColorCodes, buildSpellCheckIgnorePatterns } from "./pure-utils";
+import {
+  stripColorCodes,
+  buildSpellCheckIgnorePatterns,
+  upsertPretextLanguageSettings,
+} from "./pure-utils";
 import { SpellCheckScope } from "./types";
 
 describe("stripColorCodes", () => {
@@ -49,5 +53,52 @@ describe("buildSpellCheckIgnorePatterns", () => {
     expect(re.test("<md>\n  a = b\n</md>")).toBe(true);
     // Should match the paired variants but not close across the wrong tag.
     expect("<me>x</me>".match(re)?.[0]).toBe("<me>x</me>");
+  });
+});
+
+describe("upsertPretextLanguageSettings", () => {
+  const patterns = ["<m>.*?</m>", "<[^!].*?>"];
+
+  it("appends a pretext entry when languageSettings is undefined", () => {
+    expect(upsertPretextLanguageSettings(undefined, patterns)).toEqual([
+      { languageId: "pretext", ignoreRegExpList: patterns },
+    ]);
+  });
+
+  it("appends a pretext entry when none exists, preserving other entries", () => {
+    const existing = [{ languageId: "latex", ignoreRegExpList: ["\\$.*?\\$"] }];
+    expect(upsertPretextLanguageSettings(existing, patterns)).toEqual([
+      { languageId: "latex", ignoreRegExpList: ["\\$.*?\\$"] },
+      { languageId: "pretext", ignoreRegExpList: patterns },
+    ]);
+  });
+
+  it("updates the existing pretext entry's ignoreRegExpList in place", () => {
+    const existing = [
+      { languageId: "latex", ignoreRegExpList: ["\\$.*?\\$"] },
+      {
+        languageId: "pretext",
+        ignoreRegExpList: ["stale"],
+        dictionaries: ["x"],
+      },
+    ];
+    expect(upsertPretextLanguageSettings(existing, patterns)).toEqual([
+      { languageId: "latex", ignoreRegExpList: ["\\$.*?\\$"] },
+      {
+        languageId: "pretext",
+        ignoreRegExpList: patterns,
+        dictionaries: ["x"],
+      },
+    ]);
+  });
+
+  it("does not mutate the input array or its entries", () => {
+    const entry = { languageId: "pretext", ignoreRegExpList: ["stale"] };
+    const existing = [entry];
+    upsertPretextLanguageSettings(existing, patterns);
+    expect(existing).toEqual([
+      { languageId: "pretext", ignoreRegExpList: ["stale"] },
+    ]);
+    expect(entry.ignoreRegExpList).toEqual(["stale"]);
   });
 });

@@ -1,6 +1,6 @@
 import { parseString } from "xml2js";
 import * as path from "path";
-import { Target } from "./types";
+import type { Target } from "./types";
 
 /** Default source directory the `pretext` CLI assumes when a v2 manifest omits it. */
 const DEFAULT_SOURCE_DIR = "source";
@@ -97,4 +97,58 @@ export function parseTargetsFromManifest(
     }
   });
   return targets;
+}
+
+/**
+ * Resolve the absolute paths to every distinct target source file declared in a
+ * `project.ptx` manifest — the "root documents" of a book, from which whole-book
+ * schema validation follows `xi:include`s.
+ *
+ * This shares the exact source-resolution conventions of
+ * `parseTargetsFromManifest` (`<source>` child element vs. `source` attribute vs.
+ * default), so the LSP validator and the extension-host outline can never
+ * disagree on where a project's book root lives. It additionally handles two
+ * cases `parseTargetsFromManifest` doesn't model as targets:
+ *  - very old manifests with a single project-level `<source>` element and no
+ *    `<targets>` (resolved against the project root);
+ *  - the ultimate fallback of `<sourceDir>/main.ptx` when a manifest declares no
+ *    source at all.
+ */
+export function resolveRootSourcesFromManifest(
+  contents: string,
+  projectRoot: string,
+): string[] {
+  const sources = new Set<string>();
+  // parseString invokes its callback synchronously when given a string.
+  parseString(contents, (err, result) => {
+    if (err) {
+      console.error("Error parsing project.ptx XML: ", err);
+      return;
+    }
+    const project = result?.project;
+    if (!project) {
+      return;
+    }
+    const sourceDir =
+      (project.$?.source as string | undefined) ?? DEFAULT_SOURCE_DIR;
+    const targets = project.targets?.[0]?.target;
+    if (Array.isArray(targets) && targets.length > 0) {
+      for (const t of targets) {
+        sources.add(resolveTargetSource(t, projectRoot, sourceDir));
+      }
+      return;
+    }
+    // Legacy (pre-`<targets>`) manifests: a single project-level `<source>`
+    // element, resolved directly against the project root.
+    const legacy = childText(project.source);
+    if (legacy !== undefined) {
+      sources.add(path.resolve(projectRoot, legacy));
+    }
+  });
+  if (sources.size === 0) {
+    sources.add(
+      path.resolve(projectRoot, DEFAULT_SOURCE_DIR, DEFAULT_TARGET_SOURCE),
+    );
+  }
+  return [...sources];
 }

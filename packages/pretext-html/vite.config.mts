@@ -22,6 +22,9 @@ export default defineConfig(() => ({
       entry: {
         index: "src/index.ts",
         cli: "src/cli.ts",
+        // Dependency-free theme protocol, published as the "./theme" subpath
+        // so embedders can import it without the WASM renderer graph.
+        theme: "src/theme.ts",
       },
       // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI anyway,
       // so there is no CommonJS audience for this package.

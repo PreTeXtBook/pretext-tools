@@ -21,13 +21,13 @@ export const Severity = {
  */
 export const defaultRuleset: Ruleset = {
   source: "pretext",
-  defaultSeverity: Severity.Error,
+  defaultSeverity: Severity.Warning,
   rules: [
     {
       id: "element-me-removed",
       match: (e) => e.kind === "element-not-allowed" && e.name === "me",
       message: () => `<me> should be replaced with <md> (without any <mrow>).`,
-      severity: Severity.Warning,
+      severity: Severity.Hint,
     },
     {
       id: "element-not-allowed",

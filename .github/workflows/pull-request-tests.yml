@@ -38,18 +38,48 @@ jobs:
   test-results:
     name: Test Results
     runs-on: ubuntu-latest
-    needs: [checks, vscode-extension-unit, vscode-extension-integration]
+    needs:
+      [
+        checks,
+        library-unit,
+        vscode-extension-unit,
+        vscode-extension-integration,
+      ]
     if: always()
     steps:
       - name: Check test status
         run: |
           if [ "${{ needs.checks.result }}" = "failure" ] || \
+             [ "${{ needs.library-unit.result }}" = "failure" ] || \
              [ "${{ needs.vscode-extension-unit.result }}" = "failure" ] || \
              [ "${{ needs.vscode-extension-integration.result }}" = "failure" ]; then
             echo "::error::One or more test jobs failed"
             exit 1
           fi
           echo "✓ All tests passed"
+
+  library-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      # The library suites cross-import built packages (e.g. completions and
+      # schema resolve each other's dist), so build the dependency graph first.
+      - name: Build dependency packages
+        run: npm run build:deps
+
+      # Unit suites for the library packages: completions, schema, format,
+      # ptxast, and pretext-html. (pretext-html's Vitest config supplies the
+      # --experimental-wasm-jspi flag it needs via test.execArgv.)
+      - name: Run library unit tests (Vitest)
+        run: npm run test:libraries
 
   vscode-extension-unit:
     runs-on: ubuntu-latest

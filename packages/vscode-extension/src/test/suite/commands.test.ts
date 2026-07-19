@@ -7,12 +7,8 @@ const EXTENSION_ID = "oscarlevin.pretext-tools";
  * Commands that are declared in `package.json` (`contributes.commands`) but
  * intentionally have no runtime handler yet. Keep this list SHORT and tracked —
  * each entry is a command that currently errors when invoked from the palette.
- *
- * - `pretext-tools.spellCheck`: declared with the title "Spell Check PreTeXt"
- *   but no `registerCommand` handler exists. Needs to be implemented (or the
- *   manifest entry removed). Tracked separately.
  */
-const KNOWN_UNREGISTERED = new Set<string>(["pretext-tools.spellCheck"]);
+const KNOWN_UNREGISTERED = new Set<string>([]);
 
 suite("Command registration", () => {
   test("every command declared in the manifest has a registered handler", async () => {

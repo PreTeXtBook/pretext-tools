@@ -17,6 +17,7 @@
  */
 
 import {
+  ColorThemeKind,
   ConfigurationTarget,
   Disposable,
   Position,
@@ -34,6 +35,15 @@ import { parseString } from "xml2js";
 // Type-only: the runtime package is ESM and lives in the worker process; the
 // extension host only ever sees the JSON-serialized map.
 import type { SourceMapEntry } from "@pretextbook/pretext-html";
+// The theme protocol is a dependency-free subpath (its own leaf module, no
+// WASM renderer): importing the package root here would drag libxslt-wasm's
+// top-level await into the CJS host bundle, which esbuild cannot bundle. This
+// subpath pulls in only the message protocol. Drives the preview's light/dark
+// theme from VS Code's active color theme.
+import {
+  previewThemeMessage,
+  type PreviewTheme,
+} from "@pretextbook/pretext-html/theme";
 import { pretextOutputChannel, ptxSBItem } from "./ui";
 import * as utils from "./utils";
 
@@ -50,6 +60,7 @@ let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
 let sourceMapById: Map<string, SourceMapEntry> | undefined;
 let selectionWatcher: Disposable | undefined;
 let panelMessageWatcher: Disposable | undefined;
+let themeWatcher: Disposable | undefined;
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
 
 // The persistent render worker. Kept alive across renders so the loaded WASM
@@ -106,6 +117,37 @@ function previewScope(): PreviewScope {
 }
 
 /**
+ * Map VS Code's active color theme to a preview theme, so the preview matches
+ * the editor. High-contrast variants follow their light/dark base. The
+ * pretext-html theme bridge (injected into the page) applies this and then
+ * follows the live messages posted by setupThemeWatcher.
+ */
+function currentPreviewTheme(): PreviewTheme {
+  switch (window.activeColorTheme.kind) {
+    case ColorThemeKind.Dark:
+    case ColorThemeKind.HighContrast:
+      return "dark";
+    default:
+      return "light";
+  }
+}
+
+/**
+ * Push the editor's theme to the open preview whenever the user switches VS
+ * Code color themes — a live update, no re-render. The next render bakes the
+ * new theme too (renderToPanel reads currentPreviewTheme), so a rebuild that
+ * arrives first stays consistent.
+ */
+function setupThemeWatcher(): void {
+  themeWatcher?.dispose();
+  themeWatcher = window.onDidChangeActiveColorTheme(() => {
+    void currentPanel?.webview.postMessage(
+      previewThemeMessage(currentPreviewTheme()),
+    );
+  });
+}
+
+/**
  * Command handler: open (or reveal) the instant preview for the current
  * document's project.
  */
@@ -143,6 +185,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
     );
     setupSaveWatcher(extensionPath);
     setupSelectionWatcher();
+    setupThemeWatcher();
   } else {
     currentPanel.reveal(ViewColumn.Beside, true);
   }
@@ -552,6 +595,10 @@ function renderToPanel(extensionPath: string): void {
     docinfoSourcePath: currentSource.mainSourcePath,
     // id ↔ file/line map for two-way sync; costs a few ms per render.
     sourceMap: true,
+    // Bake the editor's current theme into the page so it opens matching VS
+    // Code (no light-then-dark flash). setupThemeWatcher posts live updates
+    // for subsequent theme switches without a re-render.
+    theme: currentPreviewTheme(),
   };
   child.send(request, (err) => {
     if (err && pendingRequestId === id) {
@@ -919,6 +966,8 @@ export function disposeInstantPreview(): void {
   selectionWatcher = undefined;
   panelMessageWatcher?.dispose();
   panelMessageWatcher = undefined;
+  themeWatcher?.dispose();
+  themeWatcher = undefined;
   if (debounceTimer) {
     clearTimeout(debounceTimer);
     debounceTimer = undefined;

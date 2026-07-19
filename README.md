@@ -14,7 +14,6 @@ This monorepo contains the [PreTeXt Tools VS Code extension](https://marketplace
 | [`@pretextbook/format`](packages/format) | PreTeXt document formatter library |
 | [`@pretextbook/latex-pretext`](packages/latex-pretext) | LaTeX-to-PreTeXt conversion |
 | [`@pretextbook/visual-editor`](packages/visual-editor) | React/TipTap-based WYSIWYG editor (webview UI) |
-| [`prettier-plugin-pretext`](packages/prettier-plugin-pretext) | Prettier plugin for PreTeXt XML |
 | [`@pretextbook/ptxast`](packages/ptxast) | TypeScript types for the PreTeXt AST |
 
 ## Development

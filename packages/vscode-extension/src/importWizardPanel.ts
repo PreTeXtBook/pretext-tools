@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
+import * as os from "os";
+import * as path from "path";
+import * as fs from "fs";
+import { importProjectFromFiles } from "@pretextbook/import";
 import { getNonce } from "./utils";
 import { pretextOutputChannel } from "./ui";
+import { pandocInstalled, pandocToPretext } from "./pandoc";
 
 // Hosts the shared ImportWizard React component (from @pretextbook/import)
 // in a webview panel. The whole import pipeline runs inside the webview; the
@@ -17,6 +22,18 @@ interface ImportConfirmMessage {
   warnings: string[];
 }
 
+// The pandoc engine runs in the extension host (pandoc is a native binary, so
+// it cannot run in the webview). The webview posts the uploaded file's bytes
+// here; the host converts with pandoc's pretext.lua writer, reuses the import
+// package's layout to produce the same result shape, and posts it back.
+interface PandocConvertMessage {
+  type: "pandoc-convert";
+  requestId: string;
+  fileName: string;
+  dataBase64: string;
+  options: { documentKind?: "article" | "book"; splitSections?: boolean };
+}
+
 export function cmdImportProject(context: vscode.ExtensionContext) {
   const panel = vscode.window.createWebviewPanel(
     "pretext.importWizard",
@@ -27,12 +44,20 @@ export function cmdImportProject(context: vscode.ExtensionContext) {
       retainContextWhenHidden: true,
     },
   );
-  panel.webview.html = getHtmlForWebview(panel.webview, context.extensionUri);
+  panel.webview.html = getHtmlForWebview(
+    panel.webview,
+    context.extensionUri,
+    pandocInstalled(),
+  );
 
   panel.webview.onDidReceiveMessage(
     async (message: { type?: string }) => {
       if (message?.type === "import-cancel") {
         panel.dispose();
+        return;
+      }
+      if (message?.type === "pandoc-convert") {
+        await handlePandocConvert(panel, message as PandocConvertMessage);
         return;
       }
       if (message?.type === "import-confirm") {
@@ -54,6 +79,53 @@ export function cmdImportProject(context: vscode.ExtensionContext) {
     undefined,
     context.subscriptions,
   );
+}
+
+/**
+ * Convert a single uploaded file with pandoc (via the pretext.lua writer) and
+ * reuse the import package's layout to produce the same result shape the native
+ * engine yields, then post it back to the webview's pandoc engine.
+ */
+async function handlePandocConvert(
+  panel: vscode.WebviewPanel,
+  message: PandocConvertMessage,
+): Promise<void> {
+  const { requestId, fileName, dataBase64, options } = message;
+  let tempFile: string | undefined;
+  try {
+    const bytes = Buffer.from(dataBase64, "base64");
+    // pandoc infers the input format from the file extension, so preserve it.
+    const ext = path.extname(fileName);
+    tempFile = path.join(os.tmpdir(), `ptx-import-${Date.now()}${ext}`);
+    await fs.promises.writeFile(tempFile, bytes);
+
+    const pretext = await pandocToPretext(tempFile);
+    const result = importProjectFromFiles(
+      { "source.ptx": pretext },
+      {
+        documentKind: options?.documentKind,
+        splitSections: options?.splitSections,
+      },
+    );
+    // Show the original file name in the review UI rather than "source.ptx".
+    if (!("pretextError" in result)) {
+      result.sourceName = fileName;
+      result.sourcePath = fileName;
+    }
+    panel.webview.postMessage({ type: "pandoc-result", requestId, result });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    pretextOutputChannel.appendLine(`Pandoc import failed: ${detail}`);
+    panel.webview.postMessage({
+      type: "pandoc-result",
+      requestId,
+      error: detail,
+    });
+  } finally {
+    if (tempFile) {
+      void fs.promises.rm(tempFile, { force: true }).catch(() => undefined);
+    }
+  }
 }
 
 /** Reject absolute paths and any path containing a ".." segment. Native mode
@@ -194,6 +266,7 @@ async function writeImportedProject(
 function getHtmlForWebview(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
+  pandocAvailable: boolean,
 ): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "out", "media", "importWizard.js"),
@@ -209,8 +282,13 @@ function getHtmlForWebview(
   );
   const nonce = getNonce();
 
-  // The wizard's styling is light-only for now (see SPEC.md §6.4), so the
-  // container forces a light background regardless of the VS Code theme.
+  // The shared wizard ships a fixed Tailwind palette (light). Rather than fork
+  // the component, we make the panel theme-aware from the host: base surfaces
+  // follow VS Code's editor colors, and for dark themes we redefine the Tailwind
+  // palette variables (utilities compile to var(--color-*), defined on :root, so
+  // a body-scoped override wins) to a dark scale and point the primary button at
+  // the theme's button color. Light / high-contrast-light fall through to the
+  // wizard's default light palette.
   return `<!doctype html>
       <html lang="en">
         <head>
@@ -221,16 +299,60 @@ function getHtmlForWebview(
           <link href="${styleUri}" rel="stylesheet" />
           <style>
             body {
-              background: #f8fafc;
-              color: #0f172a;
-              font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+              background: var(--vscode-editor-background, #f8fafc);
+              color: var(--vscode-editor-foreground, #0f172a);
+              font-family: var(--vscode-font-family, system-ui, -apple-system, "Segoe UI", sans-serif);
               padding: 1.5rem;
             }
             #root {
               max-width: 720px;
               margin: 0 auto;
             }
+
+            /* Dark themes (and high-contrast dark): remap the wizard's Tailwind
+               palette to a dark scale. Excludes high-contrast-light. */
+            body.vscode-dark,
+            body.vscode-high-contrast:not(.vscode-high-contrast-light) {
+              color-scheme: dark;
+              /* surfaces */
+              --color-slate-50: #1b2532;
+              --color-slate-100: #22303f;
+              --color-slate-200: #334155;
+              --color-slate-300: #3f4d62;
+              --color-slate-400: #64748b;
+              /* text: lighter as the number grows, matching the light scale */
+              --color-slate-500: #94a3b8;
+              --color-slate-600: #cbd5e1;
+              --color-slate-700: #e2e8f0;
+              --color-slate-800: #eef2f7;
+              --color-slate-900: #f8fafc;
+              /* primary accent → follow the theme's button color */
+              --color-blue-50: #17314e;
+              --color-blue-500: #3b82f6;
+              --color-blue-600: var(--vscode-button-hoverBackground, #2563eb);
+              --color-blue-700: var(--vscode-button-background, #2f6fed);
+              /* status: dark fills, light text */
+              --color-amber-50: #3a2f14;
+              --color-amber-100: #4a3c17;
+              --color-amber-200: #6b5320;
+              --color-amber-700: #fcd34d;
+              --color-amber-800: #fde68a;
+              --color-red-50: #3a1d1d;
+              --color-red-200: #6b2b2b;
+              --color-red-800: #fca5a5;
+              --color-green-700: #86efac;
+            }
+
+            /* --color-white does double duty (button label + preview code
+               background); keep it light for the label, darken only the code. */
+            body.vscode-dark .bg-white,
+            body.vscode-high-contrast:not(.vscode-high-contrast-light) .bg-white {
+              background-color: var(--vscode-textCodeBlock-background, #0f141b);
+            }
           </style>
+          <script nonce="${nonce}">
+            window.__ptxImport = { pandocAvailable: ${pandocAvailable ? "true" : "false"} };
+          </script>
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </head>
         <body>

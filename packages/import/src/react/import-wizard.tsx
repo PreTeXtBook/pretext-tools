@@ -5,9 +5,57 @@ import {
 } from "../lib/upload";
 import { filesForImportMode, type ImportMode } from "../lib/import-mode";
 import type { DocumentKind } from "../lib/layout/document-kind";
-import type { ImportedProjectSuccess } from "../lib/types";
+import type {
+  ImportedProjectResult,
+  ImportedProjectSuccess,
+} from "../lib/types";
 
 export type { ImportMode };
+
+/** File extensions accepted by the built-in converter. */
+const DEFAULT_ACCEPT_EXTENSIONS = [
+  ".tex",
+  ".md",
+  ".markdown",
+  ".ptx",
+  ".xml",
+  ".zip",
+  ".gz",
+  ".tar.gz",
+  ".tgz",
+];
+
+/**
+ * A pluggable conversion engine. The wizard owns the whole UI (upload, review,
+ * preview, confirm) and only delegates the source → result step to the selected
+ * engine, so hosts can inject their own converters (e.g. a VS Code-only pandoc
+ * engine that round-trips to the extension host) without touching this package.
+ */
+export interface ImportEngine {
+  /** Stable identifier, used as the radio value. */
+  id: string;
+  /** Short name shown in the engine selector. */
+  label: string;
+  /** Optional one-line explanation shown under the label. */
+  description?: string;
+  /** Extensions this engine accepts (with leading dot). Defaults to the built-in set. */
+  acceptExtensions?: string[];
+  /** Convert an uploaded file into an import result. */
+  convertFile: (
+    file: File,
+    options: ImportProjectOptions,
+  ) => Promise<ImportedProjectResult>;
+}
+
+/** The default engine: the in-browser pure-TS pipeline, no external tools. */
+const BUILTIN_ENGINE: ImportEngine = {
+  id: "builtin",
+  label: "Built-in converter",
+  description:
+    "Create a new project starting with LaTeX, Markdown, or PreTeXt files.",
+  acceptExtensions: DEFAULT_ACCEPT_EXTENSIONS,
+  convertFile: handleImportUploadFile,
+};
 
 export interface ImportWizardProps {
   /** Called when the user confirms the import. */
@@ -17,6 +65,11 @@ export interface ImportWizardProps {
   /** Pass fixed options to skip the document-kind / split-sections controls. */
   importOptions?: ImportProjectOptions;
   defaultDocumentKind?: DocumentKind | "auto";
+  /**
+   * Converters offered to the user. When more than one is supplied, an engine
+   * selector is shown on the upload step. Defaults to a single built-in engine.
+   */
+  engines?: ImportEngine[];
 }
 
 type Step =
@@ -30,7 +83,9 @@ export function ImportWizard({
   onCancel,
   importOptions,
   defaultDocumentKind = "auto",
+  engines,
 }: ImportWizardProps) {
+  const engineList = engines && engines.length > 0 ? engines : [BUILTIN_ENGINE];
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [step, setStep] = useState<Step>({ name: "upload" });
   const [dragActive, setDragActive] = useState(false);
@@ -38,9 +93,16 @@ export function ImportWizard({
     DocumentKind | "auto"
   >(defaultDocumentKind);
   const [splitSections, setSplitSections] = useState(false);
+  const [selectedEngineId, setSelectedEngineId] = useState(engineList[0].id);
   const [mode, setMode] = useState<ImportMode>("converted");
   const [showPreview, setShowPreview] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+
+  const selectedEngine =
+    engineList.find((engine) => engine.id === selectedEngineId) ??
+    engineList[0];
+  const acceptExtensions =
+    selectedEngine.acceptExtensions ?? DEFAULT_ACCEPT_EXTENSIONS;
 
   const processFile = async (file: File) => {
     setStep({ name: "processing" });
@@ -50,7 +112,7 @@ export function ImportWizard({
           documentKindChoice === "auto" ? undefined : documentKindChoice,
         splitSections,
       };
-      const result = await handleImportUploadFile(file, options);
+      const result = await selectedEngine.convertFile(file, options);
       if ("pretextError" in result) {
         setStep({ name: "error", message: result.pretextError });
       } else {
@@ -307,6 +369,41 @@ export function ImportWizard({
   // Upload step
   return (
     <div className="flex flex-col gap-4">
+      {engineList.length > 1 ? (
+        <fieldset className="rounded-lg border border-slate-200 p-4">
+          <legend className="px-1 text-sm font-semibold text-slate-700">
+            Converter
+          </legend>
+          <div className="mt-2 flex flex-col gap-3">
+            {engineList.map((engine) => (
+              <label
+                key={engine.id}
+                className="flex cursor-pointer items-start gap-3 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="import-engine"
+                  value={engine.id}
+                  checked={selectedEngineId === engine.id}
+                  onChange={() => setSelectedEngineId(engine.id)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium text-slate-900">
+                    {engine.label}
+                  </span>
+                  {engine.description ? (
+                    <span className="block text-slate-500">
+                      {engine.description}
+                    </span>
+                  ) : null}
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       {!importOptions ? (
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2 text-slate-700">
@@ -370,13 +467,13 @@ export function ImportWizard({
           Select File
         </button>
         <p className="text-xs text-slate-400">
-          Supports .tex, .md, .ptx, .xml, .zip, .tar.gz
+          Supports {acceptExtensions.join(", ")}
         </p>
         <input
           ref={fileInputRef}
           type="file"
           hidden
-          accept=".tex,.md,.markdown,.ptx,.xml,.zip,.gz,.tar.gz,.tgz"
+          accept={acceptExtensions.join(",")}
           onChange={(e) => {
             const file = e.currentTarget.files?.[0];
             if (file) void processFile(file);

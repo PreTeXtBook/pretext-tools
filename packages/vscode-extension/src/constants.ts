@@ -42,9 +42,9 @@ export const ptxCommandList = [
     command: "pretext-tools.convertText",
   },
   {
-    label: "Convert external file to PreTeXt",
-    description: "Using PlasTeX or Pandoc",
-    command: "pretext-tools.convertFile",
+    label: "Import Project",
+    description: "From LaTeX, Markdown, PreTeXt, Word, and more",
+    command: "pretext-tools.importProject",
   },
   {
     label: "Run commands in terminal",
