@@ -34,5 +34,22 @@ export { json2ptx } from "./json2ptx";
 export { cleanPtx } from "./utils";
 export { KNOWN_TAGS } from "./knownTags";
 
+// The canonical extension list shared by the live editor, the round-trip
+// guard, and the test harness. External consumers (e.g. pretext.plus) that
+// build their own TipTap editor should use this list so their schema matches
+// what checkRoundTrip verifies.
+export { editorExtensions } from "./editorExtensions";
+
+// Round-trip machinery: parse/serialize helpers plus the checkRoundTrip
+// safety guard that decides whether a document can be edited without data
+// loss. See roundtrip.ts for the full contract.
+export {
+  parsePtx,
+  serializeEditorJson,
+  roundTripPtx,
+  checkRoundTrip,
+} from "./roundtrip";
+export type { ParsedPtx, RoundTripReport, EditorJson } from "./roundtrip";
+
 // Export types if any
 export type * from "./knownTags";

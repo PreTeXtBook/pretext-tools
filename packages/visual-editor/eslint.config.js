@@ -5,7 +5,9 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  // styles.d.ts is an ambient declaration stub for the "./styles" CSS export;
+  // it belongs to no tsconfig project, so the type-aware parser can't load it.
+  { ignores: ["dist", "styles.d.ts"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

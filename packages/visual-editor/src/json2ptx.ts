@@ -6,6 +6,27 @@ const tt2ptx = {
   italic: "em",
 };
 
+/**
+ * Node types that are INLINE in the editor schema (they live inside a
+ * paragraph's text flow). Their tags must be serialized WITHOUT the
+ * newlines we inject around block-level tags — otherwise
+ * `<p>Let <m>x</m> be</p>` comes back as `<p>Let <m>\nx\n</m> be</p>`,
+ * which the formatter preserves and the round-trip guard then (correctly)
+ * flags as a change to the document.
+ *
+ * This default set mirrors the extensions that declare `inline: true`
+ * (Math.ts: m/me/md, Url.ts: url). Internal callers should not rely on the
+ * default: roundtrip.ts derives the set from the live editor schema via
+ * getSchema() and passes it in, so it can never drift from the extensions.
+ * The default exists for external/direct callers of json2ptx.
+ */
+const DEFAULT_INLINE_TAGS: ReadonlySet<string> = new Set([
+  "m",
+  "me",
+  "md",
+  "url",
+]);
+
 function encode(text: string) {
   return text
     .replace(/&/g, "&amp;")
@@ -21,10 +42,23 @@ interface JsonNode {
   marks?: Array<{ type: string }>;
 }
 
-function json2ptx(json: JsonNode) {
+/**
+ * Serialize a TipTap/ProseMirror document (as JSON) back to PreTeXt XML.
+ *
+ * @param json       The editor document; its top node must be `ptxFragment`
+ *                   (see editorExtensions.ts).
+ * @param inlineTags Node type names to serialize inline (no injected
+ *                   newlines). Defaults to DEFAULT_INLINE_TAGS; roundtrip.ts
+ *                   passes the set derived from the actual editor schema.
+ */
+function json2ptx(
+  json: JsonNode,
+  inlineTags: ReadonlySet<string> = DEFAULT_INLINE_TAGS,
+) {
   let ptx = "";
   // NB we are omitting the XML declaration at the top for now.
-  // let ptx = '<?xml version="1.0" encoding="UTF-8"?>\n\n';
+  // (roundtrip.ts#serializeEditorJson restores the declaration captured at
+  // parse time; json2ptx itself never sees it.)
   // Top level node is a ptxFragment, but double check this:
   if (json.type !== "ptxFragment") {
     console.log("Top level node is not a ptxFragment");
@@ -40,13 +74,13 @@ function json2ptx(json: JsonNode) {
     console.log("More than one child in json.content");
     return "";
   }
-  ptx += processNode(json.content[0]);
+  ptx += processNode(json.content[0], inlineTags);
   // remove the remaining <ptxdoc> root tags; these are not part of pretext, just used for the visual editor.
   ptx = ptx.replace(/^<ptxdoc>\s*/, "\n").replace(/\s*<\/ptxdoc>/, "");
   return ptx;
 }
 
-function processNode(json: JsonNode) {
+function processNode(json: JsonNode, inlineTags: ReadonlySet<string>) {
   let ptx = "";
   if (json.content) {
     // every node should have a type; if it needs to be changed, we do so:
@@ -69,6 +103,12 @@ function processNode(json: JsonNode) {
         ptx = ptx + fragment.text;
       }
     } else {
+      // Inline nodes (m, me, md, url, ...) sit inside a paragraph's text
+      // flow, so their tags must hug their content — injecting newlines
+      // would alter the document's rendered whitespace and break the
+      // round-trip guarantee. Block tags get newlines; the formatter
+      // normalizes those afterwards.
+      const isInline = inlineTags.has(json.type);
       // all other nodes are processed by adding the correct tag and attributes around its content
       ptx = ptx + "<" + elementName;
       if (elementAttrs) {
@@ -78,16 +118,14 @@ function processNode(json: JsonNode) {
           }
         }
       }
-      ptx = ptx + ">\n";
-      // console.log("content is:"+ json.content)
+      ptx = ptx + (isInline ? ">" : ">\n");
       for (const fragment of json.content) {
-        ptx = ptx + processNode(fragment);
-        // console.log(fragment)
-        //   // ptx = ptx + "<"+fragment.type+">"
-        //   ptx = ptx + json2ptx(fragment.content)
-        //   // ptx = ptx + "</"+fragment.type+">\n"
+        ptx = ptx + processNode(fragment, inlineTags);
       }
-      ptx = ptx + "\n</" + elementName + ">\n";
+      ptx = ptx + (isInline ? "</" : "\n</") + elementName + ">";
+      if (!isInline) {
+        ptx = ptx + "\n";
+      }
     }
   } else {
     // text type nodes are exactly the leaf nodes

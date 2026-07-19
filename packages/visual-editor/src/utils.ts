@@ -44,9 +44,11 @@ export function cleanPtx(origXml: string) {
     }
   }
   xml = `<ptxdoc>\n${xml}\n</ptxdoc>`;
-  // We use xast to parse the XML into a AST
+  // We use xast to parse the XML into a AST.
+  // NOTE: fromXml throws on malformed XML. That is intentional — callers that
+  // need a non-throwing answer go through checkRoundTrip (roundtrip.ts), which
+  // catches the error and reports the document as unsafe to edit.
   const tree = fromXml(xml);
-  console.log("xast before: ", tree);
   // Visit each node until we find an unknown tag
   visit(tree, (node, index, parent) => {
     if (node.type === "element" && !KNOWN_TAGS.includes(node.name)) {
@@ -68,10 +70,8 @@ export function cleanPtx(origXml: string) {
       return SKIP;
     }
   });
-  console.log("xast after: ", tree);
   // Convert the resulting tree back to XML
   const newXml = toXml(tree);
-  //console.log("back to xml: ", newXml);
   return newXml;
 }
 

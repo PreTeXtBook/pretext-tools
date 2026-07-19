@@ -47,7 +47,8 @@
     "build:all": "npm run build",
     "watch": "vite build --watch --config vite.lib.config.ts",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
