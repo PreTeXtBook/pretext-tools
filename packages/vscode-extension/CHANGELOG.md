@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- New sidebar view for PreTeXt commands, build/view per target, and document outline (can be full document or just the current file).
+- Live preview shows the current document rendered as a standalone PreTeXt document, with full forward and inverse search/sync.
+- Project importer unifies use of the new Pandoc-based converter and the native LaTeXt-style PreTeXt or Markdown-style PreTeXt to pretext converters.  Import a multi-file LaTeX project to quickly start working in PreTeXt.
+- Improved schema validation warnings, including support for the "experimental" schema, and better error messages.
+
 ## [0.40.0] - 2026-07-14
 
 ## [0.39.0] - 2026-07-08
