@@ -1,5 +1,11 @@
 # @pretextbook/format
 
+## 0.3.0
+
+### Minor Changes
+
+- 598ccbc: Misc improvements
+
 ## 0.2.1
 
 ### Patch Changes
