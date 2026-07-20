@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/pretext-html",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Convert PreTeXt documents to HTML in pure JavaScript using the official PreTeXt XSLT stylesheets via libxslt-wasm. No Python or PreTeXt installation required.",
   "author": "Oscar Levin",
   "license": "MIT",
