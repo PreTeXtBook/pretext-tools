@@ -2,7 +2,7 @@
   "name": "pretext-tools",
   "displayName": "PreTeXt-tools",
   "description": "Language support and more for PreTeXt",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "license": "See license in LICENSE",
   "icon": "logo.png",
