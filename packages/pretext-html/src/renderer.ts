@@ -12,9 +12,8 @@
  * itself with the flag automatically.
  */
 
-import { readFile } from "node:fs/promises";
 import * as path from "node:path";
-import { fileURLToPath } from "node:url";
+import { assetsBase, joinPath, readMount, readSource } from "./host.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import { forcePortablePublication } from "./publication.js";
 import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
@@ -105,25 +104,12 @@ export interface RenderResult {
   sourceMap?: PtxSourceMap;
 }
 
-// Computed with path functions rather than `new URL(..., import.meta.url)`
-// so vite's asset handling does not inline the file at build time. Works from
-// both src/ and dist/, which sit at the same depth in the package. The env
-// var override serves bundlers (the VS Code extension bundles this module and
-// ships the assets elsewhere).
-function assetsDir(): string {
-  return (
-    process.env["PRETEXT_HTML_ASSETS"] ??
-    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "assets")
-  );
-}
-
-/** Vendored stylesheets shipped with this package. */
+/**
+ * Vendored stylesheets shipped with this package. A directory under Node, a
+ * base URL in the browser build — either way, a mount root (see host.ts).
+ */
 export function defaultXslDir(): string {
-  return path.join(assetsDir(), "xsl");
-}
-
-function defaultPreviewXslPath(): string {
-  return path.join(assetsDir(), "preview-html.xsl");
+  return joinPath(assetsBase(), "xsl");
 }
 
 export function isJspiAvailable(): boolean {
@@ -179,6 +165,23 @@ function documentRootName(xml: string): string | undefined {
 }
 
 /**
+ * Read a file the caller named, failing loudly. Unlike the best-effort reads
+ * (docinfo, mounted resources), there is no sensible way to continue without
+ * the source or the publication file the caller explicitly asked for.
+ */
+async function readSourceOrThrow(location: string): Promise<string> {
+  const content = await readSource(location);
+  if (content === undefined) {
+    throw new Error(
+      `Could not read ${location}. ` +
+        `(In the browser build only absolute URLs are readable — pass ` +
+        `sourceContent instead of relying on sourcePath.)`,
+    );
+  }
+  return content;
+}
+
+/**
  * Read and extract the `<docinfo>` from a project main file (resolving
  * xi:includes). Best-effort: returns undefined if the file cannot be read.
  */
@@ -187,10 +190,8 @@ async function docinfoFromSource(
   projectDir: string,
 ): Promise<string | undefined> {
   const resolved = path.resolve(docinfoSourcePath);
-  let content: string;
-  try {
-    content = await readFile(resolved, "utf8");
-  } catch {
+  const content = await readSource(resolved);
+  if (content === undefined) {
     return undefined;
   }
   return extractDocinfo(content, resolved, projectDir);
@@ -273,13 +274,29 @@ const stylesheetCache = new Map<string, Promise<Stylesheet>>();
  * `xslDir`. Compilation costs ~1s cold, so reuse across renders matters.
  */
 async function getStylesheet(xslDir: string): Promise<Stylesheet> {
-  const key = path.resolve(xslDir);
+  // Keyed on the root as given: it may be a path or a URL, and only the
+  // MountReader knows how to canonicalise it.
+  const key = xslDir;
   let cached = stylesheetCache.get(key);
   if (!cached) {
     cached = (async () => {
       const { XmlDocument, XsltStylesheet } = await loadLibXslt();
       const xslBase = mountDirectory(key);
-      const previewXsl = await readFile(defaultPreviewXslPath(), "utf8");
+      // preview-html.xsl sits one level above the stylesheets it imports, so
+      // it is read from the assets root but parsed as though it lived in the
+      // xsl mount — that is what makes its relative <xsl:import> resolve.
+      const previewXslBytes = await readMount(
+        assetsBase(),
+        "/preview-html.xsl",
+      );
+      if (previewXslBytes === undefined) {
+        throw new Error(
+          `Could not read preview-html.xsl from ${assetsBase()}. ` +
+            `Check the assets location (PRETEXT_HTML_ASSETS under Node, ` +
+            `setAssetsBase() in the browser).`,
+        );
+      }
+      const previewXsl = new TextDecoder().decode(previewXslBytes);
       const xslDoc = await XmlDocument.fromString(previewXsl, {
         url: `${xslBase}/preview-html.xsl`,
         options: { noEnt: true, dtdLoad: true, huge: true },
@@ -312,7 +329,7 @@ export async function renderHtml(
     options.projectDir ?? path.dirname(sourcePath),
   );
   const sourceContent =
-    options.sourceContent ?? (await readFile(sourcePath, "utf8"));
+    options.sourceContent ?? (await readSourceOrThrow(sourcePath));
 
   const relSource = path.relative(projectDir, sourcePath);
   if (relSource.startsWith("..")) {
@@ -332,7 +349,7 @@ export async function renderHtml(
     if (options.publicationPath) {
       const pubPath = path.resolve(options.publicationPath);
       publicationXml = forcePortablePublication(
-        await readFile(pubPath, "utf8"),
+        await readSourceOrThrow(pubPath),
       );
       const relPub = path.relative(projectDir, pubPath);
       if (!relPub.startsWith("..")) {

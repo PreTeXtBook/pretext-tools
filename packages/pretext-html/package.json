@@ -28,6 +28,10 @@
   },
   "exports": {
     ".": {
+      "browser": {
+        "types": "./dist/index.browser.d.ts",
+        "default": "./dist/index.browser.js"
+      },
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -46,9 +50,11 @@
     "cli.mjs"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && npm run build:browser && npm run build-xsl-bundle",
+    "build:browser": "vite build --mode browser",
     "test": "vitest run",
-    "refresh-xsl": "node scripts/refresh-xsl.mjs"
+    "refresh-xsl": "node scripts/refresh-xsl.mjs",
+    "build-xsl-bundle": "node --experimental-wasm-jspi scripts/build-xsl-bundle.mjs"
   },
   "dependencies": {
     "@pretextbook/libxslt-wasm": "^0.1.1",

@@ -13,8 +13,8 @@
  * Not supported: `xpointer` (rejected with a clear error).
  */
 
-import { readFile } from "node:fs/promises";
 import * as path from "node:path";
+import { readSource } from "./host.js";
 import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import type { Element, Root, RootContent, Text } from "xast";
@@ -199,10 +199,8 @@ async function expandInclude(
     throw new Error(`xi:include nesting exceeds ${MAX_DEPTH} levels`);
   }
 
-  let content: string;
-  try {
-    content = await readFile(target, "utf8");
-  } catch {
+  const content = await readSource(target);
+  if (content === undefined) {
     const fallback = findFallback(include, bindings);
     if (fallback) {
       await resolveInTree(fallback, baseDir, bindings, context);

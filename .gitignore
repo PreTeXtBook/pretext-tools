@@ -73,3 +73,10 @@ vitest.config.*.timestamp*
 
 .claude/worktrees
 .claude/settings.local.json
+
+# Recorded by pretext-html's scripts/build-xsl-bundle.mjs as part of its build.
+# A verbatim copy of files already tracked under assets/xsl, so committing it
+# would duplicate ~2.7MB in git on every upstream stylesheet refresh — and as a
+# single-line JSON blob it would never diff usefully. It *is* published to npm
+# (assets/ is in "files"), so `npm run build` must precede `npm publish`.
+packages/pretext-html/assets/xsl-bundle.json

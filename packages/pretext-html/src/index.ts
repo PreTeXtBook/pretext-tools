@@ -26,3 +26,11 @@ export type { PreviewTheme, PreviewThemeMessage } from "./theme.js";
 // The CLI driver, re-exported so embedders that fork a bundled worker (the
 // VS Code extension) can reuse the argument parsing and stdout protocol.
 export { main as runCli } from "./cli.js";
+// Where this package's assets/ directory is read from; the programmatic
+// equivalent of the PRETEXT_HTML_ASSETS environment variable.
+export { setAssetsBase } from "./host.js";
+// Advanced: override how mounted stylesheet files are read (see mounts.ts).
+// Lets an embedder serve the stylesheets from an in-memory map, a zip, or a
+// webview resource URI, and is how the XSL bundle is recorded at build time.
+export { setMountReader } from "./mounts.js";
+export type { MountReader } from "./mounts.js";

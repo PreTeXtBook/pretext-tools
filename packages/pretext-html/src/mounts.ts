@@ -11,13 +11,34 @@
  * strings. No HTTP server, no real network traffic.
  */
 
-import { readFile } from "node:fs/promises";
-import * as path from "node:path";
+import { readMount as defaultReadMount } from "./host.js";
+
+/**
+ * Reads `relPath` (posix, leading "/") beneath mount root `root`, or resolves
+ * `undefined` when it is missing or escapes the mount. `root` is opaque: a
+ * directory under Node, a base URL in a browser, whatever an embedder's own
+ * reader wants.
+ */
+export type MountReader = (
+  root: string,
+  relPath: string,
+) => Promise<Uint8Array | string | undefined>;
 
 const directoryMounts = new Map<string, string>();
 const virtualFiles = new Map<string, string>();
 let realFetch: typeof globalThis.fetch | undefined;
 let mountCounter = 0;
+let mountReader: MountReader = defaultReadMount;
+
+/**
+ * Replace how mounted files are read. Lets an embedder serve the stylesheets
+ * from somewhere the platform seam does not cover — an in-memory map, a zip,
+ * a VS Code webview resource URI — without patching `globalThis.fetch`.
+ * Also how scripts/build-xsl-bundle.mjs records which files a render touches.
+ */
+export function setMountReader(reader: MountReader): void {
+  mountReader = reader;
+}
 
 function shimFetch(
   input: Parameters<typeof globalThis.fetch>[0],
@@ -63,20 +84,16 @@ const MISSING_FILE_STUB = `<?xml version="1.0"?><pretext-preview-missing-file/>`
 
 async function serveFromDirectory(dir: string, url: string): Promise<Response> {
   const pathname = decodeURIComponent(new URL(url).pathname);
-  const filePath = path.resolve(dir, "." + path.posix.normalize(pathname));
-  // Containment check: refuse to escape the mounted directory.
-  if (filePath !== dir && !filePath.startsWith(dir + path.sep)) {
-    console.error(
-      `pretext-html: refusing to serve ${pathname} from outside ${dir}`,
-    );
+  // Containment is the reader's job: only it knows what `dir` means. Both
+  // shipped readers refuse to escape the mount and return undefined.
+  const data = await mountReader(dir, pathname);
+  if (data === undefined) {
     return new Response(MISSING_FILE_STUB, { status: 200 });
   }
-  try {
-    const data = await readFile(filePath);
-    return new Response(new Uint8Array(data), { status: 200 });
-  } catch {
-    return new Response(MISSING_FILE_STUB, { status: 200 });
-  }
+  // Re-wrap bytes so the body type is a Uint8Array over a plain ArrayBuffer,
+  // which is what BodyInit accepts.
+  const body = typeof data === "string" ? data : new Uint8Array(data);
+  return new Response(body, { status: 200 });
 }
 
 /** Install the shim (idempotent). Must run before libxslt-wasm loads anything. */
@@ -91,11 +108,15 @@ export function installFetchShim(): void {
 /**
  * Serve `dir` under a unique fake origin. Returns the base URL
  * (e.g. `http://mnt1.ptx.invalid`); resource paths append to it.
+ *
+ * `dir` is stored verbatim and handed back to the {@link MountReader}, which
+ * owns its interpretation — under Node a directory path, in a browser a base
+ * URL.
  */
 export function mountDirectory(dir: string): string {
   installFetchShim();
   const host = `mnt${++mountCounter}.ptx.invalid`;
-  directoryMounts.set(host, path.resolve(dir));
+  directoryMounts.set(host, dir);
   return `http://${host}`;
 }
 
