@@ -74,6 +74,58 @@ const { html } = await renderHtml({
 - `theme: "dark" | "light" | "system"` makes the preview follow the embedding
   app's light/dark theme (see [Theme control](#theme-control)).
 
+### API (browser)
+
+The same renderer runs in a browser — no server, no Python. Bundlers pick it up
+through the `browser` export condition automatically; there is nothing to
+configure.
+
+```js
+import { renderHtml, isJspiAvailable } from "@pretextbook/pretext-html";
+
+if (!isJspiAvailable()) {
+  // No WebAssembly JSPI in this engine — fall back to a server-side build.
+}
+
+const { html } = await renderHtml({
+  sourcePath: "/source/main.ptx", // a *virtual* path: no filesystem is read
+  sourceContent: editorText, // required in the browser
+  projectDir: "/source",
+  fragment: true, // rendering one division on its own
+});
+```
+
+Differences from the Node API, all of them consequences of there being no
+filesystem:
+
+- **`sourceContent` is required.** `sourcePath` still anchors relative
+  `xi:include`s and the output's URLs, but nothing is read from it.
+- **`xi:include`s are not resolved from disk.** Pre-merge them, or pass the
+  already-merged document as `sourceContent`. An unresolvable include uses its
+  `<xi:fallback>` if it has one, and otherwise throws.
+- **`publicationPath` / `docinfoSourcePath` need absolute URLs**, since those
+  are the only readable locations. Prefer `docinfo` (a string) over
+  `docinfoSourcePath`.
+- **Stylesheets are fetched from jsDelivr**, version-pinned to the installed
+  package, so no build configuration is needed. To self-host them, copy this
+  package's `assets/` directory somewhere your app serves and call
+  `setAssetsBase("/pretext-assets")` before the first render. (Under Node the
+  equivalent is `PRETEXT_HTML_ASSETS`, or the same `setAssetsBase`.)
+- **A cold render costs two requests**, not ~32: `assets/xsl-bundle.json` packs
+  the whole stylesheet closure (13 stylesheets plus the 17 locale files
+  `pretext-common.xsl` eagerly loads) into one file. It is purely an
+  optimisation — if it is missing, each file is fetched individually and the
+  render still succeeds. It is recorded from a real render by
+  `npm run build-xsl-bundle`, which runs as part of `npm run build`.
+
+Typical timings, measured on a single-division fragment: **~400ms cold**
+(stylesheet compile plus asset fetch, paid once per session and then cached)
+and **~90ms warm**. That is what makes preview-on-save feel instant.
+
+`setMountReader()` is the escape hatch if neither delivery mode fits — it lets
+you serve the stylesheets from an in-memory map, a zip, or a webview resource
+URI.
+
 ### Theme control
 
 A rendered page can already switch between light and dark — pretext-core.js
@@ -149,13 +201,22 @@ the message helper.
    (libxml2's own XInclude pass cannot suspend in the current WASM build).
    Supports nested includes, `parse="text"`, and `xi:fallback`; `xpointer` is
    not supported.
+5. **Platform seam** — `src/host.ts` holds everything that touches the outside
+   world: read a file under a mount, read a caller-named file, locate
+   `assets/`. Under Node those are filesystem calls; in the browser build
+   (`src/host.browser.ts`, swapped in by `vite.config.mts`) they are `fetch`es.
+   The browser build also substitutes a posix-only `node:path`
+   (`src/internal/posix-path.ts`), which is sound because no path this package
+   computes ever reaches a real filesystem — with `FILESYSTEM=0` they are all
+   virtual, ending up as mount keys or `.ptx.invalid` URL segments. The result
+   has no `node:` imports at all; rollup fails the build if one survives.
 
 ## Limitations (current WASM build)
 
 | Limitation                                     | Cause                                           | Fix                                                                         |
 | ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
 | No multi-file output (`exsl:document`)         | Compiled with `FILESYSTEM=0`                    | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
-| Node only, JSPI flag required                  | Loader fetches resources mid-transform via JSPI | Preload stylesheets into MEMFS at init, or wait for JSPI to ship unflagged  |
+| JSPI required (flagged on Node)                | Loader fetches resources mid-transform via JSPI | Feature-detect with `isJspiAvailable()`; engines without it need a fallback |
 | No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
 | `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
 
