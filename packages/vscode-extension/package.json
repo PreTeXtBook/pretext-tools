@@ -459,7 +459,7 @@
             "type": "string",
             "default": "",
             "scope": "machine",
-            "markdownDescription": "Path to a Node.js (version 22+) executable for the live preview worker. Only used when VS Code's built-in runtime lacks WebAssembly JSPI support; leave empty to use `node` from your PATH."
+            "markdownDescription": "Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
           },
           "pretext-tools.formatter.blankLines": {
             "order": 4,

@@ -65,6 +65,13 @@ Run `PreTeXt: View Live Preview` (or click the preview icon) to open a side-by-s
 
 Use the `PreTeXt: Live Preview: Choose Scope` command, or the `pretext-tools.instantPreview.scope` setting, to preview just the current file or the whole project.
 
+**Runtime requirements.** The preview renders the PreTeXt stylesheets through WebAssembly, which needs a JavaScript engine supporting WebAssembly JSPI. VS Code normally provides this itself, so there is nothing to install. If you see an error saying no such runtime was found — most likely on an older VS Code release, or in a remote/Codespaces window whose server runtime predates JSPI — then:
+
+- **Updating VS Code is the easiest fix**, since it supplies the runtime the preview prefers.
+- Otherwise, install **Node.js 24 or later**. Note that Node 22 will _not_ work: its version of V8 predates the `WebAssembly.Suspending` API the renderer requires, even though it accepts the relevant flag. If your Node is not on `PATH`, set `pretext-tools.instantPreview.nodePath` to its absolute path. That setting is machine-scoped, so in a remote window set it under the **Remote** tab rather than **User**.
+
+The PreTeXt output channel records which runtime the preview selected, and what each attempt reported if none worked.
+
 There is also an older, CLI-based `PreTeXt: Live Preview via CLI build` command (experimental), which shells out to `pretext build` and requires PreTeXt to be installed — most users should prefer the built-in Live Preview above.
 
 ### Visual Editor (experimental)

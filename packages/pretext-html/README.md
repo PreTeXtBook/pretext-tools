@@ -111,9 +111,11 @@ the message helper.
 
 ## Requirements
 
-- **Node ≥ 22** launched with **`--experimental-wasm-jspi`** (WebAssembly
-  stack switching). The flag is not allowed in `NODE_OPTIONS`; it must be on
-  the command line. The `pretext-html` CLI re-executes itself with the flag;
+- **Node ≥ 24** launched with **`--experimental-wasm-jspi`** (WebAssembly
+  stack switching). Node 22 does **not** work despite accepting the flag: its
+  V8 (12.4) has only the older Suspender-era JSPI and never exposes the
+  `WebAssembly.Suspending` API this package needs. The flag is not allowed in
+  `NODE_OPTIONS`; it must be on the command line. The `pretext-html` CLI re-executes itself with the flag;
   API users must supply it themselves (in tests, vitest's `execArgv` option
   works — see `vite.config.mts`).
 - Runtimes with V8 ≥ 13.7 (Chromium/Electron ≥ 137, and eventually Node
