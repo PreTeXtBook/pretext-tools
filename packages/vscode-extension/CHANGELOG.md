@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Fixed
+
+- Support for external and already-generated generated assets in the live preview.
+
 ## [1.0.1] - 2026-07-20
 
 ### Fixed
