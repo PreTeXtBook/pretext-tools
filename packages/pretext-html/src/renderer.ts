@@ -254,22 +254,69 @@ function wrapFragment(
 }
 
 /**
- * Map the WASM engine's out-of-bounds errors ("memory access out of bounds",
- * "out of bounds memory access", depending on engine/version) to an
- * actionable message. libxslt recurses per node and the published WASM build
- * has a small (~64KB) stack, so very large documents (whole books) blow it.
- * Needs a rebuild of libxslt-wasm with a bigger STACK_SIZE; see the README.
+ * Set once the WASM instance has aborted. Emscripten's `abort()` is terminal
+ * — the module tears down its runtime and every later call fails somewhere
+ * unhelpful (typically a pthread mutex assertion, having nothing to do with
+ * whatever the caller was actually rendering). Remembering it lets us say so
+ * plainly instead of surfacing that assertion once per render forever.
  */
-function throwIfWasmStackOverflow(error: unknown): void {
-  if (
-    error instanceof Error &&
-    /memory access|out of bounds/i.test(error.message)
-  ) {
+let wasmAborted = false;
+
+/** True for emscripten's terminal `abort()`, which no later call survives. */
+function isTerminalWasmAbort(error: unknown): boolean {
+  return error instanceof Error && /\bAborted\(/.test(error.message);
+}
+
+/** True for the engine's out-of-bounds trap, spelled differently per engine. */
+function isWasmMemoryFault(error: unknown): boolean {
+  return (
+    error instanceof Error && /memory access|out of bounds/i.test(error.message)
+  );
+}
+
+function assertWasmUsable(): void {
+  if (wasmAborted) {
     throw new Error(
-      "The document is too large for the current WebAssembly build " +
-        "(stack overflow). Whole-book builds are a known limitation; " +
-        "try a smaller document, or see the README about rebuilding " +
-        "libxslt-wasm with a larger stack.",
+      "The WebAssembly renderer aborted earlier in this process and cannot " +
+        "be reused. Restart the process (or reload the page) to render again.",
+    );
+  }
+}
+
+/**
+ * Turn a WASM-level failure into something a caller can act on.
+ *
+ * Both causes below surface as the same out-of-bounds trap, and the engine
+ * gives us nothing to tell them apart — so the message names both rather than
+ * asserting the one that is merely more common. Reporting a size limit for
+ * what is actually state corruption sends people off measuring their
+ * documents, which is exactly the wrong place to look.
+ *
+ * 1. A genuine stack overflow. libxslt recurses per node and the published
+ *    WASM build has a small (~64KB) stack, so very large documents (whole
+ *    books) blow it. Needs a rebuild of libxslt-wasm with a bigger
+ *    STACK_SIZE; see the README.
+ * 2. Overlapping renders. Two transforms interleaving in the shared libxslt
+ *    state corrupt it. {@link renderHtml} serializes to prevent this, so it
+ *    should only be reachable by an embedder driving the internals directly.
+ */
+function throwIfWasmFailure(error: unknown): void {
+  if (isTerminalWasmAbort(error)) {
+    wasmAborted = true;
+    throw new Error(
+      "The WebAssembly renderer aborted and cannot be reused. Restart the " +
+        "process (or reload the page) to render again.",
+      { cause: error },
+    );
+  }
+  if (isWasmMemoryFault(error)) {
+    throw new Error(
+      "The WebAssembly renderer hit a memory fault. Most often the document " +
+        "is too large for this build's stack — whole-book builds are a known " +
+        "limitation, so try a smaller document, or see the README about " +
+        "rebuilding libxslt-wasm with a larger stack. The same fault also " +
+        "results from running two renders concurrently against the shared " +
+        "libxslt state.",
       { cause: error },
     );
   }
@@ -339,17 +386,50 @@ async function getStylesheet(xslDir: string): Promise<Stylesheet> {
 }
 
 /**
+ * Serializes renders. **Correctness, not throughput.**
+ *
+ * A render is not reentrant. It drives a single cached compiled stylesheet
+ * (see {@link getStylesheet}) through a patched `globalThis.fetch` and the
+ * shared mount tables in mounts.ts — all module-level mutable state. The
+ * transform also *suspends* mid-run to fetch stylesheets, which is the whole
+ * point of JSPI, and that suspension is exactly the window in which a second
+ * render gets to run. Overlapping renders interleave inside libxslt and
+ * corrupt it.
+ *
+ * The failure is disproportionate to the mistake: the collision surfaces as
+ * an out-of-bounds memory access, and the WASM instance then aborts on every
+ * subsequent call for the lifetime of the process. Callers cannot reasonably
+ * be expected to know this, and one that renders on a UI event (React's
+ * StrictMode double invokes mount effects, for instance) hits it immediately.
+ * So the queue lives here rather than in each caller's wrapper.
+ */
+let renderQueue: Promise<unknown> = Promise.resolve();
+
+/**
  * Render a PreTeXt document to a single standalone HTML page.
  *
  * Every render pays PreTeXt's fixed assembly cost (~15 full-tree passes) plus
  * per-section rendering: roughly 100ms for a small article, a few seconds for
  * a 150-section book. Generated assets (latex-image, sageplot, …) are not
  * produced — those require the Python toolchain.
+ *
+ * Concurrent calls are safe but not parallel: they queue and run one at a
+ * time (see {@link renderQueue}).
  */
-export async function renderHtml(
-  options: RenderOptions,
-): Promise<RenderResult> {
+export function renderHtml(options: RenderOptions): Promise<RenderResult> {
+  // Chained off both outcomes so one failed render cannot wedge the queue.
+  const result = renderQueue.then(
+    () => renderHtmlSerial(options),
+    () => renderHtmlSerial(options),
+  );
+  // Tracks completion only; the caller still receives the rejection.
+  renderQueue = result.catch(() => undefined);
+  return result;
+}
+
+async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
   assertJspi();
+  assertWasmUsable();
   const { XmlDocument } = await loadLibXslt();
   const xslt = await getStylesheet(options.xslDir ?? defaultXslDir());
 
@@ -491,7 +571,7 @@ export async function renderHtml(
     try {
       result = await xslt.apply(doc, params);
     } catch (error) {
-      throwIfWasmStackOverflow(error);
+      throwIfWasmFailure(error);
       // libxslt already printed the real diagnostics (PTX:ERROR/PTX:FATAL,
       // xsl:message output) on stderr; the thrown error itself is generic.
       throw new Error(
@@ -513,7 +593,7 @@ export async function renderHtml(
         ...(assetDirs ? { assetDirs } : {}),
       };
     } catch (error) {
-      throwIfWasmStackOverflow(error);
+      throwIfWasmFailure(error);
       throw error;
     } finally {
       result.delete();

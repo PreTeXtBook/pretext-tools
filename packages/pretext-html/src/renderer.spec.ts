@@ -500,3 +500,71 @@ describe("renderHtml", () => {
     }
   });
 });
+
+describe("concurrent renders", () => {
+  // Renders share one compiled stylesheet, a patched globalThis.fetch and the
+  // mount tables, and the transform suspends mid-run to fetch stylesheets — so
+  // overlapping renders used to interleave inside libxslt and corrupt it. The
+  // corruption did not report itself as such: it surfaced as an out-of-bounds
+  // memory fault (long mapped to "the document is too large", whatever its
+  // actual size), after which the WASM instance aborted on every later call
+  // for the rest of the process. renderHtml now queues instead.
+  //
+  // These deliberately run against the same module instance as the tests
+  // above: under the old behaviour the corruption would take them down too,
+  // which is exactly the regression worth catching.
+
+  function writeSource(dir: string, body: string): string {
+    const sourcePath = path.join(dir, "main.ptx");
+    fs.writeFileSync(sourcePath, body);
+    return sourcePath;
+  }
+
+  it("survives overlapping renders and returns every result", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-conc-"));
+    try {
+      const sources = [1, 2, 3, 4].map((n) => {
+        const sub = path.join(dir, `r${n}`);
+        fs.mkdirSync(sub);
+        return writeSource(
+          sub,
+          SIMPLE_ARTICLE.replace("Test Article", `Doc ${n}`),
+        );
+      });
+
+      const results = await Promise.all(
+        sources.map((sourcePath) => renderHtml({ sourcePath })),
+      );
+
+      results.forEach(({ html }, index) => {
+        expect(html).toContain(`Doc ${index + 1}`);
+        expect(html).toContain("</html>");
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps the queue usable after a render rejects", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-qfail-"));
+    try {
+      const bad = writeSource(dir, "<pretext><article>unclosed");
+      const goodDir = path.join(dir, "good");
+      fs.mkdirSync(goodDir);
+      const good = writeSource(goodDir, SIMPLE_ARTICLE);
+
+      // A doomed render queued alongside a sound one must neither stall the
+      // queue nor poison what follows it.
+      const settled = await Promise.allSettled([
+        renderHtml({ sourcePath: bad }),
+        renderHtml({ sourcePath: good }),
+      ]);
+      expect(settled[1]?.status).toBe("fulfilled");
+
+      const { html } = await renderHtml({ sourcePath: good });
+      expect(html).toContain("Test Article");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

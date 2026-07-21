@@ -219,10 +219,30 @@ the message helper.
 | JSPI required (flagged on Node)                | Loader fetches resources mid-transform via JSPI | Feature-detect with `isJspiAvailable()`; engines without it need a fallback |
 | No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
 | `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+| Renders run one at a time, never in parallel   | Shared libxslt state; the transform suspends mid-run | Inherent; `renderHtml` queues concurrent calls for you                 |
 
 The whole-book stack overflow ("memory access out of bounds") that the stock
 `libxslt-wasm` build hit on large documents is **fixed** in the
 `@pretextbook/libxslt-wasm` fork, which links with a larger WASM stack.
+
+### Concurrency
+
+A render is not reentrant. It drives a single cached compiled stylesheet
+through a patched `globalThis.fetch` and shared mount tables, and it *suspends*
+mid-transform to fetch stylesheets — which is precisely the window in which
+another render would get to run. Overlapping renders interleave inside libxslt
+and corrupt it.
+
+`renderHtml` therefore **queues**: concurrent calls are safe, and each resolves
+with its own result, but they execute one at a time rather than in parallel. A
+render that rejects does not stall the queue.
+
+This matters mainly if you drive the internals yourself. If you do, serialize
+your own calls — the corruption is not self-describing: it surfaces as an
+out-of-bounds memory fault, and afterwards the WASM instance aborts on *every*
+later call for the lifetime of the process. Once that has happened, only a
+restart (or a page reload) recovers; `renderHtml` detects the state and says so
+rather than repeating the underlying assertion.
 
 Missing generated assets degrade gracefully: the transform serves a stub for
 missing files, PreTeXt emits its usual `PTX:ERROR` advice, and the preview
