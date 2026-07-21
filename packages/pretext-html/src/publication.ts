@@ -66,3 +66,64 @@ export function forcePortablePublication(publicationXml?: string): string {
   platform.attributes = { ...platform.attributes, portable: "yes" };
   return toXml(tree);
 }
+
+/**
+ * Where a project's images live, as declared by
+ * `<source><directories external generated/></source>`.
+ *
+ * Both paths are relative to the directory of the *main* source file — the one
+ * holding `<pretext>` — not to whichever file is being rendered. See
+ * RenderOptions.mainSourcePath.
+ */
+export interface AssetDirectories {
+  /** e.g. "../assets/" — trailing slash, relative to the main source dir. */
+  external?: string;
+  /** e.g. "../generated-assets/" — likewise. */
+  generated?: string;
+  /**
+   * True when the publication declares both attributes ("managed
+   * directories"). Only then does PreTeXt emit asset URLs under the fixed
+   * `external/` and `generated/` prefixes that {@link rewriteAssetUrls} keys
+   * on; legacy projects emit bare or `images/`-prefixed paths that cannot be
+   * told apart from anything else, so the preview leaves them alone.
+   */
+  managed: boolean;
+}
+
+/**
+ * Normalise one `@external`/`@generated` value the way publisher-variables.xsl
+ * does: a leading "/" is an error (treated as unset), and a non-empty value
+ * gains a trailing slash.
+ */
+function normalizeDirectory(raw: string | undefined): string | undefined {
+  if (raw === undefined || raw === "" || raw.startsWith("/")) {
+    return undefined;
+  }
+  return raw.endsWith("/") ? raw : `${raw}/`;
+}
+
+/**
+ * Read the asset directories from a publication file, falling back to the
+ * defaults baked into MINIMAL_PUBLICATION when none is supplied.
+ */
+export function readAssetDirectories(
+  publicationXml?: string,
+): AssetDirectories {
+  const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
+  const publication = findChildElement(tree, "publication");
+  const source = publication && findChildElement(publication, "source");
+  const directories = source && findChildElement(source, "directories");
+  const external = normalizeDirectory(
+    directories?.attributes?.["external"] ?? undefined,
+  );
+  const generated = normalizeDirectory(
+    directories?.attributes?.["generated"] ?? undefined,
+  );
+  // PreTeXt only switches on managed directories when *both* are declared;
+  // one alone is a publication-file error it warns about and ignores.
+  return {
+    external,
+    generated,
+    managed: external !== undefined && generated !== undefined,
+  };
+}
