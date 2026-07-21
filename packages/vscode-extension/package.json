@@ -307,8 +307,7 @@
         "title": "Format PreTeXt",
         "icon": "$(pencil)",
         "category": "PreTeXt",
-        "description": "Formats the PreTeXt source file using the PreTeXt formatter.",
-        "enablement": "config.pretext-tools.experimentalFeatures"
+        "description": "Formats the PreTeXt source file using the PreTeXt formatter."
       },
       {
         "command": "pretext-tools.spellCheck",
