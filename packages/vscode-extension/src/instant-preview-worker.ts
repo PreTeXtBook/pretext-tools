@@ -32,6 +32,8 @@ interface RenderRequest {
   id: number;
   type: "render";
   sourcePath: string;
+  /** The project's main source file; anchors publication-relative asset dirs. */
+  mainSourcePath?: string;
   projectDir?: string;
   publicationPath?: string;
   fragment?: boolean;
@@ -53,6 +55,8 @@ type RenderResponse =
       html: string;
       elapsedMs: number;
       sourceMap?: PtxSourceMap;
+      /** Real directories behind the page's `external/`/`generated/` URLs. */
+      assetDirs?: { external: string; generated: string };
     }
   | { id: number; ok: false; error: string };
 
@@ -113,6 +117,7 @@ function serve(): void {
       const started = Date.now();
       const options: RenderOptions = {
         sourcePath: request.sourcePath,
+        mainSourcePath: request.mainSourcePath,
         projectDir: request.projectDir,
         publicationPath: request.publicationPath,
         fragment: request.fragment,
@@ -122,13 +127,14 @@ function serve(): void {
         theme: request.theme,
       };
       try {
-        const { html, sourceMap } = await renderHtml(options);
+        const { html, sourceMap, assetDirs } = await renderHtml(options);
         const response: RenderResponse = {
           id: request.id,
           ok: true,
           html,
           elapsedMs: Date.now() - started,
           sourceMap,
+          assetDirs,
         };
         send(response);
       } catch (error) {

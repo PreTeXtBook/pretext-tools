@@ -20,6 +20,9 @@
     "*": {
       "theme": [
         "./dist/theme.d.ts"
+      ],
+      "assets": [
+        "./dist/assets.d.ts"
       ]
     }
   },
@@ -40,6 +43,11 @@
       "types": "./dist/theme.d.ts",
       "import": "./dist/theme.js",
       "default": "./dist/theme.js"
+    },
+    "./assets": {
+      "types": "./dist/assets.d.ts",
+      "import": "./dist/assets.js",
+      "default": "./dist/assets.js"
     },
     "./cli": "./dist/cli.js"
   },

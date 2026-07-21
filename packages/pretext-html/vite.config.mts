@@ -78,6 +78,10 @@ export default defineConfig(({ mode }) => {
               // subpath so embedders can import it without the WASM renderer
               // graph.
               theme: "src/theme.ts",
+              // Likewise for the asset-URL rewriter: the VS Code extension
+              // host applies it to HTML the *worker* rendered, so it needs the
+              // helper without libxslt-wasm's top-level await.
+              assets: "src/assets.ts",
             },
         // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI
         // anyway, so there is no CommonJS audience for this package.

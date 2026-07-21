@@ -23,7 +23,9 @@ import {
   Position,
   Range,
   TextEditorSelectionChangeKind,
+  Uri,
   ViewColumn,
+  Webview,
   WebviewPanel,
   window,
   workspace,
@@ -35,6 +37,13 @@ import { parseString } from "xml2js";
 // Type-only: the runtime package is ESM and lives in the worker process; the
 // extension host only ever sees the JSON-serialized map.
 import type { SourceMapEntry } from "@pretextbook/pretext-html";
+// Dependency-free leaf subpath, like ./theme below: the rewriter runs here in
+// the host, on HTML the worker rendered, so it must not drag in the renderer.
+import {
+  missingAssetPlaceholder,
+  rewriteAssetUrls,
+  type AssetUrlResolver,
+} from "@pretextbook/pretext-html/assets";
 // The theme protocol is a dependency-free subpath (its own leaf module, no
 // WASM renderer): importing the package root here would drag libxslt-wasm's
 // top-level await into the CJS host bundle, which esbuild cannot bundle. This
@@ -90,6 +99,11 @@ interface RenderResponse {
   error?: string;
   elapsedMs?: number;
   sourceMap?: SourceMapEntry[];
+  /**
+   * Real directories behind the `external/`/`generated/` URLs in `html`.
+   * Absent for legacy projects that declare neither in their publication file.
+   */
+  assetDirs?: { external: string; generated: string };
 }
 
 interface SourceInfo {
@@ -166,7 +180,14 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
       "pretextInstantPreview",
       "PreTeXt Live Preview",
       ViewColumn.Beside,
-      { enableScripts: true, retainContextWhenHidden: true },
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        // The page loads images and media straight out of the project's asset
+        // directories (see prepareWebviewHtml). The project root is the same
+        // boundary the renderer's own mount enforces.
+        localResourceRoots: [Uri.file(source.projectDir)],
+      },
     );
     panelHasContent = false;
     currentPanel.onDidDispose(() => {
@@ -689,6 +710,10 @@ function renderToPanel(extensionPath: string): void {
     sourcePath: renderPath,
     projectDir: currentSource.projectDir,
     publicationPath: currentSource.publicationPath,
+    // Anchors the publication file's relative asset directories. Without it a
+    // fragment in a subdirectory resolves "../generated-assets/" from its own
+    // folder and every generated image comes out blank.
+    mainSourcePath: currentSource.mainSourcePath,
     fragment: true,
     // The worker lifts <docinfo> (LaTeX macros, custom settings) from the
     // main file — resolving xi:includes — and injects it into the fragment
@@ -730,7 +755,14 @@ function handleRenderResponse(message: RenderResponse): void {
     }
     crashRetries = 0;
     applySourceMap(message.sourceMap);
-    updatePanelContent(prepareWebviewHtml(html));
+    updatePanelContent(
+      prepareWebviewHtml(
+        html,
+        currentPanel.webview,
+        currentSource?.projectDir ?? "",
+        message.assetDirs,
+      ),
+    );
     utils.updateStatusBarItem(ptxSBItem, "success");
     pretextOutputChannel.appendLine(
       `[Instant Preview] Rebuilt in ${message.elapsedMs ?? Date.now() - pendingStarted}ms`,
@@ -784,21 +816,67 @@ function updatePanelContent(preparedHtml: string): void {
 }
 
 /**
- * Adapt the standalone page for a VS Code webview: allow CDN assets through
- * a CSP meta tag, and add a bootstrap script that (a) preserves the scroll
- * position across rebuilds and (b) applies "update" messages from the
- * extension by rewriting the document in place (see updatePanelContent).
+ * Point the page's `external/` and `generated/` asset URLs at files on disk.
+ *
+ * A portable build inlines latex-image and prefigure SVGs, but author-supplied
+ * images and media (and sageplot/asymptote output) stay as relative URLs into
+ * output directories the preview never creates. Rewriting them to webview URIs
+ * lets the panel load the real files — lazily, and without re-sending image
+ * bytes through postMessage on every rebuild the way data: URIs would.
  */
-function prepareWebviewHtml(html: string): string {
+function assetUriResolver(
+  webview: Webview,
+  assetDirs: { external: string; generated: string },
+  projectDir: string,
+): AssetUrlResolver {
+  return (kind, relPath) => {
+    const filePath = path.resolve(assetDirs[kind], relPath);
+    // Containment: a "../" in an @source must not turn into a webview URI for
+    // an arbitrary file. localResourceRoots would refuse it anyway; failing
+    // here keeps the page honest about what it asked for.
+    const root = path.resolve(projectDir);
+    if (filePath !== root && !filePath.startsWith(root + path.sep)) {
+      return undefined;
+    }
+    // A project whose images have never been built is the normal case here,
+    // not an error: `pretext generate` is a separate Python-side step this
+    // preview exists to avoid needing. Substituting a placeholder that names
+    // the missing asset beats the browser's broken-image glyph, which reads
+    // as "the preview is broken". One stat per asset per rebuild.
+    if (!fs.existsSync(filePath)) {
+      return missingAssetPlaceholder(kind, relPath);
+    }
+    return webview.asWebviewUri(Uri.file(filePath)).toString();
+  };
+}
+
+/**
+ * Adapt the standalone page for a VS Code webview: retarget project assets at
+ * real files, allow CDN assets through a CSP meta tag, and add a bootstrap
+ * script that (a) preserves the scroll position across rebuilds and (b)
+ * applies "update" messages from the extension by rewriting the document in
+ * place (see updatePanelContent).
+ */
+function prepareWebviewHtml(
+  html: string,
+  webview: Webview,
+  projectDir: string,
+  assetDirs?: { external: string; generated: string },
+): string {
+  const page = assetDirs
+    ? rewriteAssetUrls(html, assetUriResolver(webview, assetDirs, projectDir))
+    : html;
   const csp = [
     "default-src 'none'",
-    "img-src https: data:",
-    "media-src https:",
+    // cspSource covers the rewritten project assets; https:/data: the CDN.
+    `img-src ${webview.cspSource} https: data:`,
+    `media-src ${webview.cspSource} https:`,
     "script-src https: 'unsafe-inline' 'unsafe-eval'",
     "style-src https: 'unsafe-inline'",
     "font-src https: data:",
     "connect-src https:",
-    "frame-src https:",
+    // asymptote emits 3d output as an <iframe> into the generated directory.
+    `frame-src ${webview.cspSource} https:`,
   ].join("; ");
   const cspTag = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
   // Runs once per document, including documents written by the update path
@@ -904,7 +982,7 @@ function prepareWebviewHtml(html: string): string {
     "</script>",
   ].join("\n");
 
-  return html
+  return page
     .replace(/<head([^>]*)>/i, `<head$1>\n${cspTag}`)
     .replace(/<\/body>/i, `${bootstrapScript}\n</body>`);
 }

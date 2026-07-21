@@ -10,6 +10,19 @@ export type { RenderOptions, RenderResult } from "./renderer.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
 export { forcePortablePublication } from "./publication.js";
+// Retargeting the `external/` and `generated/` asset URLs a portable build
+// emits onto something the host can serve (see assets.ts). Pair with
+// RenderResult.assetDirs.
+export { rewriteAssetUrls } from "./assets.js";
+export type { AssetKind, AssetUrlResolver } from "./assets.js";
+// Stand-ins for assets that have not been generated (or cannot be found).
+export {
+  describeAsset,
+  missingAssetPlaceholder,
+  missingAssetSvg,
+} from "./missing-asset.js";
+export type { MissingAsset } from "./missing-asset.js";
+export type { AssetDirectories } from "./publication.js";
 // Runtime light/dark theme control (see theme.ts). The renderer injects the
 // bridge when RenderOptions.theme is set; embedders post previewThemeMessage()
 // to update it live. Also published as the dependency-free

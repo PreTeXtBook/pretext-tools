@@ -15,7 +15,10 @@
 import * as path from "node:path";
 import { assetsBase, joinPath, readMount, readSource } from "./host.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
-import { forcePortablePublication } from "./publication.js";
+import {
+  forcePortablePublication,
+  readAssetDirectories,
+} from "./publication.js";
 import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
 import { injectThemeBridge, type PreviewTheme } from "./theme.js";
 import {
@@ -27,6 +30,19 @@ import {
 export interface RenderOptions {
   /** Path to the root PreTeXt source file (typically source/main.ptx). */
   sourcePath: string;
+  /**
+   * Path to the project's *main* source file — the one holding `<pretext>`.
+   * Defaults to `sourcePath`, which is correct whenever a complete document is
+   * being rendered.
+   *
+   * PreTeXt anchors the publication file's relative asset directories
+   * (`source/directories/@external|@generated`) at this file's directory, and
+   * so does every `document()` the stylesheets make. Rendering a fragment from
+   * a subdirectory therefore needs it: previewing `source/chapters/ch1.ptx`
+   * must still resolve `../generated-assets/` from `source/`, not from
+   * `source/chapters/`. Without it, generated images silently render empty.
+   */
+  mainSourcePath?: string;
   /**
    * Source text to transform instead of reading `sourcePath` from disk.
    * `sourcePath` is still used to resolve relative xi:includes. Lets callers
@@ -102,6 +118,19 @@ export interface RenderResult {
   html: string;
   /** Present when RenderOptions.sourceMap was set. */
   sourceMap?: PtxSourceMap;
+  /**
+   * Absolute directories that the `external/` and `generated/` URL prefixes in
+   * `html` refer to, resolved from the publication file against the main
+   * source file's directory. Feed these to `rewriteAssetUrls` to point the
+   * page at assets the host can actually serve (see assets.ts).
+   *
+   * Absent for legacy projects that declare neither directory: those emit bare
+   * or `images/`-prefixed URLs that cannot be identified reliably.
+   */
+  assetDirs?: {
+    external: string;
+    generated: string;
+  };
 }
 
 /**
@@ -338,6 +367,17 @@ export async function renderHtml(
     );
   }
 
+  // The document is parsed under the *main* file's URL, because that is what
+  // PreTeXt resolves publication-relative paths against (see
+  // RenderOptions.mainSourcePath). For a complete document this is the source
+  // file itself and nothing changes. A main file outside the mount cannot be
+  // addressed at all, so fall back to the rendered file's own location.
+  const relMain = path.relative(
+    projectDir,
+    path.resolve(options.mainSourcePath ?? sourcePath),
+  );
+  const relBase = relMain.startsWith("..") ? relSource : relMain;
+
   const srcBase = mountDirectory(projectDir);
   try {
     // The rewritten publication file is served as a virtual file. When the
@@ -359,6 +399,20 @@ export async function renderHtml(
       publicationXml = forcePortablePublication();
     }
     setVirtualFile(publicationUrl, publicationXml);
+
+    // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to
+    // real directories, so a host can serve what the page asks for. Anchored
+    // at the main file's directory, matching the document URL above.
+    const declaredDirs = readAssetDirectories(publicationXml);
+    const mainDir = path.dirname(path.resolve(projectDir, relBase));
+    const assetDirs =
+      declaredDirs.external !== undefined &&
+      declaredDirs.generated !== undefined
+        ? {
+            external: path.resolve(mainDir, declaredDirs.external),
+            generated: path.resolve(mainDir, declaredDirs.generated),
+          }
+        : undefined;
 
     // xi:includes are resolved in JS before parsing: the WASM build cannot
     // suspend inside libxml2's own XInclude pass (see src/xinclude.ts). When
@@ -422,7 +476,7 @@ export async function renderHtml(
       : undefined;
 
     const doc = await XmlDocument.fromString(mergedContent, {
-      url: `${srcBase}/${relSource.split(path.sep).join("/")}`,
+      url: `${srcBase}/${relBase.split(path.sep).join("/")}`,
       options: { noEnt: true, dtdLoad: true, huge: true },
     });
 
@@ -456,6 +510,7 @@ export async function renderHtml(
       return {
         html,
         ...(sourceMap ? { sourceMap } : {}),
+        ...(assetDirs ? { assetDirs } : {}),
       };
     } catch (error) {
       throwIfWasmStackOverflow(error);

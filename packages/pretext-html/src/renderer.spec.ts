@@ -387,6 +387,106 @@ describe("renderHtml", () => {
     }
   });
 
+  /**
+   * Builds a project whose generated SVG lives at the path a real PreTeXt
+   * build would use, with the fragment nested one directory below the main
+   * file — the arrangement that used to anchor `document()` on the wrong
+   * directory and silently produce an empty <svg>.
+   */
+  function makeAssetProject(): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-asset-"));
+    fs.mkdirSync(path.join(dir, "source", "chapters"), { recursive: true });
+    fs.mkdirSync(path.join(dir, "generated-assets", "latex-image"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(dir, "publication.xml"),
+      `<publication><source>` +
+        `<directories external="../assets" generated="../generated-assets"/>` +
+        `</source></publication>\n`,
+    );
+    fs.writeFileSync(
+      path.join(dir, "source", "main.ptx"),
+      `<pretext><article xml:id="a"><title>A</title></article></pretext>\n`,
+    );
+    fs.writeFileSync(
+      path.join(dir, "generated-assets", "latex-image", "img-one.svg"),
+      `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"` +
+        ` viewBox="0 0 10 10"><circle cx="5" cy="5" r="4"` +
+        ` fill="rebeccapurple"/></svg>\n`,
+    );
+    fs.writeFileSync(
+      path.join(dir, "source", "chapters", "sec.ptx"),
+      `<section xml:id="sec"><title>S</title>` +
+        `<image xml:id="img-one"><latex-image>\\draw (0,0);</latex-image></image>` +
+        `<image xml:id="img-two" source="cat.png"/></section>\n`,
+    );
+    return dir;
+  }
+
+  it("inlines a generated SVG for a fragment below the main source dir", async () => {
+    const dir = makeAssetProject();
+    try {
+      const { html } = await renderHtml({
+        sourcePath: path.join(dir, "source", "chapters", "sec.ptx"),
+        mainSourcePath: path.join(dir, "source", "main.ptx"),
+        projectDir: dir,
+        publicationPath: path.join(dir, "publication.xml"),
+        fragment: true,
+      });
+      // The SVG's contents are copied into the page, not linked.
+      expect(html).toContain("rebeccapurple");
+      // An empty viewBox is the signature of a document() that read nothing.
+      expect(html).not.toContain(`viewBox="0 0  "`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports the asset directories the page's URLs refer to", async () => {
+    const dir = makeAssetProject();
+    try {
+      const result = await renderHtml({
+        sourcePath: path.join(dir, "source", "chapters", "sec.ptx"),
+        mainSourcePath: path.join(dir, "source", "main.ptx"),
+        projectDir: dir,
+        publicationPath: path.join(dir, "publication.xml"),
+        fragment: true,
+      });
+      // Resolved against the *main* file's directory, so both land at the
+      // project root rather than under source/chapters/.
+      expect(result.assetDirs).toEqual({
+        external: path.join(dir, "assets"),
+        generated: path.join(dir, "generated-assets"),
+      });
+      // The author-supplied image is still a link, and carries the fixed
+      // prefix rewriteAssetUrls keys on.
+      expect(result.html).toContain(`src="external/cat.png"`);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("omits assetDirs for a publication with no declared directories", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-nodir-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, SIMPLE_ARTICLE);
+      fs.writeFileSync(
+        path.join(dir, "publication.xml"),
+        `<publication><html><platform portable="yes"/></html></publication>\n`,
+      );
+      const result = await renderHtml({
+        sourcePath,
+        projectDir: dir,
+        publicationPath: path.join(dir, "publication.xml"),
+      });
+      expect(result.assetDirs).toBeUndefined();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("renders a complete document unchanged in fragment mode", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-fdoc-"));
     try {
