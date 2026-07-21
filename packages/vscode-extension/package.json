@@ -440,6 +440,12 @@
             "default": true,
             "markdownDescription": "Automatically rebuild the live preview when a `.ptx` file is saved."
           },
+          "pretext-tools.instantPreview.followActiveEditor": {
+            "order": 4,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Re-render the live preview when you switch to a different `.ptx` file, without waiting for a save. Only applies when `#pretext-tools.instantPreview.scope#` is `current-file`; the whole-project scope always renders the main source file. Also toggleable from the preview panel's toolbar."
+          },
           "pretext-tools.instantPreview.scope": {
             "order": 4,
             "type": "string",

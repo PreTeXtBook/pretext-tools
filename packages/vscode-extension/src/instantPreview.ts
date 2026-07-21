@@ -22,11 +22,14 @@ import {
   Disposable,
   Position,
   Range,
+  TextEditor,
   TextEditorSelectionChangeKind,
   Uri,
   ViewColumn,
   Webview,
   WebviewPanel,
+  commands,
+  env,
   window,
   workspace,
 } from "vscode";
@@ -50,9 +53,17 @@ import {
 // subpath pulls in only the message protocol. Drives the preview's light/dark
 // theme from VS Code's active color theme.
 import {
+  PREVIEW_THEME_MESSAGE,
   previewThemeMessage,
   type PreviewTheme,
 } from "@pretextbook/pretext-html/theme";
+import {
+  ensureCliServer,
+  runCliBuild,
+  servedUrl,
+  stopCliServer,
+  type CliTarget,
+} from "./cliPreviewServer";
 import { pretextOutputChannel, ptxSBItem } from "./ui";
 import * as utils from "./utils";
 
@@ -69,6 +80,14 @@ let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
 let sourceMapById: Map<string, SourceMapEntry> | undefined;
 let selectionWatcher: Disposable | undefined;
 let panelMessageWatcher: Disposable | undefined;
+/** The last .ptx/.xml editor to hold focus; see resolveSource. */
+let lastActiveEditor: TextEditor | undefined;
+let editorTracker: Disposable | undefined;
+let followTimer: ReturnType<typeof setTimeout> | undefined;
+let configWatcher: Disposable | undefined;
+let viewStateWatcher: Disposable | undefined;
+/** Set once the group-lock command has actually been issued for this panel. */
+let groupLockAttempted = false;
 let themeWatcher: Disposable | undefined;
 let syncTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -88,9 +107,41 @@ let renderQueued = false;
 let crashRetries = 0;
 let disposing = false;
 
+/**
+ * What the panel is currently showing.
+ *
+ * - "live": the XSLT-in-process render, which *is* the webview document (so it
+ *   can be rewritten in place, keep its scroll, and sync with the editor).
+ * - "full": an iframe onto the `pretext view` server, serving whatever the
+ *   PreTeXt CLI last built. Editor sync does not apply — the page is
+ *   cross-origin and carries no source map.
+ */
+type PreviewMode = "live" | "full";
+
+let previewMode: PreviewMode = "live";
+/** Guards against re-entrant mode switches while a server is starting. */
+let switchingMode = false;
+/** Serializes `pretext build` runs in full-build mode. */
+let fullBuildInProgress = false;
+/** A save landed since the build the panel is currently showing. */
+let fullBuildStale = false;
+let fullBuildTimer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * Path within the served build that full-build mode last showed, as reported
+ * by the bridge script. Lets a switch back to full build reopen on the page
+ * the reader left, rather than the start page.
+ */
+let fullBuildPath: string | undefined;
+
 const DEBOUNCE_MS = 400;
 const SYNC_DEBOUNCE_MS = 150;
 const MAX_CRASH_RETRIES = 2;
+/** Height of the injected mode toolbar; the theme offsets below match it. */
+const TOOLBAR_HEIGHT_PX = 32;
+/** Quiet period after a save before full-build mode runs `pretext build`. */
+const FULL_BUILD_DEBOUNCE_MS = 1000;
+/** Quiet period before following the editor to a newly focused file. */
+const FOLLOW_DEBOUNCE_MS = 300;
 
 interface RenderResponse {
   id: number;
@@ -119,6 +170,11 @@ interface SourceInfo {
   projectDir: string;
   /** Publication file, when one was found. */
   publicationPath?: string;
+  /**
+   * Name of the manifest's html target, when the project declares one. Only
+   * full-build mode uses it — it is what gets passed to `pretext build`/`view`.
+   */
+  htmlTargetName?: string;
 }
 
 type PreviewScope = "current-file" | "project";
@@ -144,6 +200,117 @@ function currentPreviewTheme(): PreviewTheme {
     default:
       return "light";
   }
+}
+
+/**
+ * Lock the preview panel's editor group, once, so files opened elsewhere (a
+ * double-click in the Targets tree view, "Go to Definition", etc.) do not land
+ * in — and replace — the preview instead of opening beside it.
+ *
+ * `workbench.action.lockEditorGroup` is a workbench command with no group
+ * argument in the stable API: it always acts on whichever group is currently
+ * *active*. So this is gated on `currentPanel.active` — the one signal VS Code
+ * itself gives for "this panel's group is the active one right now" — rather
+ * than assumed from timing, since firing the command a moment too early would
+ * lock the reader's source-editor group by mistake.
+ *
+ * `groupLockAttempted` makes the lock a one-time-only action: if the reader
+ * manually unlocks the group later (the tab context menu offers this), that
+ * choice is respected rather than re-clamped shut the next time the panel
+ * regains focus.
+ */
+function lockPreviewGroupOnce(): void {
+  if (groupLockAttempted || !currentPanel?.active) {
+    return;
+  }
+  groupLockAttempted = true;
+  void commands.executeCommand("workbench.action.lockEditorGroup");
+}
+
+/**
+ * Reconcile the toolbar's follow checkbox when the setting is changed from
+ * somewhere other than the toolbar (the Settings UI, another window, a
+ * workspace file edit).
+ */
+function setupConfigWatcher(): void {
+  configWatcher?.dispose();
+  configWatcher = workspace.onDidChangeConfiguration((event) => {
+    if (
+      event.affectsConfiguration(
+        "pretext-tools.instantPreview.followActiveEditor",
+      )
+    ) {
+      void currentPanel?.webview.postMessage({
+        command: "follow",
+        on: followActiveEditor(),
+      });
+    }
+  });
+}
+
+/**
+ * Whether the live preview re-renders when the reader switches source files.
+ *
+ * Only meaningful in "current-file" scope — the whole-project scope always
+ * renders the main source file, so there is nothing to follow.
+ */
+function followActiveEditor(): boolean {
+  return (
+    workspace
+      .getConfiguration("pretext-tools")
+      .get<boolean>("instantPreview.followActiveEditor") ?? true
+  );
+}
+
+/**
+ * Track the last PreTeXt editor to hold focus — so the preview can still tell
+ * what the reader is working on once focus moves into the panel itself — and,
+ * when following is on, re-render as they move between files.
+ *
+ * The preview has always followed the editor on *save*; this just drops the
+ * requirement to save first. Debounced because cycling through tabs (or a
+ * "go to definition" that passes through several files) would otherwise queue
+ * a render per file passed.
+ */
+function setupEditorTracker(extensionPath: string): void {
+  editorTracker?.dispose();
+  const active = window.activeTextEditor;
+  if (active?.document.fileName.match(/\.(ptx|xml)$/)) {
+    lastActiveEditor = active;
+  }
+  editorTracker = window.onDidChangeActiveTextEditor((editor) => {
+    if (!editor?.document.fileName.match(/\.(ptx|xml)$/)) {
+      return;
+    }
+    lastActiveEditor = editor;
+    if (
+      !currentPanel ||
+      previewMode !== "live" ||
+      previewScope() !== "current-file" ||
+      !followActiveEditor()
+    ) {
+      return;
+    }
+    if (followTimer) {
+      clearTimeout(followTimer);
+    }
+    followTimer = setTimeout(() => {
+      followTimer = undefined;
+      const next = resolveSource();
+      // Nothing to do when the newly focused file resolves to what is already
+      // on screen — notably project.ptx and publication files, which are not
+      // renderable content and leave the preview on its current source.
+      if (
+        !next ||
+        (currentSource &&
+          fileKey(next.activePath) === fileKey(currentSource.activePath))
+      ) {
+        return;
+      }
+      currentSource = next;
+      renderToPanel(extensionPath);
+    }, FOLLOW_DEBOUNCE_MS);
+  });
 }
 
 /**
@@ -190,23 +357,78 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
       },
     );
     panelHasContent = false;
+    groupLockAttempted = false;
     currentPanel.onDidDispose(() => {
       currentPanel = undefined;
       disposeInstantPreview();
+    });
+    // Covers the (likely) case where the panel is already active by the time
+    // this line runs; onDidChangeViewState below covers the rest.
+    lockPreviewGroupOnce();
+    viewStateWatcher = currentPanel.onDidChangeViewState((e) => {
+      if (e.webviewPanel.active) {
+        lockPreviewGroupOnce();
+      }
     });
     // Reverse sync: the webview's bootstrap posts the ancestor id chain of a
     // double-clicked element; resolve it against the source map.
     panelMessageWatcher = currentPanel.webview.onDidReceiveMessage(
       (message: unknown) => {
-        const msg = message as { command?: unknown; ids?: unknown };
-        if (msg?.command === "revealSource" && Array.isArray(msg.ids)) {
-          void revealSource(msg.ids.filter((x) => typeof x === "string"));
+        const msg = message as {
+          command?: unknown;
+          ids?: unknown;
+          mode?: unknown;
+          path?: unknown;
+          follow?: unknown;
+        };
+        switch (msg?.command) {
+          case "revealSource":
+            if (Array.isArray(msg.ids)) {
+              void revealSource(msg.ids.filter((x) => typeof x === "string"));
+            }
+            return;
+          case "setMode":
+            if (msg.mode === "live" || msg.mode === "full") {
+              void setPreviewMode(msg.mode, extensionPath);
+            }
+            return;
+          case "rebuild":
+            void rebuildFullBuild();
+            return;
+          case "framePath":
+            if (typeof msg.path === "string") {
+              fullBuildPath = msg.path;
+            }
+            return;
+          case "setFollow":
+            if (typeof msg.follow === "boolean") {
+              void workspace
+                .getConfiguration("pretext-tools")
+                .update(
+                  "instantPreview.followActiveEditor",
+                  msg.follow,
+                  workspace.workspaceFolders
+                    ? ConfigurationTarget.Workspace
+                    : ConfigurationTarget.Global,
+                );
+            }
+            return;
+          case "openExternal": {
+            const target = fullBuildTarget();
+            const url = target && servedUrl(target);
+            if (url) {
+              void env.openExternal(Uri.parse(url));
+            }
+            return;
+          }
         }
       },
     );
     setupSaveWatcher(extensionPath);
     setupSelectionWatcher();
     setupThemeWatcher();
+    setupEditorTracker(extensionPath);
+    setupConfigWatcher();
   } else {
     currentPanel.reveal(ViewColumn.Beside, true);
   }
@@ -268,8 +490,15 @@ export async function cmdInstantPreviewScope(
  * xi:included fragments renderable on their own.
  */
 function resolveSource(): SourceInfo | undefined {
-  const editor = window.activeTextEditor;
-  if (!editor || !editor.document.fileName.match(/\.(ptx|xml)$/)) {
+  // Falling back to the tracked editor matters whenever the webview holds
+  // focus — clicking the mode toolbar, for one — because that leaves
+  // activeTextEditor undefined even though the reader plainly means "the file
+  // I was just editing".
+  const active = window.activeTextEditor;
+  const editor = active?.document.fileName.match(/\.(ptx|xml)$/)
+    ? active
+    : lastActiveEditor;
+  if (!editor) {
     return currentSource; // keep previewing the last known project
   }
   const filePath = editor.document.fileName;
@@ -289,6 +518,7 @@ function resolveSource(): SourceInfo | undefined {
 
   let mainSourcePath: string | undefined;
   let publicationPath: string | undefined;
+  let htmlTargetName: string | undefined;
   try {
     const manifest = fs.readFileSync(
       path.join(projectDir, "project.ptx"),
@@ -308,6 +538,7 @@ function resolveSource(): SourceInfo | undefined {
         targets.find((t: any) => t.$?.format === "html") ?? targets[0];
       const targetSource = htmlTarget?.$?.source ?? "main.ptx";
       const targetPublication = htmlTarget?.$?.publication ?? "publication.ptx";
+      htmlTargetName = htmlTarget?.$?.name;
       mainSourcePath = path.resolve(projectDir, sourceDir, targetSource);
       publicationPath = path.resolve(
         projectDir,
@@ -339,7 +570,24 @@ function resolveSource(): SourceInfo | undefined {
   if (!activePath) {
     return currentSource;
   }
-  return { activePath, mainSourcePath, projectDir, publicationPath };
+  return {
+    activePath,
+    mainSourcePath,
+    projectDir,
+    publicationPath,
+    htmlTargetName,
+  };
+}
+
+/** The build full-build mode should serve, when the project declares one. */
+function fullBuildTarget(): CliTarget | undefined {
+  if (!currentSource?.htmlTargetName) {
+    return undefined;
+  }
+  return {
+    projectDir: currentSource.projectDir,
+    target: currentSource.htmlTargetName,
+  };
 }
 
 /**
@@ -667,7 +915,7 @@ function resolveNodeLaunch(): NodeLaunch {
  * a single rebuild).
  */
 function renderToPanel(extensionPath: string): void {
-  if (!currentSource || !currentPanel) {
+  if (!currentSource || !currentPanel || previewMode !== "live") {
     return;
   }
   if (pendingRequestId !== undefined) {
@@ -742,6 +990,14 @@ function renderToPanel(extensionPath: string): void {
 
 /** Apply a worker render response to the panel and status bar. */
 function handleRenderResponse(message: RenderResponse): void {
+  if (previewMode !== "live") {
+    // The user switched to the full build while this render was in flight;
+    // applying it now would tear down the page they asked for. The source map
+    // is still worth keeping for when they switch back.
+    applySourceMap(message.sourceMap);
+    utils.updateStatusBarItem(ptxSBItem, "ready");
+    return;
+  }
   if (message.ok && message.html && currentPanel) {
     const html = message.html;
     if (!html.includes("</html>")) {
@@ -815,6 +1071,392 @@ function updatePanelContent(preparedHtml: string): void {
   });
 }
 
+/** Update the toolbar's status text in place, without re-rendering. */
+function postStatus(text: string): void {
+  void currentPanel?.webview.postMessage({ command: "status", text });
+}
+
+/**
+ * Switch what the panel shows.
+ *
+ * Going to full-build mode can take a while (it starts — and on a cold project
+ * first runs — the PreTeXt CLI), so the current page stays up, reporting
+ * progress through the toolbar's status text, until there is a URL to show. If
+ * it fails we stay in live mode: a panel still showing a working preview is a
+ * better outcome than an empty one plus an error.
+ */
+async function setPreviewMode(
+  mode: PreviewMode,
+  extensionPath: string,
+): Promise<void> {
+  if (mode === previewMode || switchingMode || !currentPanel) {
+    return;
+  }
+
+  if (mode === "live") {
+    previewMode = "live";
+    // Catch up with wherever the reader has moved since full-build mode took
+    // over — the editor may well be on a different file by now.
+    currentSource = resolveSource() ?? currentSource;
+    // Force the next delivery through webview.html rather than an in-place
+    // rewrite. Beyond being a genuinely different document, this gives it a
+    // fresh CSP list — see previewCsp on why writing a second policy into a
+    // live document is a one-way ratchet.
+    panelHasContent = false;
+    renderToPanel(extensionPath);
+    return;
+  }
+
+  const target = fullBuildTarget();
+  if (!target) {
+    window.showErrorMessage(
+      "Full-build mode needs an html target in the project's project.ptx, " +
+        "and none was found. The live preview does not need one.",
+    );
+    return;
+  }
+
+  switchingMode = true;
+  utils.updateStatusBarItem(ptxSBItem, "building");
+  postStatus(`Starting the PreTeXt server for "${target.target}"…`);
+  try {
+    const url = await ensureCliServer(target);
+    if (!currentPanel) {
+      return; // panel closed while the server was starting
+    }
+    previewMode = "full";
+    // As above: a real reload, not an in-place rewrite.
+    panelHasContent = false;
+    updatePanelContent(
+      fullBuildWrapperHtml(currentPanel.webview, url, target.target),
+    );
+    utils.updateStatusBarItem(ptxSBItem, "success");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    pretextOutputChannel.appendLine(`[Full Build] ${message}`);
+    utils.updateStatusBarItem(ptxSBItem, "ready");
+    postStatus("Full build unavailable — staying on the live preview.");
+    window.showErrorMessage(message, "Show Log").then((choice) => {
+      if (choice === "Show Log") {
+        pretextOutputChannel.show();
+      }
+    });
+  } finally {
+    switchingMode = false;
+  }
+}
+
+/**
+ * Toolbar "Rebuild", and the endpoint of the debounced auto-rebuild: run
+ * `pretext build`, then reload the served page.
+ *
+ * Serialized by fullBuildInProgress, since two concurrent `pretext build`
+ * runs would write the same output directory. A save that arrives mid-build
+ * is not lost — it sets fullBuildStale, and the rebuild is re-armed on the way
+ * out so the page ends up reflecting the newest source.
+ */
+async function rebuildFullBuild(): Promise<void> {
+  const target = fullBuildTarget();
+  if (!target || previewMode !== "full" || fullBuildInProgress) {
+    return;
+  }
+  fullBuildInProgress = true;
+  fullBuildStale = false;
+  utils.updateStatusBarItem(ptxSBItem, "building");
+  postStatus(`Building "${target.target}"…`);
+  try {
+    const built = await runCliBuild(target);
+    utils.updateStatusBarItem(ptxSBItem, built ? "success" : "ready");
+    if (built) {
+      postStatus(target.target);
+      void currentPanel?.webview.postMessage({ command: "reloadFrame" });
+    } else {
+      postStatus("Build failed — see the PreTeXt output log.");
+      window
+        .showErrorMessage(
+          `\`pretext build ${target.target}\` produced no HTML output.`,
+          "Show Log",
+        )
+        .then((choice) => {
+          if (choice === "Show Log") {
+            pretextOutputChannel.show();
+          }
+        });
+    }
+  } finally {
+    fullBuildInProgress = false;
+    if (fullBuildStale && previewMode === "full") {
+      // Source changed while that build was running — catch up.
+      scheduleFullBuild();
+    }
+  }
+}
+
+/** Arm (or re-arm) the debounced auto-rebuild. */
+function scheduleFullBuild(): void {
+  if (fullBuildTimer) {
+    clearTimeout(fullBuildTimer);
+  }
+  fullBuildTimer = setTimeout(() => {
+    fullBuildTimer = undefined;
+    if (previewMode !== "full") {
+      return;
+    }
+    if (fullBuildInProgress) {
+      // rebuildFullBuild re-arms us from its finally block.
+      fullBuildStale = true;
+      return;
+    }
+    void rebuildFullBuild();
+  }, FULL_BUILD_DEBOUNCE_MS);
+}
+
+/**
+ * Called when a .ptx/.xml file is saved while the panel is showing the full
+ * build, instead of the live re-render that would otherwise happen.
+ *
+ * The toolbar says so immediately — a CLI build is slow enough that the page
+ * would otherwise sit there silently lying about what the source contains —
+ * and a rebuild follows on a debounce, so a burst of saves costs one build
+ * rather than one per save.
+ */
+function onSourceSavedWhileFullBuild(): void {
+  const target = fullBuildTarget();
+  if (!target) {
+    return;
+  }
+  fullBuildStale = true;
+  if (!fullBuildInProgress) {
+    postStatus(`${target.target} — source changed, rebuilding…`);
+  }
+  scheduleFullBuild();
+}
+
+/**
+ * The Content-Security-Policy meta tag for *both* modes' pages — deliberately
+ * one policy, not one per page.
+ *
+ * `document.open()` does not clear a document's CSP list (that would be a
+ * trivial bypass), so a page written in place by updatePanelContent *adds* its
+ * meta policy to the list already there, and the browser enforces the
+ * intersection of all of them. Two different policies therefore ratchet each
+ * other down permanently: a wrapper that omitted `https:` from `style-src`
+ * would silently strip the CDN stylesheets from every live render afterwards,
+ * for the life of the webview. Keeping one policy for every document we write
+ * makes that composition a no-op.
+ *
+ * `frame-src` accordingly has to cover both the asymptote 3d output embedded
+ * by rendered pages and the `pretext view` server behind full-build mode,
+ * whose port is not known when the first live page is built.
+ */
+function previewCsp(webview: Webview): string {
+  return [
+    "default-src 'none'",
+    // cspSource covers the rewritten project assets; https:/data: the CDN.
+    `img-src ${webview.cspSource} https: data:`,
+    `media-src ${webview.cspSource} https:`,
+    "script-src https: 'unsafe-inline' 'unsafe-eval'",
+    "style-src https: 'unsafe-inline'",
+    "font-src https: data:",
+    "connect-src https:",
+    // asymptote emits 3d output as an <iframe> into the generated directory;
+    // the localhost sources are full-build mode's CLI server.
+    `frame-src ${webview.cspSource} https: http://localhost:* http://127.0.0.1:*`,
+  ].join("; ");
+}
+
+function cspMetaTag(webview: Webview): string {
+  return `<meta http-equiv="Content-Security-Policy" content="${previewCsp(webview)}">`;
+}
+
+/**
+ * Styles for the mode toolbar, shared by both modes' pages.
+ *
+ * The palette is hard-coded rather than taken from `--vscode-*` custom
+ * properties: VS Code injects those into the document it serves, and the live
+ * preview replaces the whole document on every rebuild (see
+ * updatePanelContent), which drops them. Instead the dark palette keys off the
+ * `dark-mode` class that pretext-html's theme bridge toggles on <html>, so the
+ * toolbar re-themes itself whenever the preview does — including on the live
+ * theme updates posted by setupThemeWatcher, with no re-render.
+ */
+function toolbarCss(): string {
+  return [
+    "<style>",
+    `:root { --ptx-tools-h: ${TOOLBAR_HEIGHT_PX}px; }`,
+    "#ptx-tools-bar {",
+    "  --ptx-tools-bg: #f3f3f3; --ptx-tools-fg: #3b3b3b;",
+    "  --ptx-tools-border: #cecece; --ptx-tools-btn: #e9e9e9;",
+    "  --ptx-tools-btn-hover: #dcdcdc; --ptx-tools-on: #0066b8;",
+    "  --ptx-tools-on-fg: #ffffff;",
+    // Positioning is left to each page: live mode pins it over the rendered
+    // document, the full-build wrapper puts it in flow above the iframe.
+    "  box-sizing: border-box; height: var(--ptx-tools-h);",
+    "  z-index: 2147483000;",
+    "  display: flex; align-items: center; gap: 6px;",
+    "  padding: 0 8px; box-sizing: border-box;",
+    "  font: 12px/1.2 -apple-system, BlinkMacSystemFont, 'Segoe UI',",
+    "    system-ui, sans-serif;",
+    "  background: var(--ptx-tools-bg); color: var(--ptx-tools-fg);",
+    "  border-bottom: 1px solid var(--ptx-tools-border);",
+    "  -webkit-user-select: none; user-select: none;",
+    "}",
+    "html.dark-mode #ptx-tools-bar {",
+    "  --ptx-tools-bg: #252526; --ptx-tools-fg: #cccccc;",
+    "  --ptx-tools-border: #3c3c3c; --ptx-tools-btn: #3a3d41;",
+    "  --ptx-tools-btn-hover: #45494e; --ptx-tools-on: #0e639c;",
+    "  --ptx-tools-on-fg: #ffffff;",
+    "}",
+    "#ptx-tools-bar button {",
+    "  font: inherit; color: inherit; background: var(--ptx-tools-btn);",
+    "  border: 1px solid var(--ptx-tools-border); border-radius: 4px;",
+    "  padding: 3px 10px; cursor: pointer; white-space: nowrap;",
+    "}",
+    "#ptx-tools-bar button:hover { background: var(--ptx-tools-btn-hover); }",
+    "#ptx-tools-bar .ptx-tools-seg { display: flex; }",
+    "#ptx-tools-bar .ptx-tools-seg button {",
+    "  border-radius: 0; margin: 0;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-seg button:first-child {",
+    "  border-radius: 4px 0 0 4px;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-seg button:last-child {",
+    "  border-radius: 0 4px 4px 0; border-left-width: 0;",
+    "}",
+    "#ptx-tools-bar button[aria-pressed='true'] {",
+    "  background: var(--ptx-tools-on); color: var(--ptx-tools-on-fg);",
+    "  border-color: var(--ptx-tools-on);",
+    "}",
+    "#ptx-tools-status {",
+    "  opacity: 0.75; margin-left: 2px; min-width: 0;",
+    "  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-spacer { margin-left: auto; }",
+    "#ptx-tools-bar[data-mode='live'] .ptx-tools-full-only { display: none; }",
+    "#ptx-tools-bar[data-mode='full'] .ptx-tools-live-only { display: none; }",
+    "#ptx-tools-bar[data-scope='project'] .ptx-tools-file-only {",
+    "  display: none;",
+    "}",
+    "</style>",
+  ].join("\n");
+}
+
+/**
+ * Push the rendered page down so the fixed toolbar does not cover it.
+ *
+ * `#ptx-navbar` is `position: sticky; top: 0` in the PreTeXt theme, so body
+ * padding alone would leave it sliding under the toolbar once scrolled; it
+ * needs the matching offset. Only used by live mode — the full-build page is
+ * an iframe we lay out ourselves. This couples to two long-standing element
+ * ids ([pretext-html.xsl] `ptx-navbar`, `ptx-sidebar`); if a future theme
+ * renames them the worst case is a cosmetic overlap, not a broken preview.
+ */
+function toolbarLayoutCss(): string {
+  return [
+    "<style>",
+    "#ptx-tools-bar { position: fixed; top: 0; left: 0; right: 0; }",
+    "body { padding-top: var(--ptx-tools-h) !important; }",
+    "</style>",
+  ].join("\n");
+}
+
+/** The toolbar markup for a given mode. `status` is the initial hint text. */
+function toolbarHtml(mode: PreviewMode, status: string): string {
+  const pressed = (which: PreviewMode) => (which === mode ? "true" : "false");
+  // data-scope drives whether the follow toggle is shown at all: in project
+  // scope the preview always renders the main source file, so following the
+  // editor would do nothing and offering it would just be a lie.
+  return [
+    `<div id="ptx-tools-bar" data-mode="${mode}" data-scope="${previewScope()}">`,
+    '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
+    '    <button type="button" data-ptx-mode="live"',
+    `      aria-pressed="${pressed("live")}"`,
+    '      title="Fast, partial render of current source file with two-way sync  (updates on save).">',
+    "      Division preview</button>",
+    '    <button type="button" data-ptx-mode="full"',
+    `      aria-pressed="${pressed("full")}"`,
+    '      title="The full output of `pretext build`, served by the PreTeXt-CLI">',
+    "      Full build</button>",
+    "  </div>",
+    `  <span id="ptx-tools-status">${escapeHtml(status)}</span>`,
+    '  <span class="ptx-tools-spacer"></span>',
+    '  <button type="button" class="ptx-tools-live-only ptx-tools-file-only"',
+    '    data-ptx-action="toggleFollow"',
+    `    aria-pressed="${followActiveEditor() ? "true" : "false"}"`,
+    '    title="Re-render when you switch to another source file">',
+    "    Follow editor</button>",
+    '  <button type="button" class="ptx-tools-full-only" data-ptx-action="rebuild"',
+    '    title="Run `pretext build` and reload">Rebuild</button>',
+    '  <button type="button" class="ptx-tools-full-only"',
+    '    data-ptx-action="openExternal"',
+    '    title="Open this build in your browser">Browser</button>',
+    "</div>",
+  ].join("\n");
+}
+
+/** Escape text for interpolation into the toolbar markup. */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/**
+ * Toolbar wiring, spliced into each page's bootstrap IIFE (so it can use the
+ * `api` handle already established there). Re-runs after every in-place
+ * document rewrite, hence the per-element `__ptxWired` guard.
+ */
+const TOOLBAR_SCRIPT_LINES: string[] = [
+  "  var bar = document.getElementById('ptx-tools-bar');",
+  "  if (bar && !bar.__ptxWired) {",
+  "    bar.__ptxWired = true;",
+  "    bar.addEventListener('click', function (event) {",
+  "      var el = event.target;",
+  "      var btn = el && el.closest ? el.closest('button') : null;",
+  "      if (!btn) { return; }",
+  "      var mode = btn.getAttribute('data-ptx-mode');",
+  "      if (mode) {",
+  "        api.postMessage({ command: 'setMode', mode: mode });",
+  "        return;",
+  "      }",
+  "      var action = btn.getAttribute('data-ptx-action');",
+  "      if (!action) { return; }",
+  // Flip the checkbox here rather than waiting for the extension to persist
+  // the setting and echo it back; the round trip is visible as lag on a
+  // control that should feel instant. The 'follow' message below reconciles
+  // if the setting is changed from anywhere else.
+  "      if (action === 'toggleFollow') {",
+  "        var on = btn.getAttribute('aria-pressed') !== 'true';",
+  "        btn.setAttribute('aria-pressed', on ? 'true' : 'false');",
+  "        api.postMessage({ command: 'setFollow', follow: on });",
+  "        return;",
+  "      }",
+  "      api.postMessage({ command: action });",
+  "    });",
+  "  }",
+];
+
+/** The `status` message branch, spliced into each page's message handler. */
+const TOOLBAR_STATUS_BRANCH: string[] = [
+  "    if (msg.command === 'status') {",
+  "      var statusEl = document.getElementById('ptx-tools-status');",
+  "      if (statusEl) { statusEl.textContent = msg.text || ''; }",
+  "      return;",
+  "    }",
+  // Keeps the checkbox honest when the setting is changed from the Settings
+  // UI or another window, rather than from this toolbar.
+  "    if (msg.command === 'follow') {",
+  "      var followEl = document.querySelector(",
+  "        '[data-ptx-action=\"toggleFollow\"]');",
+  "      if (followEl) {",
+  "        followEl.setAttribute('aria-pressed', msg.on ? 'true' : 'false');",
+  "      }",
+  "      return;",
+  "    }",
+];
+
 /**
  * Point the page's `external/` and `generated/` asset URLs at files on disk.
  *
@@ -866,19 +1508,7 @@ function prepareWebviewHtml(
   const page = assetDirs
     ? rewriteAssetUrls(html, assetUriResolver(webview, assetDirs, projectDir))
     : html;
-  const csp = [
-    "default-src 'none'",
-    // cspSource covers the rewritten project assets; https:/data: the CDN.
-    `img-src ${webview.cspSource} https: data:`,
-    `media-src ${webview.cspSource} https:`,
-    "script-src https: 'unsafe-inline' 'unsafe-eval'",
-    "style-src https: 'unsafe-inline'",
-    "font-src https: data:",
-    "connect-src https:",
-    // asymptote emits 3d output as an <iframe> into the generated directory.
-    `frame-src ${webview.cspSource} https:`,
-  ].join("; ");
-  const cspTag = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
+  const cspTag = cspMetaTag(webview);
   // Runs once per document, including documents written by the update path
   // below (the extension injects this same script into every rendered page).
   // acquireVsCodeApi may only be called once per webview *session*, and
@@ -924,6 +1554,7 @@ function prepareWebviewHtml(
     "  window.__ptxUpdateHandler = function (event) {",
     "    var msg = event.data;",
     "    if (!msg) { return; }",
+    ...TOOLBAR_STATUS_BRANCH,
     "    if (msg.command === 'scrollTo' && msg.ids && msg.ids.length) {",
     "      // Forward sync: try the id chain innermost-first; not every",
     "      // element in the source map gets an HTML id.",
@@ -978,13 +1609,182 @@ function prepareWebviewHtml(
     "    }",
     "  };",
     "  window.addEventListener('dblclick', window.__ptxSyncClickHandler);",
+    ...TOOLBAR_SCRIPT_LINES,
+    // The navbar and ToC sidebar are pinned by the theme at offsets it
+    // computes itself, so there is no fixed value to override in CSS — and
+    // more importantly, whether they are pinned to the *top* at all depends on
+    // the viewport: PreTeXt's narrow-screen layout parks the navigation at the
+    // bottom. So measure what the theme actually decided and only add the
+    // toolbar's height to things it put at the top. Clearing our own value
+    // first makes this idempotent, which matters because it re-runs on resize
+    // when the layout flips between the wide and narrow arrangements.
+    `  var PTX_BAR_H = ${TOOLBAR_HEIGHT_PX};`,
+    "  function ptxOffsetPinned() {",
+    "    var ids = ['ptx-navbar', 'ptx-sidebar'];",
+    "    for (var i = 0; i < ids.length; i++) {",
+    "      var el = document.getElementById(ids[i]);",
+    "      if (!el) { continue; }",
+    "      el.style.removeProperty('top');",
+    "      var cs = window.getComputedStyle(el);",
+    "      if (cs.position !== 'sticky' && cs.position !== 'fixed') {",
+    "        continue;",
+    "      }",
+    "      if (cs.top === 'auto') { continue; }",
+    "      var base = parseFloat(cs.top);",
+    "      if (isNaN(base)) { continue; }",
+    "      // Bottom-anchored bars stay put even if they resolve a numeric top.",
+    "      var rect = el.getBoundingClientRect();",
+    "      if (rect.top > window.innerHeight / 2) { continue; }",
+    "      // 'important' because the theme sets these with it too.",
+    "      el.style.setProperty('top', (base + PTX_BAR_H) + 'px', 'important');",
+    "    }",
+    "  }",
+    "  ptxOffsetPinned();",
+    "  window.addEventListener('load', ptxOffsetPinned);",
+    "  if (window.__ptxResizeHandler) {",
+    "    window.removeEventListener('resize', window.__ptxResizeHandler);",
+    "  }",
+    "  window.__ptxResizeHandler = function () {",
+    "    if (window.__ptxResizeTimer) {",
+    "      clearTimeout(window.__ptxResizeTimer);",
+    "    }",
+    "    window.__ptxResizeTimer = setTimeout(ptxOffsetPinned, 100);",
+    "  };",
+    "  window.addEventListener('resize', window.__ptxResizeHandler);",
     "})();",
     "</script>",
   ].join("\n");
 
+  const status =
+    previewScope() === "project"
+      ? "Whole project"
+      : path.basename(currentSource?.activePath ?? "");
+
   return page
-    .replace(/<head([^>]*)>/i, `<head$1>\n${cspTag}`)
+    .replace(
+      /<head([^>]*)>/i,
+      `<head$1>\n${cspTag}\n${toolbarCss()}\n${toolbarLayoutCss()}`,
+    )
+    .replace(/<body([^>]*)>/i, `<body$1>\n${toolbarHtml("live", status)}`)
     .replace(/<\/body>/i, `${bootstrapScript}\n</body>`);
+}
+
+/**
+ * The page shown in full-build mode: the mode toolbar over an iframe onto the
+ * `pretext view` server.
+ *
+ * Unlike the live page this is a wrapper we own end to end, so the toolbar is
+ * a plain flex row rather than a fixed overlay with theme offsets. The served
+ * build is cross-origin, so nothing inside the frame can be scripted from here
+ * — no source map, no click-to-source, no scroll restore. Those are exactly
+ * the affordances live mode exists to provide.
+ */
+function fullBuildWrapperHtml(
+  webview: Webview,
+  url: string,
+  target: string,
+): string {
+  // Reopen where the reader left off, when the bridge has told us. `url` stays
+  // the fallback the wrapper reloads to if this build carries no bridge.
+  let initialUrl = url;
+  if (fullBuildPath) {
+    try {
+      initialUrl = new URL(fullBuildPath, url).toString();
+    } catch {
+      initialUrl = url;
+    }
+  }
+  // The theme bridge only ships inside rendered pages, so set the class the
+  // toolbar's dark palette keys off directly.
+  const rootClass =
+    currentPreviewTheme() === "dark" ? ' class="dark-mode"' : "";
+  return [
+    "<!DOCTYPE html>",
+    `<html lang="en"${rootClass}>`,
+    "<head>",
+    '<meta charset="UTF-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
+    cspMetaTag(webview),
+    "<title>PreTeXt Full Build</title>",
+    toolbarCss(),
+    "<style>",
+    // A flex column in viewport units, rather than a percentage-height chain
+    // plus an absolutely positioned frame: this cannot collapse to the
+    // iframe's 300x150 intrinsic size if one rule fails to apply, and it does
+    // not depend on the written document escaping quirks mode.
+    "html, body { margin: 0; padding: 0; }",
+    "body { height: 100vh; overflow: hidden;",
+    "  display: flex; flex-direction: column; }",
+    "html.dark-mode { background: #1e1e1e; }",
+    "#ptx-tools-bar { position: static; flex: 0 0 auto; }",
+    "#ptx-tools-frame {",
+    "  flex: 1 1 auto; min-height: 0; width: 100%; border: 0;",
+    "  background: #ffffff;",
+    "}",
+    "</style>",
+    "</head>",
+    "<body>",
+    toolbarHtml("full", target),
+    `<iframe id="ptx-tools-frame" src="${escapeHtml(initialUrl)}"></iframe>`,
+    "<script>",
+    "(function () {",
+    "  var api = window.__ptxPreviewApi ||",
+    "    (window.__ptxPreviewApi = acquireVsCodeApi());",
+    "  var frame = document.getElementById('ptx-tools-frame');",
+    `  var baseUrl = ${JSON.stringify(url)};`,
+    "  var framePath = null;",
+    "  if (window.__ptxUpdateHandler) {",
+    "    window.removeEventListener('message', window.__ptxUpdateHandler);",
+    "  }",
+    "  window.__ptxUpdateHandler = function (event) {",
+    "    var msg = event.data;",
+    "    if (!msg) { return; }",
+    // The wrapper carries no theme bridge (that ships inside rendered pages),
+    // so it applies the editor's theme switches to its own root itself — this
+    // is what keeps the toolbar's dark palette in step in full-build mode.
+    `    if (msg.type === ${JSON.stringify(PREVIEW_THEME_MESSAGE)}) {`,
+    "      var dark = msg.theme === 'dark' || (msg.theme === 'system' &&",
+    "        !!(window.matchMedia &&",
+    "          window.matchMedia('(prefers-color-scheme: dark)').matches));",
+    "      document.documentElement.classList.toggle('dark-mode', dark);",
+    "      return;",
+    "    }",
+    ...TOOLBAR_STATUS_BRANCH,
+    // Each built page announces where it is (see FRAME_BRIDGE_SCRIPT); relay
+    // that to the extension so it can reopen on the same page after a mode
+    // switch, when this whole document is rebuilt from scratch.
+    "    if (msg.command === 'ptxFramePath' && typeof msg.path === 'string') {",
+    "      framePath = msg.path;",
+    "      api.postMessage({ command: 'framePath', path: msg.path });",
+    "      return;",
+    "    }",
+    "    if (msg.command === 'reloadFrame') {",
+    "      if (framePath && frame.contentWindow) {",
+    "        // Reload the page the reader is actually on. Having the page",
+    "        // reload itself also lets the browser restore its scroll.",
+    "        frame.contentWindow.postMessage(",
+    "          { command: 'ptxFrameReload' }, '*');",
+    "      } else {",
+    "        // No bridge in this build (it predates us, or was unwritable):",
+    "        // fall back to re-pointing the frame at the start page.",
+    "        var sep = baseUrl.indexOf('?') === -1 ? '?' : '&';",
+    "        frame.src = baseUrl + sep + '_ptx=' + Date.now();",
+    "      }",
+    "      return;",
+    "    }",
+    "    if (msg.command === 'update' && typeof msg.html === 'string') {",
+    "      document.open();",
+    "      document.write(msg.html);",
+    "      document.close();",
+    "    }",
+    "  };",
+    "  window.addEventListener('message', window.__ptxUpdateHandler);",
+    ...TOOLBAR_SCRIPT_LINES,
+    "})();",
+    "</script>",
+    "</body>",
+    "</html>",
+  ].join("\n");
 }
 
 /** Rebuild on save of any .ptx/.xml file (debounced), unless disabled. */
@@ -992,6 +1792,10 @@ function setupSaveWatcher(extensionPath: string): void {
   saveWatcher?.dispose();
   saveWatcher = workspace.onDidSaveTextDocument((document) => {
     if (!document.fileName.match(/\.(ptx|xml)$/) || !currentPanel) {
+      return;
+    }
+    if (previewMode === "full") {
+      onSourceSavedWhileFullBuild();
       return;
     }
     const autoRefresh: boolean =
@@ -1084,6 +1888,9 @@ function syncPreviewToCursor(fileName: string, line: number): void {
   if (!currentPanel || !sourceMapByFile || !sourceMapById) {
     return;
   }
+  if (previewMode !== "live") {
+    return; // the full build is cross-origin and carries no source map
+  }
   const entries = sourceMapByFile.get(fileKey(fileName));
   if (!entries || entries.length === 0) {
     return; // file not part of the last render (other project, other scope)
@@ -1149,6 +1956,19 @@ export function disposeInstantPreview(): void {
   panelMessageWatcher = undefined;
   themeWatcher?.dispose();
   themeWatcher = undefined;
+  editorTracker?.dispose();
+  editorTracker = undefined;
+  configWatcher?.dispose();
+  configWatcher = undefined;
+  viewStateWatcher?.dispose();
+  viewStateWatcher = undefined;
+  groupLockAttempted = false;
+  if (followTimer) {
+    clearTimeout(followTimer);
+    followTimer = undefined;
+  }
+  lastActiveEditor = undefined;
+  fullBuildPath = undefined;
   if (debounceTimer) {
     clearTimeout(debounceTimer);
     debounceTimer = undefined;
@@ -1159,6 +1979,18 @@ export function disposeInstantPreview(): void {
   }
   sourceMapByFile = undefined;
   sourceMapById = undefined;
+  // The CLI server outlives our child process, so it needs an explicit stop.
+  // Kept running while the panel is open (even in live mode) so toggling back
+  // to the full build is instant.
+  stopCliServer();
+  if (fullBuildTimer) {
+    clearTimeout(fullBuildTimer);
+    fullBuildTimer = undefined;
+  }
+  previewMode = "live";
+  switchingMode = false;
+  fullBuildInProgress = false;
+  fullBuildStale = false;
   disposing = true;
   if (worker) {
     // disconnect() lets the worker exit cleanly on its 'disconnect' handler;
