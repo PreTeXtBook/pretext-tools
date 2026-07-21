@@ -213,13 +213,13 @@ the message helper.
 
 ## Limitations (current WASM build)
 
-| Limitation                                     | Cause                                           | Fix                                                                         |
-| ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- |
-| No multi-file output (`exsl:document`)         | Compiled with `FILESYSTEM=0`                    | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
-| JSPI required (flagged on Node)                | Loader fetches resources mid-transform via JSPI | Feature-detect with `isJspiAvailable()`; engines without it need a fallback |
-| No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT      | Out of scope; run `pretext generate` and the preview will pick the files up |
-| `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's             | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
-| Renders run one at a time, never in parallel   | Shared libxslt state; the transform suspends mid-run | Inherent; `renderHtml` queues concurrent calls for you                 |
+| Limitation                                     | Cause                                                | Fix                                                                         |
+| ---------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| No multi-file output (`exsl:document`)         | Compiled with `FILESYSTEM=0`                         | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
+| JSPI required (flagged on Node)                | Loader fetches resources mid-transform via JSPI      | Feature-detect with `isJspiAvailable()`; engines without it need a fallback |
+| No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT           | Out of scope; run `pretext generate` and the preview will pick the files up |
+| `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's                  | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
+| Renders run one at a time, never in parallel   | Shared libxslt state; the transform suspends mid-run | Inherent; `renderHtml` queues concurrent calls for you                      |
 
 The whole-book stack overflow ("memory access out of bounds") that the stock
 `libxslt-wasm` build hit on large documents is **fixed** in the
@@ -228,7 +228,7 @@ The whole-book stack overflow ("memory access out of bounds") that the stock
 ### Concurrency
 
 A render is not reentrant. It drives a single cached compiled stylesheet
-through a patched `globalThis.fetch` and shared mount tables, and it *suspends*
+through a patched `globalThis.fetch` and shared mount tables, and it _suspends_
 mid-transform to fetch stylesheets — which is precisely the window in which
 another render would get to run. Overlapping renders interleave inside libxslt
 and corrupt it.
@@ -239,7 +239,7 @@ render that rejects does not stall the queue.
 
 This matters mainly if you drive the internals yourself. If you do, serialize
 your own calls — the corruption is not self-describing: it surfaces as an
-out-of-bounds memory fault, and afterwards the WASM instance aborts on *every*
+out-of-bounds memory fault, and afterwards the WASM instance aborts on _every_
 later call for the lifetime of the process. Once that has happened, only a
 restart (or a page reload) recovers; `renderHtml` detects the state and says so
 rather than repeating the underlying assertion.

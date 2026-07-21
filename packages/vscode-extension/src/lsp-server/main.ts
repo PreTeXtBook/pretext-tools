@@ -200,7 +200,7 @@ const defaultSettings: LspSettings = {
   },
   editor: { tabSize: 2, insertSpaces: true },
 };
-export let globalSettings: LspSettings = defaultSettings;
+export const globalSettings: LspSettings = defaultSettings;
 
 connection.onDidChangeConfiguration((change) => {
   //clearAllDocumentInfo();

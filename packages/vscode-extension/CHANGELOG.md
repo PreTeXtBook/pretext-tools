@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- Live preview view now supports full previews of the entire document.
+- Optionally follow source file changes for live/division-fragment preview.
+- Format document command in the action menu.
+
 ## [1.0.2] - 2026-07-21
 
 ### Fixed

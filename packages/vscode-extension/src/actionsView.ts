@@ -46,6 +46,12 @@ const ACTIONS: Action[] = [
     tooltip: "Open a live side-by-side HTML preview that refreshes on save",
   },
   {
+    label: "Format document",
+    command: "pretext-tools.format",
+    icon: "pencil",
+    tooltip: "Formats the PreTeXt source file using the PreTeXt formatter",
+  },
+  {
     label: "Generate assets",
     command: "pretext-tools.generate",
     icon: "symbol-color",
