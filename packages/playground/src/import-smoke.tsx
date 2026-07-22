@@ -257,8 +257,8 @@ function WizardDemo() {
           <details>
             <summary>
               pretext-plus payload (<code>serializeProjectToPlusPayload</code>,{" "}
-              {hostPayloads.plus.divisions.length} divisions,{" "}
-              {hostPayloads.plus.assets.length} assets)
+              {hostPayloads.plus.divisions_attributes.length} divisions,{" "}
+              {hostPayloads.plus.assets_attributes.length} assets)
             </summary>
             <JsonView
               data={jsonSafe(hostPayloads.plus) as object}

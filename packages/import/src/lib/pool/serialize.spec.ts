@@ -103,34 +103,40 @@ describe("serializeProjectToFiles", () => {
 });
 
 describe("serializeProjectToPlusPayload", () => {
-  it("maps the pool onto the Rails-permitted shape", () => {
+  it("maps the pool onto the Rails import_params shape", () => {
     const { project } = buildDivisionPool(BOOK_SOURCE, {
       assets: { "img/plot.png": new Uint8Array([7, 7]) },
     });
     const payload = serializeProjectToPlusPayload(project);
 
     expect(payload.title).toBe("Book");
-    expect(payload.documentType).toBe("book");
+    expect(payload.document_type).toBe("book");
     expect(payload.docinfo).toContain("<macros>");
 
-    expect(payload.divisions.filter((d) => d.isRoot)).toHaveLength(1);
-    const rootRecord = payload.divisions.find((d) => d.isRoot);
+    expect(payload.divisions_attributes.filter((d) => d.is_root)).toHaveLength(
+      1,
+    );
+    const rootRecord = payload.divisions_attributes.find((d) => d.is_root);
     expect(rootRecord?.ref).toBe("document");
     expect(rootRecord?.source).toContain('<plus:chapter ref="intro"/>');
-    expect(rootRecord?.sourceFormat).toBe("pretext");
-
-    for (const record of payload.divisions) {
-      expect(record.id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-      );
+    expect(rootRecord?.source_format).toBe("pretext");
+    // The import endpoint permits no `id`/`_destroy` — every division is a
+    // brand-new row, so the payload must not carry one.
+    for (const record of payload.divisions_attributes) {
+      expect(record).not.toHaveProperty("id");
     }
-    const ids = new Set(payload.divisions.map((d) => d.id));
-    expect(ids.size).toBe(payload.divisions.length);
 
-    expect(payload.assets).toHaveLength(1);
-    expect(payload.assets[0].kind).toBe("file");
-    expect(payload.assets[0].ref).toBe("plot");
-    expect(payload.assets[0].fileName).toBe("plot.png");
-    expect(payload.assets[0].data).toEqual(new Uint8Array([7, 7]));
+    expect(payload.assets_attributes).toHaveLength(1);
+    const asset = payload.assets_attributes[0];
+    expect(asset.kind).toBe("file");
+    expect(asset.ref).toBe("plot");
+    expect(asset.title).toBe("plot.png");
+    expect(asset.short_description).toBe("plot.png");
+    expect(asset).not.toHaveProperty("id");
+    expect(asset.file.filename).toBe("plot.png");
+    expect(asset.file.content_type).toBe("image/png");
+    // Bytes travel as base64 in `file.data` — decode and check round trip.
+    expect(typeof asset.file.data).toBe("string");
+    expect(Buffer.from(asset.file.data, "base64")).toEqual(Buffer.from([7, 7]));
   });
 });

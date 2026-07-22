@@ -1,35 +1,80 @@
-// Projects the division pool (SPEC §4.1) onto the pretext-plus project
-// payload (SPEC §4.3) — a direct camelCase mirror of what the Rails app's
-// `ProjectsController` permits. Near-identity: the pool already stores
-// divisions in pretext-plus's own shape.
+// Projects the division pool (SPEC §4.1) onto the wire shape pretext-plus's
+// `POST /projects/import` expects (SPEC §4.3): a snake_case mirror of
+// `ProjectsController#import_params`, with asset bytes base64-encoded into a
+// nested `file` object — the whole import travels as one JSON body, no
+// multipart round-trip.
 
-import type { ImportedProject, PlusProjectPayload } from "../types";
+import type {
+  ImportedProject,
+  PlusAssetAttributes,
+  PlusProjectPayload,
+} from "../types";
+
+// Content types for the binary extensions `upload.ts` routes as assets
+// (BINARY_EXTENSIONS); anything else falls back to a generic octet stream.
+const ASSET_CONTENT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  pdf: "application/pdf",
+  eps: "application/postscript",
+  ps: "application/postscript",
+  bmp: "image/bmp",
+  tiff: "image/tiff",
+  tif: "image/tiff",
+  webp: "image/webp",
+  ico: "image/vnd.microsoft.icon",
+};
+
+function guessContentType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
+  return ASSET_CONTENT_TYPES[ext] ?? "application/octet-stream";
+}
+
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 /**
- * Client-minted UUID for a new Rails record (the same pattern the plus
- * editor uses: Rails inserts the supplied id as the row's primary key).
- * Falls back to a Math.random v4 when `crypto.randomUUID` is unavailable
- * (non-secure contexts); these ids are identifiers, not secrets.
+ * Base64-encode bytes without `btoa`/`Buffer`, so it runs identically in the
+ * browser (pretext-plus) and the VS Code extension host.
  */
-function mintUuid(): string {
-  const cryptoObj = globalThis.crypto as Crypto | undefined;
-  if (cryptoObj?.randomUUID) {
-    return cryptoObj.randomUUID();
+function bytesToBase64(bytes: Uint8Array): string {
+  const len = bytes.length;
+  const chars: string[] = [];
+  for (let i = 0; i < len; i += 3) {
+    const b0 = bytes[i];
+    const hasB1 = i + 1 < len;
+    const hasB2 = i + 2 < len;
+    const b1 = hasB1 ? bytes[i + 1] : 0;
+    const b2 = hasB2 ? bytes[i + 2] : 0;
+
+    chars.push(BASE64_CHARS[b0 >> 2]);
+    chars.push(BASE64_CHARS[((b0 & 0x03) << 4) | (b1 >> 4)]);
+    chars.push(hasB1 ? BASE64_CHARS[((b1 & 0x0f) << 2) | (b2 >> 6)] : "=");
+    chars.push(hasB2 ? BASE64_CHARS[b2 & 0x3f] : "=");
   }
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  return chars.join("");
+}
+
+function serializeAsset(
+  asset: ImportedProject["assets"][number],
+): PlusAssetAttributes {
+  return {
+    ref: asset.ref,
+    kind: "file",
+    title: asset.fileName,
+    short_description: asset.fileName,
+    file: {
+      filename: asset.fileName,
+      content_type: guessContentType(asset.fileName),
+      data: bytesToBase64(asset.data),
+    },
+  };
 }
 
 /**
- * Serialize the division pool to a pretext-plus project payload.
- *
- * The host page maps this onto the Rails endpoints (snake_case
- * `divisions_attributes` / `assets_attributes`, multipart for asset bytes);
- * note that `docinfo` currently requires a follow-up PATCH after create —
- * see SPEC §4.3 for the endpoint mapping and known gaps.
+ * Serialize the division pool to a pretext-plus import payload.
  */
 export function serializeProjectToPlusPayload(
   project: ImportedProject,
@@ -37,20 +82,13 @@ export function serializeProjectToPlusPayload(
   return {
     title: project.title,
     docinfo: project.docinfo,
-    documentType: project.documentKind,
-    divisions: project.divisions.map((division) => ({
-      id: mintUuid(),
+    document_type: project.documentKind,
+    divisions_attributes: project.divisions.map((division) => ({
       ref: division.xmlId,
       source: division.content,
-      sourceFormat: division.sourceFormat,
-      isRoot: division.isRoot,
+      source_format: division.sourceFormat,
+      is_root: division.isRoot,
     })),
-    assets: project.assets.map((asset) => ({
-      id: mintUuid(),
-      ref: asset.ref,
-      kind: "file" as const,
-      fileName: asset.fileName,
-      data: asset.data,
-    })),
+    assets_attributes: project.assets.map(serializeAsset),
   };
 }
