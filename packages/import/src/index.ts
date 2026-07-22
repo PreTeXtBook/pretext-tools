@@ -22,6 +22,7 @@ export {
 export {
   filesForImportMode,
   assetsForImportMode,
+  projectForImportMode,
   formatWarningLine,
   type ImportMode,
 } from "./lib/import-mode";
@@ -46,6 +47,7 @@ export type {
 } from "./lib/layout";
 export {
   buildDivisionPool,
+  buildNativeDivisionPool,
   sanitizeRef,
   serializeProjectToFiles,
   serializeProjectToPlusPayload,
@@ -54,6 +56,7 @@ export {
 export type {
   BuildDivisionPoolOptions,
   BuildDivisionPoolResult,
+  BuildNativeDivisionPoolOptions,
   SerializeProjectFilesOptions,
   SerializedProjectFiles,
 } from "./lib/pool";

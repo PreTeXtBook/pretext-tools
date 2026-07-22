@@ -6,8 +6,13 @@ import {
   findLikelyMainPretextPath,
 } from "./clean/pretext-includes";
 import { type BuildProjectFilesOptions } from "./layout";
-import { buildDivisionPool, serializeProjectToFiles } from "./pool";
+import {
+  buildDivisionPool,
+  buildNativeDivisionPool,
+  serializeProjectToFiles,
+} from "./pool";
 import type {
+  ImportedProject,
   ImportedProjectResult,
   SourceFormat,
   UploadSourceType,
@@ -581,15 +586,34 @@ export function importProjectFromFiles(
     const combinedWarnings = [...result.warnings, ...pool.warnings];
 
     let nativeOutputFiles: Record<string, string> | undefined;
+    let nativeProject: ImportedProject | undefined;
     if (
       result.cleanedNativeSource !== undefined &&
-      result.cleanedNativeSource.length > 0
+      result.cleanedNativeSource.length > 0 &&
+      (result.sourceFormat === "latex" || result.sourceFormat === "markdown")
     ) {
-      if (result.sourceFormat === "latex") {
-        nativeOutputFiles = { "source/main.tex": result.cleanedNativeSource };
-      } else if (result.sourceFormat === "markdown") {
-        nativeOutputFiles = { "source/main.md": result.cleanedNativeSource };
-      }
+      // VS Code native mode still writes a single collapsed source file; the
+      // native division pool below is for the pretext-plus host (SPEC §4.3),
+      // where native divisions joined by `\plus{…}` / `::…` are first-class.
+      nativeOutputFiles = {
+        [result.sourceFormat === "latex"
+          ? "source/main.tex"
+          : "source/main.md"]: result.cleanedNativeSource,
+      };
+      // Reuse the PreTeXt pool's title/docinfo/kind: those are project-level in
+      // the plus model and format-independent, so only the body needs splitting.
+      nativeProject = buildNativeDivisionPool(
+        result.cleanedNativeSource,
+        result.sourceFormat,
+        {
+          documentKind,
+          splitChapters: buildLayout ? layoutOptions.splitChapters : false,
+          splitSections: buildLayout ? layoutOptions.splitSections : false,
+          title: pool.project.title,
+          docinfo: pool.project.docinfo,
+          assets: importableAssets,
+        },
+      ).project;
     }
 
     if (Object.keys(rawAssets).length > 0) {
@@ -608,6 +632,7 @@ export function importProjectFromFiles(
       sourceName: sourcePath.split("/").pop() ?? sourcePath,
       sourceType,
       project: pool.project,
+      nativeProject,
       files: normalizedFiles,
       assets: rawAssets,
       outputFiles,

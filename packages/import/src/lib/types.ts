@@ -145,6 +145,14 @@ export interface ImportedProjectSuccess extends ConversionContext {
   documentKind: DocumentKind;
   /** Intermediate model of the imported project (SPEC §4.1). */
   project: ImportedProject;
+  /**
+   * Native-format (LaTeX/Markdown) projection of the same import, split into
+   * divisions joined by `\plus{…}{…}` / `::…{ref="…"}` placeholders (SPEC
+   * §4.3). Present only when the source was LaTeX or Markdown; the pretext-plus
+   * host serializes this instead of `project` when the user keeps the native
+   * format. `undefined` for PreTeXt input.
+   */
+  nativeProject?: ImportedProject;
   files: Record<string, string>;
   assets: Record<string, Uint8Array>;
   outputFiles: Record<string, string>;

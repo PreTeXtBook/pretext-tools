@@ -13,11 +13,18 @@ import {
   findTopLevelElements,
   type XmlElementSpan,
 } from "../layout/xml-scan";
-import type {
-  ImportedAsset,
-  ImportedDivision,
-  ImportedProject,
-} from "../types";
+import type { ImportedDivision, ImportedProject } from "../types";
+import {
+  buildAssets,
+  claimRefFromId,
+  pushRefWarnings,
+  RefPool,
+  type ClaimRefResult,
+} from "./refs";
+
+// Re-exported for back-compat: callers (and the spec) import `sanitizeRef`
+// from this module; the implementation now lives in `refs.ts`.
+export { sanitizeRef } from "./refs";
 
 export interface BuildDivisionPoolOptions {
   documentKind?: DocumentKind;
@@ -30,42 +37,6 @@ export interface BuildDivisionPoolOptions {
 export interface BuildDivisionPoolResult {
   project: ImportedProject;
   warnings: CleaningWarning[];
-}
-
-// pretext-plus's REF_REGEX for division/asset refs (also a valid NCName).
-const REF_REGEX = /^[a-zA-Z_][a-zA-Z0-9\-_]*$/;
-
-/**
- * Coerce a string into a REF_REGEX-safe ref: invalid characters collapse to
- * `-`, leading characters that can't start a ref are stripped. Returns `""`
- * when nothing valid remains.
- */
-export function sanitizeRef(raw: string): string {
-  return raw
-    .trim()
-    .replace(/[^a-zA-Z0-9\-_]+/g, "-")
-    .replace(/^[^a-zA-Z_]+/, "")
-    .replace(/-+$/, "");
-}
-
-/** Hands out refs, deduplicating with `-2`, `-3`, … suffixes. */
-class RefPool {
-  private used = new Set<string>();
-
-  claim(preferred: string): string {
-    let candidate = preferred;
-    let n = 2;
-    while (this.used.has(candidate)) {
-      candidate = `${preferred}-${n}`;
-      n += 1;
-    }
-    this.used.add(candidate);
-    return candidate;
-  }
-
-  has(ref: string): boolean {
-    return this.used.has(ref);
-  }
 }
 
 /**
@@ -103,61 +74,17 @@ function extractTitleText(inner: string): string {
     .trim();
 }
 
-interface ClaimRefResult {
-  ref: string;
-  renamedFrom?: string;
-  generated: boolean;
-}
-
 /**
- * Decide a division's ref: its existing `xml:id` when REF_REGEX-safe and
- * unused, a sanitized/deduplicated variant when not (reported as a rename),
- * or a generated `<prefix>-NN` when the element has no id at all.
+ * Decide a division's ref from its element span: its existing `xml:id` when
+ * REF_REGEX-safe and unused, a sanitized/deduplicated variant when not
+ * (reported as a rename), or a generated `<prefix>-NN` when it has no id.
  */
 function claimRef(
   span: XmlElementSpan,
   refs: RefPool,
   fallback: string,
 ): ClaimRefResult {
-  const rawId = span.attributes["xml:id"];
-  if (rawId) {
-    const sanitized = sanitizeRef(rawId) || fallback;
-    const ref = refs.claim(sanitized);
-    if (ref !== rawId) {
-      return { ref, renamedFrom: rawId, generated: false };
-    }
-    return { ref, generated: false };
-  }
-  return { ref: refs.claim(fallback), generated: true };
-}
-
-function pushRefWarnings(
-  warnings: CleaningWarning[],
-  claim: ClaimRefResult,
-  elementName: string,
-  position: number,
-): void {
-  if (claim.renamedFrom !== undefined) {
-    warnings.push({
-      action: "anomaly",
-      severity: "warning",
-      kind: "structure",
-      category: "renamed_xml_id",
-      macro: elementName,
-      occurrences: 1,
-      message: `<${elementName}> xml:id \`${claim.renamedFrom}\` is not a valid ref (or collides with another); renamed to \`${claim.ref}\`. Cross-references to the old id will break.`,
-    });
-  } else if (claim.generated) {
-    warnings.push({
-      action: "anomaly",
-      severity: "info",
-      kind: "structure",
-      category: "missing_xml_id",
-      macro: elementName,
-      occurrences: 1,
-      message: `<${elementName}> at position ${position} has no xml:id; assigned \`${claim.ref}\`.`,
-    });
-  }
+  return claimRefFromId(span.attributes["xml:id"], refs, fallback);
 }
 
 /** Rebuild an element's outer string from its span with new inner content. */
@@ -165,18 +92,6 @@ function rebuildOuter(span: XmlElementSpan, newInner: string): string {
   const openTag = span.outer.slice(0, span.startTagEnd - span.start);
   const closeTag = span.outer.slice(span.contentEnd - span.start);
   return openTag + newInner + closeTag;
-}
-
-function buildAssets(
-  rawAssets: Record<string, Uint8Array>,
-  refs: RefPool,
-): ImportedAsset[] {
-  return Object.entries(rawAssets).map(([originalPath, data]) => {
-    const fileName = originalPath.split("/").pop() ?? originalPath;
-    const stem = fileName.replace(/\.[^.]+$/, "");
-    const ref = refs.claim(sanitizeRef(stem) || "asset");
-    return { ref, fileName, data };
-  });
 }
 
 /**
