@@ -4,10 +4,26 @@
 // written" is defined in exactly one place.
 
 import type { CleaningWarning } from "./clean/warnings";
-import type { ImportedProjectSuccess } from "./types";
+import type { ImportedProject, ImportedProjectSuccess } from "./types";
 
 /** Which of the result's alternatives the user chose to import. */
 export type ImportMode = "converted" | "native";
+
+/**
+ * The division pool the pretext-plus host should serialize for the chosen
+ * mode: the native (LaTeX/Markdown) pool when the user keeps the source
+ * format, otherwise the converted PreTeXt pool. Falls back to the converted
+ * pool when there is no native projection (e.g. PreTeXt input, or an import
+ * that produced no native source).
+ */
+export function projectForImportMode(
+  result: ImportedProjectSuccess,
+  mode: ImportMode,
+): ImportedProject {
+  return mode === "native"
+    ? (result.nativeProject ?? result.project)
+    : result.project;
+}
 
 /** The text files a host should write for the chosen mode. */
 export function filesForImportMode(

@@ -325,42 +325,49 @@ xi:include (written but reachable only by hand).
 
 ### 4.3 pretext-plus shape: project payload
 
-What the Rails app (`PreTeXtPlus/PreTeXt-Plus`) accepts when creating a
-project, as of the single-Asset-model refactor
-([PR #231](https://github.com/PreTeXtPlus/PreTeXt-Plus/pull/231)): assets
-are project-owned records written through nested attributes exactly like
-divisions — no separate library/join endpoints. `ProjectsController` permits:
+pretext-plus has a dedicated import endpoint,
+`POST /projects/import` → `ProjectsController#create_from_import`, verified
+against the `import` branch of `PreTeXtPlus/PreTeXt-Plus`. It is **JSON, not
+multipart** — the whole import (including asset bytes) travels as one
+`fetch` body (see `app/javascript/controllers/react/import.jsx`) — and its
+`import_params` permits strictly new rows (no `id`/`_destroy` on either
+nested attribute, since an import never edits or deletes existing divisions
+or assets):
 
 ```
 project: {
-  title, pretext_source, docinfo, use_common_docinfo,
-  divisions_attributes: [{ id?, ref, source, source_format, is_root, _destroy }],
-  assets_attributes:    [{ id?, ref, kind, file, source, short_description,
-                           description, title, _destroy }]
+  title, docinfo, document_type,
+  divisions_attributes: [{ ref, source, source_format, is_root }],
+  assets_attributes:    [{ ref, kind, title, short_description,
+                           file: { filename, content_type, data } }]
 }
 ```
 
-so one multipart `POST /projects` carries the whole import, and the
-serializer output is a direct camelCase mirror:
+`file.data` is a base64 string; the controller decodes it
+(`.unpack1("m")`) into an ActiveStorage attachable. The serializer output is
+a direct snake_case mirror of that shape:
 
 ```ts
 interface PlusProjectPayload {
   title: string;
-  docinfo: string; // requires follow-up PATCH — see gaps below
-  documentType: "article" | "book";
-  divisions: {
-    id: string; // client-minted UUID (Rails inserts it as the PK)
+  docinfo: string;
+  document_type: "article" | "book";
+  divisions_attributes: {
     ref: string; // the division's xml:id
     source: string;
-    sourceFormat: "pretext" | "latex" | "markdown";
-    isRoot: boolean;
+    source_format: "pretext" | "latex" | "markdown";
+    is_root: boolean;
   }[];
-  assets: {
-    id: string; // client-minted UUID, same pattern as divisions
+  assets_attributes: {
     ref: string;
     kind: "file"; // imported binaries; "authored" unused by import
-    fileName: string; // → short_description; bytes attach as `file`
-    data: Uint8Array;
+    title: string; // asset's original basename, duplicated...
+    short_description: string; // ...into both display fields
+    file: {
+      filename: string;
+      content_type: string; // guessed from extension, e.g. "image/png"
+      data: string; // base64-encoded bytes
+    };
   }[];
 }
 ```
@@ -379,19 +386,12 @@ Rails-side rules the serializer must satisfy:
   the asset `ref`s at assembly time (the build sees a bare `<ref>.<ext>`
   external filename).
 
-**Gaps found in pretext-plus (need Rails-side changes or workarounds):**
-
-1. `ProjectsController#create` unconditionally calls `set_default_docinfo`,
-   clobbering any imported docinfo — the importing page must follow with a
-   `PATCH` (docinfo _is_ permitted on update), or create relaxes to
-   only-default-when-blank.
-2. `document_type` is not a permitted param on create **or** update — a
-   native latex/markdown _book_ import can't be marked as a book (the editor
-   reads `document_type` for non-pretext roots). Converted (pretext)
-   imports are unaffected.
-3. There is no import UI/endpoint in pretext-plus yet — the wizard will
-   mount like the editor does (`_form.html.erb` pattern) and drive the
-   create/PATCH endpoints above.
+The gaps recorded in an earlier draft of this section are resolved on the
+`import` branch: `create_from_import` only calls `set_default_docinfo` when
+`docinfo.blank?` (so an imported docinfo survives), `document_type` is a
+permitted `import_params` key, and the wizard is mounted on the new-project
+page (`new_project_controller.js` + `react/import.jsx`) driving this
+endpoint directly — there is no follow-up PATCH.
 
 Native mode maps better here than in VS Code: latex/markdown divisions are
 first-class in the plus editor, so a native import can split at

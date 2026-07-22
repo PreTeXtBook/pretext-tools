@@ -13,6 +13,7 @@ import {
   divisionChildRefs,
   filesForImportMode,
   formatWarningLine,
+  projectForImportMode,
   serializeProjectToPlusPayload,
 } from "@pretextbook/import";
 import type {
@@ -194,13 +195,19 @@ function WizardDemo() {
   // disposes the whole panel on import-cancel).
   const [wizardKey, setWizardKey] = useState(0);
 
+  // The pool the pretext-plus host serializes depends on the chosen mode:
+  // the converted PreTeXt pool, or the native (LaTeX/Markdown) one.
+  const activeProject = confirmed
+    ? projectForImportMode(confirmed.result, confirmed.mode)
+    : null;
+
   const hostPayloads = useMemo(() => {
-    if (!confirmed) return null;
+    if (!confirmed || !activeProject) return null;
     return {
       vscode: buildVsCodeMessage(confirmed.result, confirmed.mode),
-      plus: serializeProjectToPlusPayload(confirmed.result.project),
+      plus: serializeProjectToPlusPayload(activeProject),
     };
-  }, [confirmed]);
+  }, [confirmed, activeProject]);
 
   return (
     <section className="card output-card">
@@ -237,9 +244,17 @@ function WizardDemo() {
 
           <details open>
             <summary>
-              Division pool (<code>result.project</code>)
+              Division pool (
+              <code>
+                {confirmed.mode === "native"
+                  ? "result.nativeProject"
+                  : "result.project"}
+              </code>
+              )
             </summary>
-            <DivisionPoolView project={confirmed.result.project} />
+            <DivisionPoolView
+              project={activeProject ?? confirmed.result.project}
+            />
           </details>
 
           <details>
@@ -257,8 +272,8 @@ function WizardDemo() {
           <details>
             <summary>
               pretext-plus payload (<code>serializeProjectToPlusPayload</code>,{" "}
-              {hostPayloads.plus.divisions.length} divisions,{" "}
-              {hostPayloads.plus.assets.length} assets)
+              {hostPayloads.plus.divisions_attributes.length} divisions,{" "}
+              {hostPayloads.plus.assets_attributes.length} assets)
             </summary>
             <JsonView
               data={jsonSafe(hostPayloads.plus) as object}

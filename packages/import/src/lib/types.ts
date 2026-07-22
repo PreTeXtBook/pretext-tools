@@ -90,37 +90,51 @@ export interface ImportedProject {
   assets: ImportedAsset[];
 }
 
-/** One division row of the pretext-plus create/update payload (SPEC §4.3). */
-export interface PlusDivisionRecord {
-  /** Client-minted UUID; Rails inserts it as the record's primary key. */
-  id: string;
+/**
+ * One division row of the pretext-plus import payload (`divisions_attributes`
+ * on `POST /projects/import`). New rows only — `ProjectsController#import_params`
+ * permits no `id`/`_destroy` there (imports never edit or delete existing rows).
+ */
+export interface PlusDivisionAttributes {
   /** The division's `xml:id` (Rails column `ref`). */
   ref: string;
   source: string;
-  sourceFormat: SourceFormat;
-  isRoot: boolean;
-}
-
-/** One asset row of the pretext-plus payload; bytes attach as `file`. */
-export interface PlusAssetRecord {
-  id: string;
-  ref: string;
-  kind: "file";
-  /** → `short_description` and the multipart upload filename. */
-  fileName: string;
-  data: Uint8Array;
+  source_format: SourceFormat;
+  is_root: boolean;
 }
 
 /**
- * Direct camelCase mirror of what pretext-plus's `ProjectsController`
- * permits (`divisions_attributes` / `assets_attributes`) — see SPEC §4.3.
+ * An asset's file upload. Bytes travel base64-encoded, since the whole import
+ * posts as one JSON body — `import_params` decodes `data` back into an
+ * ActiveStorage attachable server-side.
+ */
+export interface PlusAssetFile {
+  filename: string;
+  content_type: string;
+  data: string;
+}
+
+/** One asset row of the pretext-plus import payload (`assets_attributes`). */
+export interface PlusAssetAttributes {
+  ref: string;
+  kind: "file";
+  title: string;
+  short_description: string;
+  file: PlusAssetFile;
+}
+
+/**
+ * Wire shape of `POST /projects/import`
+ * (`ProjectsController#create_from_import` / `import_params`) — a direct
+ * snake_case mirror, since the endpoint permits no `id` on either nested
+ * attribute.
  */
 export interface PlusProjectPayload {
   title: string;
   docinfo: string;
-  documentType: DocumentKind;
-  divisions: PlusDivisionRecord[];
-  assets: PlusAssetRecord[];
+  document_type: DocumentKind;
+  divisions_attributes: PlusDivisionAttributes[];
+  assets_attributes: PlusAssetAttributes[];
 }
 
 export interface ImportedProjectSuccess extends ConversionContext {
@@ -131,6 +145,14 @@ export interface ImportedProjectSuccess extends ConversionContext {
   documentKind: DocumentKind;
   /** Intermediate model of the imported project (SPEC §4.1). */
   project: ImportedProject;
+  /**
+   * Native-format (LaTeX/Markdown) projection of the same import, split into
+   * divisions joined by `\plus{…}{…}` / `::…{ref="…"}` placeholders (SPEC
+   * §4.3). Present only when the source was LaTeX or Markdown; the pretext-plus
+   * host serializes this instead of `project` when the user keeps the native
+   * format. `undefined` for PreTeXt input.
+   */
+  nativeProject?: ImportedProject;
   files: Record<string, string>;
   assets: Record<string, Uint8Array>;
   outputFiles: Record<string, string>;

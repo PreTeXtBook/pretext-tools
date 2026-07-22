@@ -5,6 +5,10 @@ export {
   type BuildDivisionPoolResult,
 } from "./division-pool";
 export {
+  buildNativeDivisionPool,
+  type BuildNativeDivisionPoolOptions,
+} from "./native-pool";
+export {
   serializeProjectToFiles,
   divisionChildRefs,
   type SerializeProjectFilesOptions,
