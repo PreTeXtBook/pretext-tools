@@ -44,6 +44,10 @@ import {
   loadValidationGrammar,
   setValidationMode,
 } from "./validation";
+import {
+  getFlavorLanguage,
+  FLAVOR_ONLY_TRIGGER_CHARACTERS,
+} from "./flavor-languages";
 
 /** Publish diagnostics for a given document URI. */
 const publishDiagnostics = (uri: string, diagnostics: Diagnostic[]) =>
@@ -87,7 +91,10 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that this server supports code completion.
       completionProvider: {
         resolveProvider: true,
-        triggerCharacters: ["@", "<", '"'],
+        // The last five only matter for the flavor languages (pretext-latex,
+        // pretext-markdown); the completion handler keeps them away from the
+        // schema engine since trigger registration is global.
+        triggerCharacters: ["@", "<", '"', ...FLAVOR_ONLY_TRIGGER_CHARACTERS],
       },
       // hoverProvider: { workDoneProgress: true },
       // documentSymbolProvider: { label: "PreTeXt Symbols" },
@@ -297,7 +304,13 @@ documents.onDidClose((e) => {
 documents.onDidChangeContent(async (change) => {
   updateDocument(change.document);
   //console.log("changed content", change.document.uri);
-  if (isProjectPtx(change.document)) {
+  const flavor = getFlavorLanguage(change.document.languageId);
+  if (flavor) {
+    // Flavor documents (LaTeX/Markdown-style PreTeXt) get their own linear
+    // scanner-based lint; the RNG schema pipeline below does not apply.
+    const diagnostics = await flavor.getDiagnostics(change.document.getText());
+    connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
+  } else if (isProjectPtx(change.document)) {
     const info = await getDocumentInfo(change.document.uri);
     if (!info) {
       return;
@@ -327,6 +340,23 @@ connection.onDidChangeWatchedFiles((_change) => {
 
 // This handler provides the initial list of the completion items.
 connection.onCompletion(async (params) => {
+  const doc = documents.get(params.textDocument.uri);
+  const flavor = doc && getFlavorLanguage(doc.languageId);
+  if (doc && flavor) {
+    return flavor.getCompletions({
+      text: doc.getText(),
+      offset: doc.offsetAt(params.position),
+      triggerCharacter: params.context?.triggerCharacter,
+    });
+  }
+  // Trigger characters are registered globally, so flavor-only triggers fire
+  // in ordinary `pretext` documents too; don't wake the schema engine for them.
+  if (
+    params.context?.triggerCharacter &&
+    FLAVOR_ONLY_TRIGGER_CHARACTERS.includes(params.context.triggerCharacter)
+  ) {
+    return [];
+  }
   return getCompletions(params);
 });
 

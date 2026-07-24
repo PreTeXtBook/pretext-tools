@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "@pretextbook/import": "*",
+    "@pretextbook/latex-style-pretext": "*",
+    "@pretextbook/markdown-style-pretext": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",
     "@pretextbook/remark-pretext": "*",
+    "monaco-editor": "^0.52.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-json-view-lite": "^2.5.0",

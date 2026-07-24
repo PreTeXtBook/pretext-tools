@@ -33,6 +33,26 @@
           ".xml"
         ],
         "configuration": "./language-configuration.json"
+      },
+      {
+        "id": "pretext-latex",
+        "aliases": [
+          "PreTeXt (LaTeX)"
+        ],
+        "filenamePatterns": [
+          "*.ptx.tex"
+        ],
+        "configuration": "./language-configuration-latex.json"
+      },
+      {
+        "id": "pretext-markdown",
+        "aliases": [
+          "PreTeXt (Markdown)"
+        ],
+        "filenamePatterns": [
+          "*.ptx.md"
+        ],
+        "configuration": "./language-configuration-markdown.json"
       }
     ],
     "viewsContainers": {
@@ -84,6 +104,16 @@
           "support.class.math.block.environment.latex": "latex",
           "source.asymptote": "asymptote"
         }
+      },
+      {
+        "language": "pretext-latex",
+        "scopeName": "text.tex.latex.pretext",
+        "path": "./syntaxes/pretext-latex.tmLanguage.json"
+      },
+      {
+        "language": "pretext-markdown",
+        "scopeName": "text.html.markdown.pretext",
+        "path": "./syntaxes/pretext-markdown.tmLanguage.json"
       }
     ],
     "snippets": [
@@ -466,6 +496,18 @@
             "scope": "machine",
             "markdownDescription": "Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
           },
+          "pretext-tools.latexPretext.treatTexAsPretext": {
+            "order": 5,
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Treat `.tex` files as LaTeX-style PreTeXt (completions and validation for the PreTeXt conversion) when the workspace contains a `project.ptx`. Files matching `*.ptx.tex` always get this treatment. Leave off if you use LaTeX Workshop or similar for ordinary LaTeX documents; `files.associations` offers per-pattern control."
+          },
+          "pretext-tools.markdownPretext.treatMarkdownAsPretext": {
+            "order": 5,
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Treat `.md` files as Markdown-style PreTeXt (completions and validation for the PreTeXt conversion) when the workspace contains a `project.ptx`. Files matching `*.ptx.md` always get this treatment. Leave off to keep the built-in Markdown tooling for files like `README.md`; `files.associations` offers per-pattern control."
+          },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
             "type": "string",
@@ -725,6 +767,8 @@
     "@pretextbook/format": "*",
     "@pretextbook/import": "*",
     "@pretextbook/latex-pretext": "*",
+    "@pretextbook/latex-style-pretext": "*",
+    "@pretextbook/markdown-style-pretext": "*",
     "@pretextbook/pretext-html": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",

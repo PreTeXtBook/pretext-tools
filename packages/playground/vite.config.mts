@@ -9,6 +9,8 @@ export default defineConfig({
       input: {
         main: "index.html",
         importSmoke: "import-smoke.html",
+        latexDemo: "latex-demo.html",
+        markdownDemo: "markdown-demo.html",
       },
     },
   },

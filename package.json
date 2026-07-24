@@ -27,7 +27,7 @@
     "check:schema-generated": "node ./scripts/check-schema-generated.mjs",
     "lint": "npm run lint -w @pretextbook/visual-editor && npm run lint -w pretext-tools",
     "test": "npm run test:libraries && npm run test:unit -w pretext-tools && npm run test:reliability",
-    "test:libraries": "npm run test -w @pretextbook/completions && npm run test -w @pretextbook/schema && npm run test -w @pretextbook/format && npm run test -w @pretextbook/ptxast && npm run test -w @pretextbook/pretext-html && npm run test -w @pretextbook/visual-editor",
+    "test:libraries": "npm run test -w @pretextbook/completions && npm run test -w @pretextbook/latex-style-pretext && npm run test -w @pretextbook/markdown-style-pretext && npm run test -w @pretextbook/schema && npm run test -w @pretextbook/format && npm run test -w @pretextbook/ptxast && npm run test -w @pretextbook/pretext-html && npm run test -w @pretextbook/visual-editor",
     "test:reliability": "npm exec vitest run packages/remark-pretext/src/lib/remark-pretext.spec.ts packages/ptxast-util-to-mdast/src/lib/ptxast-util-to-mdast.spec.ts packages/latex-pretext/src/lib/latex-pretext.spec.ts",
     "pretest": "npm run build",
     "format": "npx prettier --write --ignore-unknown \"packages/**\"",
