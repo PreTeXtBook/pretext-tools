@@ -24,10 +24,10 @@ describe("environment completions", () => {
     expect(item?.textEdit?.newText).toBe("theorem}\n\t$0\n\\end{theorem}");
   });
 
-  it("offers aliases, labelled as such", () => {
-    const item = byLabel(complete("\\begin{thm|"), "thm");
-    expect(item?.detail).toContain("alias of \\begin{theorem}");
-    expect(item?.textEdit?.newText).toContain("\\end{thm}");
+  it("does not suggest aliases, preferring the canonical name", () => {
+    // `thm` is a valid alias of `theorem`, but it should not appear as its own
+    // suggestion — only canonical names are offered.
+    expect(labels(complete("\\begin{thm|"))).not.toContain("thm");
   });
 
   it("consumes an auto-closed brace so the skeleton is not doubled", () => {

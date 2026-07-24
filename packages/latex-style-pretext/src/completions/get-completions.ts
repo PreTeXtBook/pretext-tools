@@ -98,6 +98,8 @@ function environmentBeginItems(
     const detailBits: string[] = [spec.kind];
     if (spec.requiresStatement) detailBits.push("statement");
     const boost = boosted.has(spec.name);
+    // Only the canonical name is suggested; aliases remain valid input (and are
+    // still recognized by validation) but are kept out of the suggestion list.
     items.push(
       makeItem({
         text,
@@ -111,19 +113,6 @@ function environmentBeginItems(
         sortText: `${boost ? "0" : "1"}${spec.name}`,
       }),
     );
-    for (const alias of spec.aliases) {
-      items.push(
-        makeItem({
-          text,
-          edit,
-          label: alias,
-          kind: CompletionItemKind.Class,
-          detail: `alias of \\begin{${spec.name}}`,
-          insert: environmentInsertText({ ...spec, name: alias }),
-          sortText: `2${alias}`,
-        }),
-      );
-    }
   }
   return items;
 }
