@@ -1,7 +1,7 @@
 {
-  "name": "@pretextbook/latex-style-pretext",
+  "name": "@pretextbook/markdown-style-pretext",
   "version": "0.0.1",
-  "description": "Editor intelligence (completions + validation) for LaTeX-style PreTeXt documents",
+  "description": "Editor intelligence (completions + validation) for Markdown-style PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
   "repository": {
@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/latex-style-pretext",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/markdown-style-pretext",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",
@@ -34,10 +34,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@pretextbook/latex-style-pretext": "^0.0.1",
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
-    "@pretextbook/latex-pretext": "^0.0.13"
+    "@pretextbook/remark-pretext": "^0.0.11"
   },
   "publishConfig": {
     "access": "public"

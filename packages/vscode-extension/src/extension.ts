@@ -55,6 +55,7 @@ import {
   lspFormatText,
 } from "./lsp-client/main";
 import { projects, resetProjectList } from "./project";
+import { registerFlavorTakeover } from "./flavor-takeover";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
 import { cmdImportProject } from "./importWizardPanel";
@@ -109,6 +110,9 @@ export async function activate(context: ExtensionContext) {
 
   // Visual editor
   context.subscriptions.push(PretextVisualEditorProvider.register(context));
+
+  // Opt-in takeover of .tex/.md files by the PreTeXt flavor languages.
+  context.subscriptions.push(registerFlavorTakeover());
 
   ///////////////// Commands //////////////////////
 

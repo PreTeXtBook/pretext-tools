@@ -65,8 +65,12 @@ export function activate(context: ExtensionContext) {
 
   // Options to control the language client
   const clientOptions: LanguageClientOptions = {
-    // Register the server for plain text documents
-    documentSelector: [{ scheme: "file", language: "pretext" }],
+    // Register the server for PreTeXt documents in all authoring flavors.
+    documentSelector: [
+      { scheme: "file", language: "pretext" },
+      { scheme: "file", language: "pretext-latex" },
+      { scheme: "file", language: "pretext-markdown" },
+    ],
     synchronize: {
       // Notify the server about file changes to '.clientrc files contained in the workspace
       fileEvents: workspace.createFileSystemWatcher("**/project.ptx"),

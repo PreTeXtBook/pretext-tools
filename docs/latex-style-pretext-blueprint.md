@@ -13,7 +13,7 @@ designed so it can slot in without touching the host adapters.
 | File identity       | New language id `pretext-latex`, filename pattern `*.ptx.tex`, plus opt-in takeover of `.tex` in PreTeXt projects |
 | Validation depth v1 | Parse-level: unmatched `\begin`/`\end`, unknown environments, unknown macros                                      |
 | Scope               | LaTeX-only implementation, markdown-aware host interfaces                                                         |
-| Placement           | New workspace package `@pretextbook/latex-style-pretext`                                                      |
+| Placement           | New workspace package `@pretextbook/latex-style-pretext`                                                          |
 | v1 completions      | Env snippets with structure, macro completions, math-mode awareness, `\ref`/`\label` intelligence                 |
 
 ## Architecture overview
@@ -237,8 +237,11 @@ Each phase is landable and testable on its own.
 2. **Phase 2 — completions**: `get-completions.ts` + `snippets.ts` + specs covering every
    context row in the table above. — ✅ **Done**.
 3. **Phase 3 — lint**: `get-diagnostics.ts` with the three v1 checks + specs; add the
-   converter drift-guard spec. — ✅ **Done** (scanner-based, not unified-latex — see note below);
-   drift-guard spec still TODO.
+   converter drift-guard spec. — ✅ **Done** (scanner-based, not unified-latex — see note below).
+   Drift-guard: `src/data/converter-drift.spec.ts` sweeps every curated env (incl. aliases) and
+   macro through `@pretextbook/latex-pretext`; context-sensitive macros get in-context usages, and
+   a `KNOWN_UNCONVERTED` list (with an inverse still-fails guard) documents macros curated for
+   lint-noise reasons that upstream does not convert.
 
 **Demo (ahead of Phases 4–5):** a Monaco-based demo page lives in the `playground` package
 (`latex-demo.html`, `src/latex-demo.ts`, `src/monaco-latex.ts`). Run `npm run dev -w
@@ -249,19 +252,28 @@ tokenizer + completion provider) and `wireDiagnostics(monaco, model)` (debounced
 **Lint deviation:** v1 lint is scanner-based rather than unified-latex-AST-based. The scanner
 already suppresses comments/verbatim/math correctly, which covers the main false-positive
 sources, and it keeps the browser bundle free of unified-latex. The data tables had to grow to
-cover macros the converter handles *natively* (division macros `\section`/`\chapter`, document
+cover macros the converter handles _natively_ (division macros `\section`/`\chapter`, document
 macros `\documentclass`/`\title`, streaming font commands, exam item macros) — these are NOT in
 the `macroReplacements` table. Unknown-macro is Information severity and also honors in-document
 `\newcommand`/`\def` definitions. Revisit unified-latex for lint if false-positive reports
-appear.
-4. **Phase 4 — VS Code wiring**: language/grammar contributions, LSP routing, `.tex` opt-in
-   setting; integration test (`.ptx.tex` fixture opens with `pretext-latex` languageId and gets
-   completions/diagnostics through the LSP).
-5. **Phase 5 — publish + pretext-plus**: publish `@pretextbook/latex-style-pretext`; in
-   pretext-plus-editor add tokenizer, providers, markers, and `latexConfig` wiring.
-6. **Phase 6 (later) — polish & markdown prep**: hover docs from `documentation` fields,
-   cross-file label completion, configurable severities, then `pretext-markdown` as the second
-   `PretextFlavorLanguage`.
+appear. 4. **Phase 4 — VS Code wiring**: language/grammar contributions, LSP routing, `.tex` opt-in
+setting; integration test (`.ptx.tex` fixture opens with `pretext-latex` languageId and gets
+completions/diagnostics through the LSP). — ✅ **Done** for both flavors at once (`pretext-latex`
+`*.ptx.tex`, `pretext-markdown` `*.ptx.md`): language + grammar-include contributions, LSP
+routing via `lsp-server/flavor-languages.ts` (flavor-only trigger characters are swallowed for
+ordinary `pretext` docs), takeover settings for `.tex` **and** `.md`
+(`latexPretext.treatTexAsPretext` / `markdownPretext.treatMarkdownAsPretext`, default off), and
+eight integration tests in `src/test/suite/flavor-languages.test.ts`. Takeover policy
+(`src/flavor-takeover.ts` `shouldTakeOver`): file-scheme docs only, setting enabled, and the
+document's **workspace-folder root** contains `project.ptx` (single `fs.existsSync` per open, no
+cache). Publish-readiness: both packages are `private:false`, `publishConfig.access public`, not
+in `.changeset/config.json`'s `ignore` list → included in the changeset workflow. Internal deps
+converted from `"*"` to caret ranges (repo convention). Neither is on npm yet, so the next release
+run's `changeset publish` publishes `0.0.1` automatically (no changeset needed for the first
+publish; adding one instead routes to a Version PR that bumps off 0.0.1). 5. **Phase 5 — publish + pretext-plus**: publish `@pretextbook/latex-style-pretext`; in
+pretext-plus-editor add tokenizer, providers, markers, and `latexConfig` wiring. 6. **Phase 6 (later) — polish & markdown prep**: hover docs from `documentation` fields,
+cross-file label completion, configurable severities, then `pretext-markdown` as the second
+`PretextFlavorLanguage`.
 
 ## Risks and mitigations
 

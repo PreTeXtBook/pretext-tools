@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown-style PreTeXt — Language Demo</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      .demo-workspace {
+        display: flex;
+        height: calc(100vh - var(--toolbar-h));
+      }
+      .editor-pane {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #editor {
+        width: 100%;
+        height: 100%;
+      }
+      .help-pane {
+        flex: 0 0 320px;
+        background: var(--surface);
+        border-left: 1px solid var(--overlay);
+        padding: 16px 18px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .help-pane h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--accent);
+        margin: 18px 0 8px;
+      }
+      .help-pane h2:first-child {
+        margin-top: 0;
+      }
+      .help-pane ul {
+        padding-left: 18px;
+      }
+      .help-pane li {
+        margin-bottom: 6px;
+        color: var(--subtext);
+      }
+      .help-pane kbd {
+        background: var(--overlay);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 12px;
+        color: var(--text);
+      }
+      .help-pane code {
+        color: var(--green);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="toolbar">
+      <span class="logo">⊕ Markdown-style PreTeXt — Language Demo</span>
+      <div class="toolbar-right">
+        <a href="/index.html" class="page-link">← Playground</a>
+      </div>
+    </header>
+
+    <div class="demo-workspace">
+      <div class="editor-pane">
+        <div id="editor"></div>
+      </div>
+      <aside class="help-pane">
+        <h2>Completions</h2>
+        <ul>
+          <li>
+            Type <code>:::</code> at the start of a line for container
+            directives (e.g. <code>:::theorem</code>) — they expand to a full
+            <code>:::name … :::</code> skeleton.
+          </li>
+          <li>
+            Type <code>::</code> for include (leaf) directives like
+            <code>::section</code> / <code>::image</code>.
+          </li>
+          <li>
+            Or type a directive name at the start of a line (e.g.
+            <code>Theorem</code>) for a Python-style indented directive —
+            <code>Name:</code> with an indented body, no closing fence.
+          </li>
+          <li>
+            Inside <code>$…$</code>, completions switch to KaTeX math macros
+            (try <code>\fra</code> → <code>\frac</code>).
+          </li>
+          <li>
+            <code>[text](#</code> completes against ids declared with
+            <code>{#id}</code>.
+          </li>
+          <li>Trigger manually with <kbd>Ctrl</kbd>+<kbd>Space</kbd>.</li>
+        </ul>
+
+        <h2>Validation</h2>
+        <ul>
+          <li>
+            Unknown container directives are flagged (see
+            <code>bogusdirective</code>).
+          </li>
+          <li>
+            Colon fences must open and close with the same number of colons;
+            unclosed or mismatched fences are errors.
+          </li>
+          <li>Unrecognized math macros get a subtle hint.</li>
+          <li>
+            Fenced code, HTML comments, and frontmatter are never flagged.
+          </li>
+        </ul>
+
+        <h2>Notes</h2>
+        <ul>
+          <li>
+            All intelligence comes from
+            <code>@pretextbook/markdown-style-pretext</code>; this page is just
+            the Monaco adapter (see <code>src/monaco-markdown.ts</code>).
+          </li>
+        </ul>
+      </aside>
+    </div>
+
+    <script type="module" src="/src/markdown-demo.ts"></script>
+  </body>
+</html>

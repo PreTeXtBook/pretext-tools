@@ -8,12 +8,23 @@ const extensionRoot = path.join(workspaceRoot, "packages", "vscode-extension");
 const distRoot = path.join(workspaceRoot, "dist", "vscode-extension");
 
 const filesToCopy = [
-  ['LICENSE', path.join(workspaceRoot, 'LICENSE')],
-  ['README.md', path.join(extensionRoot, 'README.md')],
-  ['logo.png', path.join(extensionRoot, 'logo.png')],
-  ['logo.svg', path.join(extensionRoot, 'logo.svg')],
-  ['language-configuration.json', path.join(extensionRoot, 'language-configuration.json')],
-  ['.vscodeignore', path.join(extensionRoot, '.vscodeignore')],
+  ["LICENSE", path.join(workspaceRoot, "LICENSE")],
+  ["README.md", path.join(extensionRoot, "README.md")],
+  ["logo.png", path.join(extensionRoot, "logo.png")],
+  ["logo.svg", path.join(extensionRoot, "logo.svg")],
+  [
+    "language-configuration.json",
+    path.join(extensionRoot, "language-configuration.json"),
+  ],
+  [
+    "language-configuration-latex.json",
+    path.join(extensionRoot, "language-configuration-latex.json"),
+  ],
+  [
+    "language-configuration-markdown.json",
+    path.join(extensionRoot, "language-configuration-markdown.json"),
+  ],
+  [".vscodeignore", path.join(extensionRoot, ".vscodeignore")],
 ];
 
 const directoriesToCopy = ["assets", "snippets", "syntaxes"];
@@ -30,6 +41,9 @@ delete packageJson.devDependencies;
 if (packageJson.dependencies) {
   delete packageJson.dependencies["@pretextbook/format"];
   delete packageJson.dependencies["@pretextbook/completions"];
+  // bundled into out/lsp-server.js
+  delete packageJson.dependencies["@pretextbook/latex-style-pretext"];
+  delete packageJson.dependencies["@pretextbook/markdown-style-pretext"];
   // bundled into out/instant-preview-worker.mjs
   delete packageJson.dependencies["@pretextbook/pretext-html"];
 }

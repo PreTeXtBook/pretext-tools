@@ -13,6 +13,7 @@
   "dependencies": {
     "@pretextbook/import": "*",
     "@pretextbook/latex-style-pretext": "*",
+    "@pretextbook/markdown-style-pretext": "*",
     "@pretextbook/ptxast": "*",
     "@pretextbook/ptxast-util-to-mdast": "*",
     "@pretextbook/remark-pretext": "*",

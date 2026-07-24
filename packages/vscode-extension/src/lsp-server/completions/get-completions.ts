@@ -143,6 +143,11 @@ export async function getCompletions(
 export async function getCompletionDetails(
   item: CompletionItem,
 ): Promise<CompletionItem> {
+  // Flavor-language items (pretext-latex/pretext-markdown) are complete as
+  // produced and carry no cache index; return them unchanged.
+  if (typeof item.data !== "number" || !completionCache[item.data]) {
+    return item;
+  }
   return completionCache[item.data];
 }
 
