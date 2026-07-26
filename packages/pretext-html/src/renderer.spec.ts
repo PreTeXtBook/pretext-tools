@@ -60,6 +60,70 @@ describe("forcePortablePublication", () => {
     expect(xml).toContain('portable="yes"');
     expect(xml).toContain('external="ext"');
   });
+
+  describe("css theme", () => {
+    it("declares the theme in a synthesized publication file", () => {
+      const xml = forcePortablePublication(undefined, "denver");
+      expect(xml).toContain('<css theme="denver"');
+      expect(xml).toContain('portable="yes"');
+      // The synthesized file's asset directories must survive the rewrite.
+      expect(xml).toContain('external="../assets"');
+    });
+
+    it("declares the theme when the publication file has no <css>", () => {
+      const xml = forcePortablePublication(
+        `<publication><html><platform host="web"/></html></publication>`,
+        "tacoma",
+      );
+      expect(xml).toContain('<css theme="tacoma"');
+      expect(xml).toContain('host="web"');
+    });
+
+    it("adds the theme to an existing <css> that names none", () => {
+      const xml = forcePortablePublication(
+        `<publication><html><css colors="blue_red"/></html></publication>`,
+        "salem",
+      );
+      expect(xml).toContain('colors="blue_red"');
+      expect(xml).toContain('theme="salem"');
+      // Added as an attribute of the existing element, not a second <css>.
+      expect(xml.match(/<css\b/g)).toHaveLength(1);
+    });
+
+    it("leaves a publication file that already names a theme alone", () => {
+      const xml = forcePortablePublication(
+        `<publication><html><css theme="denver"/></html></publication>`,
+        "tacoma",
+      );
+      expect(xml).toContain('theme="denver"');
+      expect(xml).not.toContain("tacoma");
+    });
+
+    it.each(["style", "shell"])(
+      "leaves a legacy @%s style alone",
+      (attribute) => {
+        const xml = forcePortablePublication(
+          `<publication><html><css ${attribute}="crc"/></html></publication>`,
+          "tacoma",
+        );
+        expect(xml).toContain(`${attribute}="crc"`);
+        expect(xml).not.toContain("theme=");
+      },
+    );
+
+    it("ignores a blank theme", () => {
+      const xml = forcePortablePublication(
+        `<publication><html/></publication>`,
+        "   ",
+      );
+      expect(xml).not.toContain("<css");
+    });
+
+    it("leaves the publication file untouched when no theme is given", () => {
+      expect(forcePortablePublication()).toBe(forcePortablePublication());
+      expect(forcePortablePublication()).not.toContain("<css");
+    });
+  });
 });
 
 describe("renderHtml", () => {
@@ -162,6 +226,20 @@ describe("renderHtml", () => {
     expect(html).toContain("Content from an included file");
     // portable was forced despite the publication file saying "no"
     expect(html).toContain("cdn.jsdelivr.net");
+    // no cssTheme given, so PreTeXt's own default applies
+    expect(html).toContain("theme-default-modern.min.css");
+  });
+
+  it("themes the page from cssTheme", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      // Declares no theme of its own, so the caller's default applies.
+      publicationPath: path.join(projectDir, "publication.xml"),
+      cssTheme: "tacoma",
+    });
+    // Portable builds name the theme in the CDN stylesheet URL.
+    expect(html).toContain("theme-tacoma.min.css");
   });
 
   it("passes extra string parameters through to the stylesheet", async () => {

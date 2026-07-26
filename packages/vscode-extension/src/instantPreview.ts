@@ -187,6 +187,22 @@ function previewScope(): PreviewScope {
 }
 
 /**
+ * The PreTeXt HTML theme (denver, tacoma, …) the preview should fall back on.
+ *
+ * Only reaches the build for projects whose publication file names no theme of
+ * its own — the renderer treats it as a default, never an override, so a book
+ * that has picked a theme still previews in it. Empty means "no opinion",
+ * leaving PreTeXt's own default-modern in place.
+ */
+function previewCssTheme(): string | undefined {
+  const theme = workspace
+    .getConfiguration("pretext-tools")
+    .get<string>("instantPreview.cssTheme")
+    ?.trim();
+  return theme || undefined;
+}
+
+/**
  * Map VS Code's active color theme to a preview theme, so the preview matches
  * the editor. High-contrast variants follow their light/dark base. The
  * pretext-html theme bridge (injected into the page) applies this and then
@@ -228,11 +244,13 @@ function lockPreviewGroupOnce(): void {
 }
 
 /**
- * Reconcile the toolbar's follow checkbox when the setting is changed from
- * somewhere other than the toolbar (the Settings UI, another window, a
- * workspace file edit).
+ * React to settings the open panel reflects: reconcile the toolbar's follow
+ * checkbox when it is changed from somewhere other than the toolbar (the
+ * Settings UI, another window, a workspace file edit), and re-render when the
+ * css theme changes, since that is baked into the publication file the
+ * transform reads.
  */
-function setupConfigWatcher(): void {
+function setupConfigWatcher(extensionPath: string): void {
   configWatcher?.dispose();
   configWatcher = workspace.onDidChangeConfiguration((event) => {
     if (
@@ -244,6 +262,9 @@ function setupConfigWatcher(): void {
         command: "follow",
         on: followActiveEditor(),
       });
+    }
+    if (event.affectsConfiguration("pretext-tools.instantPreview.cssTheme")) {
+      renderToPanel(extensionPath);
     }
   });
 }
@@ -428,7 +449,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
     setupSelectionWatcher();
     setupThemeWatcher();
     setupEditorTracker(extensionPath);
-    setupConfigWatcher();
+    setupConfigWatcher(extensionPath);
   } else {
     currentPanel.reveal(ViewColumn.Beside, true);
   }
@@ -958,6 +979,9 @@ function renderToPanel(extensionPath: string): void {
     sourcePath: renderPath,
     projectDir: currentSource.projectDir,
     publicationPath: currentSource.publicationPath,
+    // Only used for projects that declare no theme themselves; see
+    // previewCssTheme.
+    cssTheme: previewCssTheme(),
     // Anchors the publication file's relative asset directories. Without it a
     // fragment in a subdirectory resolves "../generated-assets/" from its own
     // folder and every generated image comes out blank.

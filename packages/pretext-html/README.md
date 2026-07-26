@@ -69,6 +69,17 @@ const { html } = await renderHtml({
 - The user's publication file is respected, except
   `<html><platform portable="yes"/></html>` is always forced — that is what
   makes single-page in-memory output possible.
+- `cssTheme: "denver"` supplies the PreTeXt HTML theme for projects that do not
+  choose one, by adding `<html><css theme="…"/></html>` to the publication file
+  used for the build (including the minimal one synthesized when you pass no
+  `publicationPath`). It is a default, never an override: a publication file
+  that already names a theme — `@theme`, or the deprecated `@style`/`@shell` —
+  keeps it, so the preview goes on matching what `pretext build` produces. The
+  themes the bundled stylesheets know are `default-modern` (PreTeXt's own
+  default), `denver`, `tacoma`, `salem`, `greeley` and `boulder`; a portable
+  build loads `theme-<name>.min.css` from the CDN, so an unrecognised name
+  gives an unstyled page. Not to be confused with `theme` below, which is the
+  light/dark mode _within_ whichever css theme is in force.
 - The compiled stylesheet is cached per `xslDir` (~1s to compile, then
   ~100ms–1s per render depending on document size).
 - `theme: "dark" | "light" | "system"` makes the preview follow the embedding
