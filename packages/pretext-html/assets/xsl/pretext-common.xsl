@@ -34,9 +34,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
     xmlns:str="http://exslt.org/strings"
     xmlns:dyn="http://exslt.org/dynamic"
     extension-element-prefixes="pi exsl date str dyn"
-    xmlns:mb="https://pretextbook.org/"
     xmlns:pf="https://prefigure.org"
-    exclude-result-prefixes="mb"
 >
 
 <!-- PreTeXt common templates                             -->
@@ -404,7 +402,7 @@ $inline-solution-back|$divisional-solution-back|$worksheet-solution-back|$readin
         </xsl:when>
         <xsl:otherwise>
             <xsl:message>
-                <xsl:text>PTX:WARNING: the whitespace parameter can be 'strict' or 'flexible', not '</xsl:text>
+                <xsl:text>PTX:FALLBACK: the whitespace parameter can be 'strict' or 'flexible', not '</xsl:text>
                 <xsl:value-of select="$whitespace" />
                 <xsl:text>'.  Using the default ('flexible').</xsl:text>
             </xsl:message>
@@ -439,7 +437,7 @@ $inline-solution-back|$divisional-solution-back|$worksheet-solution-back|$readin
 <!-- An "exercisegroup" indents its exercises, to show the      -->
 <!-- scope of the group, by this fraction of the prevailing     -->
 <!-- text width.  The LaTeX conversion applies it through       -->
-<!-- \egindent (that many \linewidth); the XSL-FO conversion    -->
+<!-- \ptxegindent (that many \linewidth); the XSL-FO conversion    -->
 <!-- scales its text measure.                                   -->
 <xsl:variable name="exercisegroup-indentation" select="0.05"/>
 
@@ -579,7 +577,7 @@ Book (with parts), "section" at level 3
         <xsl:when test="$normalized-level=3">subsection</xsl:when>
         <xsl:when test="$normalized-level=4">subsubsection</xsl:when>
         <xsl:otherwise>
-            <xsl:message>PTX:ERROR: Level computation is out-of-bounds (input as <xsl:value-of select="$level" />, normalized to <xsl:value-of select="$normalized-level" />)</xsl:message>
+            <xsl:message>PTX:BUG:   Level computation is out-of-bounds (input as <xsl:value-of select="$level" />, normalized to <xsl:value-of select="$normalized-level" />)</xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -719,7 +717,7 @@ Book (with parts), "section" at level 3
         <!-- check for bare # (present but \# is not) -->
         <xsl:if test="contains($inside, '#') and not(contains($inside, '\#'))">
             <xsl:message>
-                <xsl:text>PTX:WARNING:   a bare "#" inside \text{} in math must be escaped as "\#"</xsl:text>
+                <xsl:text>PTX:ERROR:     a bare "#" inside \text{} in math must be escaped as "\#"</xsl:text>
                 <xsl:text>&#xa;</xsl:text>
                 <xsl:text>               </xsl:text>
                 <xsl:apply-templates select="." mode="location-report"/>
@@ -728,7 +726,7 @@ Book (with parts), "section" at level 3
         <!-- check for bare % -->
         <xsl:if test="contains($inside, '%') and not(contains($inside, '\%'))">
             <xsl:message>
-                <xsl:text>PTX:WARNING:   a bare "%" inside \text{} in math must be escaped as "\%"</xsl:text>
+                <xsl:text>PTX:ERROR:     a bare "%" inside \text{} in math must be escaped as "\%"</xsl:text>
                 <xsl:text>&#xa;</xsl:text>
                 <xsl:text>               </xsl:text>
                 <xsl:apply-templates select="." mode="location-report"/>
@@ -737,7 +735,7 @@ Book (with parts), "section" at level 3
         <!-- check for bare & -->
         <xsl:if test="contains($inside, '&amp;') and not(contains($inside, '\&amp;'))">
             <xsl:message>
-                <xsl:text>PTX:WARNING:   a bare "&amp;" inside \text{} in math must be escaped as "\&amp;"</xsl:text>
+                <xsl:text>PTX:ERROR:     a bare "&amp;" inside \text{} in math must be escaped as "\&amp;"</xsl:text>
                 <xsl:text>&#xa;</xsl:text>
                 <xsl:text>               </xsl:text>
                 <xsl:apply-templates select="." mode="location-report"/>
@@ -1489,9 +1487,15 @@ Book (with parts), "section" at level 3
     <xsl:if test="$rows &gt; 1 or $cols &gt; 1">
         <xsl:text> (</xsl:text>
         <xsl:value-of select="$rows"/>
-        <xsl:call-template name="nbsp-character"/>
-        <xsl:call-template name="times-character"/>
-        <xsl:call-template name="nbsp-character"/>
+        <xsl:call-template name="character">
+            <xsl:with-param name="name" select="'nbsp'"/>
+        </xsl:call-template>
+        <xsl:call-template name="character">
+            <xsl:with-param name="name" select="'times'"/>
+        </xsl:call-template>
+        <xsl:call-template name="character">
+            <xsl:with-param name="name" select="'nbsp'"/>
+        </xsl:call-template>
         <xsl:value-of select="$cols"/>
         <xsl:text> </xsl:text>
         <xsl:apply-templates select="." mode="type-name">
@@ -2012,7 +2016,7 @@ Book (with parts), "section" at level 3
             <xsl:if test="$wsdebug and not($text-processed = $middle-cleaned)">
                 <!-- DEBUGGING follows, maybe move outward later -->
                 <xsl:message>
-                    <xsl:text>****&#xa;</xsl:text>
+                    <xsl:text>PTX:DEBUG: whitespace diagnostic&#xa;</xsl:text>
                     <xsl:text>O:</xsl:text>
                     <xsl:value-of select="." />
                     <xsl:text>:O&#xa;</xsl:text>
@@ -2267,6 +2271,13 @@ Book (with parts), "section" at level 3
 <!--   Realization: usual presentation, within the enclosing chunk  -->
 
 
+<!-- A conversion opts in to "division companion" chunks: the four   -->
+<!-- elements of &DIVISION-COMPANION; earn their own page (chunk)    -->
+<!-- exactly when their parent division is realized as a summary    -->
+<!-- (intermediate) page.  The HTML conversion opts in; conversions -->
+<!-- with their own chunking (WeBWorK sets, Sage doctest) do not.   -->
+<xsl:variable name="b-division-companion-chunks" select="false()"/>
+
 <!-- An intermediate node is at lesser level -->
 <!-- than chunk-level and is not a leaf      -->
  <xsl:template match="*" mode="is-intermediate">
@@ -2317,6 +2328,22 @@ Book (with parts), "section" at level 3
     </xsl:choose>
 </xsl:template>
 
+<!-- A division companion is a chunk exactly when its parent -->
+<!-- is a summary (intermediate) page, and the conversion    -->
+<!-- has opted in.  It is never an intermediate node itself  -->
+<!-- (the generic template answers correctly), and it is     -->
+<!-- inline content of its parent's page in every other case -->
+<xsl:template match="&DIVISION-COMPANION;" mode="is-chunk">
+    <xsl:choose>
+        <xsl:when test="$b-division-companion-chunks">
+            <xsl:apply-templates select="parent::*" mode="is-intermediate"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="false()"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
 <!-- #################################### -->
 <!-- Abstract Chunking of Structural Nodes-->
 <!-- #################################### -->
@@ -2363,10 +2390,22 @@ Book (with parts), "section" at level 3
         </xsl:when>
         <xsl:otherwise>
             <xsl:apply-templates select="." mode="intermediate" />
-            <xsl:apply-templates select="&STRUCTURAL;" mode="chunking" />
+            <xsl:apply-templates select="&STRUCTURAL;|&DIVISION-COMPANION;" mode="chunking" />
         </xsl:otherwise>
     </xsl:choose>
  </xsl:template>
+
+<!-- A division companion produces a page (chunk) or nothing: -->
+<!-- it is only visited via the recursion above, so a parent  -->
+<!-- summary page is guaranteed, but the opt-in may be off    -->
+<xsl:template match="&DIVISION-COMPANION;" mode="chunking">
+    <xsl:variable name="chunk">
+        <xsl:apply-templates select="." mode="is-chunk" />
+    </xsl:variable>
+    <xsl:if test="$chunk = 'true'">
+        <xsl:apply-templates select="." mode="chunk" />
+    </xsl:if>
+</xsl:template>
 
 <!-- docinfo, and anything else, is immune and dead-ends -->
 <xsl:template match="*" mode="chunking" />
@@ -2384,7 +2423,7 @@ Book (with parts), "section" at level 3
 <!-- parameter holding the contents of the body of the page -->
 
 <!-- A complete file/page for a structural division         -->
-<xsl:template match="&STRUCTURAL;" mode="chunk">
+<xsl:template match="&STRUCTURAL;|&DIVISION-COMPANION;" mode="chunk">
     <xsl:apply-templates select="." mode="file-wrap">
         <xsl:with-param name="content">
             <xsl:apply-templates select="." />
@@ -2886,7 +2925,7 @@ Book (with parts), "section" at level 3
     <xsl:variable name="normalized-width" select="normalize-space($raw-width)" />
     <xsl:choose>
         <xsl:when test="not(substring($normalized-width, string-length($normalized-width)) = '%')">
-            <xsl:message>PTX:WARNING:   a "width" attribute should be given as a percentage (such as "40%", not as "<xsl:value-of select="$normalized-width" />, using 100% instead"</xsl:message>
+            <xsl:message>PTX:FALLBACK:   a "width" attribute should be given as a percentage (such as "40%", not as "<xsl:value-of select="$normalized-width" />, using 100% instead"</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
             <!-- replace by 100% -->
             <xsl:text>100%</xsl:text>
@@ -2981,7 +3020,7 @@ Book (with parts), "section" at level 3
         <!-- NaN does not equal *anything*, so tests if a number  -->
         <!-- http://stackoverflow.com/questions/6895870           -->
         <xsl:when test="not(number($the-aspect) = number($the-aspect)) or ($the-aspect &lt; 0)">
-            <xsl:message>PTX:WARNING: the @aspect attribute should be a ratio, like 4:3, or a positive number, not "<xsl:value-of select="$the-aspect" />"</xsl:message>
+            <xsl:message>PTX:ERROR:   the @aspect attribute should be a ratio, like 4:3, or a positive number, not "<xsl:value-of select="$the-aspect" />"</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
         </xsl:when>
         <!-- survives as a number -->
@@ -3157,7 +3196,7 @@ Book (with parts), "section" at level 3
             <xsl:text>[</xsl:text>
             <xsl:value-of select="$str-id" />
             <xsl:text>]</xsl:text>
-            <xsl:message>PTX:WARNING: could not translate string with id "<xsl:value-of select="$str-id"/>" into language for code "<xsl:value-of select="$lang"/>"</xsl:message>
+            <xsl:message>PTX:BUG:     could not translate string with id "<xsl:value-of select="$str-id"/>" into language for code "<xsl:value-of select="$lang"/>"</xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -3775,7 +3814,7 @@ Book (with parts), "section" at level 3
         </xsl:when>
         <xsl:when test="$b-host-runestone and not(@authored-label)">
             <xsl:message>
-                <xsl:text>PTX:WARNING:  While building for a Runestone server, a PreTeXt "</xsl:text>
+                <xsl:text>PTX:FALLBACK:  While building for a Runestone server, a PreTeXt "</xsl:text>
                 <xsl:value-of select="local-name(.)"/>
                 <xsl:text>" element&#xa;</xsl:text>
                 <xsl:text>has been encountered without a @label attribute.  For reasons of backward-compatibility &#xa;</xsl:text>
@@ -3920,7 +3959,7 @@ Book (with parts), "section" at level 3
 <!-- or is defined to be a null string in a particular conversion stylesheet, in which    -->
  <!-- case no extra space is added. -->
 <xsl:template name="case-cycle-delimiter-space">
-    <xsl:message>PTX:BUG A "case" has "direction" equal to "cycle", but the conversion for this output target does not have a "delimiter space" symbol defined. The maintainer for this output target may wish to know about this (or may wish to set the "delimiter space" symbol to be a null string to suppress this warning message).</xsl:message>
+    <xsl:message>PTX:BUG: A "case" has "direction" equal to "cycle", but the conversion for this output target does not have a "delimiter space" symbol defined. The maintainer for this output target may wish to know about this (or may wish to set the "delimiter space" symbol to be a null string to suppress this warning message).</xsl:message>
     <xsl:apply-templates select="." mode="location-report"/>
 </xsl:template>
 
@@ -4306,7 +4345,7 @@ Book (with parts), "section" at level 3
     <xsl:if test="$normalized-aspect = 0">
         <xsl:message>PTX:FATAL:   an @aspect attribute equal to zero will cause serious errors.</xsl:message>
         <xsl:apply-templates select="." mode="location-report" />
-        <xsl:message terminate="yes">Quitting...</xsl:message>
+        <xsl:message terminate="yes">PTX:FATAL:   Quitting...</xsl:message>
     </xsl:if>
 
     <!-- Perhaps save for debugging -->
@@ -4488,7 +4527,7 @@ Book (with parts), "section" at level 3
     <!-- count the elements destined for panels  -->
     <xsl:variable name="number-panels" select="count(*)" />
     <xsl:if test="$sbsdebug">
-        <xsl:message>N:<xsl:value-of select="$number-panels" />:N</xsl:message>
+        <xsl:message>PTX:DEBUG: N:<xsl:value-of select="$number-panels" />:N</xsl:message>
     </xsl:if>
     <!-- Add to RTF -->
     <number-panels>
@@ -4534,7 +4573,7 @@ Book (with parts), "section" at level 3
         </xsl:choose>
     </xsl:variable>
     <xsl:if test="$sbsdebug">
-        <xsl:message>VA:<xsl:value-of select="$valigns" />:VA</xsl:message>
+        <xsl:message>PTX:DEBUG: VA:<xsl:value-of select="$valigns" />:VA</xsl:message>
     </xsl:if>
     <!-- check length (author-supplied could be wrong) -->
     <xsl:variable name="nspaces-valigns" select="string-length($valigns) - string-length(translate($valigns, ' ', ''))" />
@@ -4542,7 +4581,7 @@ Book (with parts), "section" at level 3
         <xsl:when test="$nspaces-valigns &lt; $number-panels">
             <xsl:message>PTX:FATAL:   a &lt;sidebyside&gt; or &lt;sbsgroup&gt; does not have enough "@valigns" (maybe you did not specify enough?)</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
-            <xsl:message terminate="yes">             That's fatal.  Sorry.  Quitting...</xsl:message>
+            <xsl:message terminate="yes">PTX:FATAL:   Quitting...</xsl:message>
         </xsl:when>
         <xsl:when test="$nspaces-valigns &gt; $number-panels">
             <xsl:message>PTX:WARNING: a &lt;sidebyside&gt; or &lt;sbsgroup&gt; has extra "@valigns" (did you confuse singular and plural attribute names?)</xsl:message>
@@ -4694,7 +4733,7 @@ Book (with parts), "section" at level 3
         </xsl:choose>
     </xsl:variable>
     <xsl:if test="$sbsdebug">
-        <xsl:message>M:<xsl:value-of select="$left-margin" />:<xsl:value-of select="$right-margin" />:M</xsl:message>
+        <xsl:message>PTX:DEBUG: M:<xsl:value-of select="$left-margin" />:<xsl:value-of select="$right-margin" />:M</xsl:message>
     </xsl:if>
     <!-- error check for reasonable values -->
     <!-- When there are three values, the "left" margin still -->
@@ -4739,7 +4778,7 @@ Book (with parts), "section" at level 3
         </xsl:choose>
     </xsl:variable>
     <xsl:if test="$sbsdebug">
-        <xsl:message>W:<xsl:value-of select="$widths" />:W</xsl:message>
+        <xsl:message>PTX:DEBUG: W:<xsl:value-of select="$widths" />:W</xsl:message>
     </xsl:if>
     <!-- check length (author-supplied could be wrong) -->
     <xsl:variable name="nspaces-widths" select="string-length($widths) - string-length(translate($widths, ' ', ''))" />
@@ -4747,7 +4786,7 @@ Book (with parts), "section" at level 3
         <xsl:when test="$nspaces-widths &lt; $number-panels">
             <xsl:message>PTX:FATAL:   a &lt;sidebyside&gt; or &lt;sbsgroup&gt; does not have enough "@widths" (maybe you did not specify enough?)</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
-            <xsl:message terminate="yes">             That's fatal.  Sorry.  Quitting...</xsl:message>
+            <xsl:message terminate="yes">PTX:FATAL:   Quitting...</xsl:message>
         </xsl:when>
         <xsl:when test="$nspaces-widths &gt; $number-panels">
             <xsl:message>PTX:WARNING: a &lt;sidebyside&gt; or &lt;sbsgroup&gt; has extra "@widths" (did you confuse singular and plural attribute names?)</xsl:message>
@@ -4778,7 +4817,7 @@ Book (with parts), "section" at level 3
         <xsl:text>%</xsl:text>
     </xsl:variable>
     <xsl:if test="$sbsdebug">
-        <xsl:message>SW:<xsl:value-of select="$space-width" />:SW</xsl:message>
+        <xsl:message>PTX:DEBUG: SW:<xsl:value-of select="$space-width" />:SW</xsl:message>
     </xsl:if>
     <!-- overall error check on space width -->
     <xsl:choose>
@@ -4871,6 +4910,32 @@ Book (with parts), "section" at level 3
 <!-- SideBySide Main Template -->
 <!-- ######################## -->
 
+<!-- Panels are converted first, each through the modal             -->
+<!-- "panel-panel" template, and the results accumulate into a      -->
+<!-- single result-tree fragment.  That fragment, plus the computed -->
+<!-- layout, goes to the modal "compose-panels" template, which can -->
+<!-- wrap the finished panels but cannot place structure between    -->
+<!-- them.  The "panel-panel" parameters are the union of what the  -->
+<!-- implementations need, so any one implementation may ignore     -->
+<!-- some of them.  This two-phase contract fits a conversion whose -->
+<!-- target expresses the entire layout declaratively on a          -->
+<!-- container: HTML (CSS grid on a wrapping div; EPUB and Jupyter  -->
+<!-- inherit), LaTeX (arguments of the "sidebyside" environment;    -->
+<!-- Beamer and the solution manual inherit), and Reveal.js (CSS    -->
+<!-- table display).  A target that must interleave structure among -->
+<!-- the panels (XSL-FO: margin and gap table cells) or that has no -->
+<!-- horizontal layout at all (text, and Markdown by import;        -->
+<!-- braille) instead overrides this template entirely and reuses   -->
+<!-- the "layout-parameters" computation where meaningful; each     -->
+<!-- such stylesheet documents its reasons.  The panel vocabulary   -->
+<!-- is context-dependent beyond what the schema expresses: an      -->
+<!-- "exercise" panel only within a "worksheet" or "handout", a     -->
+<!-- "slate" panel only within an "interactive", and never an       -->
+<!-- "audio", "video", or "interactive", whose static               -->
+<!-- representation is itself a manufactured "sidebyside", which    -->
+<!-- must not nest.  The validation-plus stylesheet enforces all    -->
+<!-- three restrictions.                                            -->
+
 <xsl:template match="sidebyside">
     <xsl:param name="b-original" select="true()" />
     <xsl:param name="heading-level"/>
@@ -4913,23 +4978,10 @@ Book (with parts), "section" at level 3
     <xsl:message>~~~~~~~~~~~~~~~~~~~~</xsl:message>
      -->
 
-    <!-- "paragraphs" deprecated within sidebyside, 2018-05-02 -->
-    <!-- jsxgraph deprecated?  Check                           -->
+    <xsl:variable name="panels" select="&SBSPANEL;" />
 
-    <xsl:variable name="panels" select="p|pre|ol|ul|dl|program|console|poem|audio|video|interactive|slate|exercise|image|figure|table|listing|list|tabular|stack|jsxgraph|paragraphs" />
-
-    <!-- We build up lists of various parts of a panel      -->
-    <!-- It has setup (LaTeX), headers (titles), panels,    -->
-    <!-- and captions.  These then go to "compose-panels".  -->
-    <!-- Implementations need to define modal templates     -->
-    <!--   panel-header, panel-panel, panel-caption         -->
-    <!-- The parameters passed to each is the union of what -->
-    <!-- is needed for LaTeX and HTML implementations.      -->
-    <!-- Final results are collectively sent to modal       -->
-    <!--   compose-panels                                   -->
-    <!-- template to be arranged                            -->
-    <!-- TODO: Instead we could pass the $layout to the four,    -->
-    <!-- and infer the $panel-number in the receiving templates. -->
+    <!-- TODO: Instead we could pass the $layout to "panel-panel",  -->
+    <!-- and infer the $panel-number in the receiving templates.    -->
 
     <xsl:variable name="panel-panels">
         <xsl:for-each select="$panels">
@@ -5004,7 +5056,7 @@ Book (with parts), "section" at level 3
     <xsl:param name="width" />
     <xsl:param name="heading-level"/>
 
-    <xsl:apply-templates select="tabular|image|p|pre|ol|ul|dl|audio|video|interactive|slate|program|console|exercise">
+    <xsl:apply-templates select="&STACKABLE;">
         <xsl:with-param name="b-original" select="$b-original" />
         <xsl:with-param name="width" select="$width"/>
         <xsl:with-param name="heading-level" select="$heading-level"/>
@@ -5038,7 +5090,7 @@ Book (with parts), "section" at level 3
 <xsl:template match="li[p|ol|ul|dl]/text()">
     <xsl:variable name="text" select="normalize-space(.)" />
     <xsl:if test="$text">
-        <xsl:message>PTX:WARNING: Unstructured content within a list item is being ignored ("<xsl:value-of select="$text" />")</xsl:message>
+        <xsl:message>PTX:ERROR:   Unstructured content within a list item is being ignored ("<xsl:value-of select="$text" />")</xsl:message>
          <xsl:apply-templates select=".." mode="location-report" />
     </xsl:if>
 </xsl:template>
@@ -5144,7 +5196,7 @@ Book (with parts), "section" at level 3
                 <xsl:when test="@marker='square'">square</xsl:when>
                 <xsl:when test="@marker=''">none</xsl:when>
                 <xsl:otherwise>
-                    <xsl:message>ptx:ERROR: unordered list label (<xsl:value-of select="@marker" />) not recognized</xsl:message>
+                    <xsl:message>PTX:ERROR: unordered list label (<xsl:value-of select="@marker" />) not recognized</xsl:message>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:when>
@@ -5587,7 +5639,7 @@ Book (with parts), "section" at level 3
             <xsl:when test="substring($raw-workspace, string-length($raw-workspace) - 0) = '%'">
                 <xsl:variable name="approximate-inches" select="concat(substring($raw-workspace, 1, string-length($raw-workspace) - 1) div 10, 'in')"/>
                 <xsl:value-of select="$approximate-inches"/>
-                <xsl:message>PTX:WARNING:  as of 2020-03-17 worksheet exercises' workspace should be specified in 'in' or in 'cm'.  Approximating a page fraction of <xsl:value-of select="@workspace"/> by <xsl:value-of select="$approximate-inches"/>.</xsl:message>
+                <xsl:message>PTX:FALLBACK:  as of 2020-03-17 worksheet exercises' workspace should be specified in 'in' or in 'cm'.  Approximating a page fraction of <xsl:value-of select="@workspace"/> by <xsl:value-of select="$approximate-inches"/>.</xsl:message>
                 <xsl:apply-templates select="." mode="location-report"/>
             </xsl:when>
             <xsl:when test="substring($raw-workspace, string-length($raw-workspace) - 1) = 'in'">
@@ -5597,7 +5649,7 @@ Book (with parts), "section" at level 3
                 <xsl:value-of select="$raw-workspace"/>
             </xsl:when>
             <xsl:otherwise>
-                <xsl:message>PTX:WARNING:  a worksheet exercises', project-likes' or tasks' workspace should be specified with units of 'in' or 'cm', and not as "<xsl:value-of select="@workspace"/>".  Using a default of "2in".</xsl:message>
+                <xsl:message>PTX:FALLBACK:  a worksheet exercises', project-likes' or tasks' workspace should be specified with units of 'in' or 'cm', and not as "<xsl:value-of select="@workspace"/>".  Using a default of "2in".</xsl:message>
                 <xsl:text>2in</xsl:text>
             </xsl:otherwise>
         </xsl:choose>
@@ -5641,7 +5693,7 @@ Book (with parts), "section" at level 3
             <exercise-component-report has-hint="{$b-has-reading-hint}" has-answer="{$b-has-reading-answer}" has-solution="{$b-has-reading-solution}"/>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:message>PTX:ERROR: can't determine exercise type</xsl:message>
+            <xsl:message>PTX:BUG:   can't determine exercise type</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
         </xsl:otherwise>
     </xsl:choose>
@@ -5710,7 +5762,7 @@ Book (with parts), "section" at level 3
         <!-- template                                                  -->
         <xsl:variable name="scope" select="id(@scope)"/>
         <xsl:if test="not($scope)">
-            <xsl:message>PTX:WARNING: unresolved @scope ("<xsl:value-of select="@scope"/>") for a &lt;solutions&gt; division</xsl:message>
+            <xsl:message>PTX:ERROR:   unresolved @scope ("<xsl:value-of select="@scope"/>") for a &lt;solutions&gt; division</xsl:message>
             <xsl:apply-templates select="." mode="location-report" />
         </xsl:if>
         <xsl:if test="not($scope/self::book|$scope/self::article|$scope/self::chapter|$scope/self::section|$scope/self::subsection|$scope/self::subsubsection|$scope/self::exercises|$scope/self::worksheet|$scope/self::reading-questions)">
@@ -7283,12 +7335,9 @@ Book (with parts), "section" at level 3
 
 
 <!-- Programming Language Names -->
-<!-- Packages for listing and syntax highlighting             -->
-<!-- have their own ideas about the names of languages        -->
-<!-- We use keys to perform the translation                   -->
-<!-- See: https://gist.github.com/frabad/4189876              -->
-<!-- for motivation and document() syntax for standalone file -->
-<!-- Also: see contributors in FCLA work                      -->
+<!-- Packages for listing and syntax highlighting      -->
+<!-- have their own ideas about the names of languages -->
+<!-- We use keys to perform the translation            -->
 
 <!-- The data: attribute is our usage, elements belong to     -->
 <!-- other packages. Blank means not explicitly supported.    -->
@@ -7311,64 +7360,63 @@ Book (with parts), "section" at level 3
 <!-- additional popular packages (e.g. numpy, pandas) -->
 <!-- are available.                                   -->
 
-<!-- Our strings (@ptx) are always all-lowercase, no symbols, no punctuation -->
-<mb:programming>
+<!-- Our strings (@name) are always all-lowercase, no symbols, no punctuation -->
+<xsl:variable name="programming-language-rtf">
     <!-- Procedural -->
-    <language ptx="basic"       active=""            listings="Basic"            prism="basic"/>
-    <language ptx="c"           active="c"           listings="C"                prism="c"/>
-    <language ptx="cpp"         active="cpp"         listings="C++"              prism="cpp"/>
-    <language ptx="go"          active=""            listings="C"                prism="go"/>
-    <language ptx="java"        active="java"        listings="Java"             prism="java"/>
-    <language ptx="javascript"  active="javascript"  listings=""                 prism="javascript"/>
-    <language ptx="kotlin"      active="kotlin"      listings=""                 prism="kotlin"/>
-    <language ptx="lua"         active=""            listings="Lua"              prism="lua"/>
-    <language ptx="pascal"      active=""            listings="Pascal"           prism="pascal"/>
-    <language ptx="perl"        active=""            listings="Perl"             prism="perl"/>
-    <language ptx="python"      active="python"      listings="Python"           prism="py"/>
-    <language ptx="python3"     active="python3"     listings="Python"           prism="py"/>
-    <language ptx="r"           active=""            listings="R"                prism="r"/>
-    <language ptx="s"           active=""            listings="S"                prism="s"/>
-    <language ptx="sas"         active=""            listings="SAS"              prism="s"/>
-    <language ptx="sage"        active=""            listings="Python"           prism="py"/>
-    <language ptx="splus"       active=""            listings="[Plus]S"          prism="s"/>
-    <language ptx="vbasic"      active=""            listings="[Visual]Basic"    prism="visual-basic"/>
-    <language ptx="vbscript"    active=""            listings="VBscript"         prism="visual-basic"/>
+    <language name="basic"      active=""            listings="Basic"            prism="basic"/>
+    <language name="c"          active="c"           listings="C"                prism="c"/>
+    <language name="cpp"        active="cpp"         listings="C++"              prism="cpp"/>
+    <language name="go"         active=""            listings="C"                prism="go"/>
+    <language name="java"       active="java"        listings="Java"             prism="java"/>
+    <language name="javascript" active="javascript"  listings=""                 prism="javascript"/>
+    <language name="kotlin"     active="kotlin"      listings=""                 prism="kotlin"/>
+    <language name="lua"        active=""            listings="Lua"              prism="lua"/>
+    <language name="pascal"     active=""            listings="Pascal"           prism="pascal"/>
+    <language name="perl"       active=""            listings="Perl"             prism="perl"/>
+    <language name="python"     active="python"      listings="Python"           prism="py"/>
+    <language name="python3"    active="python3"     listings="Python"           prism="py"/>
+    <language name="r"          active=""            listings="R"                prism="r"/>
+    <language name="s"          active=""            listings="S"                prism="s"/>
+    <language name="sas"        active=""            listings="SAS"              prism="s"/>
+    <language name="sage"       active=""            listings="Python"           prism="py"/>
+    <language name="splus"      active=""            listings="[Plus]S"          prism="s"/>
+    <language name="vbasic"     active=""            listings="[Visual]Basic"    prism="visual-basic"/>
+    <language name="vbscript"   active=""            listings="VBscript"         prism="visual-basic"/>
     <!-- Others (esp. functional)  -->
-    <language ptx="clojure"     active=""            listings="Lisp"             prism="clojure"/>
-    <language ptx="lisp"        active=""            listings="Lisp"             prism="lisp"/>
-    <language ptx="clisp"       active=""            listings="Lisp"             prism="lisp"/>
-    <language ptx="elisp"       active=""            listings="Lisp"             prism="elisp"/>
-    <language ptx="scheme"      active=""            listings="Lisp"             prism="scheme"/>
-    <language ptx="racket"      active=""            listings="Lisp"             prism="racket"/>
-    <language ptx="sql"         active="sql"         listings="SQL"              prism="sql"/>
-    <language ptx="llvm"        active=""            listings="LLVM"             prism="llvm"/>
-    <language ptx="matlab"      active=""            listings="Matlab"           prism="matlab"/>
-    <language ptx="octave"      active="octave"      listings="Octave"           prism="matlab"/>
-    <language ptx="ml"          active=""            listings="ML"               prism=""/>
-    <language ptx="ocaml"       active=""            listings="[Objective]Caml"  prism="ocaml"/>
-    <language ptx="fsharp"      active=""            listings="ML"               prism="fsharp"/>
+    <language name="clojure"    active=""            listings="Lisp"             prism="clojure"/>
+    <language name="lisp"       active=""            listings="Lisp"             prism="lisp"/>
+    <language name="clisp"      active=""            listings="Lisp"             prism="lisp"/>
+    <language name="elisp"      active=""            listings="Lisp"             prism="elisp"/>
+    <language name="scheme"     active=""            listings="Lisp"             prism="scheme"/>
+    <language name="racket"     active=""            listings="Lisp"             prism="racket"/>
+    <language name="sql"        active="sql"         listings="SQL"              prism="sql"/>
+    <language name="llvm"       active=""            listings="LLVM"             prism="llvm"/>
+    <language name="matlab"     active=""            listings="Matlab"           prism="matlab"/>
+    <language name="octave"     active="octave"      listings="Octave"           prism="matlab"/>
+    <language name="ml"         active=""            listings="ML"               prism=""/>
+    <language name="ocaml"      active=""            listings="[Objective]Caml"  prism="ocaml"/>
+    <language name="fsharp"     active=""            listings="ML"               prism="fsharp"/>
     <!-- Text Manipulation -->
-    <language ptx="css"         active=""            listings=""                 prism="css"/>
-    <language ptx="latex"       active=""            listings="[LaTeX]TeX"       prism="latex"/>
-    <language ptx="html"        active="html"        listings="HTML"             prism="html"/>
-    <language ptx="tex"         active=""            listings="[plain]TeX"       prism="tex"/>
-    <language ptx="xml"         active=""            listings="XML"              prism="xml"/>
-    <language ptx="xslt"        active=""            listings="XSLT"             prism="xml"/>
-</mb:programming>
+    <language name="css"        active=""            listings=""                 prism="css"/>
+    <language name="latex"      active=""            listings="[LaTeX]TeX"       prism="latex"/>
+    <language name="html"       active="html"        listings="HTML"             prism="html"/>
+    <language name="tex"        active=""            listings="[plain]TeX"       prism="tex"/>
+    <language name="xml"        active=""            listings="XML"              prism="xml"/>
+    <language name="xslt"       active=""            listings="XSLT"             prism="xml"/>
+</xsl:variable>
+
+<xsl:variable name="programming-language-table"
+    select="exsl:node-set($programming-language-rtf)"/>
 
 <!-- Define the key for indexing into the data list -->
-<xsl:key name="proglang" match="language" use="@ptx" />
-<!-- And make a variable with the context for key lookups useing that key -->
-<!-- doing the 'document('')/*/mb:programming' repeatedly is expensive.   -->
-<!-- (Especially in program|pf[prism-language]                            -->
-<xsl:variable name="proglang-key-context" select="exsl:node-set(document('')/*/mb:programming)"/>
+<xsl:key name="programming-language-key" match="language" use="@name"/>
 
 <!-- Define variables for default active language - will be picked up by -->
 <!-- RS manifest and can be a different string than the raw language. -->
 <xsl:variable name="default-active-programming-language">
     <xsl:if test="$version-docinfo/programs/@language">
-        <xsl:for-each select="$proglang-key-context">
-            <xsl:value-of select="key('proglang', $version-docinfo/programs/@language)/@active" />
+        <xsl:for-each select="$programming-language-table">
+            <xsl:value-of select="key('programming-language-key', $version-docinfo/programs/@language)/@active" />
         </xsl:for-each>
     </xsl:if>
 </xsl:variable>
@@ -7404,8 +7452,8 @@ Book (with parts), "section" at level 3
     <xsl:variable name="language">
         <xsl:apply-templates select="." mode="get-programming-language"/>
     </xsl:variable>
-    <xsl:for-each select="$proglang-key-context">
-        <xsl:value-of select="key('proglang', $language)/@active" />
+    <xsl:for-each select="$programming-language-table">
+        <xsl:value-of select="key('programming-language-key', $language)/@active" />
     </xsl:for-each>
 </xsl:template>
 
@@ -7415,21 +7463,10 @@ Book (with parts), "section" at level 3
     <xsl:variable name="language">
         <xsl:apply-templates select="." mode="get-programming-language"/>
     </xsl:variable>
-    <xsl:for-each select="$proglang-key-context">
-        <xsl:value-of select="key('proglang', $language)/@listings" />
+    <xsl:for-each select="$programming-language-table">
+        <xsl:value-of select="key('programming-language-key', $language)/@listings" />
     </xsl:for-each>
 </xsl:template>
-
-<!-- This works, without keys, and could be adapted to range over actual data in text -->
-<!-- For example, this approach is used for contributors to FCLA                      -->
-<!--
-<xsl:template match="*" mode="listings-language">
-    <xsl:variable name="language">
-        <xsl:value-of select="@language"/>
-    </xsl:variable>
-    <xsl:value-of select="document('')/*/mb:programming/language[@ptx=$language]/listings"/>
-</xsl:template>
--->
 
 <!-- A whole <program> node comes in,  -->
 <!-- text of prism name comes out -->
@@ -7437,8 +7474,8 @@ Book (with parts), "section" at level 3
     <xsl:variable name="language">
         <xsl:apply-templates select="." mode="get-programming-language"/>
     </xsl:variable>
-    <xsl:for-each select="$proglang-key-context">
-        <xsl:value-of select="key('proglang', $language)/@prism" />
+    <xsl:for-each select="$programming-language-table">
+        <xsl:value-of select="key('programming-language-key', $language)/@prism" />
     </xsl:for-each>
 </xsl:template>
 
@@ -8261,7 +8298,9 @@ Book (with parts), "section" at level 3
                     <xsl:choose>
                         <xsl:when test="$b-is-biblio-target">
                             <xsl:text>,</xsl:text>
-                            <xsl:call-template name="nbsp-character"/>
+                            <xsl:call-template name="character">
+                                <xsl:with-param name="name" select="'nbsp'"/>
+                            </xsl:call-template>
                             <!-- this info should not be in an attribute! -->
                             <xsl:apply-templates select="@detail" />
                         </xsl:when>
@@ -8380,7 +8419,9 @@ Book (with parts), "section" at level 3
                         <xsl:apply-templates/>
                     </xsl:with-param>
                 </xsl:apply-templates>
-                <xsl:call-template name="ndash-character"/>
+                <xsl:call-template name="character">
+                    <xsl:with-param name="name" select="'ndash'"/>
+                </xsl:call-template>
                 <xsl:apply-templates select="." mode="xref-text" >
                     <xsl:with-param name="target" select="$target-two" />
                     <xsl:with-param name="text-style" select="$text-style-two" />
@@ -8540,7 +8581,7 @@ Book (with parts), "section" at level 3
 
 <!-- Warnings for a high-frequency mistake -->
 <xsl:template match="xref[not(@ref) and not(@first and @last) and not(@provisional)]">
-    <xsl:message>PTX:WARNING: A cross-reference (&lt;xref&gt;) must have a @ref attribute, a @first/@last attribute pair, or a @provisional attribute</xsl:message>
+    <xsl:message>PTX:ERROR:   A cross-reference (&lt;xref&gt;) must have a @ref attribute, a @first/@last attribute pair, or a @provisional attribute</xsl:message>
     <xsl:apply-templates select="." mode="location-report" />
     <xsl:call-template name="inline-warning">
         <xsl:with-param name="warning">
@@ -8810,7 +8851,7 @@ Book (with parts), "section" at level 3
             </xsl:variable>
             <xsl:if test="$the-title = ''">
                 <xsl:message>
-                    <xsl:text>PTX:WARNING:    </xsl:text>
+                    <xsl:text>PTX:ERROR:      </xsl:text>
                     <xsl:text>An &lt;xref&gt; wants to build text using a title to identify the target, but the target (which has @xml:id "</xsl:text>
                     <xsl:value-of select="@ref"/>
                     <xsl:text>") has no title, not even a default title.</xsl:text>
@@ -8821,7 +8862,7 @@ Book (with parts), "section" at level 3
         <xsl:when test="$text-style = 'custom'">
             <xsl:if test="not($b-has-content)">
                 <xsl:message>
-                    <xsl:text>PTX:WARNING:    </xsl:text>
+                    <xsl:text>PTX:ERROR:      </xsl:text>
                     <xsl:text>An &lt;xref&gt; wants to use custom text to describe the target, but no custom text was provided as the content of the "xref".</xsl:text>
                 </xsl:message>
                 <xsl:apply-templates select="." mode="location-report" />
@@ -8842,7 +8883,7 @@ Book (with parts), "section" at level 3
             </xsl:variable>
             <xsl:if test="($the-number = '') and not($b-is-contributor-target)">
                 <xsl:message>
-                    <xsl:text>PTX:WARNING:    </xsl:text>
+                    <xsl:text>PTX:ERROR:      </xsl:text>
                     <xsl:text>An &lt;xref&gt; wants to build text using a number to identify the target, but the target (which has @xml:id "</xsl:text>
                     <xsl:value-of select="@ref"/>
                     <xsl:text>") does not have a number. You could try 'text="title"' or 'text="custom"' on the "xref".</xsl:text>
@@ -8986,13 +9027,13 @@ Book (with parts), "section" at level 3
         <!-- catch this first and provide no text at all (could provide busted text?) -->
         <!-- anonymous lists live in "p", but this is an unreliable indication        -->
         <xsl:when test="($text-style = 'phrase-global' or $text-style = 'phrase-hybrid') and ($target/self::li and not($target/ancestor::list or $target/ancestor::objectives or $target/ancestor::outcomes or $target/ancestor::exercise))">
-            <xsl:message>PTX:WARNING: a cross-reference to a list item of an anonymous list ("<xsl:apply-templates select="$target" mode="serial-number" />") with 'phrase-global' and 'phrase-hybrid' styles for the xref text will yield no text at all, and possibly create unpredictable results in output</xsl:message>
+            <xsl:message>PTX:ERROR:   a cross-reference to a list item of an anonymous list ("<xsl:apply-templates select="$target" mode="serial-number" />") with 'phrase-global' and 'phrase-hybrid' styles for the xref text will yield no text at all, and possibly create unpredictable results in output</xsl:message>
         </xsl:when>
         <xsl:when test="$text-style = 'phrase-global' or $text-style = 'phrase-hybrid'">
             <!-- no content override in this case -->
             <!-- maybe we can relax this somehow? -->
             <xsl:if test="$b-has-content">
-                <xsl:message>PTX:WARNING: providing content ("<xsl:value-of select="." />") for an "xref" element is ignored for 'phrase-global' and 'phrase-hybrid' styles for xref text</xsl:message>
+                <xsl:message>PTX:FALLBACK: providing content ("<xsl:value-of select="." />") for an "xref" element is ignored for 'phrase-global' and 'phrase-hybrid' styles for xref text</xsl:message>
                 <xsl:apply-templates select="." mode="location-report" />
             </xsl:if>
             <!-- type-local first, no matter what    -->
@@ -9054,7 +9095,7 @@ Book (with parts), "section" at level 3
                 <!-- we can get here by a variety of routes.)          -->
                 <xsl:when test="$b-has-content">
                     <xsl:message>
-                        <xsl:text>PTX:WARNING:    </xsl:text>
+                        <xsl:text>PTX:DEPRECATE:  </xsl:text>
                         <xsl:text>An &lt;xref&gt; requests a 'title' as its text but also provides alternate content.  The construction is deprecated as of 2020-02-18.  Instead, specify that xref/@text should be 'custom', either globally or on a per-xref basis.</xsl:text>
                     </xsl:message>
                     <xsl:apply-templates select="." mode="location-report" />
@@ -9091,7 +9132,9 @@ Book (with parts), "section" at level 3
             <xsl:text> </xsl:text>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:call-template name="nbsp-character"/>
+            <xsl:call-template name="character">
+                <xsl:with-param name="name" select="'nbsp'"/>
+            </xsl:call-template>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -9237,7 +9280,9 @@ Book (with parts), "section" at level 3
                     <!-- connector, internationalize -->
                     <xsl:text> of </xsl:text>
                     <xsl:apply-templates select="$highest-match" mode="type-name" />
-                    <xsl:call-template name="nbsp-character"/>
+                    <xsl:call-template name="character">
+                        <xsl:with-param name="name" select="'nbsp'"/>
+                    </xsl:call-template>
                     <xsl:apply-templates select="$highest-match" mode="xref-number">
                         <xsl:with-param name="xref" select="." />
                     </xsl:apply-templates>
@@ -9312,7 +9357,9 @@ Book (with parts), "section" at level 3
             <!-- connector, internationalize -->
             <xsl:text> of </xsl:text>
             <xsl:apply-templates select="$targets-list" mode="type-name" />
-            <xsl:call-template name="nbsp-character"/>
+            <xsl:call-template name="character">
+                <xsl:with-param name="name" select="'nbsp'"/>
+            </xsl:call-template>
             <xsl:apply-templates select="$targets-list" mode="xref-number">
                 <xsl:with-param name="xref" select="." />
             </xsl:apply-templates>
@@ -9523,41 +9570,12 @@ Book (with parts), "section" at level 3
 <!-- Dashes and hyphens - worth reviewing       -->
 <!-- http://www.cs.tut.fi/~jkorpela/dashes.html -->
 
-<xsl:template name="nbsp-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'nbsp'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="nbsp">
-    <xsl:call-template name="nbsp-character"/>
-</xsl:template>
-
-<xsl:template name="ndash-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'ndash'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="ndash">
-    <xsl:call-template name="ndash-character"/>
-</xsl:template>
-
 <!-- An mdash may have thin space around it, otherwise it        -->
 <!-- should have none.  It might be difficult to enforce this    -->
 <!-- (we could!), but we don't.  Instead, we make the thin-space -->
-<!-- version a publisher option.  So we need two base characters -->
-<!-- as abstract templates and do everything else here.          -->
-
-<xsl:template name="mdash-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'mdash'"/>
-    </xsl:call-template>
-</xsl:template>
-
-<xsl:template name="thin-space-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'thin-space'"/>
-    </xsl:call-template>
-</xsl:template>
+<!-- version a publisher option.  So the "thin-space" character  -->
+<!-- joins the representation table for that purpose, and the    -->
+<!-- assembly of the pieces happens here.                        -->
 
 <!-- The variable, surrounding space. This approach is   -->
 <!-- executed once, so not local to template for "mdash" -->
@@ -9567,20 +9585,20 @@ Book (with parts), "section" at level 3
             <xsl:text />
         </xsl:when>
         <xsl:when test="$emdash-space='thin'">
-            <xsl:call-template name="thin-space-character"/>
+            <xsl:call-template name="character">
+                <xsl:with-param name="name" select="'thin-space'"/>
+            </xsl:call-template>
         </xsl:when>
     </xsl:choose>
 </xsl:variable>
 
 <xsl:template match="mdash">
     <xsl:value-of select="$emdash-space-char"/>
-    <xsl:call-template name="mdash-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'mdash'"/>
+    </xsl:call-template>
     <xsl:value-of select="$emdash-space-char"/>
 </xsl:template>
-
-<!-- ################## -->
-<!-- Special Characters -->
-<!-- ################## -->
 
 
 <!-- These are characters which may look really bad                 -->
@@ -9596,6 +9614,137 @@ Book (with parts), "section" at level 3
      <xsl:text>[[[</xsl:text>
      <xsl:value-of select="$char-name"/>
      <xsl:text>]]]</xsl:text>
+</xsl:template>
+
+<!-- The table of character representations: one row per character, -->
+<!-- one column per representation, each read by a conversion's     -->
+<!-- modal "character" template; a character whose rendering needs  -->
+<!-- more than a column value (fonts, wrapper markup) gets a        -->
+<!-- per-character template overriding that mode.  Column notes:    -->
+<!--   "unicode"  the bare code point                               -->
+<!--   "latex"    macro or construction; the reader appends an      -->
+<!--              empty group ({}) unless  latex-ending="no"        -->
+<!--   "ascii"    7-bit stand-in for text's ascii election;         -->
+<!--              absent = unimplemented, warns                     -->
+<!--   "webwork"  PGML form for WeBWorK problem extraction;         -->
+<!--              absent = unimplemented, warns                     -->
+<!--   "braille"  absent = liblouis uses the "unicode" value;       -->
+<!--              a value = a substitute character, since liblouis  -->
+<!--              cannot use the true one; "none" = no rendering    -->
+<!--              at all, warns                                     -->
+
+<xsl:variable name="character-rtf">
+    <!-- U+00A0: NO-BREAK SPACE -->
+    <!-- (the "&nbsp;" entity is undefined in XSL; always the numeric reference) -->
+    <char name="nbsp"          unicode="&#x00a0;"   latex="~" latex-ending="no"               ascii=" "          webwork="[$NBSP]*"/>
+    <!-- U+2013: EN DASH -->
+    <char name="ndash"         unicode="&#x2013;"   latex="\textendash"                       ascii="-"          webwork="[$NDASH]*"/>
+    <!-- U+2014: EM DASH -->
+    <char name="mdash"         unicode="&#x2014;"   latex="\textemdash"                       ascii="--"         webwork="[$MDASH]*"/>
+    <!-- U+2009: THIN SPACE -->
+    <char name="thin-space"    unicode="&#x2009;"   latex="\," latex-ending="no"              ascii=" "          webwork=" "/>
+    <!-- U+27E6: MATHEMATICAL LEFT WHITE SQUARE BRACKET -->
+    <char name="ldblbracket"   unicode="&#x27e6;"   latex="\textlbrackdbl"                    braille="none"/>
+    <!-- U+27E7: MATHEMATICAL RIGHT WHITE SQUARE BRACKET -->
+    <char name="rdblbracket"   unicode="&#x27e7;"   latex="\textrbrackdbl"                    braille="none"/>
+    <!-- U+27E8: MATHEMATICAL LEFT ANGLE BRACKET -->
+    <char name="langle"        unicode="&#x27e8;"   latex="\textlangle"                       ascii="&lt;"/>
+    <!-- U+27E9: MATHEMATICAL RIGHT ANGLE BRACKET -->
+    <char name="rangle"        unicode="&#x27e9;"   latex="\textrangle"                       ascii="&gt;"/>
+    <!-- U+2026: HORIZONTAL ELLIPSIS -->
+    <char name="ellipsis"      unicode="&#x2026;"   latex="\textellipsis"                     ascii="..."        webwork="..."/>
+    <!-- U+00B7: MIDDLE DOT -->
+    <!-- (sometimes like a decorative dash; tex.stackexchange.com/questions/19180) -->
+    <char name="midpoint"      unicode="&#x00b7;"   latex="\textperiodcentered"               ascii="*"/>
+    <!-- U+2053: SWUNG DASH -->
+    <char name="swungdash"     unicode="&#x2053;"   latex="\ptxswungdash"                     ascii="~"          braille="~"/>
+    <!-- U+2030: PER MILLE SIGN -->
+    <char name="permille"      unicode="&#x2030;"   latex="\textperthousand"                  ascii="o/oo"       braille="none"/>
+    <!-- U+00B6: PILCROW SIGN -->
+    <char name="pilcrow"       unicode="&#x00b6;"   latex="\textpilcrow"                      ascii="[pilcrow]"/>
+    <!-- U+00A7: SECTION SIGN -->
+    <char name="section-mark"  unicode="&#x00a7;"   latex="\textsection"                      ascii="[section]"/>
+    <!-- U+2212: MINUS SIGN -->
+    <char name="minus"         unicode="&#x2212;"   latex="\textminus"                        ascii="-"/>
+    <!-- U+00D7: MULTIPLICATION SIGN -->
+    <char name="times"         unicode="&#x00d7;"   latex="\texttimes"                        ascii="x"/>
+    <!-- U+2044: FRACTION SLASH -->
+    <!-- (the LaTeX form should not allow a linebreak; not tested) -->
+    <char name="solidus"       unicode="&#x2044;"   latex="\textfractionsolidus"              ascii="/"          braille="/"/>
+    <!-- U+00F7: DIVISION SIGN -->
+    <char name="obelus"        unicode="&#x00f7;"   latex="\textdiv"                          ascii="/"/>
+    <!-- U+00B1: PLUS-MINUS SIGN -->
+    <char name="plusminus"     unicode="&#x00b1;"   latex="\textpm"                           ascii="+/-"/>
+    <!-- U+00A9: COPYRIGHT SIGN -->
+    <!-- (LaTeX form: tex.stackexchange.com/questions/1676) -->
+    <char name="copyright"     unicode="&#x00a9;"   latex="\textcopyright"                    ascii="(c)"/>
+    <!-- U+2117: SOUND RECORDING COPYRIGHT -->
+    <char name="phonomark"     unicode="&#x2117;"   latex="\textcircledP"                     braille="none"/>
+    <!-- U+1F12F: COPYLEFT SYMBOL -->
+    <!-- (may not be universally available in fonts; Open C (U+0254) -->
+    <!-- plus Combining Circle (U+20DD) can imitate)                 -->
+    <char name="copyleft"      unicode="&#x1f12f;"  latex="\textcopyleft"                     braille="none"/>
+    <!-- U+00AE: REGISTERED SIGN -->
+    <!-- (Bringhurst: should be superscript; not so in a font is a   -->
+    <!-- font mistake, but a "sup" wrapper renders way too small in  -->
+    <!-- a correct font)                                             -->
+    <char name="registered"    unicode="&#x00ae;"   latex="\textregistered"                   ascii="(R)"/>
+    <!-- U+2122: TRADE MARK SIGN -->
+    <char name="trademark"     unicode="&#x2122;"   latex="\texttrademark"                    ascii="(TM)"/>
+    <!-- U+2120: SERVICE MARK -->
+    <char name="servicemark"   unicode="&#x2120;"   latex="\textservicemark"                  braille="none"/>
+    <!-- U+00B0: DEGREE SIGN -->
+    <char name="degree"        unicode="&#x00b0;"   latex="\textdegree"                       ascii="deg"/>
+    <!-- U+2032: PRIME -->
+    <!-- (a LaTeX math construction looks better, but needs protection    -->
+    <!-- during text-processing; Bringhurst: many text fonts lack a prime -->
+    <!-- and/or double-prime glyph)                                       -->
+    <char name="prime"         unicode="&#x2032;"   latex="\textquotesingle"                  ascii="'"/>
+    <!-- U+2033: DOUBLE PRIME -->
+    <char name="dblprime"      unicode="&#x2033;"   latex="\textquotesingle\textquotesingle"  ascii="''"/>
+</xsl:variable>
+
+<xsl:variable name="character-table"
+    select="exsl:node-set($character-rtf)"/>
+
+<xsl:key name="character-key" match="char" use="@name"/>
+
+<!-- Look up a character by name, then render it with the modal  -->
+<!-- "character" implementation in effect.  An unknown name is a -->
+<!-- defect in a calling template, not an authoring error.       -->
+<xsl:template name="character">
+    <xsl:param name="name"/>
+    <!-- a key resolves within the document holding the context -->
+    <!-- node, so step inside the table, a node-set of one node -->
+    <xsl:for-each select="$character-table">
+        <xsl:variable name="the-row" select="key('character-key', $name)"/>
+        <xsl:choose>
+            <xsl:when test="$the-row">
+                <xsl:apply-templates select="$the-row" mode="character"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:message>PTX:BUG:   the character named "<xsl:value-of select="$name"/>" is not in the character table</xsl:message>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:for-each>
+</xsl:template>
+
+<!-- A conversion without a modal "character" implementation gets -->
+<!-- a warning for every character in the table                   -->
+<xsl:template match="char" mode="character">
+    <xsl:call-template name="warn-unimplemented-character">
+        <xsl:with-param name="char-name" select="@name"/>
+    </xsl:call-template>
+</xsl:template>
+
+<!-- The empty source elements share one dispatcher; "mdash" is an  -->
+<!-- exception (publisher-elected surrounding space), and the       -->
+<!-- "thin-space" row has no element of its own (it exists for the  -->
+<!-- "mdash" machinery and internal use)                            -->
+<xsl:template match="nbsp|ndash|ldblbracket|rdblbracket|langle|rangle|ellipsis|midpoint|swungdash|permille|pilcrow|section-mark|minus|times|solidus|obelus|plusminus|copyright|phonomark|copyleft|registered|trademark|servicemark|degree|prime|dblprime">
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="local-name()"/>
+    </xsl:call-template>
 </xsl:template>
 
 <!-- A given document may use for different characters for quotations:         -->
@@ -9649,267 +9798,34 @@ Book (with parts), "section" at level 3
     <xsl:apply-templates select="." mode="rq-character"/>
 </xsl:template>
 
-<!-- Left Double Bracket -->
-<xsl:template name="ldblbracket-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'ldblbracket'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="ldblbracket">
-    <xsl:call-template name="ldblbracket-character"/>
-</xsl:template>
 
-<!-- Right Double Bracket -->
-<xsl:template name="rdblbracket-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'rdblbracket'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="rdblbracket">
-    <xsl:call-template name="rdblbracket-character"/>
-</xsl:template>
 
-<!-- Left Angle Bracket -->
-<xsl:template name="langle-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'langle'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="langle">
-    <xsl:call-template name="langle-character"/>
-</xsl:template>
 
-<!-- Right Angle Bracket -->
-<xsl:template name="rangle-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'rangle'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="rangle">
-    <xsl:call-template name="rangle-character"/>
-</xsl:template>
 
-<!-- Ellipsis (dots), for text, not math -->
-<xsl:template name="ellipsis-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'ellipsis'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="ellipsis">
-    <xsl:call-template name="ellipsis-character"/>
-</xsl:template>
 
-<!-- Midpoint -->
-<!-- A centered dot used sometimes like a decorative dash -->
-<xsl:template name="midpoint-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'midpoint'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="midpoint">
-    <xsl:call-template name="midpoint-character"/>
-</xsl:template>
 
-<!-- Swung Dash -->
-<!-- A decorative dash, like a tilde, but bigger, and centered -->
-<xsl:template name="swungdash-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'swungdash'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="swungdash">
-    <xsl:call-template name="swungdash-character"/>
-</xsl:template>
 
-<!-- Per Mille -->
-<!-- Or, per thousand, like a percent sign -->
-<xsl:template name="permille-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'permille'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="permille">
-    <xsl:call-template name="permille-character"/>
-</xsl:template>
 
-<!-- Pilcrow -->
-<!-- Often used to mark the start of a paragraph -->
-<xsl:template name="pilcrow-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'pilcrow'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="pilcrow">
-    <xsl:call-template name="pilcrow-character"/>
-</xsl:template>
 
-<!-- Section Mark -->
-<!-- The stylized double-S to indicate section numbers -->
-<xsl:template name="section-mark-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'section-mark'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="section-mark">
-    <xsl:call-template name="section-mark-character"/>
-</xsl:template>
 
-<!-- Minus -->
-<!-- A hyphen/dash for use in text as subtraction or negation-->
-<xsl:template name="minus-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'minus'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="minus">
-    <xsl:call-template name="minus-character"/>
-</xsl:template>
 
-<!-- Times -->
-<!-- A "multiplication sign" symbol for use in text -->
-<xsl:template name="times-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'times'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="times">
-    <xsl:call-template name="times-character"/>
-</xsl:template>
 
-<!-- Solidus -->
-<!-- Fraction bar, not as steep as a forward slash -->
-<xsl:template name="solidus-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'solidus'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="solidus">
-    <xsl:call-template name="solidus-character"/>
-</xsl:template>
 
-<!-- Obelus -->
-<!-- A "division" symbol for use in text -->
-<xsl:template name="obelus-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'obelus'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="obelus">
-    <xsl:call-template name="obelus-character"/>
-</xsl:template>
 
-<!-- Plus/Minus -->
-<!-- The combined symbol -->
-<xsl:template name="plusminus-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'plusminus'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="plusminus">
-    <xsl:call-template name="plusminus-character"/>
-</xsl:template>
 
-<!-- Copyright -->
-<!-- Bringhurst: on baseline (i.e. not superscript) -->
-<xsl:template name="copyright-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'copyright'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="copyright">
-    <xsl:call-template name="copyright-character"/>
-</xsl:template>
 
-<!-- Phonomark -->
-<!-- copyright on sound recordings                 -->
-<!-- Bringhurst: counterpart copyright on baseline -->
-<xsl:template name="phonomark-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'phonomark'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="phonomark">
-    <xsl:call-template name="phonomark-character"/>
-</xsl:template>
 
-<!-- Copyleft -->
-<!-- Bringhurst: counterpart copyright on baseline -->
-<xsl:template name="copyleft-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'copyleft'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="copyleft">
-    <xsl:call-template name="copyleft-character"/>
-</xsl:template>
 
-<!-- Registered -->
-<!-- Bringhurst: should be superscript -->
-<xsl:template name="registered-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'registered'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="registered">
-    <xsl:call-template name="registered-character"/>
-</xsl:template>
 
-<!-- Trademark -->
-<!-- Bringhurst: should be superscript -->
-<xsl:template name="trademark-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'trademark'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="trademark">
-    <xsl:call-template name="trademark-character"/>
-</xsl:template>
 
-<!-- Servicemark -->
-<!-- Bringhurst: counterpart trademark should be superscript -->
-<xsl:template name="servicemark-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'servicemark'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="servicemark">
-    <xsl:call-template name="servicemark-character"/>
-</xsl:template>
 
 <!-- Coordinates, Temperature, English distance -->
 <!-- Intended for simple non-technical uses, without too -->
 <!-- much overhead.  The SI unit markup would be better  -->
 <!-- suited for scientific or technical work.            -->
 
-<!-- Degree -->
-<xsl:template name="degree-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'degree'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="degree">
-    <xsl:call-template name="degree-character"/>
-</xsl:template>
 
-<!-- Prime -->
-<xsl:template name="prime-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'prime'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="prime">
-    <xsl:call-template name="prime-character"/>
-</xsl:template>
 
-<!-- Double Prime -->
-<xsl:template name="dblprime-character">
-    <xsl:call-template name="warn-unimplemented-character">
-        <xsl:with-param name="char-name" select="'dblprime'"/>
-    </xsl:call-template>
-</xsl:template>
-<xsl:template match="dblprime">
-    <xsl:call-template name="dblprime-character"/>
-</xsl:template>
 
 <!-- Characters for Tagging Equations -->
 
@@ -9970,15 +9886,23 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 </xsl:template>
 
 <xsl:template match="dblbrackets">
-    <xsl:call-template name="ldblbracket-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'ldblbracket'"/>
+    </xsl:call-template>
     <xsl:apply-templates/>
-    <xsl:call-template name="rdblbracket-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'rdblbracket'"/>
+    </xsl:call-template>
 </xsl:template>
 
 <xsl:template match="angles">
-    <xsl:call-template name="langle-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'langle'"/>
+    </xsl:call-template>
     <xsl:apply-templates/>
-    <xsl:call-template name="rangle-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'rangle'"/>
+    </xsl:call-template>
 </xsl:template>
 
 <!-- ########## -->
@@ -10150,7 +10074,9 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 <xsl:template match="biblio[@type='raw']/number">
     <xsl:text>no</xsl:text>
     <xsl:call-template name="biblio-period"/>
-    <xsl:call-template name="thin-space-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'thin-space'"/>
+    </xsl:call-template>
     <xsl:apply-templates/>
 </xsl:template>
 
@@ -10253,7 +10179,9 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 <xsl:template match="biblio[@type='bibtex']/number">
     <xsl:text>no</xsl:text>
     <xsl:call-template name="biblio-period"/>
-    <xsl:call-template name="thin-space-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'thin-space'"/>
+    </xsl:call-template>
     <xsl:apply-templates select="text()"/>
     <xsl:apply-templates select="." mode="bibtex-separator">
         <xsl:with-param name="separator" select="' '"/>
@@ -10282,7 +10210,9 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 <xsl:template match="biblio[@type='bibtex']/pages[@start]">
     <xsl:text>pp</xsl:text>
     <xsl:call-template name="biblio-period"/>
-    <xsl:call-template name="thin-space-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'thin-space'"/>
+    </xsl:call-template>
     <xsl:value-of select="@start"/><xsl:text>-</xsl:text><xsl:value-of select="@end"/>
     <xsl:apply-templates select="." mode="bibtex-separator">
         <xsl:with-param name="separator" select="', '"/>
@@ -10295,7 +10225,7 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 <!-- Final period when no following-siblings     -->
 
 <xsl:template match="biblio[not(@type = 'raw') and not(@type = 'bibtex')]/*">
-    <xsl:message>PTX:WARNING:  a child of "biblio" (<xsl:value-of select="local-name()"/>) is not being processed.  Please report me so this can be fixed.</xsl:message>
+    <xsl:message>PTX:BUG:      a child of "biblio" (<xsl:value-of select="local-name()"/>) is not being processed.  Please report me so this can be fixed.</xsl:message>
 </xsl:template>
 
 <!-- Authors: no lead-in, names via the shared "contributor-names" -->
@@ -10563,19 +10493,33 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
 
 <xsl:template name="warning-line-by-line">
     <xsl:param name="warning" />
-    <xsl:variable name="after" select="substring-before($warning,'&#xa;')"/>
+    <!-- the first line, which may be all of the text -->
+    <xsl:variable name="first-line">
+        <xsl:choose>
+            <xsl:when test="contains($warning, '&#xa;')">
+                <xsl:value-of select="substring-before($warning, '&#xa;')"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="$warning"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
     <xsl:choose>
-        <!-- no line breaks in warning, just print it -->
-        <xsl:when test="substring-before($warning,'&#xa;') = ''">
-            <xsl:message><xsl:value-of select="$warning" /></xsl:message>
+        <!-- a message with no content is reported strangely  -->
+        <!-- by the processing library, a space displays well -->
+        <xsl:when test="$first-line = ''">
+            <xsl:message><xsl:text> </xsl:text></xsl:message>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:message><xsl:value-of select="substring-before($warning,'&#xa;')" /></xsl:message>
-            <xsl:call-template name="warning-line-by-line">
-                <xsl:with-param name="warning" select="substring-after($warning,'&#xa;')" />
-            </xsl:call-template>
+            <xsl:message><xsl:value-of select="$first-line"/></xsl:message>
         </xsl:otherwise>
     </xsl:choose>
+    <!-- and the lines after the first, if any -->
+    <xsl:if test="contains($warning, '&#xa;')">
+        <xsl:call-template name="warning-line-by-line">
+            <xsl:with-param name="warning" select="substring-after($warning, '&#xa;')"/>
+        </xsl:call-template>
+    </xsl:if>
 </xsl:template>
 
 <!-- Report the location of an element or attribute, for use after a   -->
@@ -10701,7 +10645,7 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
                 <xsl:text>&#xa;</xsl:text>
                 <xsl:text>    1.  Code generation is functional, but does not respect indentation&#xa;</xsl:text>
                 <xsl:text>    2.  LaTeX generation is functional, could be improved, 2020-11-11&#xa;</xsl:text>
-                <xsl:text>    2.  HTML generation is functional, could be improved, 2020-11-11&#xa;</xsl:text>
+                <xsl:text>    3.  HTML generation is functional, could be improved, 2020-11-11&#xa;</xsl:text>
             </xsl:with-param>
         </xsl:call-template>
     </xsl:if>
@@ -10905,7 +10849,7 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         </xsl:when>
         <xsl:otherwise>
             <xsl:text>P100Y</xsl:text>
-            <xsl:message>PTX:WARNING:   "author.deprecations.all" should be "yes" or "no", not "<xsl:value-of select="$author.deprecations.all"/>", using the default value of "yes"</xsl:message>
+            <xsl:message>PTX:FALLBACK:   "author.deprecations.all" should be "yes" or "no", not "<xsl:value-of select="$author.deprecations.all"/>", using the default value of "yes"</xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:variable>
@@ -11203,11 +11147,18 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="message" select="'the &quot;jsxgraph&quot; element has been deprecated, but remains functional, rework with the &quot;interactive&quot; element'" />
     </xsl:call-template>
     <!--  -->
+    <!-- 2018-04-06  jsxgraph no longer a panel of a sidebyside -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//sidebyside/jsxgraph&quot;" />
+        <xsl:with-param name="date-string" select="'2018-04-06'" />
+        <xsl:with-param name="message" select="'a &quot;jsxgraph&quot; can no longer appear within a &quot;sidebyside&quot;, rework with the &quot;interactive&quot; element; as of 2026-07-22 the &quot;jsxgraph&quot; will be silently ignored'" />
+    </xsl:call-template>
+    <!--  -->
     <!-- 2018-05-02  paragraphs purely as a lightweight division -->
     <xsl:call-template name="deprecation-message">
         <xsl:with-param name="occurrences" select="&quot;$document-root//sidebyside/paragraphs&quot;" />
         <xsl:with-param name="date-string" select="'2018-04-06'" />
-        <xsl:with-param name="message" select="'a &quot;paragraphs&quot; can no longer appear within a &quot;sidebyside&quot;, replace with a &quot;stack&quot; containing multiple elements, such as &quot;p&quot;'" />
+        <xsl:with-param name="message" select="'a &quot;paragraphs&quot; can no longer appear within a &quot;sidebyside&quot;, replace with a &quot;stack&quot; containing multiple elements, such as &quot;p&quot;; as of 2026-07-22 the &quot;paragraphs&quot; and its content will be silently ignored'" />
     </xsl:call-template>
     <!-- 2018-05-18  WeBWorK refactor no longer needs setup/var elements for static representations-->
     <xsl:call-template name="deprecation-message">
@@ -11833,6 +11784,20 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="occurrences" select="&quot;$document-root//@include-source&quot;" />
         <xsl:with-param name="date-string" select="'2026-05-22'" />
         <xsl:with-param name="message" select="'the &quot;@include-source&quot; attribute has been deprecated and it will be ignored.  No replacement is planned.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-08  "title" deprecated on "introduction"/"conclusion" of a traditional division -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//introduction[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title | $document-root//conclusion[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-08'" />
+        <xsl:with-param name="message" select="'a &quot;title&quot; on an &quot;introduction&quot; or &quot;conclusion&quot; of a traditional division has been deprecated, and it will be ignored.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-22  "audio", "video", "interactive" precluded within "sidebyside" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//sidebyside//audio | $document-root//sidebyside//video | $document-root//sidebyside//interactive&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-22'" />
+        <xsl:with-param name="message" select="'an &quot;audio&quot;, &quot;video&quot;, or &quot;interactive&quot; element may not appear within a &quot;sidebyside&quot;, at any depth.  Content may go missing with no further warning.  Relocate the element outside the &quot;sidebyside&quot;.'"/>
     </xsl:call-template>
     <!--  -->
 </xsl:template>

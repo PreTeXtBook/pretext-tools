@@ -143,7 +143,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="pdfpages-package"/>
     <!--<xsl:call-template name="division-titles"/>-->
     <xsl:call-template name="semantic-macros"/>
-    <xsl:call-template name="exercises-and-solutions"/>
     <xsl:call-template name="chapter-start-number"/>
     <xsl:call-template name="equation-numbering"/>
     <xsl:call-template name="image-tcolorbox"/>
@@ -183,7 +182,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\newlength{\ptxnormalparskip}&#xa;</xsl:text>
     <xsl:text>\AtBeginDocument{\setlength{\ptxnormalparindent}{\parindent}}&#xa;</xsl:text>
     <xsl:text>\AtBeginDocument{\setlength{\ptxnormalparskip}{\parskip}}&#xa;</xsl:text>
-    <xsl:text>\newcommand{\setparstyle}{\setlength{\parindent}{\ptxnormalparindent}\setlength{\parskip}{\ptxnormalparskip}}</xsl:text>
+    <xsl:text>\newcommand{\ptxsetparstyle}{\setlength{\parindent}{\ptxnormalparindent}\setlength{\parskip}{\ptxnormalparskip}}</xsl:text>
 
     <!-- could condition on "subfigure-reps" -->
     <xsl:if test="$b-has-sidebyside">
@@ -369,7 +368,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 
 <xsl:template match="bibinfo/support" mode="article-frontmatter">
-    <xsl:text>\support{</xsl:text>
+    <xsl:text>\ptxsupport{</xsl:text>
     <xsl:apply-templates select="$bibinfo/support" mode="article-info"/>
     <xsl:text>}&#xa;</xsl:text>
 </xsl:template>
@@ -531,7 +530,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\newtcolorbox{</xsl:text>
     <xsl:value-of select="$environment-name"/>
     <xsl:text>}[1][]{title={#1}, </xsl:text>
-    <xsl:text>breakable, before upper app={\setparstyle}, </xsl:text>
+    <xsl:text>breakable, before upper app={\ptxsetparstyle}, </xsl:text>
     <xsl:value-of select="$environment-name"/>
     <xsl:text>style}&#xa;</xsl:text>
 </xsl:template>
@@ -686,12 +685,22 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Introductions and conclusions are just their contents at their position. -->
 <xsl:template match="article/introduction|chapter/introduction|section/introduction|subsection/introduction|appendix/introduction|exercises/introduction|solutions/introduction|worksheet/introduction|reading-questions/introduction|references/introduction">
     <xsl:text>% Introduction&#xa;</xsl:text>
+    <!-- an authored @xml:id suggests a cross-reference target -->
+    <xsl:if test="@xml:id">
+        <xsl:apply-templates select="." mode="label"/>
+        <xsl:text>%&#xa;</xsl:text>
+    </xsl:if>
     <xsl:apply-templates select="*"/>
     <xsl:text>% end of introduction&#xa;</xsl:text>
 </xsl:template>
 
 <xsl:template match="article/conclusion|chapter/conclusion|section/conclusion|subsection/conclusion|appendix/conclusion|exercises/conclusion|solutions/conclusion|worksheet/conclusion|reading-questions/conclusion|references/conclusion">
     <xsl:text>% Conclusion&#xa;</xsl:text>
+    <!-- an authored @xml:id suggests a cross-reference target -->
+    <xsl:if test="@xml:id">
+        <xsl:apply-templates select="." mode="label"/>
+        <xsl:text>%&#xa;</xsl:text>
+    </xsl:if>
     <xsl:apply-templates select="*"/>
     <xsl:text>% end of conclusion&#xa;</xsl:text>
 </xsl:template>
@@ -936,17 +945,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Preamble template for elements needed to produce the frontmatter -->
 <xsl:template name="frontmatter-helpers">
-    <!-- If there is a <support> tag in an article, create a unnumbered footnote environment for it -->
-    <!-- NB: this is also part of the footnote-numbering named template (as of 2025-02-24), but we don't call that for -classic -->
-    <xsl:if test="$b-is-article and $bibinfo/support">
-        <xsl:text>%% add a \support command as unnumbered footnote&#xa;</xsl:text>
-        <xsl:text>\let\svdthefootnote\thefootnote%&#xa;</xsl:text>
-        <xsl:text>\newcommand\support[1]{%&#xa;</xsl:text>
-        <xsl:text>  \let\thefootnote\relax%&#xa;</xsl:text>
-        <xsl:text>  \footnotetext{#1}%&#xa;</xsl:text>
-        <xsl:text>  \let\thefootnote\svdthefootnote%&#xa;</xsl:text>
-        <xsl:text>}&#xa;</xsl:text>
-    </xsl:if>
+    <xsl:call-template name="support-footnote"/>
 </xsl:template>
 
 </xsl:stylesheet>

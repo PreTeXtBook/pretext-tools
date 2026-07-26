@@ -23,7 +23,7 @@
     "publish-packages": "changeset publish",
     "changes": "node ./scripts/changes-since-release.mjs",
     "watch": "npm run watch -w pretext-tools",
-    "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs && npm run generate-types -w @pretextbook/ptxast && node ./packages/schema/scripts/compile-grammar.mjs",
+    "refresh:schemas": "node ./scripts/getSchemas.js && node ./packages/completions/scripts/generate-default-schema.mjs && node ./packages/schema/scripts/compile-grammar.mjs",
     "check:schema-generated": "node ./scripts/check-schema-generated.mjs",
     "lint": "npm run lint -w @pretextbook/visual-editor && npm run lint -w pretext-tools",
     "test": "npm run test:libraries && npm run test:unit -w pretext-tools && npm run test:reliability",

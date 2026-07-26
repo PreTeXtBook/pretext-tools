@@ -111,11 +111,15 @@
             <!-- this *must* be first for maximum utility -->
             <xsl:call-template name="skip-to-content-link" />
             <!-- HTML5 body/header will be a "banner" landmark automatically -->
-            <header id="ptx-masthead" class="ptx-masthead">
+            <header id="ptx-masthead" class="ptx-masthead" role="banner">
                 <div class="ptx-banner">
                     <xsl:call-template name="brand-logo" />
                     <div class="title-container">
-                        <h1 class="heading">
+                        <xsl:variable name="banner-heading-element-type">
+                            <xsl:apply-templates select="." mode="banner-heading-element-type"/>
+                        </xsl:variable>
+                        <xsl:element name="{$banner-heading-element-type}">
+                            <xsl:attribute name="class">heading ptx-banner-heading</xsl:attribute>
                             <xsl:variable name="root-filename">
                                 <xsl:apply-templates select="$document-root" mode="containing-filename" />
                             </xsl:variable>
@@ -133,7 +137,7 @@
                                     </span>
                                 </xsl:if>
                             </a>
-                        </h1>
+                        </xsl:element>
                         <!-- Serial list of authors/editors -->
                         <xsl:if test="$b-html-banner-byline">
                             <p class="byline">
@@ -142,7 +146,7 @@
                             </p>
                         </xsl:if>
                     </div>  <!-- title-container -->
-                </div>  <!-- banner -->
+                </div> <!-- banner -->
             </header>  <!-- masthead -->
             <xsl:apply-templates select="." mode="primary-navigation"/>
             <xsl:apply-templates select="." mode="latex-macros"/>

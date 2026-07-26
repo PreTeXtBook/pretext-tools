@@ -210,7 +210,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="math-packages"/>
     <xsl:call-template name="pdfpages-package"/>
     <xsl:call-template name="semantic-macros"/>
-    <xsl:call-template name="exercises-and-solutions"/>
     <xsl:call-template name="chapter-start-number"/>
     <xsl:call-template name="equation-numbering"/>
     <xsl:call-template name="image-tcolorbox"/>
@@ -624,7 +623,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:apply-templates>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:message>PTX:WARNING: The @authority attribute on a keyword element (in a texstyle file) is required and must be "author" or "msc".  Found "@authority="<xsl:value-of select="@authority"/>". </xsl:message>
+            <xsl:message>PTX:ERROR:   The @authority attribute on a keyword element (in a texstyle file) is required and must be "author" or "msc".  Found "@authority="<xsl:value-of select="@authority"/>". </xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>

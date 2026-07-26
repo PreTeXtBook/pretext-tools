@@ -519,6 +519,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Also, note that this tree is useful for certain tasks, like      -->
 <!-- validation, or reporting values of publisher variables, without  -->
 <!-- regard to the subsequent passes.                                 -->
+<!-- The version tree is the earliest assembly product a publisher   -->
+<!-- variable may consult (structure can differ by version).  The    -->
+<!-- passes up to, and including, "version" must never consult a     -->
+<!-- variable defined from this tree — that is a circular reference, -->
+<!-- detected only at runtime.  The "crossing point" facts in        -->
+<!-- publisher-variables.xsl enumerate the consumers.                -->
 <xsl:variable name="version-root" select="$version/pretext"/>
 <xsl:variable name="version-docinfo" select="$version-root/docinfo"/>
 <xsl:variable name="version-document-root" select="$version-root/*[not(self::docinfo)]"/>
@@ -872,7 +878,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- This is an AWOL node, not empty content (which is allowed) -->
         <xsl:if test="not($the-lookup)">
             <xsl:text>[MISSING CUSTOM CONTENT HERE]</xsl:text>
-            <xsl:message>PTX:WARNING:   lookup for a "custom" element with @name set to "<xsl:value-of select="$the-ref"/>" has failed, while consulting the customization file "<xsl:value-of select="$customizations-file"/>".  Output will contain "[MISSING CUSTOM CONTENT HERE]" instead</xsl:message>
+            <xsl:message>PTX:ERROR:     lookup for a "custom" element with @name set to "<xsl:value-of select="$the-ref"/>" has failed, while consulting the customization file "<xsl:value-of select="$customizations-file"/>".  Output will contain "[MISSING CUSTOM CONTENT HERE]" instead</xsl:message>
             <xsl:apply-templates select="$the-custom" mode="location-report"/>
         </xsl:if>
         <!-- Copying the contents of "custom" via the "version" templates  -->
@@ -1070,11 +1076,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- Look at each "biblio" in the external file -->
         <xsl:for-each select="$biblios/pretext-biblios/biblio">
             <xsl:variable name="the-id" select="@xml:id"/>
-            <xsl:message>@xml:id of &lt;biblio&gt; in bibliography file: <xsl:value-of select="$the-id"/></xsl:message>
+            <xsl:message>PTX:DEBUG: @xml:id of &lt;biblio&gt; in bibliography file: <xsl:value-of select="$the-id"/></xsl:message>
             <!-- Building duplicate, so look at $original for    -->
             <!-- "xref" pointing to the current context "biblio" -->
             <xsl:if test="$original//xref[@ref = $the-id]">
-                <xsl:message>  Located this &lt;biblio&gt; cited in original source</xsl:message>
+                <xsl:message>PTX:DEBUG:  Located this &lt;biblio&gt; cited in original source</xsl:message>
                 <xsl:apply-templates select="." mode="assembly"/>
             </xsl:if>
         </xsl:for-each>
@@ -1611,6 +1617,78 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:otherwise>
         </xsl:choose>
     </xsl:attribute>
+</xsl:template>
+
+<!-- Insert a default correct "test" for a FITB "exercise" or -->
+<!-- PROJECT-LIKE when an "evaluate" has no explicit correct  -->
+<!-- "test": the corresponding "fillin" has a static @answer, -->
+<!-- so synthesize a "test" and let all downstream processing -->
+<!-- follow a single code path.  Only @mode "string" and      -->
+<!-- "number" are handled here; "math" uses separate logic.   -->
+<xsl:template match="evaluation/evaluate[
+    not(@all = 'yes') and
+    not(test[@correct = 'yes']) and
+    not(
+        count(../../statement//fillin) > 1
+        and
+        ../evaluate[@all = 'yes']/test
+    )
+    ]" mode="exercise">
+    <xsl:param name="division"/>
+
+    <!-- Identify this evaluate's position among its siblings and its name, -->
+    <!-- to locate the corresponding fillin by name first, position second. -->
+    <xsl:variable name="eval-position" select="count(preceding-sibling::evaluate) + 1"/>
+    <xsl:variable name="eval-name" select="@name"/>
+
+    <!-- Navigate to the exercise/project/task parent of evaluation -->
+    <xsl:variable name="exercise-parent" select="parent::evaluation/parent::*"/>
+
+    <!-- Find the corresponding fillin (name-based match takes priority) -->
+    <xsl:variable name="match-fillin">
+        <xsl:choose>
+            <xsl:when test="$eval-name != '' and
+                            $exercise-parent/statement//fillin[@name = $eval-name]">
+                <xsl:copy-of select="$exercise-parent/statement//fillin[@name = $eval-name]"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:copy-of select="($exercise-parent/statement//fillin)[$eval-position]"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="fillin" select="exsl:node-set($match-fillin)/fillin"/>
+
+    <xsl:copy>
+        <xsl:apply-templates select="@*" mode="exercise">
+            <xsl:with-param name="division" select="$division"/>
+        </xsl:apply-templates>
+        <!-- Synthesize a correct test when the fillin has a static @answer -->
+        <!-- and a recognized mode. Place it first so it takes precedence.  -->
+        <xsl:if test="$fillin/@answer and not($fillin/@ansobj)">
+            <xsl:choose>
+                <xsl:when test="$fillin/@mode = 'number'">
+                    <test correct="yes">
+                        <numcmp use-answer="yes"/>
+                    </test>
+                </xsl:when>
+                <xsl:when test="$fillin/@mode = 'string'">
+                    <test correct="yes">
+                        <strcmp use-answer="yes"/>
+                    </test>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:message>PTX:WARNING: fillin in "<xsl:value-of
+                        select="$exercise-parent/@visible-id"/>" has @answer but
+                        @mode is missing or not recognized (expected 'number' or
+                        'string'). No default correct test synthesized.</xsl:message>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:if>
+        <!-- Copy existing children (non-correct tests, feedback, etc.) -->
+        <xsl:apply-templates select="node()" mode="exercise">
+            <xsl:with-param name="division" select="$division"/>
+        </xsl:apply-templates>
+    </xsl:copy>
 </xsl:template>
 
 <!-- ##################################################### -->
@@ -3357,6 +3435,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- which have not been schema-compliant since circa 2017   -->
 <xsl:template match="sidebyside/*[&METADATA-FILTER;]" mode="repair"/>
 
+<!-- 2026-07-08  "title" deprecated on "introduction"/"conclusion" of a traditional division -->
+
+<!-- The title is dropped, silently; conversions provide a localized -->
+<!-- heading whenever a heading is called for.  Titles remain within -->
+<!-- specialized divisions, which are never structured, and so are   -->
+<!-- never summary pages (the situation that demands the heading)    -->
+<xsl:template match="introduction[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title|conclusion[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title" mode="repair"/>
+
 <!-- ########## -->
 <!-- Enrichment -->
 <!-- ########## -->
@@ -4012,7 +4098,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:param name="project-nodes"/>
     <xsl:param name="exercise-nodes"/>
     <xsl:param name="openproblem-nodes"/>
-    <xsl:variable name="b-terminal" select="not(part|chapter|appendix|section|subsection|subsubsection|preface)"/>
+    <!-- terminal: holds content directly, so it has no child divisions of  -->
+    <!-- any kind.  Specialized divisions ("worksheet", "handout", etc.)     -->
+    <!-- count here just like the traditional ones, else a division whose    -->
+    <!-- children are specialized divisions is wrongly deemed terminal and   -->
+    <!-- pools their blocks into one scope instead of one scope apiece.      -->
+    <xsl:variable name="b-terminal" select="not(part|chapter|appendix|section|subsection|subsubsection|preface|exercises|worksheet|handout|reading-questions|references|glossary|solutions)"/>
     <xsl:variable name="b-open-eq"          select="not($eq-nodes)          and ($b-terminal or (@level &gt;= $numbering-equations))"/>
     <xsl:variable name="b-open-fn"          select="not($fn-nodes)          and ($b-terminal or (@level &gt;= $numbering-footnotes))"/>
     <xsl:variable name="b-open-blocks"      select="not($blocks-nodes)      and ($b-terminal or (@level &gt;= $numbering-blocks))"/>
@@ -4683,20 +4774,19 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Natural override for YouTube videos               -->
 <!-- Better - standalone page, with "View on You Tube" -->
 
-<!-- NB: ampersand is escaped for LaTeX use, be careful with switch to QR codes via Python! -->
-<!-- POTENTIAL BUG: this should be un-LaTeX'ed for general use and then  -->
-<!-- sanitized on the receiving end in the LaTeX conversion, or maybe    -->
-<!-- the LaTeX conversion will do just fine if the right URL package is  -->
-<!-- used and the ampersand is handled correctly?                        -->
+<!-- NB: this is a genuine URL, with no escaping: consumers apply     -->
+<!-- their own (the LaTeX conversion escapes the ampersand for its    -->
+<!-- "\href", HTML-derived conversions use it as-is, and the QR code  -->
+<!-- generator must encode exactly what a phone's camera should see). -->
 
 <xsl:template match="video[@youtube|@youtubeplaylist]" mode="static-url">
     <xsl:apply-templates select="." mode="youtube-view-url" />
     <xsl:if test="@start">
-        <xsl:text>\&amp;start=</xsl:text>
+        <xsl:text>&amp;start=</xsl:text>
         <xsl:value-of select="@start" />
     </xsl:if>
     <xsl:if test="@end">
-        <xsl:text>\&amp;end=</xsl:text>
+        <xsl:text>&amp;end=</xsl:text>
         <xsl:value-of select="@end" />
     </xsl:if>
 </xsl:template>

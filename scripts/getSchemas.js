@@ -1,4 +1,4 @@
-// Download latest schema files into extension/assets/schema.
+// Download latest schema files into packages/vscode-extension/assets/schema.
 // Usage:
 //   node ./scripts/getSchemas.js
 //   node ./scripts/getSchemas.js --only-pretext-dev
