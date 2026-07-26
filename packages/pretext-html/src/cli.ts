@@ -17,6 +17,9 @@ one page, css/js/MathJax from CDN). No PreTeXt installation required.
 Options:
   -o, --output <file>       Write HTML to a file instead of stdout
   --publication <file>      Publication file (portable html is forced on)
+  --css-theme <name>        HTML theme to use when the publication file names
+                            none of its own: default-modern (PreTeXt's default),
+                            denver, tacoma, salem, greeley or boulder
   --project-dir <dir>       Directory served to the transform for xi:includes
                             (default: the source file's directory)
   --param <name=value>      Extra XSLT string parameter (repeatable)
@@ -72,6 +75,9 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--publication":
         options.publicationPath = next();
+        break;
+      case "--css-theme":
+        options.cssTheme = next();
         break;
       case "--project-dir":
         options.projectDir = next();

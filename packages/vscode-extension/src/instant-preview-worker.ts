@@ -36,6 +36,8 @@ interface RenderRequest {
   mainSourcePath?: string;
   projectDir?: string;
   publicationPath?: string;
+  /** HTML theme for projects whose publication file names none; see renderer. */
+  cssTheme?: string;
   fragment?: boolean;
   /** A <docinfo> element (as a string) injected into a fragment wrapper. */
   docinfo?: string;
@@ -120,6 +122,7 @@ function serve(): void {
         mainSourcePath: request.mainSourcePath,
         projectDir: request.projectDir,
         publicationPath: request.publicationPath,
+        cssTheme: request.cssTheme,
         fragment: request.fragment,
         docinfo: request.docinfo,
         docinfoSourcePath: request.docinfoSourcePath,

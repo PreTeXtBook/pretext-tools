@@ -8,6 +8,10 @@
  * variables can only come from a publication file — there is no stringparam
  * for `portable` — so we rewrite the user's publication file (or synthesize a
  * minimal one) and serve it through the fetch shim as a virtual file.
+ *
+ * That rewrite is also how an embedder's default HTML theme gets in
+ * (`<html><css theme="..."/></html>`): same reason, no stringparam for it
+ * either, short of `debug.html.theme-name`.
  */
 
 import { fromXml } from "xast-util-from-xml";
@@ -24,6 +28,15 @@ const MINIMAL_PUBLICATION = `<?xml version="1.0" encoding="UTF-8"?>
   </html>
 </publication>
 `;
+
+/**
+ * Attributes on `<html><css/>` by which a project states which HTML theme it
+ * wants. `@theme` is the current spelling; `@style` and `@shell` are the
+ * deprecated ones publisher-variables.xsl still maps onto a theme (warning as
+ * it goes). Any of them means the project has made a choice, so a
+ * caller-supplied default stays out of the way.
+ */
+const THEME_ATTRIBUTES = ["theme", "style", "shell"] as const;
 
 function findChildElement(
   parent: Root | Element,
@@ -47,14 +60,39 @@ function ensureChildElement(parent: Root | Element, name: string): Element {
 }
 
 /**
+ * Declare `<css theme="..."/>` under `<html>`, unless the publication file
+ * already names a theme of its own (see {@link THEME_ATTRIBUTES}) — this is a
+ * fallback, not an override.
+ */
+function applyDefaultCssTheme(html: Element, cssTheme: string): void {
+  const existing = findChildElement(html, "css");
+  if (
+    existing &&
+    THEME_ATTRIBUTES.some((name) => existing.attributes?.[name])
+  ) {
+    return;
+  }
+  const css = existing ?? ensureChildElement(html, "css");
+  css.attributes = { ...css.attributes, theme: cssTheme };
+}
+
+/**
  * Return publication-file XML with `<html><platform portable="yes"/></html>`
  * forced, preserving everything else from `publicationXml` when given.
+ *
+ * `cssTheme`, when given, supplies `<html><css theme="..."/></html>` for
+ * projects that do not choose an HTML theme themselves; see
+ * `RenderOptions.cssTheme`. A blank value is ignored.
  */
-export function forcePortablePublication(publicationXml?: string): string {
-  if (!publicationXml) {
+export function forcePortablePublication(
+  publicationXml?: string,
+  cssTheme?: string,
+): string {
+  const theme = cssTheme?.trim();
+  if (!publicationXml && !theme) {
     return MINIMAL_PUBLICATION;
   }
-  const tree = fromXml(publicationXml);
+  const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
   const publication = findChildElement(tree, "publication");
   if (!publication) {
     throw new Error(
@@ -64,6 +102,9 @@ export function forcePortablePublication(publicationXml?: string): string {
   const html = ensureChildElement(publication, "html");
   const platform = ensureChildElement(html, "platform");
   platform.attributes = { ...platform.attributes, portable: "yes" };
+  if (theme) {
+    applyDefaultCssTheme(html, theme);
+  }
   return toXml(tree);
 }
 

@@ -62,6 +62,26 @@ export interface RenderOptions {
    * `<html><platform portable="yes"/></html>`, which the preview forces.
    */
   publicationPath?: string;
+  /**
+   * PreTeXt HTML theme to fall back on, inserted into the publication file
+   * used for the build as `<html><css theme="..."/></html>`.
+   *
+   * A default, not an override: it applies only when the project's own
+   * publication file names no theme (neither `@theme` nor the deprecated
+   * `@style`/`@shell`), so a project that has chosen one keeps it. Blank is
+   * ignored, and with no publication file at all it themes the synthesized
+   * minimal one.
+   *
+   * Portable builds load `theme-<name>.min.css` from the CDN, so an
+   * unrecognised name renders an unstyled page. The themes the vendored
+   * stylesheets know are default-modern (PreTeXt's own default), denver,
+   * tacoma, salem, greeley and boulder; `custom` additionally needs a locally
+   * compiled stylesheet, which this renderer cannot produce.
+   *
+   * Distinct from {@link RenderOptions.theme}, which is the light/dark mode
+   * *within* whichever css theme is in force.
+   */
+  cssTheme?: string;
   /** Additional XSLT string parameters, passed as strings (quoted for you). */
   stringParams?: Record<string, string>;
   /** Directory of PreTeXt XSL stylesheets. Defaults to the vendored copy. */
@@ -464,20 +484,20 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     // user's publication file lives inside the project, keep its real URL so
     // any relative references inside it still resolve; virtual files shadow
     // the directory mount.
-    let publicationXml: string;
+    let publicationSource: string | undefined;
     let publicationUrl = `${srcBase}/__pretext-preview-publication.xml`;
     if (options.publicationPath) {
       const pubPath = path.resolve(options.publicationPath);
-      publicationXml = forcePortablePublication(
-        await readSourceOrThrow(pubPath),
-      );
+      publicationSource = await readSourceOrThrow(pubPath);
       const relPub = path.relative(projectDir, pubPath);
       if (!relPub.startsWith("..")) {
         publicationUrl = `${srcBase}/${relPub.split(path.sep).join("/")}`;
       }
-    } else {
-      publicationXml = forcePortablePublication();
     }
+    const publicationXml = forcePortablePublication(
+      publicationSource,
+      options.cssTheme,
+    );
     setVirtualFile(publicationUrl, publicationXml);
 
     // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to

@@ -389,7 +389,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- group as its serial number.     -->
 <xsl:template match="exercisegroup" mode="serial-number">
     <xsl:apply-templates select="exercise[1]" mode="serial-number" />
-    <xsl:call-template name="ndash-character"/>
+    <xsl:call-template name="character">
+        <xsl:with-param name="name" select="'ndash'"/>
+    </xsl:call-template>
     <xsl:apply-templates select="exercise[last()]" mode="serial-number" />
 </xsl:template>
 
@@ -450,7 +452,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Lists live in paragraphs, exercises, objectives, so       -->
 <!-- should be referenced as part of some enclosing element.   -->
 <!-- "mathbook" helps some tree-climbing routines halt -->
-<xsl:template match="mathbook|pretext|introduction|conclusion|frontmatter|backmatter|sidebyside|sbsgroup|ol|ul|dl|statement" mode="serial-number" />
+<xsl:template match="mathbook|pretext|frontmatter|backmatter|sidebyside|sbsgroup|ol|ul|dl|statement" mode="serial-number" />
+
+<!-- An "introduction" or "conclusion" of a structured division (a   -->
+<!-- "division companion") occurs at most once per division, and so   -->
+<!-- takes its number from the parent, exactly as GOAL-LIKE does.    -->
+<!-- The number is never displayed where born; it only serves to     -->
+<!-- identify the target of a cross-reference.  Every other flavor   -->
+<!-- (in blocks, tasks, exercise groups, ...) has no number at all.  -->
+<xsl:template match="introduction|conclusion" mode="serial-number"/>
+
+<xsl:template match="introduction[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]|conclusion[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]" mode="serial-number">
+    <xsl:apply-templates select="parent::*" mode="serial-number"/>
+</xsl:template>
+
+<xsl:template match="introduction[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]|conclusion[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]" mode="structure-number">
+    <xsl:apply-templates select="parent::*" mode="structure-number"/>
+</xsl:template>
 
 <!-- Poems go by their titles, not numbers -->
 <xsl:template match="poem" mode="serial-number" />
@@ -541,7 +559,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Should not drop in here.  Ever. -->
 <xsl:template match="*" mode="serial-number">
     <xsl:text>[NUM]</xsl:text>
-    <xsl:message>PTX:ERROR:   An object (<xsl:value-of select="local-name(.)" />) lacks a serial number, search output for "[NUM]"</xsl:message>
+    <xsl:message>PTX:BUG:   An object (<xsl:value-of select="local-name(.)" />) lacks a serial number, search output for "[NUM]"</xsl:message>
     <xsl:apply-templates select="." mode="location-report" />
 </xsl:template>
 
@@ -784,7 +802,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Should not drop in here.  Ever. -->
 <xsl:template match="*" mode="structure-number">
     <xsl:text>[STRUCT]</xsl:text>
-    <xsl:message>PTX:ERROR:   An object (<xsl:value-of select="local-name(.)" />) lacks a structure number, search output for "[STRUCT]"</xsl:message>
+    <xsl:message>PTX:BUG:   An object (<xsl:value-of select="local-name(.)" />) lacks a structure number, search output for "[STRUCT]"</xsl:message>
     <xsl:apply-templates select="." mode="location-report" />
 </xsl:template>
 

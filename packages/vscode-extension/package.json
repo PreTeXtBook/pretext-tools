@@ -489,6 +489,30 @@
             "default": "current-file",
             "markdownDescription": "What the live preview renders: the current source file (fast) or the whole project."
           },
+          "pretext-tools.instantPreview.cssTheme": {
+            "order": 4,
+            "type": "string",
+            "enum": [
+              "",
+              "default-modern",
+              "denver",
+              "tacoma",
+              "salem",
+              "greeley",
+              "boulder"
+            ],
+            "enumDescriptions": [
+              "Let PreTeXt decide (default-modern, unless your publication file says otherwise).",
+              "PreTeXt's current default theme.",
+              "Sidebar-and-accent theme; successor to the legacy 'crc' and 'oscarlevin' styles.",
+              "Minimal theme; successor to the legacy 'min' style.",
+              "Wide-page theme; successor to the legacy 'wide' style.",
+              "Greeley theme.",
+              "Boulder theme."
+            ],
+            "default": "",
+            "markdownDescription": "HTML theme for the live preview. Applies **only when your project's publication file names no theme itself** — if it sets `html/css/@theme` (or the deprecated `@style`/`@shell`), the preview honours that instead, so what you see matches what `pretext build` produces. The theme's stylesheet is fetched from the PreTeXt CDN, so the preview needs network access."
+          },
           "pretext-tools.instantPreview.nodePath": {
             "order": 4,
             "type": "string",
