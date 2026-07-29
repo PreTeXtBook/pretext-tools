@@ -12,11 +12,11 @@
 // emitted as a single complete HTML page on the main result tree. Regenerating
 // it here keeps the copy in lockstep with the vendored stylesheets.
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import JSZip from "jszip";
 
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -33,28 +33,73 @@ function getArg(flag) {
 const localDir = getArg("--local");
 const ref = getArg("--ref") ?? "master";
 
+/**
+ * Extract the entries of a zip archive that `wanted` accepts.
+ *
+ * The archive is read in process rather than by shelling out to an unzip tool,
+ * because there is no such tool that exists on every platform — Windows has no
+ * `unzip`, and `Expand-Archive` is PowerShell-only. Node cannot read a zip
+ * container on its own either (`node:zlib` is raw deflate/gzip, not the zip
+ * central directory), hence jszip.
+ *
+ * Only the ~96 wanted entries are written out. The archive holds ~2000 files,
+ * some nested deeply enough that unpacking all of them under a temp directory
+ * would exceed Windows' MAX_PATH.
+ *
+ * `strip` drops leading path components, like tar's `--strip-components`; the
+ * GitHub archive puts everything under a single `pretext-<ref>/` directory.
+ */
+async function extractZip(archive, destDir, { strip = 0, wanted }) {
+  const zip = await JSZip.loadAsync(archive);
+  let count = 0;
+
+  for (const [name, entry] of Object.entries(zip.files)) {
+    if (entry.dir) {
+      continue;
+    }
+    const relPath = name.split("/").slice(strip).join("/");
+    if (relPath === "" || !wanted(relPath)) {
+      continue;
+    }
+    // The archive is trusted, but a traversing member would write outside the
+    // temp directory, so refuse rather than assume.
+    const target = path.resolve(destDir, relPath);
+    if (target !== destDir && !target.startsWith(destDir + path.sep)) {
+      throw new Error(`Refusing to extract outside the target: ${name}`);
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, await entry.async("nodebuffer"));
+    count += 1;
+  }
+
+  if (count === 0) {
+    throw new Error(
+      "Extracted no files from the pretext archive. Its layout has changed; " +
+        "refresh-xsl.mjs needs updating.",
+    );
+  }
+  return count;
+}
+
 async function fetchUpstreamXsl() {
-  const url = `https://codeload.github.com/PreTeXtBook/pretext/tar.gz/refs/heads/${ref}`;
+  const url = `https://codeload.github.com/PreTeXtBook/pretext/zip/refs/heads/${ref}`;
   console.log(`Downloading ${url} ...`);
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to download pretext tarball (${response.status})`);
+    throw new Error(`Failed to download pretext archive (${response.status})`);
   }
-  const tarball = Buffer.from(await response.arrayBuffer());
+  const archive = Buffer.from(await response.arrayBuffer());
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-xsl-"));
-  const tarPath = path.join(tmpDir, "pretext.tar.gz");
-  fs.writeFileSync(tarPath, tarball);
-  execFileSync("tar", [
-    "-xzf",
-    tarPath,
-    "-C",
-    tmpDir,
-    "--strip-components=1",
-    "--wildcards",
-    "*/xsl",
-    "*/LICENSE*",
-  ]);
+  // The stylesheets, plus whichever license file copyXslTree goes looking for.
+  const count = await extractZip(archive, tmpDir, {
+    strip: 1,
+    wanted: (relPath) =>
+      relPath.startsWith("xsl/") ||
+      relPath === "COPYING" ||
+      relPath.startsWith("LICENSE"),
+  });
+  console.log(`Extracted ${count} files`);
   return tmpDir;
 }
 
@@ -65,15 +110,24 @@ function copyXslTree(sourceRoot) {
   }
   fs.rmSync(xslDir, { recursive: true, force: true });
   fs.cpSync(sourceXsl, xslDir, { recursive: true });
-  // Ship the upstream license alongside the vendored (GPL-licensed) files
-  for (const name of ["LICENSE", "LICENSE.txt", "LICENSE.md"]) {
-    const licensePath = path.join(sourceRoot, name);
-    if (fs.existsSync(licensePath)) {
-      fs.copyFileSync(licensePath, path.join(xslDir, "LICENSE-pretext"));
-      break;
-    }
+  // Ship the upstream license alongside the vendored (GPL-licensed) files.
+  // PreTeXt names it COPYING; the LICENSE* spellings are here in case that
+  // changes. Not optional: the vendored stylesheets are GPL, so failing to
+  // find it is an error rather than something to skip quietly.
+  const licenseName = ["COPYING", "LICENSE", "LICENSE.txt", "LICENSE.md"].find(
+    (name) => fs.existsSync(path.join(sourceRoot, name)),
+  );
+  if (!licenseName) {
+    throw new Error(
+      `No license file found at ${sourceRoot}. The vendored stylesheets are ` +
+        `GPL-licensed and must ship with upstream's license text.`,
+    );
   }
-  console.log(`Copied XSL tree to ${xslDir}`);
+  fs.copyFileSync(
+    path.join(sourceRoot, licenseName),
+    path.join(xslDir, "LICENSE-pretext"),
+  );
+  console.log(`Copied XSL tree to ${xslDir} (license: ${licenseName})`);
 }
 
 /**
@@ -275,6 +329,35 @@ async function main() {
   }
   generatePreviewXsl();
   checkFileWriters();
+  warnIfBundleStale();
+}
+
+/**
+ * assets/xsl-bundle.json is a recording of the stylesheets a render touched
+ * (see scripts/build-xsl-bundle.mjs), and a refresh has just replaced those
+ * stylesheets underneath it. A *missing* bundle degrades gracefully — the
+ * browser host falls back to per-file fetches — but a stale one serves the
+ * pre-refresh stylesheets to the browser build, mixing two upstream revisions
+ * into one transform, which fails as an opaque "failed to apply XSLT
+ * stylesheet". Regenerating it needs a current dist/, so it cannot happen
+ * here; say so instead of leaving it to be discovered as a test failure.
+ */
+function warnIfBundleStale() {
+  const bundlePath = path.join(assetsDir, "xsl-bundle.json");
+  if (!fs.existsSync(bundlePath)) {
+    return;
+  }
+  const bundle = JSON.parse(fs.readFileSync(bundlePath, "utf8"));
+  const stale = Object.entries(bundle).some(([name, contents]) => {
+    const file = path.join(xslDir, name);
+    return !fs.existsSync(file) || fs.readFileSync(file, "utf8") !== contents;
+  });
+  if (stale) {
+    console.warn(
+      "\nassets/xsl-bundle.json is now STALE and will break the browser " +
+        "build.\nRegenerate it with:\n\n  npm run build -w @pretextbook/pretext-html\n",
+    );
+  }
 }
 
 main().catch((error) => {

@@ -123,18 +123,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- the document type is the element being converted -->
 <xsl:variable name="version-doc-type" select="local-name($version-document-root)"/>
 
-<!-- N.B. consumers disagree on which section-like elements make an  -->
-<!-- article "sectioned": numbering counts "worksheet", chunking     -->
-<!-- does not, and the table of contents also counts "handout".      -->
-<!-- The facts preserve those historical memberships.                -->
-<!-- TODO: harmonize the memberships — a deliberate,                 -->
-<!-- behavior-changing design decision, deferred                     -->
+<!-- An article is "sectioned" for every structure-driven default    -->
+<!-- below when it has a "section", a "worksheet", or a "handout":   -->
+<!-- the three are peers at the same level, so a workbook of         -->
+<!-- printouts numbers and chunks as a sectioned article does.       -->
 <xsl:variable name="version-has-parts"           select="boolean($version-root/book/part)"/>
 <xsl:variable name="version-book-chapters"       select="boolean($version-root/book/part/chapter|$version-root/book/chapter)"/>
 <xsl:variable name="version-book-sections"       select="boolean($version-root/book/part/chapter/section|$version-root/book/chapter/section)"/>
 <xsl:variable name="version-article-sections"    select="boolean($version-root/article/section)"/>
-<xsl:variable name="version-article-worksheets"  select="boolean($version-root/article/worksheet)"/>
-<xsl:variable name="version-article-handouts"    select="boolean($version-root/article/handout)"/>
+<xsl:variable name="version-article-printouts"   select="boolean($version-root/article/worksheet|$version-root/article/handout)"/>
 <xsl:variable name="version-article-subsections" select="boolean($version-root/article/section/subsection)"/>
 
 <!-- A book must have a chapter              -->
@@ -151,7 +148,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:when test="$version-book-sections">2</xsl:when>
         <xsl:when test="$version-book-chapters">1</xsl:when>
         <xsl:when test="$version-article-subsections">2</xsl:when>
-        <xsl:when test="$version-article-sections or $version-article-worksheets or $version-article-handouts">1</xsl:when>
+        <xsl:when test="$version-article-sections or $version-article-printouts">1</xsl:when>
         <xsl:when test="$version-doc-type = 'article'">0</xsl:when>
         <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
         <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
@@ -1399,7 +1396,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- WeBWorK problem representations are formed by Python routines  -->
 <!-- in the   pretext.py  module that communicates with a WeBWorK   -->
 <!-- server.  One file per exercise is written into this directory, -->
-<!-- named by the exercise's @assembly-id.  This variable is only   -->
+<!-- named by the exercise's @pi:assembly-id.  This variable is only-->
 <!-- relevant for consumption of WW representations into output.    -->
 <!-- Keep this variable silent since it may not be necessary.       -->
 <xsl:variable name="webwork-representations-dir">
@@ -1515,7 +1512,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:choose>
             <xsl:when test="$version-has-parts">5</xsl:when>
             <xsl:when test="$version-doc-type = 'book'">4</xsl:when>
-            <xsl:when test="$version-article-sections or $version-article-worksheets">3</xsl:when>
+            <xsl:when test="$version-article-sections or $version-article-printouts">3</xsl:when>
             <xsl:when test="$version-doc-type = 'article'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
@@ -1580,7 +1577,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:choose>
             <xsl:when test="$version-has-parts">3</xsl:when>
             <xsl:when test="$version-doc-type = 'book'">2</xsl:when>
-            <xsl:when test="$version-article-sections or $version-article-worksheets">1</xsl:when>
+            <xsl:when test="$version-article-sections or $version-article-printouts">1</xsl:when>
             <xsl:when test="$version-doc-type = 'article'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
@@ -1684,14 +1681,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:variable>
 <xsl:variable name="numbering-footnotes" select="number($numbering-footnotes-entered)"/>
 
-<!-- The "legacy" consultations of a deprecated "docinfo" analog, -->
-<!-- here and for inline exercises just below, are ripe for       -->
-<!-- deletion, certainly during any comprehensive "docinfo" work  -->
 <xsl:variable name="numbering-figures-entered">
     <xsl:call-template name="numbering-level">
         <xsl:with-param name="family" select="'figures'"/>
         <xsl:with-param name="entered" select="$publication/numbering/figures/@level"/>
-        <xsl:with-param name="legacy" select="$version-docinfo/numbering/figures/@level"/>
     </xsl:call-template>
 </xsl:variable>
 <xsl:variable name="numbering-figures" select="number($numbering-figures-entered)"/>
@@ -1700,7 +1693,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="numbering-level">
         <xsl:with-param name="family" select="'inline exercises'"/>
         <xsl:with-param name="entered" select="$publication/numbering/exercises/@level"/>
-        <xsl:with-param name="legacy" select="$version-docinfo/numbering/exercises/@level"/>
     </xsl:call-template>
 </xsl:variable>
 <xsl:variable name="numbering-exercises" select="number($numbering-exercises-entered)"/>
@@ -1713,14 +1705,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:variable>
 <xsl:variable name="numbering-openproblems" select="number($numbering-openproblems-entered)"/>
 
-<!-- A block group may run on its own counter.  When its publisher -->
-<!-- switch is absent, the deprecated source is honored, then the  -->
-<!-- default.  Warnings live with the other deprecations.  The two -->
-<!-- deprecated "docinfo" consultations are ripe for deletion,     -->
-<!-- certainly during any comprehensive "docinfo" work.            -->
-<xsl:variable name="b-number-figure-distinct"      select="($publication/numbering/figures/@distinct = 'yes') or (not($publication/numbering/figures/@distinct) and boolean($version-docinfo/numbering/figures))"/>
-<xsl:variable name="b-number-project-distinct"     select="($publication/numbering/projects/@distinct = 'yes') or (not($publication/numbering/projects/@distinct) and ($debug.project.number = ''))"/>
-<xsl:variable name="b-number-exercise-distinct"    select="($publication/numbering/exercises/@distinct = 'yes') or (not($publication/numbering/exercises/@distinct) and boolean($version-docinfo/numbering/exercises))"/>
+<!-- A block group may run on its own counter, elected by the      -->
+<!-- publisher switch.  The deprecated "docinfo" analogs for       -->
+<!-- figures and inline exercises, and the deprecated              -->
+<!-- debug.project.number parameter, are ignored; warnings live    -->
+<!-- with the other deprecations.                                  -->
+<xsl:variable name="b-number-figure-distinct"      select="$publication/numbering/figures/@distinct = 'yes'"/>
+<xsl:variable name="b-number-project-distinct"     select="$publication/numbering/projects/@distinct = 'yes'"/>
+<xsl:variable name="b-number-exercise-distinct"    select="$publication/numbering/exercises/@distinct = 'yes'"/>
 <xsl:variable name="b-number-openproblem-distinct" select="$publication/numbering/openproblems/@distinct = 'yes'"/>
 
 <xsl:variable name="chapter-start-entered">
@@ -1759,9 +1751,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:when test="$publication/numbering/divisions/@part-structure">
                     <xsl:message>PTX:FALLBACK: your document is not a book with parts, so the publisher file  numbering/divisions/@part-structure  entry is being ignored</xsl:message>
                 </xsl:when>
-                <xsl:when test="$version-docinfo/numbering/division/@part">
-                    <xsl:message>PTX:DEPRECATE: your document is not a book with parts, and docinfo/numbering/division/@part is deprecated anyway and is being ignored</xsl:message>
-                </xsl:when>
             </xsl:choose>
             <!-- flag this situation -->
             <xsl:text>absent</xsl:text>
@@ -1782,22 +1771,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:when>
-        <!-- Preserve much of old behavior, warning is elsewhere -->
-        <xsl:when test="$version-docinfo/numbering/division/@part">
-            <xsl:choose>
-                <xsl:when test="$version-docinfo/numbering/division/@part = 'structural'">
-                    <xsl:text>structural</xsl:text>
-                </xsl:when>
-                <xsl:when test="$version-docinfo/numbering/division/@part = 'decorative'">
-                    <xsl:text>decorative</xsl:text>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:message>PTX:FALLBACK: the  docinfo/numbering/division/@part  entry should be "decorative" or "structural", not "<xsl:value-of select="$version-docinfo/numbering/division/@part"/>".  The default will be used instead.</xsl:message>
-                    <xsl:text>decorative</xsl:text>
-                </xsl:otherwise>
-            </xsl:choose>
-        </xsl:when>
-        <!-- no specification, use default -->
+        <!-- no specification, use default; the deprecated         -->
+        <!-- docinfo/numbering/division/@part is ignored (warnings -->
+        <!-- live with the other deprecations)                     -->
         <xsl:otherwise>
             <xsl:text>decorative</xsl:text>
         </xsl:otherwise>
@@ -2752,7 +2728,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </xsl:when>
         <xsl:when test="$version-has-parts">3</xsl:when>
         <xsl:when test="$version-doc-type = 'book'">2</xsl:when>
-        <xsl:when test="$version-article-sections">1</xsl:when>
+        <xsl:when test="$version-article-sections or $version-article-printouts">1</xsl:when>
         <xsl:when test="$version-doc-type = 'article'">0</xsl:when>
         <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
         <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
@@ -4023,7 +3999,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- parameter is deprecated and ineffective, deprecated 2024-02-16. -->
 <xsl:param name="commentary" select="''" />
 
-<!-- Deprecated 2026-06-07, but still respected -->
+<!-- Deprecated 2026-06-07, and now ignored -->
 <xsl:param name="debug.project.number" select="''" />
 
 <!-- DEPRECATED: 2026-07-25  In favor of          -->
@@ -4684,7 +4660,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!--  -->
     <xsl:call-template name="parameter-deprecation-message">
         <xsl:with-param name="date-string" select="'2026-06-07'" />
-        <xsl:with-param name="message" select="'the  debug.project.number  parameter has been replaced by the  numbering/projects/@distinct  entry in the publisher file.  We will attempt to honor your intent.  But please switch to using the Publishers File for configuration, as documented in the PreTeXt Guide.'" />
+        <xsl:with-param name="message" select="'the  debug.project.number  parameter has been replaced by the  numbering/projects/@distinct  entry in the publisher file.  It will be ignored.  Please switch to using the Publishers File for configuration, as documented in the PreTeXt Guide.'" />
         <xsl:with-param name="incorrect-use" select="($debug.project.number != '')" />
     </xsl:call-template>
     <!--  -->

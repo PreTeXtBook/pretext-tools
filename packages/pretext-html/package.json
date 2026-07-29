@@ -69,6 +69,9 @@
     "xast-util-from-xml": "^4.0.0",
     "xast-util-to-xml": "^4.0.0"
   },
+  "devDependencies": {
+    "jszip": "^3.10.1"
+  },
   "engines": {
     "node": ">=24"
   },

@@ -188,7 +188,7 @@
 <!-- template in the entry template here, so these pages are not built (good).      -->
 <!-- But we do get little buttons to elect a printable version.  We have to kill    -->
 <!-- those buttons, since EPUB wants to go looking for the printable-version files. -->
-<xsl:template match="worksheet|handout" mode="standalone-printout-links"/>
+<xsl:template match="&PRINTOUT;" mode="standalone-printout-links"/>
 
 
 <!-- ############## -->
@@ -219,11 +219,13 @@
     <xsl:call-template name="packaging-info"/>
 </xsl:template>
 
-<!-- First, we use the frontmatter element to trigger various necessary files     -->
+<!-- First, create the cover page and table of contents files, which are          -->
+<!-- necessary for every EPUB, even when the source has no "frontmatter"          -->
 <!-- We process structural nodes via chunking routine in  xsl/mathbook-common.xsl -->
 <!-- This in turn calls specific modal templates defined elsewhere in this file   -->
 <xsl:template match="/pretext">
-    <xsl:apply-templates select="$document-root//frontmatter" mode="epub" />
+    <xsl:call-template name="cover-page-file"/>
+    <xsl:call-template name="table-contents-file"/>
     <xsl:call-template name="endnotes"/>
     <xsl:apply-templates mode="chunking" />
 </xsl:template>
@@ -293,7 +295,7 @@
 <!-- and they are going into their own files.  So it seems the    -->
 <!-- right thing to do, while making minimal changes elsewhere.   -->
 <xsl:template match="chapter/conclusion|chapter/outcomes[preceding-sibling::section]" mode="containing-filename">
-    <xsl:apply-templates select="." mode="visible-id"/>
+    <xsl:apply-templates select="." mode="unique-id"/>
     <xsl:text>.xhtml</xsl:text>
 </xsl:template>
 
@@ -816,6 +818,12 @@
 <!-- Content files -->
 <!-- ############# -->
 
+<!-- The cover page and table of contents files are listed in the   -->
+<!-- manifest and spine of every EPUB, and "package-manifest" reads -->
+<!-- the table of contents file once written.  So create both       -->
+<!-- unconditionally: their content comes from the document root,   -->
+<!-- not the optional "frontmatter".                                -->
+
 <!-- "coverpage.html" comes in two flavors:                            -->
 <!--                                                                   -->
 <!-- 1.  An author provides a cover image via the publication file and -->
@@ -829,7 +837,7 @@
 <!--     here is backed out.  More immediately, we build a simple page -->
 <!--     (with CSS) having title, subtitle, and authors.               -->
 
-<xsl:template match="frontmatter" mode="epub">
+<xsl:template name="cover-page-file">
     <exsl:document href="{$content-dir}/{$xhtml-dir}/cover-page.xhtml" method="xml" omit-xml-declaration="yes" encoding="UTF-8" indent="no">
         <html>
             <xsl:call-template name="html-theme-attributes"/>
@@ -878,6 +886,9 @@
             </body>
         </html>
     </exsl:document>
+</xsl:template>
+
+<xsl:template name="table-contents-file">
     <exsl:document href="{$content-dir}/{$xhtml-dir}/table-contents.xhtml" method="xml" omit-xml-declaration="yes" encoding="UTF-8" indent="no">
         <html xmlns:epub="http://www.idpf.org/2007/ops">
             <xsl:call-template name="html-theme-attributes"/>
@@ -1553,7 +1564,7 @@
 
 <!-- Pluck SVGs from the file full of them, with matching IDs -->
 <xsl:template match="m|md[mrow]">
-    <!-- NB: math-representation file writes with "visible-id" -->
+    <!-- NB: math-representation file writes with "unique-id" -->
     <xsl:variable name="id">
         <xsl:apply-templates select="." mode="unique-id"/>
     </xsl:variable>

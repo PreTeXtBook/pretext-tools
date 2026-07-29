@@ -80,8 +80,15 @@ describe("posix-path", () => {
     // against process.cwd(). A browser has no cwd, and a virtual path is
     // meaningless relative to one — so bare relative input roots at "/".
     expect(shim.resolve("relative/path.ptx")).toBe("/relative/path.ptx");
-    expect(nodePosix.resolve("relative/path.ptx")).toBe(
-      `${process.cwd()}/relative/path.ptx`,
+    // The contrast: node anchors the same input at the cwd instead. How that
+    // cwd is spelled is platform-dependent — on Windows it is not a posix path
+    // at all, so `${process.cwd()}/...` is not the answer there — hence assert
+    // the behaviour (some cwd prefix, not the bare root) rather than the text.
+    expect(nodePosix.resolve("relative/path.ptx")).not.toBe(
+      "/relative/path.ptx",
+    );
+    expect(nodePosix.resolve("relative/path.ptx")).toMatch(
+      /\/relative\/path\.ptx$/,
     );
   });
 
