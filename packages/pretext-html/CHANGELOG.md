@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.5.0
+
+### Minor Changes
+
+- 1e6666b: Release slide previews
+
 ## 0.4.0
 
 ### Minor Changes
