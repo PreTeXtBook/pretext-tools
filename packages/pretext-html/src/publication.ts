@@ -12,11 +12,17 @@
  * That rewrite is also how an embedder's default HTML theme gets in
  * (`<html><css theme="..."/></html>`): same reason, no stringparam for it
  * either, short of `debug.html.theme-name`.
+ *
+ * Slideshow renders go through the same rewrite for the same reason, plus one
+ * of their own: reveal.js resources may be published locally or embedded into
+ * the page, and neither exists for an in-memory build (see
+ * {@link forceRevealResources}).
  */
 
 import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import type { Element, Root } from "xast";
+import type { RenderTarget } from "./target.js";
 
 const MINIMAL_PUBLICATION = `<?xml version="1.0" encoding="UTF-8"?>
 <publication>
@@ -77,19 +83,85 @@ function applyDefaultCssTheme(html: Element, cssTheme: string): void {
 }
 
 /**
+ * Declare `<appearance theme="..."/>` under `<revealjs>`, unless the
+ * publication file already names one. A fallback, not an override — the same
+ * contract as {@link applyDefaultCssTheme}, and a different setting entirely:
+ * reveal.js decks are styled by reveal's own themes, not PreTeXt's.
+ */
+function applyDefaultRevealTheme(revealjs: Element, revealTheme: string): void {
+  const existing = findChildElement(revealjs, "appearance");
+  if (existing?.attributes?.["theme"]) {
+    return;
+  }
+  const appearance = existing ?? ensureChildElement(revealjs, "appearance");
+  appearance.attributes = { ...appearance.attributes, theme: revealTheme };
+}
+
+/**
+ * Force `<revealjs><resources host="cdn" math="online"/></revealjs>`.
+ *
+ * Unlike the theme defaults, this overrides the project outright, because the
+ * two alternatives it displaces cannot work here:
+ *
+ * - `host="local"` points reveal.js at a `dist/` tree copied next to the built
+ *   slideshow. Nothing is copied anywhere for an in-memory render, so every
+ *   stylesheet and script would 404 and the deck would not run at all.
+ * - `host="embedded"` emits the same CDN URLs but expects the `pretext/pretext`
+ *   script to inline the file contents afterwards, which nothing does here.
+ *
+ * `math` is forced along with it: it defaults to "embedded" whenever the host
+ * is embedded, and embedded mathematics is a set of prebuilt SVG images passed
+ * in through the `mathfile` parameter by the Python toolchain. Without that
+ * file the deck renders with its mathematics simply missing — silently, which
+ * is worse than the styling being off. "online" loads MathJax from the CDN,
+ * which the preview can do.
+ */
+function forceRevealResources(revealjs: Element): void {
+  const resources = ensureChildElement(revealjs, "resources");
+  resources.attributes = {
+    ...resources.attributes,
+    host: "cdn",
+    math: "online",
+  };
+}
+
+/** Optional adjustments layered onto the publication file for a render. */
+export interface PublicationOverrides {
+  /**
+   * Fallback PreTeXt HTML theme for projects that name none; see
+   * `RenderOptions.cssTheme`. A blank value is ignored.
+   */
+  cssTheme?: string;
+  /**
+   * Fallback reveal.js theme for slideshows that name none; see
+   * `RenderOptions.revealTheme`. Only consulted when `target` is "slides".
+   */
+  revealTheme?: string;
+  /**
+   * Which conversion this publication file is being prepared for. "slides"
+   * additionally forces the reveal.js resource host; see
+   * {@link forceRevealResources}. Defaults to "html".
+   */
+  target?: RenderTarget;
+}
+
+/**
  * Return publication-file XML with `<html><platform portable="yes"/></html>`
  * forced, preserving everything else from `publicationXml` when given.
  *
- * `cssTheme`, when given, supplies `<html><css theme="..."/></html>` for
- * projects that do not choose an HTML theme themselves; see
- * `RenderOptions.cssTheme`. A blank value is ignored.
+ * Portable mode is forced for slideshows too, even though the reveal.js
+ * conversion never chunks: it is what sets `$cdn-prefix`, and so what puts the
+ * PreTeXt-side css and js (sagecell, syntax highlighting, the slide styling)
+ * on the CDN rather than at a relative path that does not exist.
  */
 export function forcePortablePublication(
   publicationXml?: string,
-  cssTheme?: string,
+  overrides: PublicationOverrides = {},
 ): string {
-  const theme = cssTheme?.trim();
-  if (!publicationXml && !theme) {
+  const cssTheme = overrides.cssTheme?.trim();
+  const revealTheme = overrides.revealTheme?.trim();
+  const slides = overrides.target === "slides";
+  if (!publicationXml && !cssTheme && !slides) {
     return MINIMAL_PUBLICATION;
   }
   const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
@@ -102,8 +174,15 @@ export function forcePortablePublication(
   const html = ensureChildElement(publication, "html");
   const platform = ensureChildElement(html, "platform");
   platform.attributes = { ...platform.attributes, portable: "yes" };
-  if (theme) {
-    applyDefaultCssTheme(html, theme);
+  if (cssTheme) {
+    applyDefaultCssTheme(html, cssTheme);
+  }
+  if (slides) {
+    const revealjs = ensureChildElement(publication, "revealjs");
+    forceRevealResources(revealjs);
+    if (revealTheme) {
+      applyDefaultRevealTheme(revealjs, revealTheme);
+    }
   }
   return toXml(tree);
 }

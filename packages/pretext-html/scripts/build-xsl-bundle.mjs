@@ -55,6 +55,25 @@ const SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 </pretext>
 `;
 
+/**
+ * A slideshow, recorded as well, because the reveal.js conversion enters
+ * through a different wrapper and pulls in pretext-revealjs.xsl — neither of
+ * which the article above ever touches. Without this the browser build would
+ * fall back to per-file fetches for every deck: correct, but the round trips
+ * are exactly what the bundle exists to avoid.
+ */
+const SLIDESHOW_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <slideshow xml:id="bundle-deck">
+    <title>Bundle recording deck</title>
+    <slide xml:id="bundle-slide">
+      <title>A slide</title>
+      <p>Text with math <m>x^2</m>.</p>
+    </slide>
+  </slideshow>
+</pretext>
+`;
+
 async function main() {
   const recorded = new Map();
   const xslRoot = defaultXslDir();
@@ -79,11 +98,15 @@ async function main() {
     return new Uint8Array(data);
   });
 
-  await renderHtml({
-    sourcePath: path.join(packageDir, "__bundle-sample.ptx"),
-    sourceContent: SAMPLE,
-    projectDir: packageDir,
-  });
+  // Both conversions, so the bundle covers documents and decks alike. They
+  // share most of their closure, so the second adds only a few files.
+  for (const sourceContent of [SAMPLE, SLIDESHOW_SAMPLE]) {
+    await renderHtml({
+      sourcePath: path.join(packageDir, "__bundle-sample.ptx"),
+      sourceContent,
+      projectDir: packageDir,
+    });
+  }
 
   if (recorded.size === 0) {
     throw new Error(

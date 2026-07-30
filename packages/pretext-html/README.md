@@ -172,6 +172,87 @@ its native `localStorage`/`prefers-color-scheme` behaviour. The
 `isPreviewTheme`) with no dependency on the renderer, so a host can import just
 the message helper.
 
+### Slideshows (reveal.js)
+
+A document whose top-level element is `<slideshow>` is rendered as a
+[reveal.js](https://revealjs.com) deck instead, through PreTeXt's own
+`pretext-revealjs.xsl`. Detection is automatic — there is nothing to turn on —
+and `RenderResult.target` reports which conversion ran.
+
+```js
+import { renderHtml } from "@pretextbook/pretext-html";
+// dependency-free subpath, like ./theme:
+import { injectRevealBridge } from "@pretextbook/pretext-html/reveal";
+
+const { html, target } = await renderHtml({
+  sourcePath: "source/slides.ptx",
+  revealView: "scroll", // the default: whole deck as one scrolling page
+  revealTheme: "black", // fallback only; the project's own theme wins
+  revealZoom: 1, // content size vs. presented size (scroll view)
+});
+target; // "slides"
+
+// Switch to the ordinary presentation later — no re-render, just re-inject:
+const presenting = injectRevealBridge(html, "slides");
+```
+
+Two things are forced on a slideshow render, overriding the publication file,
+because the alternatives cannot work without the Python toolchain:
+`revealjs/resources/@host` becomes `cdn` (a `local` host points at a `dist/`
+tree that was never copied anywhere; `embedded` expects a post-processing step
+that never runs), and `@math` becomes `online` (embedded mathematics is
+prebuilt SVG passed in through the `mathfile` parameter, and without it a deck
+renders with its mathematics silently missing). Everything else — theme,
+navigation mode, controls — stays as the project authored it.
+
+The scroll view is tuned for reading a deck rather than presenting it. It lays
+slides out at reveal's nominal **960×700** and scales them to fit, stacks them
+with `scrollLayout: "compact"` and an outline around each, and shows every
+`@pause`/`<subslide>` fragment at once so scrolling is not interrupted. Switch
+to `revealView: "slides"` to see the pauses step through as they will when
+presented.
+
+Showing the pauses at once takes more than `fragments: false`, which is worth
+knowing if you ever touch this: the scroll view counts its scroll steps with
+`querySelectorAll('.fragment')` and never consults that setting, so the config
+alone makes fragments _visible_ while reveal still adds a scroll step — and a
+full `scrollTriggerHeight` of padding — for each one. Compact layout compounds
+it, because a page with any scroll trigger reverts to a full-viewport height.
+A slide with two pauses ends up roughly three screens tall. The injected script
+therefore removes the `fragment` class outright before `initialize` runs.
+
+The nominal size is worth understanding, because it is the one override that
+changes how a deck _looks_: PreTeXt publishes `width: "100%", height: "100%"`,
+and reveal resolves a percentage against the presentation element — so the
+slide becomes exactly as large as whatever is showing it, the computed scale is
+always 1, and no downscaling ever happens. Full screen that is fine; in an
+editor pane it means text sized for a 960px slide is drawn at full size into a
+fraction of that width. Giving reveal a real deck size to scale from restores
+the proportions a full-screen presentation will have.
+
+`revealZoom` then works _in slide units_, dividing that nominal size rather than
+shrinking the slide on screen — `0.5` gives a 1920×1400 slide. This is the only
+arrangement that behaves like zooming out on a web page. Reveal lays content out
+in slide units and scales the whole slide to fit, so a smaller _box_ fits
+exactly the same content and clips exactly the same overflow; a larger box
+leaves the slide the same size on screen (reveal simply scales it down further)
+while fixed-pixel text occupies proportionally less of it. Since reveal clips
+whatever runs past the bottom of a slide, with no way to scroll to it, zooming
+out is the only way to read content that does not fit — which is also why the
+default is `1`, where the deck, overflow included, looks exactly as it will when
+presented.
+
+Two further notes:
+
+- **`RenderOptions.theme` does nothing for a deck.** reveal.js pages load none
+  of the PreTeXt javascript behind light/dark mode, so there is no
+  `setDarkMode` to drive. Pick a light or dark **reveal** theme with
+  `revealTheme` instead.
+- **Views are baked in at render time.** reveal reads `view` once, when it
+  initializes, so `injectRevealBridge` returns a new page rather than talking
+  to a live deck — deliver it as a fresh document (`webview.html = …`, not an
+  in-place rewrite) for the change to take.
+
 ## Requirements
 
 - **Node ≥ 24** launched with **`--experimental-wasm-jspi`** (WebAssembly
@@ -202,7 +283,11 @@ the message helper.
    other file-writing templates are stubbed. The wrapper is **generated** by
    `scripts/refresh-xsl.mjs`, which also audits every `exsl:document` site
    reachable from `pretext-html.xsl` and fails if upstream adds a writer we
-   don't cover.
+   don't cover. `assets/preview-revealjs.xsl` is the slideshow counterpart and
+   is far thinner: `pretext-revealjs.xsl` already emits one monolithic page, so
+   there is no template to copy — it only stubs the same file writers (a slide
+   holding an `<interactive>` really does reach one) and stamps `@id` onto
+   slides, via `apply-imports` so no upstream markup is duplicated.
 3. **Virtual-host fetch shim** — the WASM build has no filesystem
    (`FILESYSTEM=0`); every resource load (stylesheet imports, `document()`
    calls, the publication file) goes through the global `fetch`. We mount

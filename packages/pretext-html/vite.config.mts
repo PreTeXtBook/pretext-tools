@@ -82,6 +82,10 @@ export default defineConfig(({ mode }) => {
               // host applies it to HTML the *worker* rendered, so it needs the
               // helper without libxslt-wasm's top-level await.
               assets: "src/assets.ts",
+              // And for slideshow view control, for the same reason: switching
+              // a deck between scroll and presentation view re-injects into
+              // HTML already rendered, which is host-side work.
+              reveal: "src/reveal.ts",
             },
         // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI
         // anyway, so there is no CommonJS audience for this package.

@@ -57,6 +57,13 @@ import {
   previewThemeMessage,
   type PreviewTheme,
 } from "@pretextbook/pretext-html/theme";
+// Another dependency-free leaf subpath. Switching a deck between the scroll
+// and presentation views only rewrites the config in HTML the worker already
+// rendered, so it happens here rather than costing a round trip.
+import {
+  injectRevealBridge,
+  type RevealView,
+} from "@pretextbook/pretext-html/reveal";
 import {
   ensureCliServer,
   runCliBuild,
@@ -76,6 +83,16 @@ let currentSource: SourceInfo | undefined;
 // Source map of the last successful render (see @pretextbook/pretext-html's
 // sourcemap.ts): HTML element ids ↔ source file/line, powering two-way sync.
 // Indexed by (normalized) file for cursor-follow and by id for click-to-source.
+/**
+ * The last slideshow page the worker produced, held only so
+ * {@link toggleSlidesView} can re-deliver it in the other view. Undefined
+ * whenever the panel is showing an ordinary document, which is also what the
+ * `previewIsSlideshow` context key reports to the command's `when` clause.
+ */
+let lastRender:
+  | { html: string; assetDirs?: { external: string; generated: string } }
+  | undefined;
+
 let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
 let sourceMapById: Map<string, SourceMapEntry> | undefined;
 let selectionWatcher: Disposable | undefined;
@@ -151,6 +168,13 @@ interface RenderResponse {
   elapsedMs?: number;
   sourceMap?: SourceMapEntry[];
   /**
+   * Which conversion the worker ran: "slides" for a reveal.js deck, "html"
+   * otherwise. Decides whether the slideshow view toggle applies to what the
+   * panel is currently showing. Optional so a response from an older worker
+   * (mid-upgrade, before a restart) still parses.
+   */
+  target?: "html" | "slides";
+  /**
    * Real directories behind the `external/`/`generated/` URLs in `html`.
    * Absent for legacy projects that declare neither in their publication file.
    */
@@ -200,6 +224,71 @@ function previewCssTheme(): string | undefined {
     .get<string>("instantPreview.cssTheme")
     ?.trim();
   return theme || undefined;
+}
+
+/**
+ * How a slideshow preview opens: "scroll" for the whole deck as one
+ * continuous page, "slides" for reveal.js's ordinary presentation.
+ *
+ * The setting is only the *starting* view; the toolbar toggle overrides it for
+ * the session (see {@link revealViewOverride}).
+ */
+function configuredRevealView(): RevealView {
+  return workspace
+    .getConfiguration("pretext-tools")
+    .get<string>("instantPreview.slidesView") === "slides"
+    ? "slides"
+    : "scroll";
+}
+
+/**
+ * The view the user last toggled to, which outranks the setting until the
+ * panel closes. Cleared on dispose so a new panel starts from the setting
+ * again.
+ */
+let revealViewOverride: RevealView | undefined;
+
+/** The view a slideshow render should use right now. */
+function currentRevealView(): RevealView {
+  return revealViewOverride ?? configuredRevealView();
+}
+
+/**
+ * How much of the preview's width a slide fills in the scroll view.
+ *
+ * Clamped rather than trusted: this comes straight from user settings, and a
+ * value at or past the ends would render a deck either invisibly small or with
+ * no room to lay out in at all.
+ */
+function previewSlidesZoom(): number {
+  const zoom = workspace
+    .getConfiguration("pretext-tools")
+    .get<number>("instantPreview.slidesZoom");
+  if (typeof zoom !== "number" || !isFinite(zoom)) {
+    return ZOOM_MAX;
+  }
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
+}
+
+/**
+ * The reveal.js theme decks fall back on when their publication file names
+ * none.
+ *
+ * "auto" (the default) follows the editor, because a deck cannot: reveal pages
+ * load none of the PreTeXt javascript behind light/dark mode, so unlike an
+ * ordinary preview there is no runtime switch to post at — the choice has to
+ * be baked in at render time. "simple" and "black" are reveal's own minimal
+ * light and dark themes, the closest match to how the HTML preview looks.
+ */
+function previewRevealTheme(): string | undefined {
+  const setting = workspace
+    .getConfiguration("pretext-tools")
+    .get<string>("instantPreview.slidesTheme")
+    ?.trim();
+  if (!setting || setting === "auto") {
+    return currentPreviewTheme() === "dark" ? "black" : "simple";
+  }
+  return setting;
 }
 
 /**
@@ -265,6 +354,28 @@ function setupConfigWatcher(extensionPath: string): void {
     }
     if (event.affectsConfiguration("pretext-tools.instantPreview.cssTheme")) {
       renderToPanel(extensionPath);
+    }
+    // The reveal theme is baked into the publication file, so it genuinely
+    // needs the document rebuilding; the view and zoom only change what reveal
+    // is initialized with, so re-injecting is enough — and is what the toolbar
+    // buttons have already done by the time this fires for their own writes.
+    if (
+      event.affectsConfiguration("pretext-tools.instantPreview.slidesTheme")
+    ) {
+      renderToPanel(extensionPath);
+    } else if (
+      event.affectsConfiguration("pretext-tools.instantPreview.slidesZoom") ||
+      event.affectsConfiguration("pretext-tools.instantPreview.slidesView")
+    ) {
+      if (
+        event.affectsConfiguration("pretext-tools.instantPreview.slidesView")
+      ) {
+        // Deliberately changing the setting outranks a toolbar toggle from
+        // earlier in the session; otherwise the setting would appear to do
+        // nothing until the panel was reopened.
+        revealViewOverride = undefined;
+      }
+      redeliverSlideshow();
     }
   });
 }
@@ -434,6 +545,18 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
                 );
             }
             return;
+          case "slidesScroll":
+            setPreviewSlidesView("scroll");
+            return;
+          case "slidesPresent":
+            setPreviewSlidesView("slides");
+            return;
+          case "zoomIn":
+            cmdStepPreviewSlidesZoom(ZOOM_STEP);
+            return;
+          case "zoomOut":
+            cmdStepPreviewSlidesZoom(-ZOOM_STEP);
+            return;
           case "openExternal": {
             const target = fullBuildTarget();
             const url = target && servedUrl(target);
@@ -501,6 +624,117 @@ export async function cmdInstantPreviewScope(
     currentSource = resolveSource() ?? currentSource;
     renderToPanel(extensionPath);
   }
+}
+
+/** True when the page currently in the panel is a reveal.js deck. */
+function isSlideshowPreview(): boolean {
+  return lastRender !== undefined;
+}
+
+/**
+ * Steps the toolbar's zoom buttons move by. Coarse enough that a click is
+ * visibly worth making, fine enough to land on something comfortable in two or
+ * three presses.
+ */
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.25;
+const ZOOM_MAX = 1;
+
+/**
+ * Zoom the deck in or out from the toolbar, and persist it.
+ *
+ * Written back to settings rather than kept as a session override — unlike the
+ * view, which is a momentary "let me check how this looks", a comfortable zoom
+ * is a lasting preference and re-picking it every session would be a chore.
+ * The same reasoning the follow-editor toggle already uses.
+ */
+function cmdStepPreviewSlidesZoom(delta: number): void {
+  const next = Math.min(
+    ZOOM_MAX,
+    Math.max(ZOOM_MIN, Math.round((previewSlidesZoom() + delta) * 100) / 100),
+  );
+  if (next === previewSlidesZoom()) {
+    return; // already at the end of the range; nothing to persist or redraw
+  }
+  // Only written here; the config watcher notices and re-delivers, so the
+  // update has exactly one path whether it came from this button or from the
+  // settings UI.
+  void workspace
+    .getConfiguration("pretext-tools")
+    .update(
+      "instantPreview.slidesZoom",
+      next,
+      workspace.workspaceFolders
+        ? ConfigurationTarget.Workspace
+        : ConfigurationTarget.Global,
+    );
+}
+
+/**
+ * Re-inject the current deck and put it back in the panel.
+ *
+ * Shared by the view toggle and the zoom stepper because both change only what
+ * reveal is initialized with. Always injects from the worker's untouched
+ * output, never from the previously injected page: the script guards against
+ * double-wrapping but re-injection has to replace the whole block, and
+ * starting from pristine HTML keeps that simple.
+ */
+function redeliverSlideshow(): void {
+  if (!currentPanel || !lastRender) {
+    return;
+  }
+  const html = injectRevealBridge(lastRender.html, currentRevealView(), {
+    zoom: previewSlidesZoom(),
+  });
+  // Straight to webview.html rather than the in-place rewrite: reveal reads
+  // its view and slide size once, at initialize, so both need a new document.
+  panelHasContent = false;
+  updatePanelContent(
+    prepareWebviewHtml(
+      html,
+      currentPanel.webview,
+      currentSource?.projectDir ?? "",
+      lastRender.assetDirs,
+    ),
+  );
+}
+
+/**
+ * Flip a slideshow preview between the scroll view and reveal.js's ordinary
+ * presentation.
+ *
+ * No re-render: the two differ only in the config reveal.js is initialized
+ * with, so the page the worker last produced is re-injected and re-delivered.
+ * That costs a webview reload (a fresh document is the only way reveal picks
+ * up a different view — see @pretextbook/pretext-html/reveal) but no XSLT, so
+ * it is immediate even on a book-sized deck.
+ *
+ * The override lasts for the life of the panel rather than being written back
+ * to settings: switching to presentation view to check how a slide will look
+ * is a momentary thing, and a preference that silently rewrote itself every
+ * time would be worse than one that did not.
+ */
+export function cmdTogglePreviewSlidesView(): void {
+  if (!isSlideshowPreview()) {
+    window.showInformationMessage(
+      "The preview is not showing a slideshow. Open a PreTeXt slideshow " +
+        "(a document whose top-level element is <slideshow>) to switch views.",
+    );
+    return;
+  }
+  setPreviewSlidesView(currentRevealView() === "scroll" ? "slides" : "scroll");
+}
+
+/** Show the deck in `view`, if it is not already. */
+function setPreviewSlidesView(view: RevealView): void {
+  if (!isSlideshowPreview() || view === currentRevealView()) {
+    return;
+  }
+  revealViewOverride = view;
+  redeliverSlideshow();
+  pretextOutputChannel.appendLine(
+    `[Instant Preview] Slideshow view: ${view === "scroll" ? "scrolling deck" : "presentation"}`,
+  );
 }
 
 /**
@@ -999,6 +1233,10 @@ function renderToPanel(extensionPath: string): void {
     // Code (no light-then-dark flash). setupThemeWatcher posts live updates
     // for subsequent theme switches without a re-render.
     theme: currentPreviewTheme(),
+    // Slideshow-only; ignored outright when the document is not a deck.
+    revealView: currentRevealView(),
+    revealTheme: previewRevealTheme(),
+    revealZoom: previewSlidesZoom(),
   };
   child.send(request, (err) => {
     if (err && pendingRequestId === id) {
@@ -1035,6 +1273,17 @@ function handleRenderResponse(message: RenderResponse): void {
     }
     crashRetries = 0;
     applySourceMap(message.sourceMap);
+    // Kept so the view can be toggled without a re-render: the toggle only
+    // rewrites reveal's config, which is a property of this exact HTML.
+    lastRender =
+      message.target === "slides"
+        ? { html, assetDirs: message.assetDirs }
+        : undefined;
+    void commands.executeCommand(
+      "setContext",
+      "pretext-tools.previewIsSlideshow",
+      message.target === "slides",
+    );
     updatePanelContent(
       prepareWebviewHtml(
         html,
@@ -1361,6 +1610,23 @@ function toolbarCss(): string {
     "#ptx-tools-bar[data-scope='project'] .ptx-tools-file-only {",
     "  display: none;",
     "}",
+    // Slideshow controls appear only when the page in the panel is a deck, and
+    // the zoom stepper only in the scrolling view — there is nothing to zoom
+    // when a single slide is filling the pane.
+    "#ptx-tools-bar:not([data-slides='yes']) .ptx-tools-slides-only {",
+    "  display: none;",
+    "}",
+    "#ptx-tools-bar[data-slides-view='slides'] .ptx-tools-zoom {",
+    "  display: none;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-zoom {",
+    "  display: flex; align-items: center; gap: 2px;",
+    "}",
+    // Fixed width so stepping the zoom does not shuffle the buttons sideways.
+    "#ptx-tools-zoom-value {",
+    "  opacity: 0.75; min-width: 3.2em; text-align: center;",
+    "  font-variant-numeric: tabular-nums;",
+    "}",
     "</style>",
   ].join("\n");
 }
@@ -1390,8 +1656,12 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
   // data-scope drives whether the follow toggle is shown at all: in project
   // scope the preview always renders the main source file, so following the
   // editor would do nothing and offering it would just be a lie.
+  const slides = isSlideshowPreview();
+  const view = currentRevealView();
+  const zoomPercent = Math.round(previewSlidesZoom() * 100);
   return [
-    `<div id="ptx-tools-bar" data-mode="${mode}" data-scope="${previewScope()}">`,
+    `<div id="ptx-tools-bar" data-mode="${mode}" data-scope="${previewScope()}"` +
+      ` data-slides="${slides ? "yes" : "no"}" data-slides-view="${view}">`,
     '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
     '    <button type="button" data-ptx-mode="live"',
     `      aria-pressed="${pressed("live")}"`,
@@ -1404,6 +1674,24 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
     "  </div>",
     `  <span id="ptx-tools-status">${escapeHtml(status)}</span>`,
     '  <span class="ptx-tools-spacer"></span>',
+    '  <span class="ptx-tools-zoom ptx-tools-slides-only ptx-tools-live-only">',
+    '    <button type="button" data-ptx-action="zoomOut"',
+    '      title="Zoom out: smaller text, so more of each slide is visible">&#8722;</button>',
+    `    <span id="ptx-tools-zoom-value">${zoomPercent}%</span>`,
+    '    <button type="button" data-ptx-action="zoomIn"',
+    '      title="Zoom in, up to the deck\'s true presented size">+</button>',
+    "  </span>",
+    '  <div class="ptx-tools-seg ptx-tools-slides-only ptx-tools-live-only"',
+    '    role="group" aria-label="Slideshow view">',
+    '    <button type="button" data-ptx-action="slidesScroll"',
+    `      aria-pressed="${view === "scroll" ? "true" : "false"}"`,
+    '      title="Show the whole deck as one scrolling page">',
+    "      Deck</button>",
+    '    <button type="button" data-ptx-action="slidesPresent"',
+    `      aria-pressed="${view === "slides" ? "true" : "false"}"`,
+    '      title="Show one slide at a time, with pauses, as it will be presented">',
+    "      Present</button>",
+    "  </div>",
     '  <button type="button" class="ptx-tools-live-only ptx-tools-file-only"',
     '    data-ptx-action="toggleFollow"',
     `    aria-pressed="${followActiveEditor() ? "true" : "false"}"`,
@@ -1456,6 +1744,16 @@ const TOOLBAR_SCRIPT_LINES: string[] = [
   "        btn.setAttribute('aria-pressed', on ? 'true' : 'false');",
   "        api.postMessage({ command: 'setFollow', follow: on });",
   "        return;",
+  "      }",
+  // Same reasoning as the follow toggle: the deck is about to be replaced
+  // wholesale, but until it is the pressed button should already look pressed.
+  "      if (action === 'slidesScroll' || action === 'slidesPresent') {",
+  "        var want = action === 'slidesScroll' ? 'scroll' : 'slides';",
+  "        bar.setAttribute('data-slides-view', want);",
+  "        var seg = btn.parentNode.querySelectorAll('button');",
+  "        for (var i = 0; i < seg.length; i++) {",
+  "          seg[i].setAttribute('aria-pressed', seg[i] === btn ? 'true' : 'false');",
+  "        }",
   "      }",
   "      api.postMessage({ command: action });",
   "    });",
@@ -2003,6 +2301,15 @@ export function disposeInstantPreview(): void {
   }
   sourceMapByFile = undefined;
   sourceMapById = undefined;
+  lastRender = undefined;
+  // A toggled view lasts as long as the panel does; the next one starts from
+  // the setting again.
+  revealViewOverride = undefined;
+  void commands.executeCommand(
+    "setContext",
+    "pretext-tools.previewIsSlideshow",
+    false,
+  );
   // The CLI server outlives our child process, so it needs an explicit stop.
   // Kept running while the panel is open (even in live mode) so toggling back
   // to the full build is instant.

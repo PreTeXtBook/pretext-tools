@@ -19,7 +19,9 @@ import {
   forcePortablePublication,
   readAssetDirectories,
 } from "./publication.js";
+import { injectRevealBridge, type RevealView } from "./reveal.js";
 import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
+import { detectRenderTarget, type RenderTarget } from "./target.js";
 import { injectThemeBridge, type PreviewTheme } from "./theme.js";
 import {
   extractDocinfo,
@@ -82,6 +84,46 @@ export interface RenderOptions {
    * *within* whichever css theme is in force.
    */
   cssTheme?: string;
+  /**
+   * Which conversion to run. Defaults to detecting it from the document: a
+   * `<slideshow>` renders as a reveal.js deck, anything else as ordinary HTML.
+   * Set it explicitly to override the detection — most usefully in fragment
+   * mode, where a lone `<section>` of slides is ambiguous.
+   */
+  target?: RenderTarget;
+  /**
+   * How a slideshow is presented: "scroll" for the whole deck as one
+   * continuous page (the useful default for authoring), "slides" for reveal's
+   * ordinary one-slide-at-a-time presentation. Ignored for non-slideshows.
+   *
+   * Switching later needs no re-render: `injectRevealBridge` applies the other
+   * value to the HTML already returned. Defaults to "scroll".
+   */
+  revealView?: RevealView;
+  /**
+   * How large a deck's content is drawn in the scroll view, as a fraction of
+   * its presented size (0.25 to 1, default 1).
+   *
+   * Zooming out shrinks the *text*, not the slide: the slide stays the same
+   * size on screen and more of its content fits inside it. That is what makes
+   * content overflowing a slide readable at all — reveal clips it, so at full
+   * size there is no way to see what was cut off. Ignored when presenting.
+   */
+  revealZoom?: number;
+  /**
+   * reveal.js theme to fall back on for slideshows whose publication file
+   * names none, inserted as `<revealjs><appearance theme="..."/></revealjs>`.
+   * A default, not an override, exactly like {@link RenderOptions.cssTheme}.
+   *
+   * These are reveal's own themes, not PreTeXt's — "simple" (reveal's default
+   * here), "white", "black", "league", "night", "moon", and so on — and they
+   * are loaded from the CDN by name, so an unrecognised one renders unstyled.
+   *
+   * Note that {@link RenderOptions.theme} does nothing for a slideshow: a deck
+   * loads none of the PreTeXt javascript that implements light/dark mode. A
+   * dark reveal theme is how an embedder gets a dark deck.
+   */
+  revealTheme?: string;
   /** Additional XSLT string parameters, passed as strings (quoted for you). */
   stringParams?: Record<string, string>;
   /** Directory of PreTeXt XSL stylesheets. Defaults to the vendored copy. */
@@ -136,6 +178,12 @@ export interface RenderOptions {
 export interface RenderResult {
   /** Complete standalone HTML page (CDN-hosted css/js/MathJax). */
   html: string;
+  /**
+   * The conversion that actually ran — as asked for, or as detected. Lets an
+   * embedder tell a deck from a document without re-inspecting the source,
+   * which is what decides whether slideshow-only UI (the view toggle) applies.
+   */
+  target: RenderTarget;
   /** Present when RenderOptions.sourceMap was set. */
   sourceMap?: PtxSourceMap;
   /**
@@ -200,6 +248,32 @@ function fixMathJaxImport(html: string): string {
 }
 
 /**
+ * Where PreTeXt's own static css/js live when a build is portable. Mirrors the
+ * `$cdn-prefix` variable in pretext-html.xsl; "latest" matches its default for
+ * the `cli.version` parameter.
+ */
+const HTML_STATIC_CDN =
+  "https://cdn.jsdelivr.net/gh/PreTeXtBook/html-static@latest/dist/";
+
+/**
+ * Point the slideshow's `_static/` stylesheet at the CDN.
+ *
+ * Every other reveal.js resource honours the portable build's `$cdn-prefix`,
+ * but pretext-revealjs.xsl links `pretext-reveal.css` — the stylesheet that
+ * does all of PreTeXt's slide styling — at a bare relative `_static/…` path
+ * (as of 2026-07). In a real build that file has been copied next to the page;
+ * for an in-memory render it 404s, and the deck renders with reveal's base
+ * theme and none of PreTeXt's. Harmless once fixed upstream, since the URL
+ * this produces is exactly what a prefixed href would emit.
+ */
+function fixRevealStaticCss(html: string): string {
+  return html.replace(
+    /(<link\b[^>]*\bhref=["'])_static\//gi,
+    `$1${HTML_STATIC_CDN}_static/`,
+  );
+}
+
+/**
  * Name of the first element in an XML string (the document root), or
  * undefined if none is found. Prolog constructs (declaration, processing
  * instructions, comments, doctype) are skipped textually.
@@ -249,18 +323,24 @@ async function docinfoFromSource(
 /**
  * Wrap a fragment (xinclude-merged content whose root is not <pretext>) in a
  * minimal complete document so the stylesheets can process it. <chapter> and
- * <part> fragments become a one-chapter/one-part <book>; everything else
- * becomes an <article>. The fragment's own division heading renders normally;
- * the wrapper itself is untitled, so PreTeXt emits an empty top-level heading
- * (the same "empty article" preview approach used elsewhere). The explicit
- * empty <title/> keeps a title node present for stylesheets that dereference
- * one without guarding. A caller-supplied <docinfo> element (LaTeX macros,
- * custom settings) is placed inside <pretext> before the division so the
- * fragment renders with the project's real docinfo.
+ * <part> fragments become a one-chapter/one-part <book>; a fragment of a
+ * slideshow becomes a <slideshow>; everything else becomes an <article>. The
+ * fragment's own division heading renders normally; the wrapper itself is
+ * untitled, so PreTeXt emits an empty top-level heading (the same "empty
+ * article" preview approach used elsewhere). The explicit empty <title/> keeps
+ * a title node present for stylesheets that dereference one without guarding.
+ * A caller-supplied <docinfo> element (LaTeX macros, custom settings) is placed
+ * inside <pretext> before the division so the fragment renders with the
+ * project's real docinfo.
+ *
+ * The slideshow case is not cosmetic: pretext-revealjs.xsl's entry template
+ * only ever descends into `<slideshow>`, so a slide wrapped in an <article>
+ * renders as a blank page rather than as anything wrong-looking.
  */
 function wrapFragment(
   mergedContent: string,
   rootName: string | undefined,
+  target: RenderTarget,
   docinfo?: string,
 ): string {
   const body = mergedContent
@@ -268,7 +348,11 @@ function wrapFragment(
     .replace(/<\?xml[\s\S]*?\?>/, "")
     .replace(/<!DOCTYPE[^>]*>/i, "");
   const wrapper =
-    rootName === "chapter" || rootName === "part" ? "book" : "article";
+    target === "slides"
+      ? "slideshow"
+      : rootName === "chapter" || rootName === "part"
+        ? "book"
+        : "article";
   const docinfoBlock = docinfo?.trim() ? `${docinfo.trim()}\n` : "";
   return `<pretext>\n${docinfoBlock}<${wrapper}>\n<title/>\n${body}\n</${wrapper}>\n</pretext>\n`;
 }
@@ -365,36 +449,46 @@ type Stylesheet = Awaited<
 >;
 const stylesheetCache = new Map<string, Promise<Stylesheet>>();
 
+/** The generated wrapper stylesheet each conversion enters through. */
+const PREVIEW_STYLESHEETS: Record<RenderTarget, string> = {
+  html: "preview-html.xsl",
+  slides: "preview-revealjs.xsl",
+};
+
 /**
- * Compile (and cache) the preview stylesheet against the stylesheets in
- * `xslDir`. Compilation costs ~1s cold, so reuse across renders matters.
+ * Compile (and cache) the preview stylesheet for `target` against the
+ * stylesheets in `xslDir`. Compilation costs ~1s cold, so reuse across renders
+ * matters — and a project that previews both a book and a deck compiles each
+ * once rather than thrashing a single-entry cache.
  */
-async function getStylesheet(xslDir: string): Promise<Stylesheet> {
+async function getStylesheet(
+  xslDir: string,
+  target: RenderTarget,
+): Promise<Stylesheet> {
+  const wrapper = PREVIEW_STYLESHEETS[target];
   // Keyed on the root as given: it may be a path or a URL, and only the
-  // MountReader knows how to canonicalise it.
-  const key = xslDir;
+  // MountReader knows how to canonicalise it. Keyed on the wrapper too, since
+  // the two compile to different stylesheets from the same directory.
+  const key = `${target} ${xslDir}`;
   let cached = stylesheetCache.get(key);
   if (!cached) {
     cached = (async () => {
       const { XmlDocument, XsltStylesheet } = await loadLibXslt();
-      const xslBase = mountDirectory(key);
-      // preview-html.xsl sits one level above the stylesheets it imports, so
-      // it is read from the assets root but parsed as though it lived in the
-      // xsl mount — that is what makes its relative <xsl:import> resolve.
-      const previewXslBytes = await readMount(
-        assetsBase(),
-        "/preview-html.xsl",
-      );
+      const xslBase = mountDirectory(xslDir);
+      // The wrappers sit one level above the stylesheets they import, so they
+      // are read from the assets root but parsed as though they lived in the
+      // xsl mount — that is what makes their relative <xsl:import> resolve.
+      const previewXslBytes = await readMount(assetsBase(), `/${wrapper}`);
       if (previewXslBytes === undefined) {
         throw new Error(
-          `Could not read preview-html.xsl from ${assetsBase()}. ` +
+          `Could not read ${wrapper} from ${assetsBase()}. ` +
             `Check the assets location (PRETEXT_HTML_ASSETS under Node, ` +
             `setAssetsBase() in the browser).`,
         );
       }
       const previewXsl = new TextDecoder().decode(previewXslBytes);
       const xslDoc = await XmlDocument.fromString(previewXsl, {
-        url: `${xslBase}/preview-html.xsl`,
+        url: `${xslBase}/${wrapper}`,
         options: { noEnt: true, dtdLoad: true, huge: true },
       });
       return XsltStylesheet.fromXmlDocument(xslDoc);
@@ -451,7 +545,6 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
   assertJspi();
   assertWasmUsable();
   const { XmlDocument } = await loadLibXslt();
-  const xslt = await getStylesheet(options.xslDir ?? defaultXslDir());
 
   const sourcePath = path.resolve(options.sourcePath);
   const projectDir = path.resolve(
@@ -494,30 +587,14 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         publicationUrl = `${srcBase}/${relPub.split(path.sep).join("/")}`;
       }
     }
-    const publicationXml = forcePortablePublication(
-      publicationSource,
-      options.cssTheme,
-    );
-    setVirtualFile(publicationUrl, publicationXml);
-
-    // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to
-    // real directories, so a host can serve what the page asks for. Anchored
-    // at the main file's directory, matching the document URL above.
-    const declaredDirs = readAssetDirectories(publicationXml);
-    const mainDir = path.dirname(path.resolve(projectDir, relBase));
-    const assetDirs =
-      declaredDirs.external !== undefined &&
-      declaredDirs.generated !== undefined
-        ? {
-            external: path.resolve(mainDir, declaredDirs.external),
-            generated: path.resolve(mainDir, declaredDirs.generated),
-          }
-        : undefined;
-
     // xi:includes are resolved in JS before parsing: the WASM build cannot
     // suspend inside libxml2's own XInclude pass (see src/xinclude.ts). When
     // a source map is wanted, keep the merged tree too — its nodes carry the
     // per-file line positions the map is built from.
+    //
+    // Done before the publication file is prepared, because which conversion
+    // this is decides what goes into that file, and the answer can live in an
+    // xi:included file (a slideshow whose slides are all included).
     let mergedTree;
     let mergedContent: string;
     if (options.sourceMap) {
@@ -535,6 +612,30 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         projectDir,
       );
     }
+
+    const target = options.target ?? detectRenderTarget(mergedContent);
+    const xslt = await getStylesheet(options.xslDir ?? defaultXslDir(), target);
+
+    const publicationXml = forcePortablePublication(publicationSource, {
+      cssTheme: options.cssTheme,
+      revealTheme: options.revealTheme,
+      target,
+    });
+    setVirtualFile(publicationUrl, publicationXml);
+
+    // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to
+    // real directories, so a host can serve what the page asks for. Anchored
+    // at the main file's directory, matching the document URL above.
+    const declaredDirs = readAssetDirectories(publicationXml);
+    const mainDir = path.dirname(path.resolve(projectDir, relBase));
+    const assetDirs =
+      declaredDirs.external !== undefined &&
+      declaredDirs.generated !== undefined
+        ? {
+            external: path.resolve(mainDir, declaredDirs.external),
+            generated: path.resolve(mainDir, declaredDirs.generated),
+          }
+        : undefined;
 
     // The PreTeXt stylesheets silently produce a near-empty page (just a
     // doctype) for anything that is not a whole document. In fragment mode,
@@ -556,8 +657,13 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
           (options.docinfoSourcePath
             ? await docinfoFromSource(options.docinfoSourcePath, projectDir)
             : undefined);
-        mergedContent = wrapFragment(mergedContent, rootElement, docinfo);
-        // Mirror the wrapper's ids: <pretext> is root-1; the <article>/<book>
+        mergedContent = wrapFragment(
+          mergedContent,
+          rootElement,
+          target,
+          docinfo,
+        );
+        // Mirror the wrapper's ids: <pretext> is root-1; the division element
         // is its first element child — second when a docinfo precedes it —
         // and the fragment root sits after the wrapper's empty <title/>.
         const wrapperId = docinfo?.trim() ? "root-1-2" : "root-1-1";
@@ -604,11 +710,21 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     }
     try {
       let html = fixMathJaxImport(result.toHtmlString());
-      if (options.theme) {
+      if (target === "slides") {
+        html = fixRevealStaticCss(html);
+        html = injectRevealBridge(html, options.revealView ?? "scroll", {
+          zoom: options.revealZoom,
+        });
+        // RenderOptions.theme is deliberately not applied: a deck loads no
+        // pretext-core.js, so there is no setDarkMode for the bridge to call
+        // and injecting it would only add dead script. revealTheme is the
+        // slideshow equivalent, and it goes in through the publication file.
+      } else if (options.theme) {
         html = injectThemeBridge(html, options.theme);
       }
       return {
         html,
+        target,
         ...(sourceMap ? { sourceMap } : {}),
         ...(assetDirs ? { assetDirs } : {}),
       };

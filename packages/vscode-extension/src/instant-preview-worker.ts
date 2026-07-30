@@ -25,6 +25,8 @@ import {
   type PreviewTheme,
   type PtxSourceMap,
   type RenderOptions,
+  type RenderTarget,
+  type RevealView,
 } from "@pretextbook/pretext-html";
 
 /** Request sent by the extension over IPC. */
@@ -47,6 +49,12 @@ interface RenderRequest {
   sourceMap?: boolean;
   /** Initial light/dark theme baked into the page (see @pretextbook/pretext-html). */
   theme?: PreviewTheme;
+  /** How a slideshow opens: whole deck scrolling, or one slide at a time. */
+  revealView?: RevealView;
+  /** reveal.js theme for decks whose publication file names none. */
+  revealTheme?: string;
+  /** Fraction of the pane a slide fills in the scroll view (zoom). */
+  revealZoom?: number;
 }
 
 /** Response sent back over IPC. */
@@ -56,6 +64,12 @@ type RenderResponse =
       ok: true;
       html: string;
       elapsedMs: number;
+      /**
+       * Which conversion ran. The extension shows slideshow-only UI (the view
+       * toggle) on the strength of this, rather than re-reading the source to
+       * work out whether the page in the panel is a deck.
+       */
+      target: RenderTarget;
       sourceMap?: PtxSourceMap;
       /** Real directories behind the page's `external/`/`generated/` URLs. */
       assetDirs?: { external: string; generated: string };
@@ -128,14 +142,19 @@ function serve(): void {
         docinfoSourcePath: request.docinfoSourcePath,
         sourceMap: request.sourceMap,
         theme: request.theme,
+        revealView: request.revealView,
+        revealTheme: request.revealTheme,
+        revealZoom: request.revealZoom,
       };
       try {
-        const { html, sourceMap, assetDirs } = await renderHtml(options);
+        const { html, target, sourceMap, assetDirs } =
+          await renderHtml(options);
         const response: RenderResponse = {
           id: request.id,
           ok: true,
           html,
           elapsedMs: Date.now() - started,
+          target,
           sourceMap,
           assetDirs,
         };
