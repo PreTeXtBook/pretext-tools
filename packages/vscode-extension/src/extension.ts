@@ -22,6 +22,7 @@ import {
 import {
   cmdInstantPreview,
   cmdInstantPreviewScope,
+  cmdTogglePreviewSlidesView,
   disposeInstantPreview,
 } from "./instantPreview";
 import {
@@ -154,6 +155,10 @@ export async function activate(context: ExtensionContext) {
     ),
     commands.registerCommand("pretext-tools.instantPreviewScope", () =>
       cmdInstantPreviewScope(context.extensionPath),
+    ),
+    commands.registerCommand(
+      "pretext-tools.togglePreviewSlidesView",
+      cmdTogglePreviewSlidesView,
     ),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
     commands.registerCommand(

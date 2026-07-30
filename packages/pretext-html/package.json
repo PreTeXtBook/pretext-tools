@@ -23,6 +23,9 @@
       ],
       "assets": [
         "./dist/assets.d.ts"
+      ],
+      "reveal": [
+        "./dist/reveal.d.ts"
       ]
     }
   },
@@ -48,6 +51,11 @@
       "types": "./dist/assets.d.ts",
       "import": "./dist/assets.js",
       "default": "./dist/assets.js"
+    },
+    "./reveal": {
+      "types": "./dist/reveal.d.ts",
+      "import": "./dist/reveal.js",
+      "default": "./dist/reveal.js"
     },
     "./cli": "./dist/cli.js"
   },

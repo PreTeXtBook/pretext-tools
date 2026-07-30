@@ -2,15 +2,22 @@
 // the preview wrapper stylesheet.
 //
 // Usage:
-//   node scripts/refresh-xsl.mjs               # fetch PreTeXtBook/pretext master
-//   node scripts/refresh-xsl.mjs --ref <ref>   # fetch a specific branch/tag/commit
-//   node scripts/refresh-xsl.mjs --local <dir> # copy from a local pretext checkout
+//   node scripts/refresh-xsl.mjs                 # fetch PreTeXtBook/pretext master
+//   node scripts/refresh-xsl.mjs --ref <ref>     # fetch a specific branch/tag/commit
+//   node scripts/refresh-xsl.mjs --local <dir>   # copy from a local pretext checkout
+//   node scripts/refresh-xsl.mjs --generate-only # regenerate wrappers, no fetch
 //
-// The wrapper stylesheet (assets/preview-html.xsl) is generated, not
-// hand-maintained: it contains a verbatim copy of the upstream "file-wrap"
-// template with the <exsl:document> wrapper removed, so the whole document is
-// emitted as a single complete HTML page on the main result tree. Regenerating
-// it here keeps the copy in lockstep with the vendored stylesheets.
+// Two wrapper stylesheets are generated, not hand-maintained:
+//
+//   assets/preview-html.xsl     - ordinary documents. Contains a verbatim copy
+//     of the upstream "file-wrap" template with the <exsl:document> wrapper
+//     removed, so the whole document is emitted as a single complete HTML page
+//     on the main result tree.
+//   assets/preview-revealjs.xsl - slideshows. Needs no such copy: the reveal.js
+//     conversion overrides the entry template and emits one monolithic page
+//     already. It only stubs the file writers and stamps ids onto slides.
+//
+// Regenerating them here keeps them in lockstep with the vendored stylesheets.
 
 import fs from "node:fs";
 import os from "node:os";
@@ -32,6 +39,39 @@ function getArg(flag) {
 
 const localDir = getArg("--local");
 const ref = getArg("--ref") ?? "master";
+const generateOnly = process.argv.includes("--generate-only");
+
+/**
+ * Stubs for every file-writing template reachable from pretext-html.xsl, which
+ * both wrappers need: any <exsl:document> that does fire aborts the
+ * FILESYSTEM=0 WASM build, and emscripten's abort() is terminal — the renderer
+ * is unusable for the rest of the process, not just for that one render.
+ *
+ * Under portable-html several of these are already suppressed by publication
+ * settings, but not all: an <interactive> on a slide reaches
+ * "create-iframe-page" and writes a page even in a portable build. Kept as one
+ * shared constant so the two wrappers cannot drift apart, and so this list
+ * stays next to the KNOWN_WRITER_TEMPLATES audit that guards it.
+ *
+ * "file-wrap" is deliberately absent: preview-html.xsl replaces it with the
+ * inlined copy, and the reveal.js conversion never chunks, so it is unreachable
+ * there.
+ */
+const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
+<xsl:template match="*" mode="manufacture-knowl"/>
+<xsl:template name="ol-marker-styles"/>
+<xsl:template name="doc-manifest"/>
+<xsl:template name="search-page-construction"/>
+<xsl:template name="scorm-manifest"/>
+<!-- standalone pages for videos and iframe pages for interactives -->
+<xsl:template match="*" mode="standalone-page"/>
+<xsl:template match="*" mode="create-iframe-page"/>
+<!-- runestone-manifest lives in pretext-runestone.xsl -->
+<xsl:template match="*" mode="runestone-manifest"/>
+<xsl:template match="*" mode="simple-file-wrap">
+    <xsl:param name="content"/>
+    <xsl:copy-of select="$content"/>
+</xsl:template>`;
 
 /**
  * Extract the entries of a zip archive that `wanted` accepts.
@@ -208,27 +248,110 @@ ${inlineTemplate}
 <!-- html several of these are already suppressed; the stubs cover the      -->
 <!-- rest and act as a safety net if publication settings change. Any       -->
 <!-- exsl:document that does fire aborts the FILESYSTEM=0 WASM build.       -->
-<xsl:template name="index-redirect-page"/>
-<xsl:template match="*" mode="manufacture-knowl"/>
-<xsl:template name="ol-marker-styles"/>
-<xsl:template name="doc-manifest"/>
-<xsl:template name="search-page-construction"/>
-<xsl:template name="scorm-manifest"/>
-<!-- standalone pages for videos and iframe pages for interactives -->
-<xsl:template match="*" mode="standalone-page"/>
-<xsl:template match="*" mode="create-iframe-page"/>
-<!-- runestone-manifest lives in pretext-runestone.xsl -->
-<xsl:template match="*" mode="runestone-manifest"/>
-<xsl:template match="*" mode="simple-file-wrap">
-    <xsl:param name="content"/>
-    <xsl:copy-of select="$content"/>
-</xsl:template>
+${FILE_WRITER_STUBS}
 
 </xsl:stylesheet>
 `;
 
   fs.writeFileSync(path.join(assetsDir, "preview-html.xsl"), wrapper);
   console.log("Generated assets/preview-html.xsl");
+}
+
+/**
+ * Generate assets/preview-revealjs.xsl, the slideshow counterpart.
+ *
+ * Far thinner than preview-html.xsl, because pretext-revealjs.xsl already
+ * overrides the entry template to emit one monolithic page with no chunking —
+ * there is no <exsl:document> to excise from the page-building path, so no
+ * upstream template needs copying. The wrapper adds exactly two things:
+ *
+ *   1. the shared file-writer stubs (an <interactive> on a slide really does
+ *      reach "create-iframe-page" — measured, not theoretical), and
+ *   2. an @id on every slide and section.
+ *
+ * The ids are what the preview's source map keys on (see src/sourcemap.ts):
+ * upstream emits bare <section> elements, so without this an editor has no
+ * anchor in the page to scroll to. They are added without copying the upstream
+ * templates — <xsl:apply-imports/> renders the slide exactly as upstream would,
+ * into a result tree fragment, and the element is then re-emitted with the id
+ * spliced in. So this survives upstream edits to the slide markup.
+ */
+function generatePreviewRevealXsl() {
+  const wrapper = `<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GENERATED FILE - do not edit by hand.
+  Regenerate with: npm run refresh-xsl -w @pretextbook/pretext-html
+
+  Wrapper around pretext-revealjs.xsl for in-memory reveal.js slideshow builds
+  (previews). The reveal.js conversion is already a single-page conversion, so
+  unlike preview-html.xsl this copies no upstream template: it stubs the file
+  writers (which a slide holding an "interactive" would otherwise trip) and
+  stamps the ids the preview's source map needs onto slides and sections.
+
+  Intended to be applied together with a publication file that forces
+  <revealjs><resources host="cdn" math="online"/></revealjs>, since neither
+  locally hosted nor embedded reveal.js resources exist for an in-memory build.
+-->
+<xsl:stylesheet
+    xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
+    xmlns:exsl="http://exslt.org/common"
+    extension-element-prefixes="exsl"
+>
+
+<xsl:import href="pretext-revealjs.xsl"/>
+<xsl:output method="html" encoding="UTF-8" doctype-system="about:legacy-compat"/>
+
+<!-- Stamp @id onto the reveal.js "section" that upstream builds for each     -->
+<!-- slide (and each section of slides), without reproducing any of the       -->
+<!-- upstream markup: render it via apply-imports, then re-emit the result    -->
+<!-- with the id added to its first element. The id is the same @unique-id    -->
+<!-- the rest of PreTeXt's HTML uses, which is what makes it findable from    -->
+<!-- the source map. Attributes are copied before the id is set, so an        -->
+<!-- upstream id (if one is ever added) is overridden rather than             -->
+<!-- duplicated, and both precede any child content, as XSLT requires.        -->
+<!--                                                                         -->
+<!-- Only the *first* element is stamped, because a "section" does not always -->
+<!-- render as one element: under the "linear" navigation mode upstream emits -->
+<!-- the section's title slide followed by its slides as siblings. Those      -->
+<!-- slides were rendered through this same template and carry their own ids  -->
+<!-- already, so stamping every top-level element would duplicate the         -->
+<!-- section's id across all of them.                                         -->
+<xsl:template match="slide|section">
+    <xsl:variable name="preview-id">
+        <xsl:apply-templates select="." mode="html-id"/>
+    </xsl:variable>
+    <xsl:variable name="rendered">
+        <xsl:apply-imports/>
+    </xsl:variable>
+    <!-- Bound once: two exsl:node-set calls on one fragment are not obliged -->
+    <!-- to yield the same node identities, which the comparison relies on.  -->
+    <xsl:variable name="tree" select="exsl:node-set($rendered)"/>
+    <xsl:for-each select="$tree/node()">
+        <xsl:choose>
+            <xsl:when test="generate-id() = generate-id($tree/*[1])">
+                <xsl:copy>
+                    <xsl:copy-of select="@*"/>
+                    <xsl:attribute name="id">
+                        <xsl:value-of select="$preview-id"/>
+                    </xsl:attribute>
+                    <xsl:copy-of select="node()"/>
+                </xsl:copy>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:copy-of select="."/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:for-each>
+</xsl:template>
+
+<!-- Same file-writer stubs as preview-html.xsl; see FILE_WRITER_STUBS. -->
+${FILE_WRITER_STUBS}
+
+</xsl:stylesheet>
+`;
+
+  fs.writeFileSync(path.join(assetsDir, "preview-revealjs.xsl"), wrapper);
+  console.log("Generated assets/preview-revealjs.xsl");
 }
 
 // Templates containing an exsl:document that the wrapper neutralizes, either
@@ -250,11 +373,14 @@ const KNOWN_WRITER_TEMPLATES = new Set([
 ]);
 
 /**
- * Every stylesheet reachable from pretext-html.xsl via import/include.
+ * Every stylesheet reachable from the preview entry points via import/include.
+ * pretext-revealjs.xsl imports pretext-html.xsl, so it contributes only itself
+ * — but it is listed explicitly so a future reveal-only import is still
+ * audited.
  */
 function reachableStylesheets() {
   const seen = new Set();
-  const queue = ["pretext-html.xsl"];
+  const queue = ["pretext-html.xsl", "pretext-revealjs.xsl"];
   while (queue.length > 0) {
     const name = queue.pop();
     if (seen.has(name)) continue;
@@ -318,7 +444,13 @@ function writeProvenance(source) {
 
 async function main() {
   fs.mkdirSync(assetsDir, { recursive: true });
-  if (localDir) {
+  // --generate-only rebuilds the wrappers from the stylesheets already
+  // vendored, leaving assets/xsl and upstream.json untouched. For iterating on
+  // wrapper generation without re-downloading (and without silently moving the
+  // vendored tree to a newer upstream than the one that was reviewed).
+  if (generateOnly) {
+    console.log("Regenerating wrappers only; vendored stylesheets untouched.");
+  } else if (localDir) {
     copyXslTree(path.resolve(localDir));
     writeProvenance({ local: path.resolve(localDir) });
   } else {
@@ -328,8 +460,11 @@ async function main() {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
   generatePreviewXsl();
+  generatePreviewRevealXsl();
   checkFileWriters();
-  warnIfBundleStale();
+  if (!generateOnly) {
+    warnIfBundleStale();
+  }
 }
 
 /**

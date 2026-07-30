@@ -63,7 +63,7 @@ describe("forcePortablePublication", () => {
 
   describe("css theme", () => {
     it("declares the theme in a synthesized publication file", () => {
-      const xml = forcePortablePublication(undefined, "denver");
+      const xml = forcePortablePublication(undefined, { cssTheme: "denver" });
       expect(xml).toContain('<css theme="denver"');
       expect(xml).toContain('portable="yes"');
       // The synthesized file's asset directories must survive the rewrite.
@@ -73,7 +73,7 @@ describe("forcePortablePublication", () => {
     it("declares the theme when the publication file has no <css>", () => {
       const xml = forcePortablePublication(
         `<publication><html><platform host="web"/></html></publication>`,
-        "tacoma",
+        { cssTheme: "tacoma" },
       );
       expect(xml).toContain('<css theme="tacoma"');
       expect(xml).toContain('host="web"');
@@ -82,7 +82,7 @@ describe("forcePortablePublication", () => {
     it("adds the theme to an existing <css> that names none", () => {
       const xml = forcePortablePublication(
         `<publication><html><css colors="blue_red"/></html></publication>`,
-        "salem",
+        { cssTheme: "salem" },
       );
       expect(xml).toContain('colors="blue_red"');
       expect(xml).toContain('theme="salem"');
@@ -93,7 +93,7 @@ describe("forcePortablePublication", () => {
     it("leaves a publication file that already names a theme alone", () => {
       const xml = forcePortablePublication(
         `<publication><html><css theme="denver"/></html></publication>`,
-        "tacoma",
+        { cssTheme: "tacoma" },
       );
       expect(xml).toContain('theme="denver"');
       expect(xml).not.toContain("tacoma");
@@ -104,7 +104,7 @@ describe("forcePortablePublication", () => {
       (attribute) => {
         const xml = forcePortablePublication(
           `<publication><html><css ${attribute}="crc"/></html></publication>`,
-          "tacoma",
+          { cssTheme: "tacoma" },
         );
         expect(xml).toContain(`${attribute}="crc"`);
         expect(xml).not.toContain("theme=");
@@ -114,7 +114,7 @@ describe("forcePortablePublication", () => {
     it("ignores a blank theme", () => {
       const xml = forcePortablePublication(
         `<publication><html/></publication>`,
-        "   ",
+        { cssTheme: "   " },
       );
       expect(xml).not.toContain("<css");
     });
@@ -123,6 +123,59 @@ describe("forcePortablePublication", () => {
       expect(forcePortablePublication()).toBe(forcePortablePublication());
       expect(forcePortablePublication()).not.toContain("<css");
     });
+  });
+});
+
+describe("forcePortablePublication reveal.js resources", () => {
+  const slides = { target: "slides" } as const;
+
+  it("declares the CDN host for a synthesized publication file", () => {
+    const xml = forcePortablePublication(undefined, slides);
+    expect(xml).toContain('host="cdn"');
+    expect(xml).toContain('portable="yes"');
+  });
+
+  it.each(["local", "embedded"])(
+    "overrides an unusable @host of %s",
+    (host) => {
+      const xml = forcePortablePublication(
+        `<publication><revealjs><resources host="${host}"/></revealjs></publication>`,
+        slides,
+      );
+      expect(xml).toContain('host="cdn"');
+      expect(xml).not.toContain(`host="${host}"`);
+    },
+  );
+
+  it("forces online mathematics, which needs no prebuilt SVG", () => {
+    const xml = forcePortablePublication(
+      `<publication><revealjs><resources host="embedded" math="embedded"/></revealjs></publication>`,
+      slides,
+    );
+    expect(xml).toContain('math="online"');
+    expect(xml).not.toContain('math="embedded"');
+  });
+
+  it("leaves the author's reveal theme and navigation alone", () => {
+    const xml = forcePortablePublication(
+      `<publication><revealjs><appearance theme="moon"/><navigation mode="linear"/></revealjs></publication>`,
+      { ...slides, revealTheme: "black" },
+    );
+    expect(xml).toContain('theme="moon"');
+    expect(xml).toContain('mode="linear"');
+    expect(xml).not.toContain("black");
+  });
+
+  it("supplies a fallback reveal theme when the project names none", () => {
+    const xml = forcePortablePublication(undefined, {
+      ...slides,
+      revealTheme: "black",
+    });
+    expect(xml).toContain('<appearance theme="black"');
+  });
+
+  it("touches nothing reveal-related for an ordinary HTML render", () => {
+    expect(forcePortablePublication()).not.toContain("revealjs");
   });
 });
 
@@ -577,6 +630,159 @@ describe("renderHtml", () => {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
+});
+
+describe("renderHtml slideshows", () => {
+  const DECK = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <docinfo><macros>\\newcommand{\\R}{\\mathbb{R}}</macros></docinfo>
+  <slideshow xml:id="deck">
+    <title>Test Deck</title>
+    <section xml:id="sec-first">
+      <title>First Section</title>
+      <slide xml:id="slide-a">
+        <title>Slide A</title>
+        <p>Some math <m>x \\in \\R</m>.</p>
+      </slide>
+    </section>
+    <slide xml:id="slide-b"><title>Slide B</title><p>Text.</p></slide>
+  </slideshow>
+</pretext>
+`;
+
+  /** Render `source` in a throwaway directory. */
+  async function renderDeck(
+    source: string,
+    options: Partial<Parameters<typeof renderHtml>[0]> = {},
+  ) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-deck-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, source);
+      return await renderHtml({ sourcePath, ...options });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("detects a slideshow and builds a reveal.js deck", async () => {
+    const { html, target } = await renderDeck(DECK);
+    expect(target).toBe("slides");
+    expect(html).toContain('<div class="reveal');
+    expect(html).toContain("Reveal.initialize({");
+    expect(html).toContain("Slide A");
+    // The document's macros still reach the deck's mathematics.
+    expect(html).toContain("\\mathbb{R}");
+  }, 120000);
+
+  it("loads every resource from a CDN, including the slide stylesheet", async () => {
+    const { html } = await renderDeck(DECK);
+    expect(html).toContain("cdn.jsdelivr.net/npm/reveal.js");
+    // The _static fixup: upstream emits this one as a bare relative path,
+    // which would 404 and cost the deck all of its PreTeXt styling.
+    expect(html).toContain(
+      "cdn.jsdelivr.net/gh/PreTeXtBook/html-static@latest/dist/_static/pretext/css/pretext-reveal.css",
+    );
+    expect(html).not.toMatch(/href="_static\//);
+  }, 120000);
+
+  it("opens in the scroll view by default", async () => {
+    const { html } = await renderDeck(DECK);
+    expect(html).toContain('"view":"scroll"');
+  }, 120000);
+
+  it("honours an explicit presentation view", async () => {
+    const { html } = await renderDeck(DECK, { revealView: "slides" });
+    expect(html).toContain('"view":null');
+  }, 120000);
+
+  it("overrides the deck's percentage size so reveal scales to fit", async () => {
+    // PreTeXt publishes width/height of "100%", which reveal resolves to the
+    // pane itself — scale 1, and theme text far larger than it should be.
+    const { html } = await renderDeck(DECK);
+    expect(html).toContain('width: "100%"'); // the deck still asks for it…
+    expect(html).toContain('"width":960'); // …and the bridge overrides it.
+  }, 120000);
+
+  it("zooms out by enlarging the slide, so overflowing content is readable", async () => {
+    const { html } = await renderDeck(DECK, { revealZoom: 0.5 });
+    expect(html).toContain('"width":1920');
+    expect(html).toContain('"height":1400');
+  }, 120000);
+
+  it("stamps ids on slides and sections for editor sync", async () => {
+    const { html } = await renderDeck(DECK);
+    // Upstream emits bare <section> elements; the preview wrapper adds the
+    // @unique-id, which is what a source-map lookup resolves to.
+    expect(html).toContain('<section id="slide-a"');
+    expect(html).toContain('<section id="slide-b"');
+    expect(html).toContain('<section id="sec-first"');
+  }, 120000);
+
+  it("maps slide ids back to their source lines", async () => {
+    const { sourceMap } = await renderDeck(DECK, { sourceMap: true });
+    const slide = sourceMap?.find((entry) => entry.id === "slide-a");
+    expect(slide).toBeDefined();
+    // The id is in the page and the map agrees where it came from, which is
+    // the whole contract editor↔preview sync rests on.
+    expect(slide?.line).toBe(
+      DECK.split("\n").findIndex((l) => l.includes('<slide xml:id="slide-a"')) +
+        1,
+    );
+  }, 120000);
+
+  it("does not inject the light/dark bridge, which a deck cannot use", async () => {
+    // A deck loads no pretext-core.js, so there is no setDarkMode to call.
+    const { html } = await renderDeck(DECK, { theme: "dark" });
+    expect(html).not.toContain("setDarkMode");
+  }, 120000);
+
+  it("overrides a publication file that hosts reveal.js locally", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-local-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, DECK);
+      const publicationPath = path.join(dir, "publication.xml");
+      fs.writeFileSync(
+        publicationPath,
+        `<?xml version="1.0" encoding="UTF-8"?>
+<publication><revealjs><resources host="local"/></revealjs></publication>
+`,
+      );
+      const { html } = await renderHtml({ sourcePath, publicationPath });
+      // "local" resolves $reveal-root to ".", i.e. "./reveal.css" — nothing
+      // the preview can serve.
+      expect(html).toContain("cdn.jsdelivr.net/npm/reveal.js");
+      expect(html).not.toMatch(/href="\.\/reveal\.css"/);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }, 120000);
+
+  it("uses the fallback reveal theme only when the project names none", async () => {
+    const { html } = await renderDeck(DECK, { revealTheme: "black" });
+    expect(html).toContain("reveal.js@6/dist/theme/black.css");
+  }, 120000);
+
+  it("builds a deck from a lone slide in fragment mode", async () => {
+    // Wrapped in <slideshow>, not <article>: the reveal entry template only
+    // descends into a slideshow, so the wrong wrapper yields a blank page.
+    const { html, target } = await renderDeck(
+      `<slide xml:id="lonely"><title>Lonely Slide</title><p>Alone.</p></slide>`,
+      { fragment: true },
+    );
+    expect(target).toBe("slides");
+    expect(html).toContain("Lonely Slide");
+    expect(html).toContain('<div class="reveal');
+  }, 120000);
+
+  it("still renders an ordinary document as HTML", async () => {
+    // The detection must not have made every render a slideshow.
+    const { html, target } = await renderDeck(SIMPLE_ARTICLE);
+    expect(target).toBe("html");
+    expect(html).toContain('id="ptx-content"');
+    expect(html).not.toContain("Reveal.initialize");
+  }, 120000);
 });
 
 describe("concurrent renders", () => {

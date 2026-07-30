@@ -28,6 +28,15 @@ export type { RenderOptions, RenderResult } from "./renderer.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
 export { forcePortablePublication } from "./publication.js";
+export type { PublicationOverrides } from "./publication.js";
+export { detectRenderTarget } from "./target.js";
+export type { RenderTarget } from "./target.js";
+export {
+  injectRevealBridge,
+  isRevealView,
+  revealBridgeScript,
+} from "./reveal.js";
+export type { RevealView, RevealViewOptions } from "./reveal.js";
 export {
   PREVIEW_THEME_MESSAGE,
   isPreviewTheme,

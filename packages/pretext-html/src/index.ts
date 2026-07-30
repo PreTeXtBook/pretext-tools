@@ -10,6 +10,19 @@ export type { RenderOptions, RenderResult } from "./renderer.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
 export { forcePortablePublication } from "./publication.js";
+export type { PublicationOverrides } from "./publication.js";
+// Which conversion a render runs (ordinary HTML vs a reveal.js slideshow).
+export { detectRenderTarget } from "./target.js";
+export type { RenderTarget } from "./target.js";
+// Slideshow view control (see reveal.ts). The renderer injects the bridge for
+// slideshow renders; embedders re-inject over the returned HTML to switch
+// views without re-rendering.
+export {
+  injectRevealBridge,
+  isRevealView,
+  revealBridgeScript,
+} from "./reveal.js";
+export type { RevealView, RevealViewOptions } from "./reveal.js";
 // Retargeting the `external/` and `generated/` asset URLs a portable build
 // emits onto something the host can serve (see assets.ts). Pair with
 // RenderResult.assetDirs.

@@ -280,6 +280,14 @@
         "description": "Pick whether the live preview renders just the active source file or the whole project."
       },
       {
+        "command": "pretext-tools.togglePreviewSlidesView",
+        "title": "Live Preview: Toggle Slideshow View (Scrolling Deck / Presentation)",
+        "icon": "$(screen-full)",
+        "category": "PreTeXt",
+        "enablement": "pretext-tools.previewIsSlideshow",
+        "description": "Switch a slideshow preview between the whole deck as one scrolling page and reveal.js's one-slide-at-a-time presentation."
+      },
+      {
         "command": "pretext-tools.forwardSearch",
         "title": "Forward Search (scroll CLI live preview to cursor)",
         "category": "PreTeXt",
@@ -389,6 +397,13 @@
       }
     },
     "menus": {
+      "editor/title": [
+        {
+          "command": "pretext-tools.togglePreviewSlidesView",
+          "when": "activeWebviewPanelId == 'pretextInstantPreview' && pretext-tools.previewIsSlideshow",
+          "group": "navigation"
+        }
+      ],
       "view/title": [
         {
           "command": "pretext-tools.outlineScopeProject",
@@ -512,6 +527,58 @@
             ],
             "default": "",
             "markdownDescription": "HTML theme for the live preview. Applies **only when your project's publication file names no theme itself** — if it sets `html/css/@theme` (or the deprecated `@style`/`@shell`), the preview honours that instead, so what you see matches what `pretext build` produces. The theme's stylesheet is fetched from the PreTeXt CDN, so the preview needs network access."
+          },
+          "pretext-tools.instantPreview.slidesView": {
+            "order": 5,
+            "type": "string",
+            "enum": [
+              "scroll",
+              "slides"
+            ],
+            "enumDescriptions": [
+              "Show the whole deck as one continuous scrolling page.",
+              "Show one slide at a time, as the deck will be presented."
+            ],
+            "default": "scroll",
+            "markdownDescription": "How a PreTeXt `slideshow` opens in the live preview. `scroll` uses reveal.js's scroll view, which shows the entire deck as one page — usually what you want while writing. Either way you can flip between the two at any time with **PreTeXt: Live Preview: Toggle Slideshow View**; this setting only decides which one a preview opens in. Ignored for documents that are not slideshows."
+          },
+          "pretext-tools.instantPreview.slidesZoom": {
+            "order": 5,
+            "type": "number",
+            "minimum": 0.25,
+            "maximum": 1,
+            "default": 1,
+            "markdownDescription": "How large slide content is drawn in the slideshow **scrolling deck** view, as a fraction of its presented size (`0.25`–`1`). At `1` the deck looks exactly as it will when presented. Zooming out shrinks the *text*, not the slide — the slide stays the same size on screen and more of its content fits inside, which is the only way to read content that runs off the bottom of a slide (reveal.js clips it). Ignored in the presentation view. Also adjustable from the preview toolbar."
+          },
+          "pretext-tools.instantPreview.slidesTheme": {
+            "order": 5,
+            "type": "string",
+            "enum": [
+              "auto",
+              "simple",
+              "white",
+              "black",
+              "league",
+              "beige",
+              "night",
+              "serif",
+              "moon",
+              "solarized"
+            ],
+            "enumDescriptions": [
+              "Follow the editor: 'simple' with a light color theme, 'black' with a dark one.",
+              "reveal.js 'simple' — PreTeXt's own default for slideshows.",
+              "reveal.js 'white'.",
+              "reveal.js 'black'.",
+              "reveal.js 'league'.",
+              "reveal.js 'beige'.",
+              "reveal.js 'night'.",
+              "reveal.js 'serif'.",
+              "reveal.js 'moon'.",
+              "reveal.js 'solarized'."
+            ],
+            "default": "auto",
+            "markdownDescription": "reveal.js theme for slideshow previews. Applies **only when your project's publication file names no theme itself** (`revealjs/appearance/@theme`), so what you see still matches what `pretext build` produces. Unlike the HTML preview, a deck cannot follow the editor's light/dark mode on its own — reveal.js pages load none of PreTeXt's theme javascript — so `auto` picks a light or dark reveal theme to match at build time. Themes are fetched from the reveal.js CDN, so the preview needs network access."
           },
           "pretext-tools.instantPreview.nodePath": {
             "order": 4,
