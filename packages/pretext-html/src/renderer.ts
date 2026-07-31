@@ -14,6 +14,7 @@
 
 import * as path from "node:path";
 import { assetsBase, joinPath, readMount, readSource } from "./host.js";
+import { openBornHiddenKnowls } from "./knowls.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import {
   forcePortablePublication,
@@ -164,6 +165,19 @@ export interface RenderOptions {
    * sourcemap.ts for the id contract with pretext-assembly.xsl.
    */
   sourceMap?: boolean;
+  /**
+   * Expand born-hidden knowls — solutions, hints, answers, and any block the
+   * publication file elects to hide — instead of leaving them collapsed.
+   * Defaults to **true**, because the pages this package renders are previews:
+   * an author editing a solution needs to see it without re-opening it after
+   * every re-render.
+   *
+   * Set it to false for a page meant to be read rather than authored against,
+   * which is then collapsed exactly as a real PreTeXt build would be. Other
+   * `<details>` (footnotes, image descriptions) are never affected. See
+   * knowls.ts.
+   */
+  openKnowls?: boolean;
   /**
    * Let the embedding app control the preview's light/dark theme. When set, a
    * small bridge script is injected into the page that applies this value as
@@ -710,6 +724,11 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     }
     try {
       let html = fixMathJaxImport(result.toHtmlString());
+      // Before the target-specific bridges, so both a document and a deck get
+      // their knowls opened.
+      if (options.openKnowls ?? true) {
+        html = openBornHiddenKnowls(html);
+      }
       if (target === "slides") {
         html = fixRevealStaticCss(html);
         html = injectRevealBridge(html, options.revealView ?? "scroll", {
