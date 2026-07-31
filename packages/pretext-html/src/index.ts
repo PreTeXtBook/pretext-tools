@@ -23,6 +23,10 @@ export {
   revealBridgeScript,
 } from "./reveal.js";
 export type { RevealView, RevealViewOptions } from "./reveal.js";
+// Expanding born-hidden knowls (see knowls.ts). The renderer applies this
+// unless RenderOptions.openKnowls is false; exported so an embedder can apply
+// it to HTML it already has, without re-rendering.
+export { openBornHiddenKnowls } from "./knowls.js";
 // Retargeting the `external/` and `generated/` asset URLs a portable build
 // emits onto something the host can serve (see assets.ts). Pair with
 // RenderResult.assetDirs.

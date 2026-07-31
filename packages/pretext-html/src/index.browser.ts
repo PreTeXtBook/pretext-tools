@@ -31,6 +31,7 @@ export { forcePortablePublication } from "./publication.js";
 export type { PublicationOverrides } from "./publication.js";
 export { detectRenderTarget } from "./target.js";
 export type { RenderTarget } from "./target.js";
+export { openBornHiddenKnowls } from "./knowls.js";
 export {
   injectRevealBridge,
   isRevealView,

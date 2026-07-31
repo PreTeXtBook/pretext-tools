@@ -36,6 +36,10 @@ Options:
                             xi:includes (used when --docinfo is not given)
   --source-map <file>       Also write a JSON source map: HTML id → source
                             file/line for every element (for editor sync)
+  --no-open-knowls          Leave solutions, hints and other born-hidden
+                            knowls collapsed, as a real PreTeXt build does.
+                            They are expanded by default, since these pages
+                            are previews of work in progress
   -h, --help                Show this help
 `;
 
@@ -87,6 +91,9 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--fragment":
         options.fragment = true;
+        break;
+      case "--no-open-knowls":
+        options.openKnowls = false;
         break;
       case "--docinfo":
         docinfoPath = next();

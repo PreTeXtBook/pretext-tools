@@ -210,6 +210,20 @@
     
 </xsl:template>
 
+<!-- Show the print-preview button on printouts, but inert: the page it would -->
+<!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->
+<!-- and a host that resolves that query against its own URL sends the reader -->
+<!-- somewhere unrelated. See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.      -->
+<xsl:template match="*" mode="standalone-printout-links">
+    <div class="print-links">
+        <a class="print-link" style="opacity:0.45;cursor:default" aria-disabled="true" title="Print preview is not available in the live preview">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'print'"/>
+            </xsl:call-template>
+        </a>
+    </div>
+</xsl:template>
+
 <!-- Stub out the remaining file writers (every other template reachable    -->
 <!-- from pretext-html.xsl that contains exsl:document). Under portable-    -->
 <!-- html several of these are already suppressed; the stubs cover the      -->

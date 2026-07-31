@@ -84,6 +84,12 @@ const { html } = await renderHtml({
   ~100ms–1s per render depending on document size).
 - `theme: "dark" | "light" | "system"` makes the preview follow the embedding
   app's light/dark theme (see [Theme control](#theme-control)).
+- Born-hidden knowls — solutions, hints, answers, and any block the publication
+  file elects to hide — are rendered **expanded**, because these pages are
+  previews: an author editing a solution would otherwise watch it collapse on
+  every re-render. Other `<details>` (footnotes, image descriptions) are left
+  alone. Pass `openKnowls: false` (`--no-open-knowls` on the CLI) for the
+  collapsed reading experience of a real `pretext build`.
 
 ### API (browser)
 

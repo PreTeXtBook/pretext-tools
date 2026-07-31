@@ -28,6 +28,47 @@ const SIMPLE_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
 </pretext>
 `;
 
+// One of each kind of "printout" — the divisions upstream puts a print-preview
+// button on the heading of. The preview wrapper disables those buttons; see
+// PRINTOUT_LINK_OVERRIDE in scripts/refresh-xsl.mjs.
+const PRINTOUT_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <article xml:id="printout-article">
+    <title>Printouts</title>
+    <worksheet xml:id="ws-one">
+      <title>A Worksheet</title>
+      <page>
+        <exercise><statement><p>Work it out.</p></statement></exercise>
+      </page>
+    </worksheet>
+    <handout xml:id="handout-one">
+      <title>A Handout</title>
+      <page><p>Hand it out.</p></page>
+    </handout>
+  </article>
+</pretext>
+`;
+
+// An exercise whose hint and solution are born hidden (PreTeXt hides those
+// automatically), plus a footnote — the other kind of <details>, which the
+// preview leaves collapsed. See knowls.ts.
+const KNOWL_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <article xml:id="knowl-article">
+    <title>Knowls</title>
+    <section xml:id="knowl-section">
+      <title>A Section</title>
+      <p>Text with a footnote<fn>The footnote body.</fn>.</p>
+      <exercise xml:id="knowl-exercise">
+        <statement><p>Compute something.</p></statement>
+        <hint><p>Start here.</p></hint>
+        <solution><p>The answer is 42.</p></solution>
+      </exercise>
+    </section>
+  </article>
+</pretext>
+`;
+
 describe("xpathStringLiteral", () => {
   it("quotes plain strings with single quotes", () => {
     expect(xpathStringLiteral("hello")).toBe("'hello'");
@@ -268,6 +309,56 @@ describe("renderHtml", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("shows the print-preview buttons on printouts, but inert", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: PRINTOUT_ARTICLE,
+    });
+    // Both printouts still show a button, so the preview does not
+    // misrepresent the built page...
+    expect(html.match(/class="print-links"/g)).toHaveLength(2);
+    expect(html.match(/class="print-link"/g)).toHaveLength(2);
+    // ...but it navigates nowhere: no @href at all, hence no query parameter
+    // for a host to resolve against the wrong URL.
+    expect(html).not.toContain("printpreview");
+    expect(html).not.toMatch(/<a[^>]*class="print-link"[^>]*href=/);
+    expect(html).toMatch(/<a class="print-link"[^>]*aria-disabled="true"/);
+  });
+
+  it("expands born-hidden knowls so preview edits are visible", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: KNOWL_ARTICLE,
+    });
+    // The hint and the solution are born hidden; both are open.
+    expect(html).toMatch(
+      /<details open [^>]*class="hint solution-like born-hidden-knowl"/,
+    );
+    expect(html).toMatch(
+      /<details open [^>]*class="solution solution-like born-hidden-knowl"/,
+    );
+    // Every born-hidden knowl on the page, and no <details> that is not one.
+    const opened = html.match(/<details open\b/g) ?? [];
+    expect(opened).toHaveLength(
+      (html.match(/class="[^"]*born-hidden-knowl/g) ?? []).length,
+    );
+    // The footnote keeps the built page's collapsed behaviour.
+    expect(html).toMatch(/<details class="ptx-footnote"/);
+  });
+
+  it("leaves knowls collapsed when openKnowls is off", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: KNOWL_ARTICLE,
+      openKnowls: false,
+    });
+    expect(html).toContain("born-hidden-knowl");
+    expect(html).not.toContain("<details open");
   });
 
   it("resolves xi:include and respects the publication file", async () => {
