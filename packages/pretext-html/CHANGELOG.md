@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.6.0
+
+### Minor Changes
+
+- fcabaca: Gray out print previews and expand knowls
+
 ## 0.5.0
 
 ### Minor Changes
