@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/markdown-style-pretext",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Editor intelligence (completions + validation) for Markdown-style PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pretextbook/latex-style-pretext": "^0.0.1",
+    "@pretextbook/latex-style-pretext": "^0.0.2",
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
