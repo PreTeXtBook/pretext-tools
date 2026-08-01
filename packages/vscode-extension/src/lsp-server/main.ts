@@ -40,6 +40,7 @@ import { schemaDir } from "./paths";
 import {
   scheduleValidation,
   clearValidation,
+  cancelValidation,
   shouldValidate,
   loadValidationGrammar,
   setValidationMode,
@@ -317,12 +318,24 @@ documents.onDidChangeContent(async (change) => {
     }
     await info.ast;
     const parseErrors = info.parseErrors;
-    connection.sendDiagnostics({
-      uri: change.document.uri,
-      diagnostics: parseErrors,
-    });
+    if (parseErrors.length > 0) {
+      // Malformed XML: report that alone. Schema errors from a document that
+      // does not parse are cascading noise, and a schema run already queued
+      // for this file would otherwise overwrite these a moment later.
+      cancelValidation(change.document.uri);
+      connection.sendDiagnostics({
+        uri: change.document.uri,
+        diagnostics: parseErrors,
+      });
+    } else {
+      // Well-formed: validate against the project.ptx manifest grammar. This
+      // also clears the parse errors published above once they are fixed —
+      // including when no manifest grammar is loaded, see runValidation.
+      scheduleValidation(change.document, publishDiagnostics);
+    }
   } else if (shouldValidate(change.document)) {
-    // Validate ordinary PreTeXt source files against the RELAX NG schema.
+    // Ordinary source files against the PreTeXt schema; publication files
+    // against the publication schema (see documentSchemaKind).
     scheduleValidation(change.document, publishDiagnostics);
   }
 });

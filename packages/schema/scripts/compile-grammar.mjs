@@ -53,10 +53,52 @@ const packageAssetsDir = path.join(scriptDir, "..", "assets");
 // pretext-dev.rng (the "Experimental" schema) is compiled non-fatally: if a
 // future upstream refresh reintroduces dangling refs that break compilation,
 // the build still succeeds and the LSP falls back to stable pretext.json.
+//
+// project-ptx.rng and publication-schema.rng are fatal: they are small,
+// standalone grammars (each with its own <start>), and unlike the dev schema
+// they have no fallback — if one stops compiling, validation for that file
+// type silently disappears, so a loud failure at refresh time is the point.
 const targets = [
   ["pretext.rng", true],
   ["pretext-dev.rng", false],
+  ["project-ptx.rng", true],
+  ["publication-schema.rng", true],
 ];
+
+/**
+ * Elements from the RELAX NG "compatibility annotations" namespace, which
+ * trang emits into project-ptx.rng as `<a:documentation>`.
+ *
+ * The RELAX NG spec says foreign-namespace elements are discarded during
+ * simplification, but salve's simplifier rejects them outright ("tag not
+ * allowed here with these attributes"). They carry no validation semantics —
+ * they are prose for humans reading the grammar — so stripping them before
+ * compiling is equivalent to the spec-mandated behaviour.
+ */
+const ANNOTATION_ELEMENT = /<a:documentation\b[\s\S]*?<\/a:documentation>\s*/g;
+
+/**
+ * Compile from a temporary copy when the source needs preprocessing, so the
+ * checked-in .rng (refreshed verbatim from upstream) is never rewritten.
+ * Returns the URL to hand to salve plus a cleanup function.
+ */
+function prepareSource(rngPath) {
+  const original = fs.readFileSync(rngPath, "utf8");
+  const stripped = original.replace(ANNOTATION_ELEMENT, "");
+  if (stripped === original) {
+    return { url: pathToFileURL(rngPath), cleanup: () => {} };
+  }
+  // Written beside the original so relative <include href="..."/> still resolve.
+  const tmpPath = path.join(
+    path.dirname(rngPath),
+    `.${path.basename(rngPath)}.tmp`,
+  );
+  fs.writeFileSync(tmpPath, stripped);
+  return {
+    url: pathToFileURL(tmpPath),
+    cleanup: () => fs.rmSync(tmpPath, { force: true }),
+  };
+}
 
 async function compileOne(rngName, fatal) {
   const rngPath = path.join(extensionSchemaDir, rngName);
@@ -64,8 +106,9 @@ async function compileOne(rngName, fatal) {
     console.warn(`Skipping ${rngName}: not found at ${rngPath}`);
     return;
   }
+  const { url, cleanup } = prepareSource(rngPath);
   try {
-    const result = await convertRNGToPattern(pathToFileURL(rngPath));
+    const result = await convertRNGToPattern(url);
     for (const warning of result.warnings ?? []) {
       console.warn(`  [${rngName}] warning: ${warning}`);
     }
@@ -84,6 +127,8 @@ async function compileOne(rngName, fatal) {
       throw new Error(message);
     }
     console.warn(`  ${message} (non-fatal; likely dangling refs upstream)`);
+  } finally {
+    cleanup();
   }
 }
 
