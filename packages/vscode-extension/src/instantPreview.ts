@@ -159,6 +159,15 @@ const TOOLBAR_HEIGHT_PX = 32;
 const FULL_BUILD_DEBOUNCE_MS = 1000;
 /** Quiet period before following the editor to a newly focused file. */
 const FOLLOW_DEBOUNCE_MS = 300;
+/**
+ * Warning shown by the dismissible banner atop every preview (see
+ * RenderOptions.previewBanner in @pretextbook/pretext-html). Worded for this
+ * embedder specifically — pretext.plus renders the same fact in its own
+ * "build settings" vocabulary rather than reusing this string.
+ */
+const PREVIEW_BANNER_MESSAGE =
+  "This live preview does not use your project's publication file — your " +
+  "built version may have different styles and options.";
 
 interface RenderResponse {
   id: number;
@@ -1237,6 +1246,7 @@ function renderToPanel(extensionPath: string): void {
     revealView: currentRevealView(),
     revealTheme: previewRevealTheme(),
     revealZoom: previewSlidesZoom(),
+    previewBanner: { message: PREVIEW_BANNER_MESSAGE },
   };
   child.send(request, (err) => {
     if (err && pendingRequestId === id) {

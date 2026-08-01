@@ -361,6 +361,30 @@ describe("renderHtml", () => {
     expect(html).not.toContain("<details open");
   });
 
+  it("injects the preview banner when previewBanner is given", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: SIMPLE_ARTICLE,
+      previewBanner: { message: "This is only a live preview." },
+    });
+    expect(html).toContain("This is only a live preview.");
+    expect(html).toContain('id="ptx-preview-banner"');
+    // Ahead of PreTeXt's own masthead, not buried inside the page content.
+    expect(html.indexOf("ptx-preview-banner")).toBeLessThan(
+      html.indexOf("ptx-masthead"),
+    );
+  });
+
+  it("omits the preview banner when previewBanner is not given", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: SIMPLE_ARTICLE,
+    });
+    expect(html).not.toContain("ptx-preview-banner");
+  });
+
   it("resolves xi:include and respects the publication file", async () => {
     const { html } = await renderHtml({
       sourcePath: path.join(projectDir, "source", "main.ptx"),

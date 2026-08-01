@@ -22,6 +22,7 @@
 import {
   renderHtml,
   runCli,
+  type PreviewBannerOptions,
   type PreviewTheme,
   type PtxSourceMap,
   type RenderOptions,
@@ -55,6 +56,8 @@ interface RenderRequest {
   revealTheme?: string;
   /** Fraction of the pane a slide fills in the scroll view (zoom). */
   revealZoom?: number;
+  /** Dismissible "this is a live preview" banner; see @pretextbook/pretext-html. */
+  previewBanner?: PreviewBannerOptions;
 }
 
 /** Response sent back over IPC. */
@@ -145,6 +148,7 @@ function serve(): void {
         revealView: request.revealView,
         revealTheme: request.revealTheme,
         revealZoom: request.revealZoom,
+        previewBanner: request.previewBanner,
       };
       try {
         const { html, target, sourceMap, assetDirs } =

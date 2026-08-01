@@ -53,6 +53,15 @@ export {
   injectThemeBridge,
 } from "./theme.js";
 export type { PreviewTheme, PreviewThemeMessage } from "./theme.js";
+// The dismissible "this is a live preview" banner (see banner.ts). The
+// renderer injects it when RenderOptions.previewBanner is set; exported so an
+// embedder can apply it to HTML it already has, without re-rendering.
+export {
+  PREVIEW_BANNER_STORAGE_KEY,
+  injectPreviewBanner,
+  previewBannerScript,
+} from "./banner.js";
+export type { PreviewBannerOptions } from "./banner.js";
 // The CLI driver, re-exported so embedders that fork a bundled worker (the
 // VS Code extension) can reuse the argument parsing and stdout protocol.
 export { main as runCli } from "./cli.js";
