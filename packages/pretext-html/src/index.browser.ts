@@ -46,6 +46,12 @@ export {
   injectThemeBridge,
 } from "./theme.js";
 export type { PreviewTheme, PreviewThemeMessage } from "./theme.js";
+export {
+  PREVIEW_BANNER_STORAGE_KEY,
+  injectPreviewBanner,
+  previewBannerScript,
+} from "./banner.js";
+export type { PreviewBannerOptions } from "./banner.js";
 // Where this package's assets/ directory is served from. Browser-only: under
 // Node the equivalent is the PRETEXT_HTML_ASSETS environment variable.
 export { setAssetsBase } from "./host.js";

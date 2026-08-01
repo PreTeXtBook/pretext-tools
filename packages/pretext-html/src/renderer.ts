@@ -13,6 +13,7 @@
  */
 
 import * as path from "node:path";
+import { injectPreviewBanner, type PreviewBannerOptions } from "./banner.js";
 import { assetsBase, joinPath, readMount, readSource } from "./host.js";
 import { openBornHiddenKnowls } from "./knowls.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
@@ -187,6 +188,18 @@ export interface RenderOptions {
    * is then byte-identical to a render without this option.
    */
   theme?: PreviewTheme;
+  /**
+   * Show a dismissible warning banner across the top of the page explaining
+   * that this is a live preview, not a real build (see banner.ts). Omit to
+   * leave the page without one — the output is then byte-identical to a
+   * render without this option.
+   *
+   * The message is entirely the caller's: what the preview does not honour
+   * reads differently depending on the embedder's own vocabulary (the VS
+   * Code extension's "publication file" vs. pretext.plus's "build
+   * settings"), so there is no default text here.
+   */
+  previewBanner?: PreviewBannerOptions;
 }
 
 export interface RenderResult {
@@ -740,6 +753,11 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         // slideshow equivalent, and it goes in through the publication file.
       } else if (options.theme) {
         html = injectThemeBridge(html, options.theme);
+      }
+      // Applies to both targets: a slideshow preview is exactly as unbuilt as
+      // a document one.
+      if (options.previewBanner) {
+        html = injectPreviewBanner(html, options.previewBanner);
       }
       return {
         html,
