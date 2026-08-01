@@ -1,5 +1,11 @@
 # @pretextbook/schema
 
+## 0.3.0
+
+### Minor Changes
+
+- ccb0deb: Add banner message for live preview, update validations and completions"
+
 ## 0.2.0
 
 ### Minor Changes
