@@ -1,22 +1,22 @@
 <?xml version='1.0'?> <!-- As XML file -->
 
 <!--********************************************************************
-Copyright 2013 Robert A. Beezer
+Copyright (C) 2013-2026  Robert A. Beezer
 
-This file is part of MathBook XML.
+This file is part of PreTeXt.
 
-MathBook XML is free software: you can redistribute it and/or modify
+PreTeXt is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 2 or version 3 of the
 License (at your option).
 
-MathBook XML is distributed in the hope that it will be useful,
+PreTeXt is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
+along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 *********************************************************************-->
 
 <!-- http://pimpmyxslt.com/articles/entity-tricks-part2/ -->
@@ -219,19 +219,21 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:choose>
 </xsl:variable>
 
-<!-- Employing variants of the text displayed for a cross-reference -->
-<!-- affects the words shown to the reader, and hence is a choice   -->
-<!-- preserved in the source, and is not just a processing decision -->
-<!-- $xref-text-style is the global choice, based on                -->
-<!--   docinfo/cross-references/@text                               -->
-<!-- We control the possible values with the schema, allowing junk  -->
-<!-- NB: blank is not set, and is ignored so the legacy-autoname    -->
-<!-- scheme controls the global default.  When that goes away, we   -->
-<!-- should set the default here when there is no attribute.        -->
+<!-- Employing variants of the text displayed for a cross-reference  -->
+<!-- affects the words shown to the reader, and hence is a choice    -->
+<!-- preserved in the source, and is not just a processing decision  -->
+<!-- $xref-text-style is the global choice, based on                 -->
+<!--   docinfo/defaults/xrefs/@text                                  -->
+<!-- The "repair" phase of assembly normalizes the retired           -->
+<!-- "cross-references" element to this location, so one path serves -->
+<!-- We control the possible values with the schema, allowing junk   -->
+<!-- NB: blank is not set, and is ignored so the legacy-autoname     -->
+<!-- scheme controls the global default.  When that goes away, we    -->
+<!-- should set the default here when there is no attribute.         -->
 <xsl:variable name="xref-text-style">
     <xsl:choose>
-        <xsl:when test="$docinfo/cross-references/@text">
-            <xsl:value-of select="$docinfo/cross-references/@text" />
+        <xsl:when test="$docinfo/defaults/xrefs/@text">
+            <xsl:value-of select="$docinfo/defaults/xrefs/@text" />
         </xsl:when>
         <xsl:otherwise>
             <text />
@@ -1913,7 +1915,7 @@ Book (with parts), "section" at level 3
     <xsl:variable name="math-punctuation">
         <xsl:choose>
             <!-- drop punctuation after display math, if moving to math -->
-            <xsl:when test="$b-include-display and contains($clause-ending-marks, $first-char) and preceding-sibling::node()[1][self::md[mrow]]">
+            <xsl:when test="$b-include-display and contains($clause-ending-marks, $first-char) and preceding-sibling::node()[1][self::md]">
                 <xsl:call-template name="strip-leading-whitespace">
                     <xsl:with-param name="text">
                         <xsl:call-template name="drop-clause-punctuation">
@@ -1986,7 +1988,7 @@ Book (with parts), "section" at level 3
             <xsl:variable name="original" select="$text-processed" />
             <xsl:variable name="front-cleaned">
                 <xsl:choose>
-                    <xsl:when test="not(preceding-sibling::node()[self::*|self::text()]) or preceding-sibling::node()[self::*|self::text()][1][self::md[mrow]|self::cd|self::pre|self::ol/parent::p|self::ul/parent::p|self::dl/parent::p]">
+                    <xsl:when test="not(preceding-sibling::node()[self::*|self::text()]) or preceding-sibling::node()[self::*|self::text()][1][self::md|self::cd|self::pre|self::ol/parent::p|self::ul/parent::p|self::dl/parent::p]">
                         <xsl:call-template name="strip-leading-whitespace">
                             <xsl:with-param name="text" select="$original" />
                         </xsl:call-template>
@@ -1998,7 +2000,7 @@ Book (with parts), "section" at level 3
             </xsl:variable>
             <xsl:variable name="back-cleaned">
                 <xsl:choose>
-                    <xsl:when test="not(following-sibling::node()[self::*|self::text()])  or following-sibling::node()[self::*|self::text()][1][self::md[mrow]|self::cd|self::pre|self::ol/parent::p|self::ul/parent::p|self::dl/parent::p]">
+                    <xsl:when test="not(following-sibling::node()[self::*|self::text()])  or following-sibling::node()[self::*|self::text()][1][self::md|self::cd|self::pre|self::ol/parent::p|self::ul/parent::p|self::dl/parent::p]">
                         <xsl:call-template name="strip-trailing-whitespace">
                             <xsl:with-param name="text" select="$front-cleaned" />
                         </xsl:call-template>
@@ -2911,8 +2913,8 @@ Book (with parts), "section" at level 3
                 <xsl:value-of select="@width" />
             </xsl:when>
             <!-- not on an image, but doc-wide default exists -->
-            <xsl:when test="self::image and $docinfo/defaults/image-width">
-                <xsl:value-of select="$docinfo/defaults/image-width" />
+            <xsl:when test="self::image and $docinfo/defaults/images/@width">
+                <xsl:value-of select="$docinfo/defaults/images/@width" />
             </xsl:when>
             <!-- naked slate, look to enclosing interactive -->
             <xsl:when test="self::slate">
@@ -4199,6 +4201,11 @@ Book (with parts), "section" at level 3
             <xsl:when test="@margins">
                 <xsl:value-of select="normalize-space(@margins)" />
             </xsl:when>
+            <!-- not placed on image, or figure/image,      -->
+            <!-- but a document-wide default margins exists -->
+            <xsl:when test="self::image and not(ancestor::sidebyside) and $docinfo/defaults/images/@margins">
+                <xsl:value-of select="normalize-space($docinfo/defaults/images/@margins)" />
+            </xsl:when>
             <!-- default if not specified -->
             <xsl:otherwise>
                 <xsl:text>auto</xsl:text>
@@ -4237,8 +4244,8 @@ Book (with parts), "section" at level 3
             </xsl:when>
             <!-- not placed on image, or figure/image,    -->
             <!-- but a document-wide default width exists -->
-            <xsl:when test="self::image and not(ancestor::sidebyside) and $docinfo/defaults/image-width">
-                <xsl:value-of select="$docinfo/defaults/image-width" />
+            <xsl:when test="self::image and not(ancestor::sidebyside) and $docinfo/defaults/images/@width">
+                <xsl:value-of select="$docinfo/defaults/images/@width" />
             </xsl:when>
             <!-- default setting if not specified, and not global -->
             <xsl:otherwise>
@@ -7410,10 +7417,29 @@ Book (with parts), "section" at level 3
 
 <!-- Define variables for default active language - will be picked up by -->
 <!-- RS manifest and can be a different string than the raw language. -->
+<!-- NB: the language-default templates and variables here can be     -->
+<!-- invoked from within the assembly chain's "representations" pass  -->
+<!-- (via import precedence over their near-duplicates in the         -->
+<!-- -runestone-static stylesheet), where the tree behind  $docinfo   -->
+<!-- does not exist yet and referencing it is a circular definition.  -->
+<!-- So they read the version tree, and must recognize both the       -->
+<!-- "docinfo/defaults" home (preferred) and the deprecated top-level -->
+<!-- placement, which the later "repair" pass would have normalized.  -->
+<xsl:variable name="docinfo-programs-language">
+    <xsl:choose>
+        <xsl:when test="$version-docinfo/defaults/programs/@language">
+            <xsl:value-of select="$version-docinfo/defaults/programs/@language"/>
+        </xsl:when>
+        <xsl:when test="$version-docinfo/programs/@language">
+            <xsl:value-of select="$version-docinfo/programs/@language"/>
+        </xsl:when>
+    </xsl:choose>
+</xsl:variable>
+
 <xsl:variable name="default-active-programming-language">
-    <xsl:if test="$version-docinfo/programs/@language">
+    <xsl:if test="not($docinfo-programs-language = '')">
         <xsl:for-each select="$programming-language-table">
-            <xsl:value-of select="key('programming-language-key', $version-docinfo/programs/@language)/@active" />
+            <xsl:value-of select="key('programming-language-key', $docinfo-programs-language)/@active" />
         </xsl:for-each>
     </xsl:if>
 </xsl:variable>
@@ -7434,11 +7460,14 @@ Book (with parts), "section" at level 3
         <xsl:when test="@language">
             <xsl:value-of select="@language" />
         </xsl:when>
+        <xsl:when test="$version-docinfo/defaults/parsons/@language">
+            <xsl:value-of select="$version-docinfo/defaults/parsons/@language" />
+        </xsl:when>
         <xsl:when test="$version-docinfo/parsons/@language">
             <xsl:value-of select="$version-docinfo/parsons/@language" />
         </xsl:when>
-        <xsl:when test="$version-docinfo/programs/@language">
-            <xsl:value-of select="$version-docinfo/programs/@language" />
+        <xsl:when test="not($docinfo-programs-language = '')">
+            <xsl:value-of select="$docinfo-programs-language" />
         </xsl:when>
     </xsl:choose>
 </xsl:template>
@@ -7485,8 +7514,11 @@ Book (with parts), "section" at level 3
         <xsl:when test="@*[name() = $attr]">
             <xsl:value-of select="@*[name() = $attr]" />
         </xsl:when>
-        <xsl:when test="$docinfo/programs/@*[name() = $attr]">
-            <xsl:value-of select="$docinfo/programs/@*[name() = $attr]" />
+        <xsl:when test="$version-docinfo/defaults/programs/@*[name() = $attr]">
+            <xsl:value-of select="$version-docinfo/defaults/programs/@*[name() = $attr]" />
+        </xsl:when>
+        <xsl:when test="$version-docinfo/programs/@*[name() = $attr]">
+            <xsl:value-of select="$version-docinfo/programs/@*[name() = $attr]" />
         </xsl:when>
         <xsl:otherwise>
             <xsl:value-of select="$default" />
@@ -10720,7 +10752,7 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
                 <xsl:value-of select="name()" />
                 <xsl:text> "</xsl:text>
                 <xsl:value-of select="." />
-                <xsl:text>" is invalid.  Use only letters, numbers, hyphens and underscores.</xsl:text>
+                <xsl:text>" is invalid.  Use only the 26 Latin letters (7-bit ASCII, no accents), numbers, hyphens and underscores.</xsl:text>
             </xsl:message>
         </xsl:if>
         <!-- a reserved UI id: "=" against the token node-set is true if this -->
@@ -11809,6 +11841,48 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="occurrences" select="&quot;$document-root//sidebyside//audio | $document-root//sidebyside//video | $document-root//sidebyside//interactive&quot;" />
         <xsl:with-param name="date-string" select="'2026-07-22'" />
         <xsl:with-param name="message" select="'an &quot;audio&quot;, &quot;video&quot;, or &quot;interactive&quot; element may not appear within a &quot;sidebyside&quot;, at any depth.  Content may go missing with no further warning.  Relocate the element outside the &quot;sidebyside&quot;.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-30  "programs" and "parsons" relocate into "docinfo/defaults" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/programs | $docinfo/parsons&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-30'" />
+        <xsl:with-param name="message" select="'a &quot;programs&quot; or &quot;parsons&quot; element now resides within a &quot;defaults&quot; element of the &quot;docinfo&quot;, alongside other document-wide defaults for authored attributes.  We will honor your intent, but please relocate the element.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-30  "docinfo/defaults/image-width" element becomes "images/@width" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/defaults/image-width&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-30'" />
+        <xsl:with-param name="message" select="'a document-wide default width for images is now a &quot;width&quot; attribute on an &quot;images&quot; element within &quot;docinfo/defaults&quot;, replacing the &quot;image-width&quot; element.  We will honor your intent, but please convert to the attribute form.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-30  "docinfo/images/archive" moves to the publication file -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/images&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-30'" />
+        <xsl:with-param name="message" select="'requests for archive (download) versions of images have moved to the publication file, as &quot;/publication/html/images/archive&quot;.  We will honor an &quot;images&quot; element within &quot;docinfo&quot; while the publication file is silent, but please relocate the request.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-30  "docinfo/brandlogo" moves to the publication file -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/brandlogo&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-30'" />
+        <xsl:with-param name="message" select="'the brand logo of the HTML masthead has moved to the publication file, as &quot;/publication/html/brandlogo&quot; with the same attributes.  We will honor a &quot;brandlogo&quot; within &quot;docinfo&quot; while the publication file is silent, but please relocate the element.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-30  "event" is bibliographic content, belongs in "bibinfo" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/event&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-30'" />
+        <xsl:with-param name="message" select="'an &quot;event&quot; element now resides in the &quot;bibinfo&quot; of the &quot;frontmatter&quot;, alongside the other bibliographic facts of a document.  We will honor an &quot;event&quot; within &quot;docinfo&quot;, but please relocate the element.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-31  "docinfo/cross-references" becomes "xrefs" within "docinfo/defaults" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/cross-references&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-31'" />
+        <xsl:with-param name="message" select="'the document-wide style of cross-reference text is now a &quot;text&quot; attribute on an &quot;xrefs&quot; element within &quot;docinfo/defaults&quot;, replacing the &quot;cross-references&quot; element.  We will honor your intent, but please convert to the new form.'"/>
     </xsl:call-template>
     <!--  -->
 </xsl:template>

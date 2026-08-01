@@ -1,7 +1,7 @@
 <?xml version='1.0'?>
 
 <!--********************************************************************
-Copyright 2020 Robert A. Beezer
+Copyright (C) 2020-2026  Robert A. Beezer
 
 This file is part of PreTeXt.
 
@@ -1156,12 +1156,34 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- while a trailing slash will be reliably added if                     -->
 <!--     (a) not present in publisher file specification                  -->
 <!--     (b) the path is not empty                                        -->
+<!-- The external directory is a fact of the source (a different       -->
+<!-- directory of files is a different document), so its declaration    -->
+<!-- is "directories/@external" within "docinfo" (2026-07-30).  The     -->
+<!-- publication file "source/directories/@external" is deprecated but  -->
+<!-- honored while the "docinfo" is silent.  NB: the version tree is    -->
+<!-- consulted, since machinery within the assembly chain consumes      -->
+<!-- directory variables and the tree behind  $docinfo  does not exist  -->
+<!-- yet at that point (referencing it is a circular definition).       -->
 <xsl:variable name="external-directory-source">
-    <xsl:variable name="raw-input" select="$publication/source/directories/@external"/>
+    <xsl:variable name="raw-input">
+        <xsl:choose>
+            <xsl:when test="$version-docinfo/directories/@external">
+                <xsl:if test="$publication/source/directories/@external">
+                    <xsl:message>PTX:WARNING: the external directory is specified both within "docinfo" ("directories/@external") and in the publication file ("source/directories/@external").  The "docinfo" value is used; please remove the publication file entry.</xsl:message>
+                </xsl:if>
+                <xsl:value-of select="$version-docinfo/directories/@external"/>
+            </xsl:when>
+            <xsl:when test="$publication/source/directories/@external">
+                <xsl:message>PTX:DEPRECATE: (2026-07-30) the external directory is a fact of the source, and is now declared with a "directories/@external" attribute within "docinfo".  The publication file entry "source/directories/@external" is honored meanwhile, but please relocate it.</xsl:message>
+                <xsl:value-of select="$publication/source/directories/@external"/>
+            </xsl:when>
+            <xsl:otherwise/>
+        </xsl:choose>
+    </xsl:variable>
     <xsl:choose>
         <!-- leading path separator is an error -->
         <xsl:when test="substring($raw-input, 1, 1) = '/'">
-            <xsl:message>PTX:FALLBACK:   an external-image directory (source/directories/@external in the publisher file) must be a relative path and not begin with "/" as in "<xsl:value-of select="$raw-input"/>".  Proceeding with the default, which is an empty string, and may lead to unexpected results.</xsl:message>
+            <xsl:message>PTX:FALLBACK:   an external-image directory ("directories/@external", within "docinfo" or the publication file) must be a relative path and not begin with "/" as in "<xsl:value-of select="$raw-input"/>".  Proceeding with the default, which is an empty string, and may lead to unexpected results.</xsl:message>
             <xsl:text/>
         </xsl:when>
         <!-- trailing path separator is good and -->
@@ -1216,21 +1238,30 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- or not (older, historical).  So we create a boolean based on the  -->
 <!-- presence of the publisher file specification.                     -->
 <xsl:variable name="managed-directories">
+    <xsl:if test="$version-docinfo/directories/@external = ''">
+        <xsl:message terminate="yes">PTX:FATAL:   the value of "directories/@external" within "docinfo" must be nonempty</xsl:message>
+    </xsl:if>
     <xsl:if test="$publication/source/directories/@external = ''">
         <xsl:message terminate="yes">PTX:FATAL:   the value of source/directories/@external in the publisher file must be nonempty</xsl:message>
     </xsl:if>
     <xsl:if test="$publication/source/directories/@generated = ''">
         <xsl:message terminate="yes">PTX:FATAL:   the value of source/directories/@generated in the publisher file must be nonempty</xsl:message>
     </xsl:if>
+    <!-- The external directory may be declared in "docinfo" (preferred) -->
+    <!-- or the publication file (deprecated, honored); the generated    -->
+    <!-- directory is a publication file entry.  Management requires an  -->
+    <!-- external declaration, from either home, together with the       -->
+    <!-- generated declaration.                                          -->
+    <xsl:variable name="b-has-external" select="boolean($version-docinfo/directories/@external) or boolean($publication/source/directories/@external)"/>
     <xsl:choose>
-        <xsl:when test="$publication/source/directories/@external and $publication/source/directories/@generated">
+        <xsl:when test="$b-has-external and $publication/source/directories/@generated">
             <xsl:text>yes</xsl:text>
         </xsl:when>
-        <xsl:when test="not($publication/source/directories/@external) and not($publication/source/directories/@generated)">
+        <xsl:when test="not($b-has-external) and not($publication/source/directories/@generated)">
             <xsl:text>no</xsl:text>
         </xsl:when>
         <xsl:otherwise>
-            <xsl:message>PTX:FALLBACK:   the publisher file specifies one of source/directories/@external and source/directories/@generated, but not both. Proceeding as if neither was specified.</xsl:message>
+            <xsl:message>PTX:FALLBACK:   an external directory ("directories/@external" within "docinfo", or the deprecated publication file form) and a generated directory (source/directories/@generated in the publication file) must be specified together; only one was found. Proceeding as if neither was specified.</xsl:message>
             <xsl:text>no</xsl:text>
         </xsl:otherwise>
     </xsl:choose>
@@ -1272,19 +1303,19 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- This is a directory that may need to be copied to a      -->
 <!-- scratch location in anticipation of data files necessary -->
 <!-- for compilation of images, such as pie charts or plots   -->
-<!-- NB: this is broken and waiting for generated and external to settle down -->
+<!-- The data directory runs with the source, declared as     -->
+<!-- "directories/@data" within "docinfo" (the version tree,  -->
+<!-- for the same reason as the external directory above).    -->
+<!-- An earlier form of this variable consulted a publication -->
+<!-- file "source/directories/@data" which was never in the   -->
+<!-- publication schema, and hard-coded the value "data".     -->
 <xsl:variable name="data-directory">
     <xsl:variable name="raw-input">
-        <xsl:choose>
-            <xsl:when test="$publication/source/directories/@data">
-                <xsl:value-of select="'data'"/>
-            </xsl:when>
-            <xsl:otherwise/>
-        </xsl:choose>
+        <xsl:value-of select="$version-docinfo/directories/@data"/>
     </xsl:variable>
     <xsl:choose>
         <xsl:when test="substring($raw-input, 1, 1) = '/'">
-            <xsl:message>PTX:FALLBACK:   a data directory (source/directories/@data in the publisher file) must be a relative path and not begin with "/" as in "<xsl:value-of select="$raw-input"/>".  Proceeding with the default, which is an empty string, and may lead to unexpected results.</xsl:message>
+            <xsl:message>PTX:FALLBACK:   a data directory ("directories/@data" within "docinfo") must be a relative path and not begin with "/" as in "<xsl:value-of select="$raw-input"/>".  Proceeding with the default, which is an empty string, and may lead to unexpected results.</xsl:message>
             <xsl:text/>
         </xsl:when>
         <!-- trailing path separator is good -->
@@ -2709,23 +2740,19 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Always use cdn when "b-portable-html" is true or "resources-host" is "cdn" -->
 <xsl:variable name="b-cdn-resources" select="$b-portable-html or $resources-host = 'cdn'"/>
 
-<!-- HTML chunk-level defaults, available to any stylesheet that    -->
-<!-- needs to compute HTML filenames via the "containing-filename"  -->
-<!-- template (pretext-common.xsl) without importing the full       -->
-<!-- pretext-html.xsl.  Uses $version-root rather than $root        -->
-<!-- because this is computed before later assembly passes.  The    -->
-<!-- contract (documented at the definition of $version-root in     -->
-<!-- pretext-assembly.xsl) is that no assembly pass alters the      -->
-<!-- gross document structure (book/article type, part/chapter/     -->
-<!-- section hierarchy), so $version-root is reliable for these     -->
-<!-- top-level queries.  Same contract relied upon by $toc-level.   -->
-<xsl:variable name="html-chunk-level">
+<!-- The chunk level a document's structure implies, with no publisher -->
+<!-- or command-line choice consulted.  A conversion that accepts such -->
+<!-- a choice layers it over this; one that does not, such as EPUB,    -->
+<!-- uses this as-is, so the two can never drift apart.                -->
+<!-- Uses $version-root rather than $root because this is computed     -->
+<!-- before later assembly passes.  The contract (documented at the    -->
+<!-- definition of $version-root in pretext-assembly.xsl) is that no   -->
+<!-- assembly pass alters the gross document structure (book/article   -->
+<!-- type, part/chapter/section hierarchy), so $version-root is        -->
+<!-- reliable for these top-level queries.  Same contract relied upon  -->
+<!-- by $toc-level.                                                    -->
+<xsl:variable name="chunk-level-default">
     <xsl:choose>
-        <!-- portable html always gets chunk level 0 -->
-        <xsl:when test="$b-portable-html">0</xsl:when>
-        <xsl:when test="$chunk-level-entered != ''">
-            <xsl:value-of select="$chunk-level-entered" />
-        </xsl:when>
         <xsl:when test="$version-has-parts">3</xsl:when>
         <xsl:when test="$version-doc-type = 'book'">2</xsl:when>
         <xsl:when test="$version-article-sections or $version-article-printouts">1</xsl:when>
@@ -2734,7 +2761,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
         <xsl:when test="$version-doc-type = 'memo'">0</xsl:when>
         <xsl:otherwise>
-            <xsl:message>PTX:BUG:   HTML chunk level not determined</xsl:message>
+            <xsl:message>PTX:BUG:   chunk level not determined</xsl:message>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>
+
+<!-- The chunk level for HTML, available to any stylesheet that needs  -->
+<!-- to compute HTML filenames via the "containing-filename" template  -->
+<!-- (pretext-common.xsl) without importing the full pretext-html.xsl. -->
+<xsl:variable name="html-chunk-level">
+    <xsl:choose>
+        <!-- portable html always gets chunk level 0 -->
+        <xsl:when test="$b-portable-html">0</xsl:when>
+        <xsl:when test="$chunk-level-entered != ''">
+            <xsl:value-of select="$chunk-level-entered" />
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="$chunk-level-default"/>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:variable>
@@ -2746,6 +2789,31 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="favicon-scheme">
     <xsl:apply-templates select="$publisher-attribute-options/html/pi:pub-attribute[@name='favicon']" mode="set-pubfile-variable"/>
 </xsl:variable>
+
+<!--                            -->
+<!-- HTML Image Archive Links   -->
+<!--                            -->
+
+<!-- Requests for archive (download) versions of images: repeatable  -->
+<!-- "archive" elements within an "images" element.  The publication -->
+<!-- file form is preferred, and wins wholesale when present; the    -->
+<!-- "images" element within "docinfo" is deprecated (2026-07-30)    -->
+<!-- but honored while the publication file is silent.               -->
+<xsl:variable name="image-archives" select="$publication/html/images/archive | $docinfo/images/archive[not($publication/html/images/archive)]"/>
+
+<!--                            -->
+<!-- HTML Brand Logo            -->
+<!--                            -->
+
+<!-- An image for the masthead, optionally linking to a landing   -->
+<!-- page.  The publication file form is preferred, and elects    -->
+<!-- the logo wholesale (both attributes); the "brandlogo" within -->
+<!-- "docinfo" is deprecated (2026-07-30) but honored while the   -->
+<!-- publication file is silent.                                  -->
+<xsl:variable name="brandlogo-elected" select="$publication/html/brandlogo | $docinfo/brandlogo[not($publication/html/brandlogo)]"/>
+<xsl:variable name="brandlogo-source" select="string($brandlogo-elected/@source)"/>
+<xsl:variable name="brandlogo-url" select="string($brandlogo-elected/@url)"/>
+<xsl:variable name="b-brandlogo" select="not($brandlogo-source = '')"/>
 
 <!--                            -->
 <!-- HTML Embed Page button     -->
@@ -3851,7 +3919,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:param name="author-tools" select="''" />
 
 <!-- The autoname parameter is deprecated (2017-07-25) -->
-<!-- Replace with docinfo/cross-references/@text       -->
+<!-- Replace with docinfo/defaults/xrefs/@text         -->
 <xsl:param name="autoname" select="''" />
 
 <!-- 2020-11-22: latex.print to publisher file -->
@@ -4065,15 +4133,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- 2017-07-25  deprecate intentional autoname without new setting -->
     <xsl:call-template name="parameter-deprecation-message">
         <xsl:with-param name="date-string" select="'2017-07-25'" />
-        <xsl:with-param name="message" select="'the  autoname  parameter is deprecated, but is still effective since  &quot;docinfo/cross-references/@text&quot;  has not been set.  The following parameter values equate to the attribute values: &quot;no&quot; is &quot;global&quot;, &quot;yes&quot; is &quot;type-global&quot;, &quot;title&quot; is &quot;title&quot;'" />
-        <xsl:with-param name="incorrect-use" select="not($autoname = '') and not(//docinfo/cross-references)" />
+        <xsl:with-param name="message" select="'the  autoname  parameter is deprecated, but is still effective since  &quot;docinfo/defaults/xrefs/@text&quot;  has not been set.  The following parameter values equate to the attribute values: &quot;no&quot; is &quot;global&quot;, &quot;yes&quot; is &quot;type-global&quot;, &quot;title&quot; is &quot;title&quot;'" />
+        <xsl:with-param name="incorrect-use" select="not($autoname = '') and not(//docinfo/cross-references | //docinfo/defaults/xrefs)" />
     </xsl:call-template>
     <!--  -->
     <!-- 2017-07-25  deprecate intentional autoname also with new setting -->
     <xsl:call-template name="parameter-deprecation-message">
         <xsl:with-param name="date-string" select="'2017-07-25'" />
-        <xsl:with-param name="message" select="'the  autoname  parameter is deprecated, and is being overidden by a  &quot;docinfo/cross-references/@text&quot;  and so is totally ineffective and can be removed'" />
-            <xsl:with-param name="incorrect-use" select="not($autoname = '') and //docinfo/cross-references" />
+        <xsl:with-param name="message" select="'the  autoname  parameter is deprecated, and is being overidden by a  &quot;docinfo/defaults/xrefs/@text&quot;  and so is totally ineffective and can be removed'" />
+            <xsl:with-param name="incorrect-use" select="not($autoname = '') and (//docinfo/cross-references | //docinfo/defaults/xrefs)" />
     </xsl:call-template>
     <!--  -->
     <!-- 2017-12-18  deprecate three console macro characters -->
