@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./data/environments";
 export * from "./data/macros";
 export * from "./data/math";
+export * from "./data/plus";
 export * from "./scan/scan-document";
 export * from "./util/position";
 export * from "./completions/snippets";

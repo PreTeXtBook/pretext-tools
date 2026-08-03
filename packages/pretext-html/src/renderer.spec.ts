@@ -8,6 +8,12 @@ import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { isJspiAvailable, renderHtml, xpathStringLiteral } from "./renderer.js";
 import { forcePortablePublication } from "./publication.js";
+import {
+  HTML_STATIC_VERSION,
+  RUNESTONE_CSS,
+  RUNESTONE_JS,
+  RUNESTONE_VERSION,
+} from "./html-static.js";
 
 const SIMPLE_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
 <pretext>
@@ -45,6 +51,34 @@ const PRINTOUT_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
       <title>A Handout</title>
       <page><p>Hand it out.</p></page>
     </handout>
+  </article>
+</pretext>
+`;
+
+// Two of Runestone's interactive exercises. The stylesheets render these as
+// inert markup (`data-component="..."`) that only becomes an exercise once the
+// Runestone Services bundle runs, so both halves have to be checked.
+const RUNESTONE_ARTICLE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <article xml:id="runestone-article">
+    <title>Runestone</title>
+    <section xml:id="runestone-section">
+      <title>Interactives</title>
+      <exercise xml:id="rs-choice">
+        <statement><p>Which is even?</p></statement>
+        <choices>
+          <choice correct="yes"><statement><p>2</p></statement></choice>
+          <choice><statement><p>3</p></statement></choice>
+        </choices>
+      </exercise>
+      <exercise xml:id="rs-parsons">
+        <statement><p>Arrange the blocks.</p></statement>
+        <blocks>
+          <block><p>First</p></block>
+          <block><p>Second</p></block>
+        </blocks>
+      </exercise>
+    </section>
   </article>
 </pretext>
 `;
@@ -426,6 +460,53 @@ describe("renderHtml", () => {
     }
   });
 
+  it("links the Runestone Services bundle so interactives can run", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-rs-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, RUNESTONE_ARTICLE);
+      const { html } = await renderHtml({ sourcePath });
+
+      // The exercises' own markup, which is inert on its own...
+      expect(html).toContain('data-component="multiplechoice"');
+      expect(html).toContain('data-component="parsons"');
+      // ...and the bundle that gives it behaviour, from the release its
+      // content-hashed filenames belong to (see html-static.ts).
+      for (const file of [...RUNESTONE_JS, ...RUNESTONE_CSS]) {
+        expect(html).toContain(
+          `cdn.jsdelivr.net/gh/PreTeXtBook/html-static@${HTML_STATIC_VERSION}/dist/_static/${file}`,
+        );
+      }
+      // Client-side components in an ordinary web build: the exercises run in
+      // the reader's browser, with no Runestone server behind them.
+      expect(html).toContain("eBookConfig.useRunestoneServices = false");
+      expect(html).toContain(
+        `eBookConfig.runestone_version = '${RUNESTONE_VERSION}'`,
+      );
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("lets a caller drop the Runestone Services bundle", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-rs-off-"));
+    try {
+      const sourcePath = path.join(dir, "main.ptx");
+      fs.writeFileSync(sourcePath, RUNESTONE_ARTICLE);
+      const { html } = await renderHtml({
+        sourcePath,
+        stringParams: { "rs-js": "", "rs-css": "" },
+      });
+      for (const file of [...RUNESTONE_JS, ...RUNESTONE_CSS]) {
+        expect(html).not.toContain(file);
+      }
+      // The exercises are still built, just left without their behaviour.
+      expect(html).toContain('data-component="multiplechoice"');
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("rejects a source file outside the project directory", async () => {
     await expect(
       renderHtml({
@@ -796,7 +877,7 @@ describe("renderHtml slideshows", () => {
     // The _static fixup: upstream emits this one as a bare relative path,
     // which would 404 and cost the deck all of its PreTeXt styling.
     expect(html).toContain(
-      "cdn.jsdelivr.net/gh/PreTeXtBook/html-static@latest/dist/_static/pretext/css/pretext-reveal.css",
+      `cdn.jsdelivr.net/gh/PreTeXtBook/html-static@${HTML_STATIC_VERSION}/dist/_static/pretext/css/pretext-reveal.css`,
     );
     expect(html).not.toMatch(/href="_static\//);
   }, 120000);

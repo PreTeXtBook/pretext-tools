@@ -14,6 +14,7 @@
 //   - TEXT directives (`:name[…]`) have no converter handler yet (they become
 //     `<TODO>` placeholders), so this package neither completes nor lints them.
 
+import { PLUS_TYPES, PLUS_TYPE_KIND } from "@pretextbook/latex-style-pretext";
 import type { DirectiveSpec, DirectiveCategory } from "../types";
 
 /** The mirror of `DIRECTIVE_SPEC_TABLE`, minus fields we derive below. */
@@ -133,28 +134,46 @@ export const CONTAINER_DIRECTIVES: DirectiveSpec[] = Object.entries(
 ).map(([name, seed]) => seedToSpec(name, seed));
 
 /**
+ * Include kinds offered by this flavor but absent from the LaTeX converter's
+ * `defaultPlusTypes`. Harmless here (any leaf name converts), but the LaTeX
+ * flavor validates `\plus{type}` against that list, so `::figure{ref="x"}`
+ * completes while `\plus{figure}{x}` warns. Resolve by adding them upstream in
+ * `unified-latex/.../pre-conversion-subs/plus-subs.ts` if PreTeXt Plus really
+ * includes figures and tables by reference.
+ */
+const MARKDOWN_ONLY_TYPES = ["figure", "table"];
+
+function leafDocumentation(name: string): string {
+  switch (PLUS_TYPE_KIND.get(name)) {
+    case "division":
+      return `Include the modular \`${name}\` division stored under \`ref\`.`;
+    case "asset":
+      return `Include the \`${name}\` asset by \`ref\`.`;
+    default:
+      return `Include the \`${name}\` element by \`ref\`.`;
+  }
+}
+
+/**
  * Convenience completion list for leaf directives (`::name{…}`). These are the
  * PreTeXt Plus *include* syntax — a reference expanded by a later assembly step
  * (`::section{ref="ch-intro"}` → `<plus:section ref="ch-intro"/>`). Any name is
  * valid, so this list is offered as suggestions but never used for validation.
+ *
+ * The kinds come from `@pretextbook/latex-style-pretext` so the two flavors
+ * suggest one vocabulary; that package mirrors (and drift-tests against) the
+ * converter's `defaultPlusTypes`.
  */
 export const LEAF_DIRECTIVES: DirectiveSpec[] = [
-  ["part", "Include a modular part."],
-  ["chapter", "Include a modular chapter."],
-  ["section", "Include a modular section."],
-  ["subsection", "Include a modular subsection."],
-  ["subsubsection", "Include a modular subsubsection."],
-  ["image", "Include an image asset by `ref`."],
-  ["listing", "Include a code listing by `ref`."],
-  ["figure", "Include a figure by `ref`."],
-  ["table", "Include a table by `ref`."],
-].map(([name, documentation]) => ({
+  ...PLUS_TYPES,
+  ...MARKDOWN_ONLY_TYPES,
+].map((name) => ({
   name,
   type: name,
   category: "remark-like" as DirectiveCategory,
   kind: "leaf" as const,
   requiresStatement: false,
-  documentation,
+  documentation: leafDocumentation(name),
 }));
 
 /** Lookup from a container directive name to its spec. */

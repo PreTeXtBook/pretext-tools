@@ -7,6 +7,7 @@ import {
 import type { GetCompletionsParams } from "../types";
 import { scanDocument, contextAt } from "../scan/scan-document";
 import { CONTAINER_DIRECTIVES, LEAF_DIRECTIVES } from "../data/directives";
+import { PLUS_TYPE_KIND } from "@pretextbook/latex-style-pretext";
 import { KATEX_MACROS, EXTRA_MATH_MACROS } from "../data/math";
 import { rangeFromOffsets } from "../util/position";
 import {
@@ -179,6 +180,8 @@ function leafItems(
   const items: CompletionItem[] = [];
   for (const spec of LEAF_DIRECTIVES) {
     if (prefix && !spec.name.startsWith(prefix)) continue;
+    // Divisions sort ahead of assets, matching the LaTeX flavor's `\plus{`.
+    const isDivision = PLUS_TYPE_KIND.get(spec.name) === "division";
     items.push(
       makeItem({
         text,
@@ -188,6 +191,7 @@ function leafItems(
         detail: "include · plus:" + spec.name,
         documentation: spec.documentation,
         insert: leafInsertText(spec),
+        sortText: `${isDivision ? "0" : "1"}${spec.name}`,
       }),
     );
   }

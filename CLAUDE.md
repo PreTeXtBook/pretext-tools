@@ -39,6 +39,10 @@ npm run refresh:schemas
 
 # Refresh vendored PreTeXt XSL stylesheets (pretext-html package) from upstream
 npm run refresh:xsl
+
+# Re-pin the html-static CDN release + Runestone Services bundle (pretext-html)
+# Regenerates packages/pretext-html/src/html-static.ts; refresh:xsl also does it
+npm run refresh:runestone
 ```
 
 **Running the extension locally (VS Code):**
@@ -60,9 +64,9 @@ npm run refresh:xsl
 ### Packages
 
 | Package                                  | Role                                                                                                                                                                                                    | Build tool                                                                        |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --- |
 | `vscode-extension` (`pretext-tools`)     | Main VS Code extension: extension host, LSP client, commands, webview                                                                                                                                   | esbuild → `out/extension.js` + `out/lsp-server.js`                                |
-| `visual-editor`                          | React/TipTap WYSIWYG editor (VS Code webview UI)                                                                                                                                                        | Vite                                                                              |                                                              |
+| `visual-editor`                          | React/TipTap WYSIWYG editor (VS Code webview UI)                                                                                                                                                        | Vite                                                                              |     |
 | `completions`                            | Completion/intellisense engine (consumed by LSP server)                                                                                                                                                 | None — exports raw `.ts` source directly (`main`/`types` point at `src/index.ts`) |
 | `format`                                 | PreTeXt document formatter library                                                                                                                                                                      | Vite (ESM + CJS)                                                                  |
 | `latex-pretext`                          | LaTeX-to-PreTeXt conversion via `unified-latex`                                                                                                                                                         | Vite (ESM + CJS, via `vite-plugin-dts`)                                           |

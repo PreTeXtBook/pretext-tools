@@ -86,6 +86,39 @@ describe("macro completions", () => {
   });
 });
 
+describe("plus include completions", () => {
+  it("offers \\plus among the text macros", () => {
+    const item = byLabel(complete("\\plu|"), "plus");
+    expect(item?.textEdit?.newText).toBe("plus{${1:chapter}}{${2:ref}}");
+  });
+
+  it("offers include types inside \\plus{", () => {
+    const items = complete("\\plus{|");
+    expect(labels(items)).toContain("chapter");
+    expect(labels(items)).toContain("image");
+    // Divisions sort ahead of assets.
+    expect(byLabel(items, "chapter")?.sortText?.startsWith("0")).toBe(true);
+    expect(byLabel(items, "image")?.sortText?.startsWith("1")).toBe(true);
+  });
+
+  it("opens the ref argument when completing the type", () => {
+    expect(
+      byLabel(complete("\\plus{chap|"), "chapter")?.textEdit?.newText,
+    ).toBe("chapter}{$1}");
+  });
+
+  it("does not duplicate a ref argument that is already written", () => {
+    expect(
+      byLabel(complete("\\plus{chap|}{ch-intro}"), "chapter")?.textEdit
+        ?.newText,
+    ).toBe("chapter}");
+  });
+
+  it("still offers types after the optional attribute argument", () => {
+    expect(labels(complete("\\plus[width=50]{ima|"))).toContain("image");
+  });
+});
+
 describe("reference completions", () => {
   it("completes \\ref against document labels", () => {
     const items = complete(
