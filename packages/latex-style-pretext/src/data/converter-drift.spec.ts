@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { latexToPretext } from "@pretextbook/latex-pretext";
 import { ENVIRONMENTS } from "./environments";
 import { MACROS } from "./macros";
+import { PLUS_TYPES } from "./plus";
 import type { MacroSpec } from "../types";
 
 // Drift-guard: every curated environment (including aliases) and macro must
@@ -37,6 +38,9 @@ function envUsage(name: string): string {
  * false "unknown macro" for these, so the drift check converts them in place.
  */
 const CONTEXT_USAGE: Record<string, string> = {
+  // A bare `{x}` type would convert fine but warn as an unrecognized include
+  // type; use a real one so the plus-type drift check below owns that concern.
+  plus: "\\plus{chapter}{ch-intro}",
   documentclass: doc("", "x"),
   usepackage: doc("\\usepackage{amsmath}", "x"),
   title: doc("\\title{T}", "x"),
@@ -132,4 +136,22 @@ describe("curated macros match the converter", () => {
       expect(unknownMessages(macroUsage(macro))).not.toEqual([]);
     },
   );
+});
+
+// The converter warns on an include type outside its `defaultPlusTypes` list,
+// which is exactly what our mirror in ./plus must contain.
+function unrecognizedTypeMessages(latex: string): string[] {
+  return latexToPretext(latex)
+    .messages.map((m) => m.message)
+    .filter((m) => /is not a recognized type/.test(m));
+}
+
+describe("curated plus include types match the converter", () => {
+  it.each([...PLUS_TYPES])("\\plus{%s}{ref} is recognized", (type) => {
+    expect(unrecognizedTypeMessages(`\\plus{${type}}{ref-1}`)).toEqual([]);
+  });
+
+  it("still warns on a type outside the list", () => {
+    expect(unrecognizedTypeMessages("\\plus{bogus}{ref-1}")).not.toEqual([]);
+  });
 });

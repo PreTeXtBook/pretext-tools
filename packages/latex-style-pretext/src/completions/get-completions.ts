@@ -9,6 +9,7 @@ import { scanDocument, contextAt } from "../scan/scan-document";
 import { ENVIRONMENTS } from "../data/environments";
 import { MACROS } from "../data/macros";
 import { KATEX_MACROS, EXTRA_MATH_MACROS } from "../data/math";
+import { PLUS_TYPES, PLUS_TYPE_KIND } from "../data/plus";
 import { rangeFromOffsets } from "../util/position";
 import {
   environmentInsertText,
@@ -51,6 +52,14 @@ export function getLatexCompletions(
     return which === "begin"
       ? environmentBeginItems(text, edit, ctx.currentEnvironment)
       : environmentEndItems(text, edit, ctx.envStack);
+  }
+
+  // `\plus{...}` — PreTeXt Plus include types.
+  const plusMatch = /\\plus\s*(?:\[[^\]]*\])?\s*\{([a-zA-Z-]*)$/.exec(before);
+  if (plusMatch) {
+    const prefix = plusMatch[1];
+    const edit = braceEdit(text, offset, prefix.length);
+    return plusTypeItems(text, edit, prefix);
   }
 
   // `\ref{...}` and friends — label targets.
@@ -174,6 +183,36 @@ function labelItems(
         detail: "label",
         insert: name,
         plainText: true,
+      }),
+    );
+  }
+  return items;
+}
+
+/**
+ * Include types for `\plus{type}{ref}`. Completing the type also opens the
+ * `{ref}` argument, unless one is already written after the cursor.
+ */
+function plusTypeItems(
+  text: string,
+  edit: CursorEdit,
+  prefix: string,
+): CompletionItem[] {
+  const hasRefArgument = text[edit.end] === "{";
+  const items: CompletionItem[] = [];
+  for (const name of PLUS_TYPES) {
+    if (prefix && !name.startsWith(prefix)) continue;
+    const kind = PLUS_TYPE_KIND.get(name);
+    items.push(
+      makeItem({
+        text,
+        edit,
+        label: name,
+        kind: CompletionItemKind.Module,
+        detail: `plus include · ${kind}`,
+        insert: `${name}}${hasRefArgument ? "" : "{$1}"}`,
+        // Divisions are the common case, so they sort above assets.
+        sortText: `${kind === "division" ? "0" : "1"}${name}`,
       }),
     );
   }

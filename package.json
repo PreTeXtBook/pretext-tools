@@ -31,7 +31,8 @@
     "test:reliability": "npm exec vitest run packages/remark-pretext/src/lib/remark-pretext.spec.ts packages/ptxast-util-to-mdast/src/lib/ptxast-util-to-mdast.spec.ts packages/latex-pretext/src/lib/latex-pretext.spec.ts",
     "pretest": "npm run build",
     "format": "npx prettier --write --ignore-unknown \"packages/**\"",
-    "refresh:xsl": "npm run refresh-xsl -w @pretextbook/pretext-html"
+    "refresh:xsl": "npm run refresh-xsl -w @pretextbook/pretext-html",
+    "refresh:runestone": "npm run refresh-runestone -w @pretextbook/pretext-html"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

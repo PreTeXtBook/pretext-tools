@@ -15,6 +15,12 @@
 import * as path from "node:path";
 import { injectPreviewBanner, type PreviewBannerOptions } from "./banner.js";
 import { assetsBase, joinPath, readMount, readSource } from "./host.js";
+import {
+  HTML_STATIC_VERSION,
+  RUNESTONE_CSS,
+  RUNESTONE_JS,
+  RUNESTONE_VERSION,
+} from "./html-static.js";
 import { openBornHiddenKnowls } from "./knowls.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import {
@@ -126,7 +132,11 @@ export interface RenderOptions {
    * dark reveal theme is how an embedder gets a dark deck.
    */
   revealTheme?: string;
-  /** Additional XSLT string parameters, passed as strings (quoted for you). */
+  /**
+   * Additional XSLT string parameters, passed as strings (quoted for you).
+   * These are applied last, so they also override the defaults every render
+   * sets — see DEFAULT_STRING_PARAMS.
+   */
   stringParams?: Record<string, string>;
   /** Directory of PreTeXt XSL stylesheets. Defaults to the vendored copy. */
   xslDir?: string;
@@ -276,11 +286,38 @@ function fixMathJaxImport(html: string): string {
 
 /**
  * Where PreTeXt's own static css/js live when a build is portable. Mirrors the
- * `$cdn-prefix` variable in pretext-html.xsl; "latest" matches its default for
- * the `cli.version` parameter.
+ * `$cdn-prefix` variable in pretext-html.xsl, which builds this same URL from
+ * the `cli.version` parameter — hence the shared constant, so the fixup below
+ * cannot point at a different release from the rest of the page.
  */
-const HTML_STATIC_CDN =
-  "https://cdn.jsdelivr.net/gh/PreTeXtBook/html-static@latest/dist/";
+const HTML_STATIC_CDN = `https://cdn.jsdelivr.net/gh/PreTeXtBook/html-static@${HTML_STATIC_VERSION}/dist/`;
+
+/**
+ * String parameters every render starts from, before the caller's own.
+ *
+ * `cli.version` is pinned rather than left at upstream's "latest" because of
+ * the Runestone parameters beside it: those name content-hashed bundle files
+ * that exist only in the html-static release they were captured from, and the
+ * three values are only consistent together. See scripts/refresh-runestone.mjs.
+ *
+ * The Runestone parameters are what make interactive exercises — multiple
+ * choice, Parsons, fill-in-the-blank, ActiveCode — actually work. Without them
+ * upstream emits the exercises' markup and no code to drive it, so they render
+ * as inert boxes. This is orthogonal to `<platform runestone="yes">`, which
+ * selects *server* hosting: the components are client-side either way, and an
+ * ordinary web build links the same bundle.
+ *
+ * A caller can still override any of these through `RenderOptions.stringParams`
+ * — passing an empty `rs-js`/`rs-css` restores the previous behaviour of
+ * linking no Runestone code at all.
+ */
+const DEFAULT_STRING_PARAMS: Record<string, string> = {
+  "cli.version": HTML_STATIC_VERSION,
+  // Colon-delimited: pretext-runestone.xsl splits them with str:tokenize.
+  "rs-js": RUNESTONE_JS.join(":"),
+  "rs-css": RUNESTONE_CSS.join(":"),
+  "rs-version": RUNESTONE_VERSION,
+};
 
 /**
  * Point the slideshow's `_static/` stylesheet at the CDN.
@@ -716,6 +753,10 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     const params: Record<string, string> = {
       publisher: xpathStringLiteral(publicationUrl),
     };
+    for (const [name, value] of Object.entries(DEFAULT_STRING_PARAMS)) {
+      params[name] = xpathStringLiteral(value);
+    }
+    // Last, so a caller can override any default above.
     for (const [name, value] of Object.entries(options.stringParams ?? {})) {
       params[name] = xpathStringLiteral(value);
     }

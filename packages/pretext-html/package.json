@@ -70,6 +70,7 @@
     "build:browser": "vite build --mode browser",
     "test": "vitest run",
     "refresh-xsl": "node scripts/refresh-xsl.mjs",
+    "refresh-runestone": "node scripts/refresh-runestone.mjs",
     "build-xsl-bundle": "node --experimental-wasm-jspi scripts/build-xsl-bundle.mjs"
   },
   "dependencies": {

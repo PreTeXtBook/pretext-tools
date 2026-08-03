@@ -3,6 +3,7 @@ import { scanDocument, contextAt } from "../scan/scan-document";
 import { isKnownAnyEnvironment } from "../data/environments";
 import { isKnownMacro } from "../data/macros";
 import { isKnownMathMacro } from "../data/math";
+import { isKnownPlusType } from "../data/plus";
 import { rangeFromOffsets } from "../util/position";
 
 const SOURCE = "pretext-latex";
@@ -82,7 +83,48 @@ export function getLatexDiagnostics(text: string): Diagnostic[] {
     });
   }
 
+  // 4. `\plus{type}{ref}` include types, mirroring the converter's plus-subs
+  // warnings: a missing type drops the macro, an unrecognized one is used
+  // verbatim as the `<plus:…>` tag name.
+  for (const macro of scan.macros) {
+    if (macro.name !== "plus" || userMacros.has("plus")) continue;
+    const arg = readPlusTypeArgument(text, macro.end);
+    if (!arg || !arg.value) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: rangeFromOffsets(text, macro.start, arg?.end ?? macro.end),
+        source: SOURCE,
+        message:
+          "\\plus is missing its type argument; expected \\plus[attrs]{type}{ref}.",
+      });
+    } else if (!isKnownPlusType(arg.value)) {
+      diagnostics.push({
+        severity: DiagnosticSeverity.Warning,
+        range: rangeFromOffsets(text, arg.start, arg.end),
+        source: SOURCE,
+        message: `"${arg.value}" is not a recognized PreTeXt Plus include type; it will be used verbatim as <plus:${arg.value}>.`,
+      });
+    }
+  }
+
   return diagnostics;
+}
+
+/**
+ * Read the mandatory `{type}` argument of `\plus`, starting just past the macro
+ * name at `from` and stepping over the optional `[attrs]` argument. Returns the
+ * type text and the offsets of the group (braces included), or null when no
+ * brace group follows.
+ */
+function readPlusTypeArgument(
+  text: string,
+  from: number,
+): { value: string; start: number; end: number } | null {
+  const rest = text.slice(from);
+  const match = /^\s*(?:\[[^\]]*\]\s*)?\{([^{}]*)\}/.exec(rest);
+  if (!match) return null;
+  const start = from + match[0].length - match[1].length - 2;
+  return { value: match[1].trim(), start, end: from + match[0].length };
 }
 
 /**

@@ -76,6 +76,20 @@ describe("leaf directive completions", () => {
     // `proof` is a container directive; it must not appear in leaf context.
     expect(labels(complete("::pro|"))).not.toContain("proof");
   });
+
+  it("offers the full plus include vocabulary shared with \\plus", () => {
+    const names = labels(complete("::|"));
+    expect(names).toContain("appendix");
+    expect(names).toContain("worksheet");
+    expect(names).toContain("latex-image");
+    expect(names).toContain("sageplot");
+  });
+
+  it("sorts divisions ahead of assets", () => {
+    const items = complete("::|");
+    expect(byLabel(items, "chapter")?.sortText?.startsWith("0")).toBe(true);
+    expect(byLabel(items, "image")?.sortText?.startsWith("1")).toBe(true);
+  });
 });
 
 describe("math completions", () => {

@@ -78,10 +78,42 @@ describe("unknown macros", () => {
     ).toEqual([]);
   });
 
+  it("does not flag \\plus includes", () => {
+    expect(getLatexDiagnostics("\\plus{chapter}{ch-intro}")).toEqual([]);
+    expect(getLatexDiagnostics("\\plus[width=50]{image}{fig-graph}")).toEqual(
+      [],
+    );
+  });
+
   it("ignores macros inside comments and verbatim", () => {
     expect(getLatexDiagnostics("% \\bogus here")).toEqual([]);
     expect(
       getLatexDiagnostics("\\begin{program}\n\\bogus\n\\end{program}"),
     ).toEqual([]);
+  });
+});
+
+describe("plus includes", () => {
+  it("warns on an unrecognized include type", () => {
+    const diags = getLatexDiagnostics("\\plus{bogus}{ch-intro}");
+    expect(diags).toHaveLength(1);
+    expect(diags[0].severity).toBe(DiagnosticSeverity.Warning);
+    expect(diags[0].message).toContain("<plus:bogus>");
+    // The range covers the type argument, not the whole macro.
+    expect(diags[0].range).toEqual({
+      start: { line: 0, character: 5 },
+      end: { line: 0, character: 12 },
+    });
+  });
+
+  it("warns when the type argument is missing", () => {
+    expect(messages("\\plus")[0]).toContain("missing its type argument");
+    expect(messages("\\plus{}{ch-intro}")[0]).toContain(
+      "missing its type argument",
+    );
+  });
+
+  it("ignores \\plus inside comments", () => {
+    expect(getLatexDiagnostics("% \\plus{bogus}{ch-intro}")).toEqual([]);
   });
 });

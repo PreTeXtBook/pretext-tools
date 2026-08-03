@@ -6,6 +6,7 @@ import {
   isKnownContainerDirective,
 } from "./directives";
 import { isKnownMathMacro, isKnownMathEnvironment } from "./math";
+import { PLUS_TYPES } from "@pretextbook/latex-style-pretext";
 
 describe("container directive table", () => {
   it("resolves canonical directive names", () => {
@@ -53,6 +54,26 @@ describe("leaf (include) directives", () => {
     expect(names).toContain("image");
     // Leaf names are includes: they are not container directives.
     expect(isKnownContainerDirective("image")).toBe(false);
+  });
+
+  it("offers the same include vocabulary as the LaTeX flavor's \\plus", () => {
+    const names = LEAF_DIRECTIVES.map((d) => d.name);
+    expect(names).toEqual(expect.arrayContaining([...PLUS_TYPES]));
+    // Kinds the converter's `defaultPlusTypes` omits stay markdown-only.
+    expect(names).toContain("figure");
+    expect(PLUS_TYPES).not.toContain("figure");
+  });
+
+  it("describes divisions and assets differently", () => {
+    const byName = (name: string) =>
+      LEAF_DIRECTIVES.find((d) => d.name === name);
+    expect(byName("chapter")?.documentation).toContain("division");
+    expect(byName("image")?.documentation).toContain("asset");
+  });
+
+  it("has no duplicate include names", () => {
+    const names = LEAF_DIRECTIVES.map((d) => d.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 });
 

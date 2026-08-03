@@ -7,6 +7,9 @@
 //   node scripts/refresh-xsl.mjs --local <dir>   # copy from a local pretext checkout
 //   node scripts/refresh-xsl.mjs --generate-only # regenerate wrappers, no fetch
 //
+// Also re-captures the Runestone Services bundle from the html-static CDN
+// (see scripts/refresh-runestone.mjs), except under --generate-only.
+//
 // Two wrapper stylesheets are generated, not hand-maintained:
 //
 //   assets/preview-html.xsl     - ordinary documents. Contains a verbatim copy
@@ -24,6 +27,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import JSZip from "jszip";
+import { refreshRunestoneServices } from "./refresh-runestone.mjs";
 
 const packageRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -503,6 +507,10 @@ async function main() {
   generatePreviewRevealXsl();
   checkFileWriters();
   if (!generateOnly) {
+    // Not derived from the vendored stylesheets — it is read from the
+    // html-static CDN — so it is skipped along with the rest of the network
+    // work under --generate-only. See scripts/refresh-runestone.mjs.
+    await refreshRunestoneServices();
     warnIfBundleStale();
   }
 }

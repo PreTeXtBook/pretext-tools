@@ -179,6 +179,17 @@ const SPECIAL: MacroSpec[] = [
     mode: "text",
     documentation: "A blank to fill in. Converts to `<fillin>`.",
   },
+  {
+    // PreTeXt Plus modular include; see ./plus for the recognized types.
+    name: "plus",
+    signature: "o m m",
+    mode: "text",
+    snippet: "plus{${1:chapter}}{${2:ref}}",
+    documentation:
+      'PreTeXt Plus modular include. `\\plus{type}{ref}` → `<plus:type ref="ref"/>`, ' +
+      "pulling in the division or asset stored under `ref`. An optional " +
+      "`\\plus[width=50,margin=auto]{image}{ref}` argument becomes attributes on the element.",
+  },
 ];
 
 /**
