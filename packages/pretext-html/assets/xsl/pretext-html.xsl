@@ -505,8 +505,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                  <xsl:with-param name="heading-level" select="$chunk-heading-level"/>
             </xsl:apply-templates>
         </xsl:with-param>
-        <!-- Set b-has-printout to true if the structural node is or contains a worksheet or handout -->
-        <xsl:with-param name="b-has-printout" select="descendant-or-self::worksheet or descendant-or-self::handout"/>
+        <!-- Set b-has-printout to true if the structural node is or contains a  -->
+        <!-- worksheet or handout, or a PROJECT-LIKE acting as its own printout. -->
+        <xsl:with-param name="b-has-printout" select="descendant-or-self::worksheet or descendant-or-self::handout or descendant::*[&PROJECT-FILTER;][not(ancestor::worksheet|ancestor::handout)][@workspace|.//@workspace]"/>
     </xsl:apply-templates>
 </xsl:template>
 
@@ -1025,7 +1026,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- print previews.  A simple button with printer icon that reloads -->
 <!-- the page with a url parameter that tells javascript to switch   -->
 <!-- to printout css and format all the pages and workspace.         -->
-<xsl:template match="&PRINTOUT;" mode="standalone-printout-links">
+<xsl:template match="&PRINTOUT;|&PROJECT-LIKE;" mode="standalone-printout-links">
     <xsl:variable name="printout-id">
         <xsl:apply-templates select="." mode="html-id"/>
     </xsl:variable>
@@ -4046,17 +4047,42 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- And its CSS class -->
+<!-- A project acting as a standalone printout is marked as such, so the -->
+<!-- stylesheet can treat it as the printable thing it is (for one, its   -->
+<!-- title gets a line of its own rather than running into the text).     -->
 <xsl:template match="&PROJECT-LIKE;" mode="body-css-class">
     <xsl:value-of select="local-name()"/>
     <xsl:text> project-like</xsl:text>
+    <xsl:variable name="b-standalone-printout">
+        <xsl:apply-templates select="." mode="is-standalone-printout"/>
+    </xsl:variable>
+    <xsl:if test="$b-standalone-printout = 'true'">
+        <xsl:text> standalone-printout</xsl:text>
+    </xsl:if>
 </xsl:template>
 
 <!-- When born use this heading -->
+<!-- A standalone printout earns a print preview icon.  Unlike a printout, -->
+<!-- whose icon lives inside its heading, a project's icon is a sibling    -->
+<!-- following the heading: a project's title is a styled thing in its own -->
+<!-- right in several themes (a boxed legend, a filled bar), and the icon  -->
+<!-- has no business inside that.  As a floated sibling it lands just      -->
+<!-- below the title at the right, clear of the title's decoration.        -->
+<!-- NB: a project born hidden as a knowl (the publisher's knowl-project)  -->
+<!-- also comes through here, putting the icon in the knowl's "summary",   -->
+<!-- the only place it is visible while the knowl is closed.  The preview  -->
+<!-- javascript ("flattenKnowledPrintout") knows how to unpack that.       -->
 <xsl:template match="&PROJECT-LIKE;" mode="heading-birth">
     <xsl:param name="heading-level"/>
     <xsl:apply-templates select="." mode="heading-full">
         <xsl:with-param name="heading-level" select="$heading-level"/>
     </xsl:apply-templates>
+    <xsl:variable name="b-standalone-printout">
+        <xsl:apply-templates select="." mode="is-standalone-printout"/>
+    </xsl:variable>
+    <xsl:if test="$b-standalone-printout = 'true'">
+        <xsl:apply-templates select="." mode="standalone-printout-links"/>
+    </xsl:if>
 </xsl:template>
 
 <!-- When used in solutions -->
@@ -5424,6 +5450,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:if test="$b-original and not($block-type = 'hidden')">
             <xsl:apply-templates select="." mode="html-id-attribute"/>
         </xsl:if>
+        <!-- Both are empty unless this block is a standalone printout, -->
+        <!-- ie a PROJECT-LIKE with workspace outside of any printout.  -->
+        <xsl:apply-templates select="." mode="page-margins-attribute"/>
+        <xsl:apply-templates select="." mode="page-header-footer-attributes"/>
         <!-- If visible, heading interior to article -->
         <xsl:if test="$block-type = 'visible'">
             <xsl:apply-templates select="." mode="heading-birth">
@@ -6422,16 +6452,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- $base-pathname needed later for archive links -->
     <xsl:variable name="base-pathname">
         <xsl:value-of select="$generated-directory"/>
-        <xsl:if test="$b-managed-directories">
-            <xsl:choose>
-                <xsl:when test="latex-image">
-                    <xsl:text>latex-image/</xsl:text>
-                </xsl:when>
-                <xsl:when test="pf:prefigure">
-                    <xsl:text>prefigure/</xsl:text>
-                </xsl:when>
-            </xsl:choose>
-        </xsl:if>
+        <xsl:choose>
+            <xsl:when test="latex-image">
+                <xsl:text>latex-image/</xsl:text>
+            </xsl:when>
+            <xsl:when test="pf:prefigure">
+                <xsl:text>prefigure/</xsl:text>
+            </xsl:when>
+        </xsl:choose>
         <!-- NB: node-set in @select will have exactly -->
         <!-- one (child) node, given @match above      -->
         <xsl:apply-templates select="latex-image|pf:prefigure" mode="image-source-basename"/>
@@ -6487,9 +6515,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- $base-pathname needed later for archive links -->
     <xsl:variable name="base-pathname">
         <xsl:value-of select="$generated-directory"/>
-        <xsl:if test="$b-managed-directories">
-            <xsl:text>sageplot/</xsl:text>
-        </xsl:if>
+        <xsl:text>sageplot/</xsl:text>
         <xsl:apply-templates select="sageplot" mode="image-source-basename"/>
     </xsl:variable>
     <!-- 2d are SVG, 3d are HTML -->
@@ -6527,9 +6553,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- for source analysis.                                           -->
     <xsl:variable name="base-pathname">
         <xsl:value-of select="$generated-directory"/>
-        <xsl:if test="$b-managed-directories">
-            <xsl:text>asymptote/</xsl:text>
-        </xsl:if>
+        <xsl:text>asymptote/</xsl:text>
         <xsl:apply-templates select="asymptote" mode="image-source-basename"/>
     </xsl:variable>
     <xsl:variable name="html-filename" select="concat($base-pathname, '.html')" />
@@ -6538,9 +6562,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- insert correctly as a scaled instance                     -->
     <xsl:variable name="html-source-filename">
         <xsl:value-of select="$generated-directory-source"/>
-        <xsl:if test="$b-managed-directories">
-            <xsl:text>asymptote/</xsl:text>
-        </xsl:if>
+        <xsl:text>asymptote/</xsl:text>
         <xsl:apply-templates select="asymptote" mode="image-source-basename"/>
         <xsl:text>.html</xsl:text>
     </xsl:variable>
@@ -6679,16 +6701,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- Get the filename of the generated svg file -->
     <xsl:variable name="svg-source-filename">
         <xsl:value-of select="$generated-directory-source" />
-        <xsl:if test="$b-managed-directories">
-            <xsl:choose>
-                <xsl:when test="latex-image">
-                    <xsl:text>latex-image/</xsl:text>
-                </xsl:when>
-                <xsl:when test="pf:prefigure">
-                    <xsl:text>prefigure/</xsl:text>
-                </xsl:when>
-            </xsl:choose>
-        </xsl:if>
+        <xsl:choose>
+            <xsl:when test="latex-image">
+                <xsl:text>latex-image/</xsl:text>
+            </xsl:when>
+            <xsl:when test="pf:prefigure">
+                <xsl:text>prefigure/</xsl:text>
+            </xsl:when>
+        </xsl:choose>
         <xsl:apply-templates select="latex-image|pf:prefigure" mode="image-source-basename"/>
         <xsl:text>.svg</xsl:text>
     </xsl:variable>
@@ -10763,11 +10783,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                     <xsl:when test="substring($raw-location,1,4) = 'http'">
                         <xsl:value-of select="$raw-location"/>
                     </xsl:when>
-                    <xsl:when test="not($b-managed-directories)">
-                        <xsl:value-of select="$raw-location"/>
-                    </xsl:when>
                     <xsl:otherwise>
-                        <!-- empty when not using managed directories -->
                         <xsl:value-of select="$external-directory"/>
                         <xsl:value-of select="$raw-location"/>
                     </xsl:otherwise>
@@ -10797,11 +10813,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                     <xsl:when test="substring($raw-location,1,4) = 'http'">
                         <xsl:value-of select="$raw-location"/>
                     </xsl:when>
-                    <xsl:when test="not($b-managed-directories)">
-                        <xsl:value-of select="$raw-location"/>
-                    </xsl:when>
                     <xsl:otherwise>
-                        <!-- empty when not using managed directories -->
                         <xsl:value-of select="$external-directory"/>
                         <xsl:value-of select="$raw-location"/>
                     </xsl:otherwise>
@@ -12587,6 +12599,116 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </dialog>
 </xsl:template>
 
+<!-- Read-aloud (embedded text-to-speech): a toolbar button, a minimal      -->
+<!-- expanding player (prev, play/pause, next, continue, settings), and the  -->
+<!-- settings dialog that button opens.                                     -->
+<!--                                                                        -->
+<!-- The words below are literal English rather than localization           -->
+<!-- string-ids.  xsl/localizations is for content that reaches more than   -->
+<!-- one output format, and this is an HTML-only control surface.  Nothing  -->
+<!-- here has a LaTeX or EPUB counterpart.  The strings the player *speaks* -->
+<!-- live in js/src/read-aloud/strings.js for the same reason; a            -->
+<!-- JavaScript-side translation layer will eventually address both halves. -->
+<xsl:template name="read-aloud-controls">
+    <button id="ptx-read-aloud-button" class="ptx-read-aloud-button button" title="Read aloud" aria-expanded="false">
+        <xsl:call-template name="insert-symbol">
+            <xsl:with-param name="name" select="'text_to_speech'"/>
+        </xsl:call-template>
+        <span class="name">Read aloud</span>
+    </button>
+    <!-- player-ui.js retitles the toolbar and play/pause buttons as their -->
+    <!-- states change; the titles here are the pre-JavaScript defaults.   -->
+    <div id="ptx-read-aloud-player" class="ptx-read-aloud-player" hidden="hidden" role="group" aria-label="Read aloud">
+        <button id="ptx-read-aloud-prev" class="button" title="Previous sentence">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'skip_previous'"/>
+            </xsl:call-template>
+        </button>
+        <button id="ptx-read-aloud-toggle" class="ptx-read-aloud-toggle button" title="Play">
+            <span class="ptx-read-aloud-icon-play">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'play_arrow'"/>
+                </xsl:call-template>
+            </span>
+            <span class="ptx-read-aloud-icon-pause">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'pause'"/>
+                </xsl:call-template>
+            </span>
+        </button>
+        <button id="ptx-read-aloud-next" class="button" title="Next sentence">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'skip_next'"/>
+            </xsl:call-template>
+        </button>
+        <a id="ptx-read-aloud-continue" class="ptx-read-aloud-continue button" hidden="hidden">
+            <xsl:text>Continue</xsl:text>
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'play_arrow'"/>
+            </xsl:call-template>
+        </a>
+        <button id="ptx-read-aloud-settings-button" class="ptx-read-aloud-settings-button button" title="Reading settings">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'tune'"/>
+            </xsl:call-template>
+        </button>
+        <!-- No close button: the toolbar button that opened the player is  -->
+        <!-- a disclosure toggle and collapses it again, so a second        -->
+        <!-- dismissal control would only cost space in the navbar row.     -->
+    </div>
+    <!-- Read-aloud settings, opened from the player's own settings button.   -->
+    <!-- Deliberately a sibling of the player rather than a child: the player -->
+    <!-- is a flex row, and a dialog inside it would be a flex item.          -->
+    <dialog class="ptx-dialog ptx-read-aloud-settings-popup" id="ptx-read-aloud-settings-popup">
+        <div class="ptx-readability-options-popup-controls">
+            <h2 class="heading">Read aloud settings</h2>
+            <button class="ptx-read-aloud-settings-close-button button" id="ptx-read-aloud-settings-close-button" title="Close">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'close'"/>
+                </xsl:call-template>
+            </button>
+        </div>
+        <div class="ptx-readability-options-group">
+            <label for="ptx-read-aloud-voice">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'record_voice_over'"/>
+                </xsl:call-template>
+                <span>Voice</span>
+            </label>
+            <!-- options populated by settings.js from speechSynthesis.getVoices() -->
+            <select id="ptx-read-aloud-voice"></select>
+            <label class="ptx-readability-slider-label" for="ptx-read-aloud-rate">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'speed'"/>
+                </xsl:call-template>
+                <span>Reading speed</span>
+                <output id="ptx-read-aloud-rate-value" for="ptx-read-aloud-rate">1×</output>
+            </label>
+            <input type="range" id="ptx-read-aloud-rate" min="0.5" max="2" step="0.1" value="1"/>
+            <label for="ptx-read-aloud-asides">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'unfold_more'"/>
+                </xsl:call-template>
+                <span>Collapsed content</span>
+            </label>
+            <!-- What happens to a knowl's body once its title is read. -->
+            <select id="ptx-read-aloud-asides">
+                <option value="skip">Announce, do not read</option>
+                <option value="read">Read automatically</option>
+            </select>
+            <label for="ptx-read-aloud-autoscroll">
+                <input type="checkbox" id="ptx-read-aloud-autoscroll" checked="checked"/>
+                <span>Follow along (auto-scroll)</span>
+            </label>
+            <!-- Unchecked by default: this one navigates, so it is opt-in. -->
+            <label for="ptx-read-aloud-autocontinue">
+                <input type="checkbox" id="ptx-read-aloud-autocontinue"/>
+                <span>Continue to the next page automatically</span>
+            </label>
+        </div>
+    </dialog>
+</xsl:template>
+
 <xsl:template name="embed-button">
     <xsl:variable name="embed-localization">
         <xsl:apply-templates select="." mode="type-name">
@@ -12861,6 +12983,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- Button to show code for embedding in an LMS or webpage  -->
          <xsl:if test="$b-has-embed-button">
              <xsl:call-template name="embed-button" />
+        </xsl:if>
+        <!-- Read-aloud button and expanding player  -->
+        <xsl:if test="$b-read-aloud">
+            <xsl:call-template name="read-aloud-controls" />
         </xsl:if>
         <xsl:call-template name="readability-options" />
     </span>
@@ -13748,6 +13874,8 @@ TODO:
             <xsl:text>hasSage: </xsl:text><xsl:value-of select="$b-has-sage"/><xsl:text>,&#xa;</xsl:text>
             <xsl:text>isReact: </xsl:text><xsl:value-of select="$b-debug-react"/><xsl:text>,&#xa;</xsl:text>
             <xsl:text>htmlPresentation: </xsl:text><xsl:value-of select="$b-html-presentation"/><xsl:text>,&#xa;</xsl:text>
+            <!-- Added to support read-aloud functionality; shouldn't hurt anything else -->
+            <xsl:text>lang: "</xsl:text><xsl:value-of select="$document-language"/><xsl:text>",&#xa;</xsl:text>
         <xsl:text>});&#xa;</xsl:text>
     </script>
     <!-- MathJax 4 CDN -->
@@ -14319,6 +14447,11 @@ TODO:
                  ?v= query string busts the browser cache when the CLI version changes,
                  restoring the cache-busting that pretext_add_on.js?x=1 previously provided. -->
             <script src="{$html.js.dir}/pretext-core.js?v={$cli.version}"></script>
+            <!-- Read-aloud bundle: only when the publication option is on,
+                 so an opted-out build ships zero text-to-speech bytes. -->
+            <xsl:if test="$b-read-aloud">
+                <script src="{$html.js.dir}/pretext-read-aloud.js?v={$cli.version}"></script>
+            </xsl:if>
         </xsl:when>
         <xsl:when test="$b-debug-react-local">
             <script type="module" defer="" src="./static/js/main.js"></script>
@@ -14717,7 +14850,24 @@ TODO:
 <!-- We put page-margins-attributes only on printout sections -->
 <xsl:template match="*" mode="page-margins-attribute"/>
 
+<!-- A PROJECT-LIKE acting as a standalone printout is paginated by the -->
+<!-- same javascript, so it needs the same data.  It has no margin      -->
+<!-- attributes of its own, so "printout-margin" falls through to the   -->
+<!-- publisher's worksheet defaults for all four sides.                 -->
+<xsl:template match="&PROJECT-LIKE;" mode="page-margins-attribute">
+    <xsl:variable name="b-standalone-printout">
+        <xsl:apply-templates select="." mode="is-standalone-printout"/>
+    </xsl:variable>
+    <xsl:if test="$b-standalone-printout = 'true'">
+        <xsl:call-template name="printout-margins-attribute"/>
+    </xsl:if>
+</xsl:template>
+
 <xsl:template match="&PRINTOUT;" mode="page-margins-attribute">
+    <xsl:call-template name="printout-margins-attribute"/>
+</xsl:template>
+
+<xsl:template name="printout-margins-attribute">
     <xsl:attribute name="data-margins">
         <!-- A space-separated list for top, right, bottom, and left margins -->
         <xsl:apply-templates select="." mode="printout-margin">
@@ -14745,7 +14895,20 @@ TODO:
 <!-- Add data-* attributes for headers and footers -->
 <xsl:template match="*" mode="page-header-footer-attributes"/>
 
+<xsl:template match="&PROJECT-LIKE;" mode="page-header-footer-attributes">
+    <xsl:variable name="b-standalone-printout">
+        <xsl:apply-templates select="." mode="is-standalone-printout"/>
+    </xsl:variable>
+    <xsl:if test="$b-standalone-printout = 'true'">
+        <xsl:call-template name="printout-header-footer-attributes"/>
+    </xsl:if>
+</xsl:template>
+
 <xsl:template match="&PRINTOUT;" mode="page-header-footer-attributes">
+    <xsl:call-template name="printout-header-footer-attributes"/>
+</xsl:template>
+
+<xsl:template name="printout-header-footer-attributes">
     <xsl:if test="not($ws-header-first-left = '')">
         <xsl:attribute name="data-header-first-left">
             <xsl:value-of select="normalize-space($ws-header-first-left)"/>

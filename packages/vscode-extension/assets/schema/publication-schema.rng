@@ -286,8 +286,22 @@
   </define>
   <define name="Directories">
     <element name="directories">
-      <attribute name="external"/>
-      <attribute name="generated"/>
+      <optional>
+        <!--
+          deprecated (2026-07-30): the external directory is a
+          property of the source and is declared as
+          "directories/@external" within "docinfo"; this entry
+          is honored while the "docinfo" is silent
+        -->
+        <attribute name="external"/>
+      </optional>
+      <optional>
+        <!--
+          when absent, a directory named "generated" next to
+          the main source file is assumed
+        -->
+        <attribute name="generated"/>
+      </optional>
     </element>
   </define>
   <define name="Version">
@@ -701,6 +715,14 @@
         </attribute>
       </optional>
       <optional>
+        <attribute name="read-aloud">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
+      </optional>
+      <optional>
         <attribute name="short-answer-responses">
           <choice>
             <value>graded</value>
@@ -722,6 +744,9 @@
           <ref name="Baseurl"/>
         </optional>
         <optional>
+          <ref name="Brandlogo"/>
+        </optional>
+        <optional>
           <ref name="Calculator"/>
         </optional>
         <optional>
@@ -735,6 +760,9 @@
         </optional>
         <optional>
           <ref name="Feedback"/>
+        </optional>
+        <optional>
+          <ref name="Images"/>
         </optional>
         <optional>
           <ref name="Indexpage"/>
@@ -797,6 +825,14 @@
   <define name="Baseurl">
     <element name="baseurl">
       <attribute name="href"/>
+    </element>
+  </define>
+  <define name="Brandlogo">
+    <element name="brandlogo">
+      <attribute name="source"/>
+      <optional>
+        <attribute name="url"/>
+      </optional>
     </element>
   </define>
   <define name="Calculator">
@@ -882,6 +918,18 @@
   <define name="Feedback">
     <element name="feedback">
       <attribute name="href"/>
+    </element>
+  </define>
+  <define name="Images">
+    <element name="images">
+      <oneOrMore>
+        <element name="archive">
+          <optional>
+            <attribute name="from"/>
+          </optional>
+          <text/>
+        </element>
+      </oneOrMore>
     </element>
   </define>
   <define name="Indexpage">

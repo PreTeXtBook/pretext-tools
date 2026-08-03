@@ -526,6 +526,7 @@ export const defaultDevSchema: CompletionSchema = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -585,12 +586,6 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
-  "archive": {
-    "elements": [],
-    "attributes": [
-      "from"
-    ]
-  },
   "article": {
     "elements": [
       "activity",
@@ -621,6 +616,7 @@ export const defaultDevSchema: CompletionSchema = {
       "fragment",
       "frontmatter",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -951,7 +947,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "audio": {
     "elements": [],
@@ -1125,6 +1123,7 @@ export const defaultDevSchema: CompletionSchema = {
       "date",
       "edition",
       "editor",
+      "event",
       "keywords",
       "support",
       "website"
@@ -1328,11 +1327,18 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
+  "blurb": {
+    "elements": [],
+    "attributes": [
+      "shelf"
+    ]
+  },
   "book": {
     "elements": [
       "backmatter",
       "chapter",
       "frontmatter",
+      "handout",
       "idx",
       "part",
       "plaintitle",
@@ -1346,13 +1352,6 @@ export const defaultDevSchema: CompletionSchema = {
       "label",
       "xml:id",
       "xml:lang"
-    ]
-  },
-  "brandlogo": {
-    "elements": [],
-    "attributes": [
-      "source",
-      "url"
     ]
   },
   "c": {
@@ -1461,7 +1460,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "case": {
     "elements": [
@@ -1641,6 +1642,7 @@ export const defaultDevSchema: CompletionSchema = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -2232,7 +2234,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "credit": {
     "elements": [
@@ -2242,12 +2246,6 @@ export const defaultDevSchema: CompletionSchema = {
       "title"
     ],
     "attributes": []
-  },
-  "cross-references": {
-    "elements": [],
-    "attributes": [
-      "text"
-    ]
   },
   "custom": {
     "elements": [],
@@ -2568,6 +2566,15 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
+  "defaults": {
+    "elements": [
+      "images",
+      "parsons",
+      "programs",
+      "xrefs"
+    ],
+    "attributes": []
+  },
   "definition": {
     "elements": [
       "idx",
@@ -2824,6 +2831,13 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "directories": {
+    "elements": [],
+    "attributes": [
+      "data",
+      "external"
+    ]
+  },
   "discussion": {
     "elements": [
       "aside",
@@ -2855,12 +2869,6 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
-  "division": {
-    "elements": [],
-    "attributes": [
-      "part"
-    ]
-  },
   "dl": {
     "elements": [
       "li"
@@ -2874,22 +2882,34 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "asymptote-preamble",
       "author-biographies",
-      "brandlogo",
-      "cross-references",
-      "feedback",
-      "images",
+      "blurb",
+      "defaults",
+      "directories",
+      "document-id",
+      "doenetml",
       "initialism",
       "latex-image-preamble",
+      "logo",
       "macros",
       "math-package",
-      "numbering",
-      "parsons",
       "pf:prefigure-preamble",
-      "programs",
       "rename"
     ],
     "attributes": [
+      "component",
       "xml:lang"
+    ]
+  },
+  "document-id": {
+    "elements": [],
+    "attributes": [
+      "edition"
+    ]
+  },
+  "doenetml": {
+    "elements": [],
+    "attributes": [
+      "version"
     ]
   },
   "DOI": {
@@ -3451,7 +3471,6 @@ export const defaultDevSchema: CompletionSchema = {
       "pre",
       "program",
       "tabular",
-      "url",
       "video"
     ],
     "attributes": []
@@ -3884,6 +3903,90 @@ export const defaultDevSchema: CompletionSchema = {
       "sortby"
     ]
   },
+  "handout": {
+    "elements": [
+      "activity",
+      "algorithm",
+      "aside",
+      "assemblage",
+      "assumption",
+      "audio",
+      "axiom",
+      "biographical",
+      "blockquote",
+      "claim",
+      "computation",
+      "conclusion",
+      "conjecture",
+      "console",
+      "convention",
+      "corollary",
+      "data",
+      "definition",
+      "example",
+      "exercise",
+      "exploration",
+      "fact",
+      "figure",
+      "fragment",
+      "heuristic",
+      "historical",
+      "hypothesis",
+      "identity",
+      "idx",
+      "image",
+      "insight",
+      "introduction",
+      "investigation",
+      "lemma",
+      "list",
+      "list-of",
+      "listing",
+      "note",
+      "objectives",
+      "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
+      "outcomes",
+      "p",
+      "page",
+      "paragraphs",
+      "plaintitle",
+      "poem",
+      "pre",
+      "principle",
+      "problem",
+      "program",
+      "project",
+      "proof",
+      "proposition",
+      "question",
+      "remark",
+      "sage",
+      "sbsgroup",
+      "shorttitle",
+      "sidebyside",
+      "table",
+      "tabular",
+      "technology",
+      "theorem",
+      "title",
+      "video",
+      "warning"
+    ],
+    "attributes": [
+      "bottom",
+      "component",
+      "label",
+      "left",
+      "margin",
+      "right",
+      "top",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "headnote": {
     "elements": [
       "aside",
@@ -4166,10 +4269,11 @@ export const defaultDevSchema: CompletionSchema = {
     ]
   },
   "images": {
-    "elements": [
-      "archive"
-    ],
-    "attributes": []
+    "elements": [],
+    "attributes": [
+      "margins",
+      "width"
+    ]
   },
   "index": {
     "elements": [
@@ -5223,6 +5327,16 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   },
+  "logo": {
+    "elements": [],
+    "attributes": [
+      "llx",
+      "lly",
+      "pages",
+      "source",
+      "width"
+    ]
+  },
   "lq": {
     "elements": [],
     "attributes": []
@@ -5498,12 +5612,6 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "number-of-pages": {
     "elements": [],
-    "attributes": []
-  },
-  "numbering": {
-    "elements": [
-      "division"
-    ],
     "attributes": []
   },
   "obelus": {
@@ -6057,7 +6165,9 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "plaintitle": {
     "elements": [],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "plusminus": {
     "elements": [],
@@ -6246,6 +6356,7 @@ export const defaultDevSchema: CompletionSchema = {
       "chatcodes",
       "codelens",
       "codetailor",
+      "codetailor-fallback",
       "compile-also",
       "compiler-args",
       "component",
@@ -7017,6 +7128,7 @@ export const defaultDevSchema: CompletionSchema = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -7479,7 +7591,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "sidebyside": {
     "elements": [
@@ -7909,6 +8023,7 @@ export const defaultDevSchema: CompletionSchema = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -7994,6 +8109,7 @@ export const defaultDevSchema: CompletionSchema = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -8148,7 +8264,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "suffix": {
     "elements": [],
@@ -8685,7 +8803,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "titlepage": {
     "elements": [
@@ -9143,6 +9263,12 @@ export const defaultDevSchema: CompletionSchema = {
       "last",
       "provisional",
       "ref",
+      "text"
+    ]
+  },
+  "xrefs": {
+    "elements": [],
+    "attributes": [
       "text"
     ]
   },

@@ -65,7 +65,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -186,7 +189,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -263,7 +269,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -340,7 +349,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -415,7 +427,10 @@
       </oneOrMore>
       <interleave>
         <optional>
-          <ref name="Printout"/>
+          <ref name="Worksheet"/>
+        </optional>
+        <optional>
+          <ref name="Handout"/>
         </optional>
         <optional>
           <ref name="ReadingQuestions"/>
@@ -458,7 +473,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -536,7 +554,10 @@
           </oneOrMore>
           <interleave>
             <optional>
-              <ref name="Printout"/>
+              <ref name="Worksheet"/>
+            </optional>
+            <optional>
+              <ref name="Handout"/>
             </optional>
             <optional>
               <ref name="ReadingQuestions"/>
@@ -662,6 +683,9 @@
         <optional>
           <ref name="Edition"/>
         </optional>
+        <optional>
+          <ref name="Event"/>
+        </optional>
         <zeroOrMore>
           <ref name="Keywords"/>
         </zeroOrMore>
@@ -779,9 +803,9 @@
     </element>
   </define>
   <!--
-    "event" is consumed only by the slideshow conversions
-    (Beamer, reveal.js).  This schema does not yet describe a
-    "slideshow" document, so the pattern is dormant until then.
+    "event" names the occasion of a presentation: the slideshow
+    conversions (Beamer, reveal.js) read it, and an article's
+    title page carries it as a line following the title.
   -->
   <define name="Event">
     <element name="event">
@@ -1258,9 +1282,43 @@
       </interleave>
     </element>
   </define>
-  <!-- Printout currently just means a Worksheet, but could be extended later. -->
+  <!-- Main handout definition -->
+  <define name="Handout">
+    <element name="handout">
+      <ref name="PrintoutAttributes"/>
+      <ref name="MetaDataAltTitleOptional"/>
+      <interleave>
+        <optional>
+          <ref name="Objectives"/>
+        </optional>
+        <optional>
+          <ref name="IntroductionDivision"/>
+        </optional>
+      </interleave>
+      <choice>
+        <oneOrMore>
+          <ref name="Page"/>
+        </oneOrMore>
+        <oneOrMore>
+          <ref name="PrintoutBlock"/>
+        </oneOrMore>
+      </choice>
+      <interleave>
+        <optional>
+          <ref name="Outcomes"/>
+        </optional>
+        <optional>
+          <ref name="ConclusionDivision"/>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <!-- A printout is a worksheet or a handout -->
   <define name="Printout">
-    <ref name="Worksheet"/>
+    <choice>
+      <ref name="Worksheet"/>
+      <ref name="Handout"/>
+    </choice>
   </define>
   <define name="BlockText">
     <choice>
@@ -1700,10 +1758,13 @@
       <optional>
         <attribute name="codetailor">
           <choice>
-            <value>yes</value>
-            <value>no</value>
+            <value>all</value>
+            <value>incorrect</value>
           </choice>
         </attribute>
+      </optional>
+      <optional>
+        <attribute name="codetailor-fallback"/>
       </optional>
       <optional>
         <attribute name="starting-step">
@@ -2355,6 +2416,9 @@
   </define>
   <define name="Caption">
     <element name="caption">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <ref name="TextLong"/>
     </element>
   </define>
@@ -3959,6 +4023,9 @@
   </define>
   <define name="Attribution">
     <element name="attribution">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <choice>
         <ref name="TextLong"/>
         <oneOrMore>
@@ -3978,11 +4045,17 @@
   </define>
   <define name="Title">
     <element name="title">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <ref name="TextLong"/>
     </element>
   </define>
   <define name="LinedTitle">
     <element name="title">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <oneOrMore>
         <ref name="LongLine"/>
       </oneOrMore>
@@ -3990,11 +4063,17 @@
   </define>
   <define name="Subtitle">
     <element name="subtitle">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <ref name="TextLong"/>
     </element>
   </define>
   <define name="LinedSubtitle">
     <element name="subtitle">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <oneOrMore>
         <ref name="LongLine"/>
       </oneOrMore>
@@ -4002,16 +4081,25 @@
   </define>
   <define name="ShortTitle">
     <element name="shorttitle">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <ref name="TextShort"/>
     </element>
   </define>
   <define name="PlainTitle">
     <element name="plaintitle">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <text/>
     </element>
   </define>
   <define name="Creator">
     <element name="creator">
+      <optional>
+        <ref name="Component"/>
+      </optional>
       <ref name="TextShort"/>
     </element>
   </define>
@@ -5203,19 +5291,14 @@
   <define name="DocInfo">
     <element name="docinfo">
       <optional>
+        <ref name="Component"/>
+      </optional>
+      <optional>
         <ref name="XMLLang"/>
       </optional>
       <oneOrMore>
         <ref name="Configuration"/>
       </oneOrMore>
-    </element>
-  </define>
-  <define name="Configuration" combine="choice">
-    <element name="brandlogo">
-      <optional>
-        <attribute name="url"/>
-      </optional>
-      <attribute name="source"/>
     </element>
   </define>
   <define name="Configuration" combine="choice">
@@ -5247,25 +5330,8 @@
     </element>
   </define>
   <define name="Configuration" combine="choice">
-    <element name="cross-references">
-      <attribute name="text">
-        <ref name="XrefTextStyle"/>
-      </attribute>
-    </element>
-  </define>
-  <define name="Configuration" combine="choice">
     <element name="initialism">
       <text/>
-    </element>
-  </define>
-  <define name="FeedbackUrl">
-    <element name="url">
-      <text/>
-    </element>
-  </define>
-  <define name="Configuration" combine="choice">
-    <element name="feedback">
-      <ref name="FeedbackUrl"/>
     </element>
   </define>
   <define name="Configuration" combine="choice">
@@ -5278,15 +5344,13 @@
     </element>
   </define>
   <define name="Configuration" combine="choice">
-    <element name="images">
-      <oneOrMore>
-        <element name="archive">
-          <optional>
-            <attribute name="from"/>
-          </optional>
-          <text/>
-        </element>
-      </oneOrMore>
+    <element name="directories">
+      <optional>
+        <attribute name="external"/>
+      </optional>
+      <optional>
+        <attribute name="data"/>
+      </optional>
     </element>
   </define>
   <define name="Configuration" combine="choice">
@@ -5300,59 +5364,107 @@
     </element>
   </define>
   <define name="Configuration" combine="choice">
-    <element name="numbering">
+    <element name="defaults">
+      <interleave>
+        <optional>
+          <element name="images">
+            <optional>
+              <attribute name="width"/>
+            </optional>
+            <optional>
+              <attribute name="margins"/>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="programs">
+            <optional>
+              <attribute name="language"/>
+            </optional>
+            <optional>
+              <attribute name="compiler-args"/>
+            </optional>
+            <optional>
+              <attribute name="download">
+                <choice>
+                  <value>yes</value>
+                  <value>no</value>
+                </choice>
+              </attribute>
+            </optional>
+            <optional>
+              <attribute name="linenumbers">
+                <choice>
+                  <value>yes</value>
+                  <value>no</value>
+                </choice>
+              </attribute>
+            </optional>
+            <optional>
+              <attribute name="linker-args"/>
+            </optional>
+            <optional>
+              <attribute name="interpreter-args"/>
+            </optional>
+            <optional>
+              <attribute name="timeout"/>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="parsons">
+            <optional>
+              <attribute name="language"/>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="xrefs">
+            <attribute name="text">
+              <ref name="XrefTextStyle"/>
+            </attribute>
+          </element>
+        </optional>
+      </interleave>
+    </element>
+  </define>
+  <define name="Configuration" combine="choice">
+    <element name="doenetml">
+      <attribute name="version"/>
+    </element>
+  </define>
+  <define name="Configuration" combine="choice">
+    <element name="logo">
+      <attribute name="source"/>
+      <attribute name="llx"/>
+      <attribute name="lly"/>
       <optional>
-        <element name="division">
-          <attribute name="part">
-            <choice>
-              <value>decorative</value>
-              <value>structural</value>
-            </choice>
-          </attribute>
-        </element>
+        <attribute name="width"/>
+      </optional>
+      <optional>
+        <attribute name="pages">
+          <choice>
+            <value>first</value>
+            <value>all</value>
+          </choice>
+        </attribute>
       </optional>
     </element>
   </define>
   <define name="Configuration" combine="choice">
-    <element name="programs">
+    <element name="blurb">
       <optional>
-        <attribute name="language"/>
+        <attribute name="shelf"/>
       </optional>
-      <optional>
-        <attribute name="compiler-args"/>
-      </optional>
-      <optional>
-        <attribute name="download">
-          <choice>
-            <value>yes</value>
-            <value>no</value>
-          </choice>
-        </attribute>
-      </optional>
-      <optional>
-        <attribute name="linenumbers">
-          <choice>
-            <value>yes</value>
-            <value>no</value>
-          </choice>
-        </attribute>
-      </optional>
-      <optional>
-        <attribute name="linker-args"/>
-      </optional>
-      <optional>
-        <attribute name="interpreter-args"/>
-      </optional>
-      <optional>
-        <attribute name="timeout"/>
-      </optional>
+      <text/>
     </element>
   </define>
   <define name="Configuration" combine="choice">
-    <element name="parsons">
+    <element name="document-id">
       <optional>
-        <attribute name="language"/>
+        <attribute name="edition"/>
       </optional>
+      <text/>
     </element>
   </define>
 </grammar>
