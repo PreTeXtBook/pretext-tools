@@ -523,6 +523,7 @@ export const ptxSchemaElementChildren = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -582,12 +583,6 @@ export const ptxSchemaElementChildren = {
       "xml:lang"
     ]
   },
-  "archive": {
-    "elements": [],
-    "attributes": [
-      "from"
-    ]
-  },
   "article": {
     "elements": [
       "activity",
@@ -618,6 +613,7 @@ export const ptxSchemaElementChildren = {
       "fragment",
       "frontmatter",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -948,7 +944,9 @@ export const ptxSchemaElementChildren = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "audio": {
     "elements": [],
@@ -1122,6 +1120,7 @@ export const ptxSchemaElementChildren = {
       "date",
       "edition",
       "editor",
+      "event",
       "keywords",
       "support",
       "website"
@@ -1325,11 +1324,18 @@ export const ptxSchemaElementChildren = {
       "xml:lang"
     ]
   },
+  "blurb": {
+    "elements": [],
+    "attributes": [
+      "shelf"
+    ]
+  },
   "book": {
     "elements": [
       "backmatter",
       "chapter",
       "frontmatter",
+      "handout",
       "idx",
       "part",
       "plaintitle",
@@ -1343,13 +1349,6 @@ export const ptxSchemaElementChildren = {
       "label",
       "xml:id",
       "xml:lang"
-    ]
-  },
-  "brandlogo": {
-    "elements": [],
-    "attributes": [
-      "source",
-      "url"
     ]
   },
   "c": {
@@ -1458,7 +1457,9 @@ export const ptxSchemaElementChildren = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "case": {
     "elements": [
@@ -1638,6 +1639,7 @@ export const ptxSchemaElementChildren = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -2229,7 +2231,9 @@ export const ptxSchemaElementChildren = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "credit": {
     "elements": [
@@ -2239,12 +2243,6 @@ export const ptxSchemaElementChildren = {
       "title"
     ],
     "attributes": []
-  },
-  "cross-references": {
-    "elements": [],
-    "attributes": [
-      "text"
-    ]
   },
   "custom": {
     "elements": [],
@@ -2565,6 +2563,15 @@ export const ptxSchemaElementChildren = {
       "xml:lang"
     ]
   },
+  "defaults": {
+    "elements": [
+      "images",
+      "parsons",
+      "programs",
+      "xrefs"
+    ],
+    "attributes": []
+  },
   "definition": {
     "elements": [
       "idx",
@@ -2821,6 +2828,13 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "directories": {
+    "elements": [],
+    "attributes": [
+      "data",
+      "external"
+    ]
+  },
   "discussion": {
     "elements": [
       "aside",
@@ -2852,12 +2866,6 @@ export const ptxSchemaElementChildren = {
       "xml:lang"
     ]
   },
-  "division": {
-    "elements": [],
-    "attributes": [
-      "part"
-    ]
-  },
   "dl": {
     "elements": [
       "li"
@@ -2871,22 +2879,34 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "asymptote-preamble",
       "author-biographies",
-      "brandlogo",
-      "cross-references",
-      "feedback",
-      "images",
+      "blurb",
+      "defaults",
+      "directories",
+      "document-id",
+      "doenetml",
       "initialism",
       "latex-image-preamble",
+      "logo",
       "macros",
       "math-package",
-      "numbering",
-      "parsons",
       "pf:prefigure-preamble",
-      "programs",
       "rename"
     ],
     "attributes": [
+      "component",
       "xml:lang"
+    ]
+  },
+  "document-id": {
+    "elements": [],
+    "attributes": [
+      "edition"
+    ]
+  },
+  "doenetml": {
+    "elements": [],
+    "attributes": [
+      "version"
     ]
   },
   "DOI": {
@@ -3448,7 +3468,6 @@ export const ptxSchemaElementChildren = {
       "pre",
       "program",
       "tabular",
-      "url",
       "video"
     ],
     "attributes": []
@@ -3881,6 +3900,90 @@ export const ptxSchemaElementChildren = {
       "sortby"
     ]
   },
+  "handout": {
+    "elements": [
+      "activity",
+      "algorithm",
+      "aside",
+      "assemblage",
+      "assumption",
+      "audio",
+      "axiom",
+      "biographical",
+      "blockquote",
+      "claim",
+      "computation",
+      "conclusion",
+      "conjecture",
+      "console",
+      "convention",
+      "corollary",
+      "data",
+      "definition",
+      "example",
+      "exercise",
+      "exploration",
+      "fact",
+      "figure",
+      "fragment",
+      "heuristic",
+      "historical",
+      "hypothesis",
+      "identity",
+      "idx",
+      "image",
+      "insight",
+      "introduction",
+      "investigation",
+      "lemma",
+      "list",
+      "list-of",
+      "listing",
+      "note",
+      "objectives",
+      "observation",
+      "openconjecture",
+      "openproblem",
+      "openquestion",
+      "outcomes",
+      "p",
+      "page",
+      "paragraphs",
+      "plaintitle",
+      "poem",
+      "pre",
+      "principle",
+      "problem",
+      "program",
+      "project",
+      "proof",
+      "proposition",
+      "question",
+      "remark",
+      "sage",
+      "sbsgroup",
+      "shorttitle",
+      "sidebyside",
+      "table",
+      "tabular",
+      "technology",
+      "theorem",
+      "title",
+      "video",
+      "warning"
+    ],
+    "attributes": [
+      "bottom",
+      "component",
+      "label",
+      "left",
+      "margin",
+      "right",
+      "top",
+      "xml:id",
+      "xml:lang"
+    ]
+  },
   "headnote": {
     "elements": [
       "aside",
@@ -4163,10 +4266,11 @@ export const ptxSchemaElementChildren = {
     ]
   },
   "images": {
-    "elements": [
-      "archive"
-    ],
-    "attributes": []
+    "elements": [],
+    "attributes": [
+      "margins",
+      "width"
+    ]
   },
   "index": {
     "elements": [
@@ -5220,6 +5324,16 @@ export const ptxSchemaElementChildren = {
     ],
     "attributes": []
   },
+  "logo": {
+    "elements": [],
+    "attributes": [
+      "llx",
+      "lly",
+      "pages",
+      "source",
+      "width"
+    ]
+  },
   "lq": {
     "elements": [],
     "attributes": []
@@ -5495,12 +5609,6 @@ export const ptxSchemaElementChildren = {
   },
   "number-of-pages": {
     "elements": [],
-    "attributes": []
-  },
-  "numbering": {
-    "elements": [
-      "division"
-    ],
     "attributes": []
   },
   "obelus": {
@@ -6054,7 +6162,9 @@ export const ptxSchemaElementChildren = {
   },
   "plaintitle": {
     "elements": [],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "plusminus": {
     "elements": [],
@@ -6243,6 +6353,7 @@ export const ptxSchemaElementChildren = {
       "chatcodes",
       "codelens",
       "codetailor",
+      "codetailor-fallback",
       "compile-also",
       "compiler-args",
       "component",
@@ -7014,6 +7125,7 @@ export const ptxSchemaElementChildren = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -7476,7 +7588,9 @@ export const ptxSchemaElementChildren = {
       "xelatex",
       "xetex"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "sidebyside": {
     "elements": [
@@ -7906,6 +8020,7 @@ export const ptxSchemaElementChildren = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -7991,6 +8106,7 @@ export const ptxSchemaElementChildren = {
       "figure",
       "fragment",
       "glossary",
+      "handout",
       "heuristic",
       "historical",
       "hypothesis",
@@ -8145,7 +8261,9 @@ export const ptxSchemaElementChildren = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "suffix": {
     "elements": [],
@@ -8682,7 +8800,9 @@ export const ptxSchemaElementChildren = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "component"
+    ]
   },
   "titlepage": {
     "elements": [
@@ -9143,6 +9263,12 @@ export const ptxSchemaElementChildren = {
       "text"
     ]
   },
+  "xrefs": {
+    "elements": [],
+    "attributes": [
+      "text"
+    ]
+  },
   "year": {
     "elements": [
       "abbr",
@@ -9346,7 +9472,6 @@ export const ptxUnmodeledSchemaElementNames = [
   "alteration",
   "am",
   "angles",
-  "archive",
   "articletitle",
   "aside",
   "assumption",
@@ -9360,7 +9485,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "bibinfo",
   "biographical",
   "biography",
-  "brandlogo",
+  "blurb",
   "ca",
   "cd",
   "cell",
@@ -9383,7 +9508,6 @@ export const ptxUnmodeledSchemaElementNames = [
   "copyright",
   "creator",
   "credit",
-  "cross-references",
   "custom",
   "data",
   "dataurl",
@@ -9391,12 +9515,15 @@ export const ptxUnmodeledSchemaElementNames = [
   "dblbrackets",
   "dblprime",
   "dedication",
+  "defaults",
   "degree",
   "delete",
   "department",
+  "directories",
   "discussion",
-  "division",
   "docinfo",
+  "document-id",
+  "doenetml",
   "DOI",
   "doubleflat",
   "doublesharp",
@@ -9424,6 +9551,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "gi",
   "given",
   "glossary",
+  "handout",
   "headnote",
   "heuristic",
   "historical",
@@ -9462,6 +9590,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "list-of",
   "literal",
   "location",
+  "logo",
   "lq",
   "lsq",
   "macro-file",
@@ -9484,7 +9613,6 @@ export const ptxUnmodeledSchemaElementNames = [
   "notation-list",
   "number",
   "number-of-pages",
-  "numbering",
   "obelus",
   "objectives",
   "opinion",
@@ -9582,6 +9710,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "worksheet",
   "xelatex",
   "xetex",
+  "xrefs",
   "year"
 ] as const;
 
@@ -9589,7 +9718,7 @@ export type GeneratedPtxElementName = keyof typeof ptxSchemaElementChildren;
 export type GeneratedPtxCuratedElementName = typeof ptxCuratedElementNames[number];
 export type GeneratedPtxUnmodeledSchemaElementName =
   typeof ptxUnmodeledSchemaElementNames[number];
-export type GeneratedPtxAttributeName = "acc" | "add-files" | "admit" | "alignat-columns" | "alignment" | "answer" | "answer-variable" | "archive" | "aspect" | "authority" | "auto-evaluate" | "autorun" | "base" | "bass" | "bottom" | "bps" | "break" | "category" | "characters" | "chatcodes" | "codelens" | "codetailor" | "cols" | "colspan" | "compile-also" | "compiler-args" | "component" | "continuation" | "copy" | "corresponding" | "courseid" | "database" | "day" | "decorative" | "default" | "detail" | "direction" | "divisional" | "divisions" | "doctest" | "download" | "element" | "elements" | "empty" | "end" | "evaluator" | "exp" | "extra-compiler-args" | "filename" | "fill" | "finish" | "first" | "form" | "from" | "halign" | "header" | "hidecode" | "highlight-lines" | "href" | "include" | "indent" | "inline" | "interactive" | "interpreter-args" | "kind" | "label" | "landscape" | "language" | "last" | "latex-name" | "latexsep" | "left" | "length" | "line" | "line-numbers" | "linenumbers" | "linker-args" | "listing" | "margin" | "margins" | "marker" | "mathjax-name" | "mode" | "month" | "musescore" | "musescoreuser" | "name" | "ncbi" | "number" | "octave" | "parentheses" | "part" | "pc" | "pg-name" | "play-at" | "prefix" | "preview" | "primary" | "project" | "prompt" | "provisional" | "ref" | "right" | "root" | "rotate" | "row-headers" | "rows" | "scope" | "seed" | "series" | "seriescode" | "showspaces" | "sortby" | "source" | "start" | "starting-step" | "suspended" | "tag" | "text" | "timelimit" | "timeout" | "tolerance" | "top" | "type" | "url" | "valign" | "valigns" | "variant" | "vimeo" | "visible" | "visual" | "width" | "widths" | "workspace" | "xml:id" | "xml:lang" | "year" | "youtube" | "youtubeplaylist";
+export type GeneratedPtxAttributeName = "acc" | "add-files" | "admit" | "alignat-columns" | "alignment" | "answer" | "answer-variable" | "archive" | "aspect" | "authority" | "auto-evaluate" | "autorun" | "base" | "bass" | "bottom" | "bps" | "break" | "category" | "characters" | "chatcodes" | "codelens" | "codetailor" | "codetailor-fallback" | "cols" | "colspan" | "compile-also" | "compiler-args" | "component" | "continuation" | "copy" | "corresponding" | "courseid" | "data" | "database" | "day" | "decorative" | "default" | "detail" | "direction" | "divisional" | "divisions" | "doctest" | "download" | "edition" | "element" | "elements" | "empty" | "end" | "evaluator" | "exp" | "external" | "extra-compiler-args" | "filename" | "fill" | "finish" | "first" | "form" | "halign" | "header" | "hidecode" | "highlight-lines" | "href" | "include" | "indent" | "inline" | "interactive" | "interpreter-args" | "kind" | "label" | "landscape" | "language" | "last" | "latex-name" | "latexsep" | "left" | "length" | "line" | "line-numbers" | "linenumbers" | "linker-args" | "listing" | "llx" | "lly" | "margin" | "margins" | "marker" | "mathjax-name" | "mode" | "month" | "musescore" | "musescoreuser" | "name" | "ncbi" | "number" | "octave" | "pages" | "parentheses" | "pc" | "pg-name" | "play-at" | "prefix" | "preview" | "primary" | "project" | "prompt" | "provisional" | "ref" | "right" | "root" | "rotate" | "row-headers" | "rows" | "scope" | "seed" | "series" | "seriescode" | "shelf" | "showspaces" | "sortby" | "source" | "start" | "starting-step" | "suspended" | "tag" | "text" | "timelimit" | "timeout" | "tolerance" | "top" | "type" | "valign" | "valigns" | "variant" | "version" | "vimeo" | "visible" | "visual" | "width" | "widths" | "workspace" | "xml:id" | "xml:lang" | "year" | "youtube" | "youtubeplaylist";
 export type GeneratedPtxChildElementName<
   ElementName extends GeneratedPtxElementName,
 > = (typeof ptxSchemaElementChildren)[ElementName]["elements"][number];
