@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.8.0
+
+### Minor Changes
+
+- 876c474: Updates to pretext, improvements to latex-style linting, and preview of runestone components
+
 ## 0.7.0
 
 ### Minor Changes

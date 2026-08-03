@@ -1,5 +1,11 @@
 # @pretextbook/schema
 
+## 0.4.0
+
+### Minor Changes
+
+- 876c474: Updates to pretext, improvements to latex-style linting, and preview of runestone components
+
 ## 0.3.0
 
 ### Minor Changes

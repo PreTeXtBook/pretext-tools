@@ -1,5 +1,12 @@
 # @pretextbook/remark-pretext
 
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [876c474]
+  - @pretextbook/ptxast@0.1.0
+
 ## 0.0.11
 
 ### Patch Changes
