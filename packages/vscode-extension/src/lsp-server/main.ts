@@ -24,6 +24,7 @@ import {
 } from "./state";
 import { getProjectPtxSymbols } from "./projectPtx/get-symbols";
 import { getProjectPtxLinks } from "./projectPtx/get-links";
+import { getXincludeLinks } from "./get-xinclude-links";
 import { getProjectPtxHoverInfo } from "./projectPtx/get-hover";
 import {
   getCompletions,
@@ -99,7 +100,9 @@ connection.onInitialize((params: InitializeParams) => {
       },
       // hoverProvider: { workDoneProgress: true },
       // documentSymbolProvider: { label: "PreTeXt Symbols" },
-      // documentLinkProvider: {},
+      // Links for `xi:include/@href` in source files and for the file
+      // references in `project.ptx`.
+      documentLinkProvider: { resolveProvider: false },
       // codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
       executeCommandProvider: {
         commands: ["formatDocument", "formatText"],
@@ -424,9 +427,12 @@ connection.onNotification((...args) => {
 });
 
 connection.onDocumentLinks((params, cancel) => {
-  if (isProjectPtx(params.textDocument.uri)) {
-    return getProjectPtxLinks(params.textDocument.uri);
+  const uri = params.textDocument.uri;
+  if (isProjectPtx(uri)) {
+    return getProjectPtxLinks(uri);
   }
+  const document = documents.get(uri);
+  return document ? getXincludeLinks(document) : [];
 });
 
 connection.onDocumentSymbol(async (params): Promise<DocumentSymbol[]> => {

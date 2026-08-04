@@ -1012,6 +1012,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Tables -->
 <xsl:template name="tables">
+    <xsl:if test="$document-root//tabular[.//tn]">
+        <xsl:text>%% A box to measure a "tabular", so its table notes set to its width&#xa;</xsl:text>
+        <xsl:text>\newsavebox{\ptxtablenotebox}&#xa;</xsl:text>
+    </xsl:if>
     <xsl:if test="$document-root//tabular">
         <xsl:text>%% For improved tables&#xa;</xsl:text>
         <xsl:text>\usepackage{array}&#xa;</xsl:text>
@@ -1492,10 +1496,31 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- http://tex.stackexchange.com/questions/106159/why-i-shouldnt-load-pdftex-option-with-hyperref -->
 <xsl:template name="load-configure-hyperref">
     <xsl:text>%% hyperref driver does not need to be specified, it will be detected&#xa;</xsl:text>
-    <xsl:text>%% Footnote marks in tcolorbox have broken linking under&#xa;</xsl:text>
-    <xsl:text>%% hyperref, so it is necessary to turn off all linking&#xa;</xsl:text>
-    <xsl:text>%% It *must* be given as a package option, not with \hypersetup&#xa;</xsl:text>
-    <xsl:text>\usepackage[hyperfootnotes=false]{hyperref}&#xa;</xsl:text>
+    <xsl:text>\usepackage{hyperref}&#xa;</xsl:text>
+    <!-- Any footnote within a tcolorbox-implemented block would have    -->
+    <!-- its text trapped in the box, marked by the letters of the       -->
+    <!-- "mpfootnote" counter that boxes switch to.  The "footnotehyper" -->
+    <!-- package (the hyperref-safe successor of "footnote") supplies    -->
+    <!-- the "savenotes" environment: wrapped around a box, it delays    -->
+    <!-- each footnote's text to the true page bottom.  The              -->
+    <!-- "\ptxnativefootnotes" command restores the standard counter,    -->
+    <!-- so marks number continuously with the running text.  It rides   -->
+    <!-- on "\ptxsetparstyle", which every paragraph-organized box       -->
+    <!-- already runs at exactly the right moment (after any title       -->
+    <!-- attaches to the upper part, which is too early), and a hook     -->
+    <!-- covers lower parts (figure captions).  Block templates emit     -->
+    <!-- the wrapping via the "begin-saved-footnotes" and                -->
+    <!-- "end-saved-footnotes" templates.                                -->
+    <xsl:if test="$document-root//fn">
+        <xsl:text>%% footnotehyper: footnote text escapes boxed environments ("savenotes")&#xa;</xsl:text>
+        <xsl:text>%% and every box restores the standard footnote counter for its marks&#xa;</xsl:text>
+        <xsl:text>\usepackage{footnotehyper}&#xa;</xsl:text>
+        <xsl:text>\makeatletter&#xa;</xsl:text>
+        <xsl:text>\newcommand{\ptxnativefootnotes}{\def\@mpfn{footnote}\def\thempfn{\thefootnote}}&#xa;</xsl:text>
+        <xsl:text>\makeatother&#xa;</xsl:text>
+        <xsl:text>\appto\ptxsetparstyle{\ptxnativefootnotes}&#xa;</xsl:text>
+        <xsl:text>\tcbset{every box/.append style={before lower pre={\ptxnativefootnotes}}}&#xa;</xsl:text>
+    </xsl:if>
     <!-- http://tex.stackexchange.com/questions/79051/how-to-style-text-in-hyperref-url -->
     <xsl:if test="$document-root//url">
     <xsl:text>%% configure hyperref's  \href{}{}  and  \nolinkurl  to match listings' inline verbatim&#xa;</xsl:text>
@@ -3478,6 +3503,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:choose>
     <xsl:text>\pagestyle{empty}&#xa;</xsl:text>
     <xsl:text>\vspace*{\stretch{1}}&#xa;</xsl:text>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{backcolophon}</xsl:text>
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="type-name" />
@@ -3488,12 +3514,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>%&#xa;</xsl:text>
     <xsl:apply-templates select="*"/>
     <xsl:text>\end{backcolophon}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
     <xsl:text>\vspace*{\stretch{2}}&#xa;</xsl:text>
 </xsl:template>
 
 <!-- The back colophon of an article is simpler -->
 <xsl:template match="article/backmatter/colophon">
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{backcolophon}</xsl:text>
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="type-name" />
@@ -3504,7 +3531,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>%&#xa;</xsl:text>
     <xsl:apply-templates select="*"/>
     <xsl:text>\end{backcolophon}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- Appendices are handled in the general subdivision template -->
@@ -4278,6 +4305,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Style is controlled in the preamble       -->
 <xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <!-- environment, title, label string, newline -->
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="local-name(.)" />
@@ -4299,7 +4327,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="&THEOREM-FILTER;">
         <xsl:apply-templates select="&PROOF-LIKE;" />
     </xsl:if>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- PROOF-LIKE (regular, major) -->
@@ -4310,6 +4338,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="environment-name">
         <xsl:value-of select="local-name(.)"/>
     </xsl:variable>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="$environment-name"/>
     <xsl:text>}</xsl:text>
@@ -4338,11 +4367,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="$environment-name"/>
     <xsl:text>}&#xa;</xsl:text>
-    <!-- A standalone proof may need to have its footnote text popped,     -->
-    <!-- rather than waiting for a container like "theorem" to do the job. -->
-    <xsl:if test="not(parent::*[&THEOREM-FILTER;])">
-        <xsl:apply-templates select="." mode="pop-footnote-text"/>
-    </xsl:if>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- PROOF-LIKE (solutions, minor) -->
@@ -4581,6 +4606,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="env-name">
         <xsl:apply-templates select="." mode="environment-name"/>
     </xsl:variable>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="$env-name"/>
     <xsl:text>}</xsl:text>
@@ -4649,7 +4675,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="$env-name"/>
     <xsl:text>}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
     <!-- structured version of a project may contain a postlude, -->
     <!-- which is rendered *after* environment ends              -->
     <xsl:if test="$project and (statement or task)">
@@ -5110,6 +5136,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Only EXAMPLE-LIKE has hint, answer, solution -->
 <xsl:template match="&DEFINITION-LIKE;|&REMARK-LIKE;|&COMPUTATION-LIKE;|&OPENPROBLEM-LIKE;|&EXAMPLE-LIKE;">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <!-- structured version may contain a prelude -->
     <!-- no structure => don't even consider it   -->
     <xsl:if test="statement or task">
@@ -5153,7 +5180,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
         <xsl:value-of select="local-name(.)" />
     <xsl:text>}&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
     <!-- structured version may contain a postlude -->
     <!-- no structure => don't even consider it    -->
     <xsl:if test="statement or task">
@@ -5167,6 +5194,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- title is inline, boldface in mdframe setup  -->
 <xsl:template match="&ASIDE-LIKE;">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <!-- environment, title, label string, newline -->
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="local-name(.)" />
@@ -5181,7 +5209,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="local-name(.)" />
     <xsl:text>}&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- Assemblages -->
@@ -5189,6 +5217,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Title is optional, keep remainders coordinated      -->
 <xsl:template match="assemblage">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <!-- environment, title, label string, newline -->
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="local-name(.)" />
@@ -5202,13 +5231,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="local-name(.)" />
     <xsl:text>}&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- A GOAL-LIKE element holds a list,         -->
 <!-- surrounded by introduction and conclusion -->
 <xsl:template match="&GOAL-LIKE;">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="local-name(.)" />
     <xsl:text>}</xsl:text>
@@ -5235,7 +5265,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="local-name(.)" />
     <xsl:text>}&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- DISCUSSION-LIKE -->
@@ -5843,6 +5873,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{</xsl:text>
     <xsl:value-of select="$item-environment"/>
     <xsl:text>}{</xsl:text>
@@ -5854,7 +5885,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\end{</xsl:text>
     <xsl:value-of select="$item-environment"/>
     <xsl:text>}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 
@@ -7071,6 +7102,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- 3: empty, or a hard-coded number from -common -->
 <xsl:template match="figure">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:if test="@landscape and $b-latex-print">
       <xsl:text>\begin{sidewaysfigure}%&#xa;</xsl:text>
     </xsl:if>
@@ -7106,7 +7138,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="@landscape and $b-latex-print">
       <xsl:text>\end{sidewaysfigure}%&#xa;</xsl:text>
     </xsl:if>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- Tables, (Named) Lists -->
@@ -7116,6 +7148,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- 3: empty, or a hard-coded number from -common  -->
 <xsl:template match="table|list|listing">
     <xsl:apply-templates select="." mode="newpage"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:if test="@landscape and $b-latex-print">
       <xsl:text>\begin{sidewaystable}%&#xa;</xsl:text>
     </xsl:if>
@@ -7154,7 +7187,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="@landscape and $b-latex-print">
         <xsl:text>\end{sidewaystable}%&#xa;</xsl:text>
     </xsl:if>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 
@@ -7220,6 +7253,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- into the definition, so it is "hidden" and not in the body -->
 
     <xsl:apply-templates select="." mode="leave-vertical-mode"/>
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{sidebyside}{</xsl:text>
     <xsl:value-of select="$number-panels" />
     <xsl:text>}{</xsl:text>
@@ -7232,7 +7266,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- The main event -->
     <xsl:value-of select="$panels" />
     <xsl:text>\end{sidebyside}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- Possibility for a newpage -->
@@ -7615,6 +7649,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="ancestor::sidebyside">
         <xsl:text>{\centering%&#xa;</xsl:text>
     </xsl:if>
+    <!-- A tabular with table notes, other than a "longtable" (which  -->
+    <!-- cannot be boxed), is measured in a box so the notes can set   -->
+    <!-- to exactly the width of the table.                            -->
+    <xsl:variable name="b-has-table-notes" select="boolean(.//tn)"/>
+    <xsl:variable name="b-boxed-notes" select="$b-has-table-notes and not(@break = 'yes')"/>
+    <xsl:if test="$b-boxed-notes">
+        <xsl:text>\begin{lrbox}{\ptxtablenotebox}%&#xa;</xsl:text>
+    </xsl:if>
     <!-- Build latex column specification                         -->
     <!--   vertical borders (left side, right side, three widths) -->
     <!--   horizontal alignment (left, center, right)             -->
@@ -7720,10 +7762,45 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>}&#xa;</xsl:text>
     <!-- finish grouping for tabular font -->
     <xsl:text>}%&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <!-- Table notes ("tn") collect below the table, lettered in  -->
+    <!-- reading order, which is document order of the marks      -->
+    <!-- (Notes to tables: CMoS 18th ed., 3.77-3.81; specific     -->
+    <!-- notes at 3.80).  Disjoint from true footnote numbering.  -->
+    <!-- The usual case sets the notes flush left in a "minipage" -->
+    <!-- of exactly the table's measured width; a "longtable"     -->
+    <!-- cannot be boxed, so its notes set at the text width.     -->
+    <xsl:choose>
+        <xsl:when test="$b-boxed-notes">
+            <xsl:text>\end{lrbox}%&#xa;</xsl:text>
+            <xsl:text>\begin{minipage}{\wd\ptxtablenotebox}&#xa;</xsl:text>
+            <xsl:text>\usebox{\ptxtablenotebox}\par&#xa;</xsl:text>
+            <xsl:text>\smallskip%&#xa;</xsl:text>
+            <xsl:text>{\footnotesize\raggedright%&#xa;</xsl:text>
+            <xsl:call-template name="latex-table-notes"/>
+            <xsl:text>}%&#xa;</xsl:text>
+            <xsl:text>\end{minipage}%&#xa;</xsl:text>
+        </xsl:when>
+        <xsl:when test="$b-has-table-notes">
+            <xsl:text>\par\smallskip%&#xa;</xsl:text>
+            <xsl:text>{\footnotesize\raggedright%&#xa;</xsl:text>
+            <xsl:call-template name="latex-table-notes"/>
+            <xsl:text>}%&#xa;</xsl:text>
+        </xsl:when>
+    </xsl:choose>
     <xsl:if test="ancestor::sidebyside">
         <xsl:text>\par}&#xa;</xsl:text>
     </xsl:if>
+</xsl:template>
+
+<!-- Context is the "tabular"; one line per note -->
+<xsl:template name="latex-table-notes">
+    <xsl:for-each select=".//tn">
+        <xsl:text>\textsuperscript{\textit{</xsl:text>
+        <xsl:apply-templates select="." mode="number"/>
+        <xsl:text>}}\,</xsl:text>
+        <xsl:apply-templates/>
+        <xsl:text>\par&#xa;</xsl:text>
+    </xsl:for-each>
 </xsl:template>
 
 
@@ -7965,18 +8042,38 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                         <xsl:with-param name="align" select="$row-valign" />
                     </xsl:call-template>
                     <xsl:text>{</xsl:text>
+                    <!-- The paragraph sets to the combined width of every   -->
+                    <!-- column the cell spans, so a spanning cell occupies  -->
+                    <!-- its full span, not just its leftmost column.        -->
+                    <!-- A column with no @width silently contributes the    -->
+                    <!-- 20% default; some ill-formed WW exercises arrive    -->
+                    <!-- here, so a less-precise warning is given on the     -->
+                    <!-- author's source.                                    -->
+                    <xsl:variable name="spanned-widths-rtf">
+                        <xsl:for-each select="parent::row/parent::tabular/col[position() &gt;= number($left-column-number) and position() &lt;= number($right-column-number)]">
+                            <w>
+                                <xsl:choose>
+                                    <xsl:when test="@width">
+                                        <xsl:variable name="width">
+                                            <xsl:call-template name="normalize-percentage">
+                                                <xsl:with-param name="percentage" select="@width" />
+                                            </xsl:call-template>
+                                        </xsl:variable>
+                                        <xsl:value-of select="substring-before($width, '%') div 100" />
+                                    </xsl:when>
+                                    <xsl:otherwise>
+                                        <xsl:text>0.2</xsl:text>
+                                    </xsl:otherwise>
+                                </xsl:choose>
+                            </w>
+                        </xsl:for-each>
+                    </xsl:variable>
+                    <xsl:variable name="spanned-widths" select="exsl:node-set($spanned-widths-rtf)/w"/>
                     <xsl:choose>
-                        <xsl:when test="$left-col/@width">
-                            <xsl:variable name="width">
-                                <xsl:call-template name="normalize-percentage">
-                                    <xsl:with-param name="percentage" select="$left-col/@width" />
-                                </xsl:call-template>
-                            </xsl:variable>
-                            <xsl:value-of select="substring-before($width, '%') div 100" />
+                        <xsl:when test="$spanned-widths">
+                            <xsl:value-of select="sum($spanned-widths)"/>
                         </xsl:when>
-                        <!-- If there is no $left-col/@width, silently use 20% as default -->
-                        <!-- We get some ill-formed WW exercises here, so a less-precise  -->
-                        <!-- warning is given on the author's source.                     -->
+                        <!-- no "col" elements at all -->
                         <xsl:otherwise>
                             <xsl:text>0.2</xsl:text>
                         </xsl:otherwise>
@@ -8994,76 +9091,49 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- Footnotes -->
-<!-- For blocks implemented as "tcolorbox" we need to manage -->
-<!-- footnotes more carefully.  Also for captions since they -->
-<!-- migrate to list of figures.  At the location, we just   -->
-<!-- drop a mark, with no text.  Testing with the "footmisc" -->
-<!-- package, and its "\mpfootnotemark" alternative works    -->
-<!-- worse than simple default LaTeX (though the numbers     -->
-<!-- could be hard-coded if necessary).                      -->
-<!-- NB: (2020-11-15) New environments may mean there is no  -->
-<!-- migration to the *.aux file, hence the \protect may not -->
-<!-- be necessary.                                           -->
-<!-- 2023-06-03: one of REMARK-LIKE is a "note", but we also -->
-<!-- have, from long ago, a biblio/note.  So a footnote      -->
-<!-- inside a  biblio/note  was being caught here and        -->
-<!-- producing a \footnotemark{}.  However, there was no     -->
-<!-- matching  \footnotetext  since "biblio" is not yet a    -->
-<!-- tcolorbox and the "pop-footnote-text" template was not  -->
-<!-- present as part of processing  biblio/note.             -->
+<!-- A footnote is native LaTeX everywhere.  When one sits within a -->
+<!-- tcolorbox-implemented block, the enclosing "savenotes"         -->
+<!-- environment (see "begin-saved-footnotes") delays its text to   -->
+<!-- the true page bottom, and every box restores the standard      -->
+<!-- footnote counter (see "\ptxnativefootnotes" in the preamble),  -->
+<!-- so the mark numbers continuously with the running text.        -->
+<!-- A table note ("tn") drops only its superscript letter mark at  -->
+<!-- the cell location; the note text collects below the table, in  -->
+<!-- the "tabular-inclusion" template.  Letters count per-tabular   -->
+<!-- in document order.  No footnote machinery is involved, so a    -->
+<!-- "tn" never interacts with tcolorbox footnote management.       -->
+<xsl:template match="tabular//tn">
+    <xsl:text>\textsuperscript{\textit{</xsl:text>
+    <xsl:apply-templates select="." mode="number"/>
+    <xsl:text>}}</xsl:text>
+</xsl:template>
+
 <xsl:template match="fn">
-    <xsl:choose>
-        <xsl:when test="ancestor::*[&ASIDE-FILTER; or &THEOREM-FILTER; or &AXIOM-FILTER;  or &DEFINITION-FILTER; or &REMARK-FILTER; or &COMPUTATION-FILTER; or &OPENPROBLEM-FILTER; or &EXAMPLE-FILTER; or &PROJECT-FILTER; or &GOAL-FILTER; or &FIGURE-FILTER; or self::tabular or self::list or self::sidebyside or self::gi or self::colophon/parent::backmatter or self::assemblage or self::exercise or (self::li and parent::dl) or self::proof[not(parent::*[&THEOREM-FILTER;])] or self::argument[not(parent::*[&THEOREM-FILTER;])] or self::justification[not(parent::*[&THEOREM-FILTER;])] or self::reasoning[not(parent::*[&THEOREM-FILTER;])] or self::explanation[not(parent::*[&THEOREM-FILTER;])]] and not(ancestor::note/parent::biblio)">
-            <!-- a footnote in the text of a caption will migrate to -->
-            <!-- the auxiliary file for use in the "list of figures" -->
-            <!-- and there is some confusion of braces and the use   -->
-            <!-- of \footnote and \footnotemark, hence a \protect    -->
-            <!-- https://tex.stackexchange.com/questions/10181       -->
-            <xsl:if test="ancestor::*[&FIGURE-FILTER;]">
-                <xsl:text>\protect</xsl:text>
-            </xsl:if>
-            <xsl:text>\footnotemark{}</xsl:text>
-        </xsl:when>
-        <xsl:otherwise>
-            <xsl:text>\footnote{</xsl:text>
-            <xsl:apply-templates/>
-            <xsl:apply-templates select="." mode="label" />
-            <xsl:text>}</xsl:text>
-        </xsl:otherwise>
-    </xsl:choose>
+    <xsl:text>\footnote{</xsl:text>
+    <xsl:apply-templates/>
+    <xsl:apply-templates select="." mode="label" />
+    <xsl:text>}</xsl:text>
 </xsl:template>
 
 
-<!-- Part 2: for items implemented as "tcolorbox", and other       -->
-<!-- environments that could harbor a footnote, such as            -->
-<!-- "figure", "table", "tabular", etc., we scan back              -->
-<!-- through the contents, formulating the text of footnotes,      -->
-<!-- in order.  It is necessary to hard-code the (serial) number   -->
-<!-- of the footnote since otherwise the numbering gets confused   -->
-<!-- by an intervening "tcolorbox".  The template should be placed -->
-<!-- immediately after the "\end{}" of affected environments.      -->
-<!-- It will format as one footnote text per output line.          -->
-<!--                                                               -->
-<!-- We need to pop all interior footnotes iff we are free of      -->
-<!-- enclosing blocks implemented with tcolorbox.  So this         -->
-<!-- template is called at the end of a template for a block,      -->
-<!-- but after the tcolorbox closes.  So we are in the clear when  -->
-<!-- no ancestors are implmented by tcolorbox.  Otherwise, we      -->
-<!-- "wait" and pop all interior footnotes later.                  -->
-<!-- NB: these templates could be improved with an entity          -->
-<!-- NB: "detached" proofs require a proliferation of              -->
-<!-- complicated constructions                                     -->
-<xsl:template match="&ASIDE-LIKE;|&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&REMARK-LIKE;|&COMPUTATION-LIKE;|&OPENPROBLEM-LIKE;|&EXAMPLE-LIKE;|&PROJECT-LIKE;|&FIGURE-LIKE;|tabular|list|sidebyside|gi|&GOAL-LIKE;|backmatter/colophon|assemblage|exercise|dl/li|proof[not(parent::*[&THEOREM-FILTER;])]|argument[not(parent::*[&THEOREM-FILTER;])]|justification[not(parent::*[&THEOREM-FILTER;])]|reasoning[not(parent::*[&THEOREM-FILTER;])]|explanation[not(parent::*[&THEOREM-FILTER;])]" mode="pop-footnote-text">
-    <xsl:if test="count(ancestor::*[&ASIDE-FILTER; or &THEOREM-FILTER; or &AXIOM-FILTER;  or &DEFINITION-FILTER; or &REMARK-FILTER; or &COMPUTATION-FILTER; or &EXAMPLE-FILTER; or &PROJECT-FILTER; or &GOAL-FILTER; or &FIGURE-FILTER; or self::tabular or self::list or self::sidebyside or self::gi or self::colophon/parent::backmatter or self::assemblage or self::exercise or (self::li and parent::dl) or self::proof[not(parent::*[&THEOREM-FILTER;])] or self::argument[not(parent::*[&THEOREM-FILTER;])] or self::justification[not(parent::*[&THEOREM-FILTER;])] or self::reasoning[not(parent::*[&THEOREM-FILTER;])] or self::explanation[not(parent::*[&THEOREM-FILTER;])]]) = 0">
-        <xsl:for-each select=".//fn">
-            <xsl:text>\footnotetext[</xsl:text>
-            <xsl:apply-templates select="." mode="serial-number"/>
-            <xsl:text>]</xsl:text>
-            <xsl:text>{</xsl:text>
-            <xsl:apply-templates/>
-            <xsl:apply-templates select="." mode="label" />
-            <xsl:text>}%&#xa;</xsl:text>
-        </xsl:for-each>
+<!-- Any block that could harbor a footnote wraps itself in a       -->
+<!-- "savenotes" environment (footnotehyper), which collects each   -->
+<!-- footnote's text and emits it, as the box closes, into the      -->
+<!-- page-bottom inserts.  The wrapping is transparent where no     -->
+<!-- tcolorbox intervenes, and nests properly, so a block simply    -->
+<!-- asks: any footnote at all among my descendants?  A "tabular"   -->
+<!-- appears nowhere in this scheme: a footnote within a "tabular"  -->
+<!-- cell is repaired into a "tn" table note during assembly, which -->
+<!-- involves no footnote machinery at all.                         -->
+<xsl:template name="begin-saved-footnotes">
+    <xsl:if test=".//fn">
+        <xsl:text>\begin{savenotes}%&#xa;</xsl:text>
+    </xsl:if>
+</xsl:template>
+
+<xsl:template name="end-saved-footnotes">
+    <xsl:if test=".//fn">
+        <xsl:text>\end{savenotes}%&#xa;</xsl:text>
     </xsl:if>
 </xsl:template>
 
@@ -9077,6 +9147,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Defined Terms, in a Glossary -->
 <xsl:template match="gi">
+    <xsl:call-template name="begin-saved-footnotes"/>
     <xsl:text>\begin{glossaryitem}</xsl:text>
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="title-full"/>
@@ -9087,7 +9158,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>&#xa;</xsl:text>
     <xsl:apply-templates select="*"/>
     <xsl:text>\end{glossaryitem}&#xa;</xsl:text>
-    <xsl:apply-templates select="." mode="pop-footnote-text"/>
+    <xsl:call-template name="end-saved-footnotes"/>
 </xsl:template>
 
 <!-- ############################ -->
