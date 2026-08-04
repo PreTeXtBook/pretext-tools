@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.2.1] - 2026-08-04
+
 ### Fixed
 
 - xi:include hrefs now link to their files (ctrl+click or cmd+click).
