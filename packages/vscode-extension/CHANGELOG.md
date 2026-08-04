@@ -7,7 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Fixed
+
+- xi:include hrefs now link to their files (ctrl+click or cmd+click).
+
 ## [1.2.0] - 2026-08-03
+
+### Added
+
+- Live preview works with slideshows.
+- Improvements to schema validation.
 
 ## [1.1.0] - 2026-07-21
 

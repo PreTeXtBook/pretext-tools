@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <book xml:id="include-book">
+    <title>A Book With Includes</title>
+    <xi:include href="ch1.ptx" xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </book>
+</pretext>
