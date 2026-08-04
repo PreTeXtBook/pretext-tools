@@ -81,6 +81,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- provisional cross-references show in red          -->
 <xsl:param name="author.tools" select="''" />
 
+<!-- The Godot engine version used for GDScript.  Read both by the   -->
+<!-- conversion to Runestone, for the Web Assembly shell, and by the -->
+<!-- "pck" extraction, which runs as a separate command.  A default  -->
+<!-- in each would let the two silently disagree.                    -->
+<xsl:param name="godot.version" select="'4.6.3'"/>
+
 <!-- ######### -->
 <!-- Variables -->
 <!-- ######### -->
@@ -7387,6 +7393,8 @@ Book (with parts), "section" at level 3
     <language name="basic"      active=""            listings="Basic"            prism="basic"/>
     <language name="c"          active="c"           listings="C"                prism="c"/>
     <language name="cpp"        active="cpp"         listings="C++"              prism="cpp"/>
+    <!-- using Python as a closest match for now in listings. -->
+    <language name="gdscript"   active="gdscript"    listings="Python"           prism="gdscript"/>
     <language name="go"         active=""            listings="C"                prism="go"/>
     <language name="java"       active="java"        listings="Java"             prism="java"/>
     <language name="javascript" active="javascript"  listings=""                 prism="javascript"/>
@@ -11900,6 +11908,13 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="occurrences" select="&quot;$docinfo/cross-references&quot;" />
         <xsl:with-param name="date-string" select="'2026-07-31'" />
         <xsl:with-param name="message" select="'the document-wide style of cross-reference text is now a &quot;text&quot; attribute on an &quot;xrefs&quot; element within &quot;docinfo/defaults&quot;, replacing the &quot;cross-references&quot; element.  We will honor your intent, but please convert to the new form.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-07-31  a footnote within a "tabular" cell becomes a "tn" table note -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//tabular//fn&quot;" />
+        <xsl:with-param name="date-string" select="'2026-07-31'" />
+        <xsl:with-param name="message" select="'a footnote (&quot;fn&quot;) within a &quot;tabular&quot; cell is now a table note, the &quot;tn&quot; element, lettered and placed at the bottom of the table.  We will honor your intent, but please convert to &quot;tn&quot;.  Note that a table note is not part of the numbering of true footnotes, and is not a target for a cross-reference.'"/>
     </xsl:call-template>
     <!--  -->
 </xsl:template>
