@@ -46,6 +46,12 @@ interface RenderRequest {
   docinfo?: string;
   /** Main source file to lift <docinfo> from (fragment mode); see renderer. */
   docinfoSourcePath?: string;
+  /**
+   * The complete document a fragment belongs to. Renders the fragment in place
+   * in it, so its numbering and cross-references match the built book rather
+   * than restarting at 1; see RenderOptions.contextSourcePath.
+   */
+  contextSourcePath?: string;
   /** Also compute the id → file/line source map (for editor sync). */
   sourceMap?: boolean;
   /** Initial light/dark theme baked into the page (see @pretextbook/pretext-html). */
@@ -143,6 +149,7 @@ function serve(): void {
         fragment: request.fragment,
         docinfo: request.docinfo,
         docinfoSourcePath: request.docinfoSourcePath,
+        contextSourcePath: request.contextSourcePath,
         sourceMap: request.sourceMap,
         theme: request.theme,
         revealView: request.revealView,

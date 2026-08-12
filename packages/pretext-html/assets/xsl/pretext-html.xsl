@@ -250,17 +250,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="b-needs-custom-marker-css" select="boolean(exsl:node-set($ol-markers)/ol-markers/ol-marker)"/>
 
 
-<!-- ######## -->
-<!-- WeBWorK  -->
-<!-- ######## -->
-
-<!-- We mine some values from the first "WW representation" to have been -->
-<!-- inserted into the source by the pre-processor ("assembly") when     -->
-<!-- making dynamic exercises.                                           -->
-
-<xsl:variable name="webwork-major-version" select="$document-root//webwork-reps[1]/@webwork2_major_version"/>
-<xsl:variable name="webwork-minor-version" select="$document-root//webwork-reps[1]/@webwork2_minor_version"/>
-
 <!-- #### EXPERIMENTAL #### -->
 <!-- We allow for the HTML conversion to chunk output, starting  -->
 <!-- from an arbitrary node.  $subtree-node needs context.       -->
@@ -563,6 +552,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:if test="not($num = '')">
                 <span class="codenumber">
                     <xsl:value-of select="$num" />
+                    <xsl:apply-templates select="." mode="division-number-separator"/>
                 </span>
                 <xsl:text> </xsl:text>
             </xsl:if>
@@ -984,6 +974,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="space-styled"/>
     <span class="codenumber">
         <xsl:apply-templates select="." mode="number" />
+        <xsl:apply-templates select="." mode="division-number-separator"/>
     </span>
     <xsl:call-template name="space-styled"/>
     <span class="title">
@@ -1177,6 +1168,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <xsl:template match="affiliation">
+    <xsl:if test="position">
+        <xsl:apply-templates select="position" />
+        <xsl:if test="position/following-sibling::*">
+            <br />
+        </xsl:if>
+    </xsl:if>
     <xsl:if test="department">
         <xsl:apply-templates select="department" />
         <xsl:if test="department/following-sibling::*">
@@ -1198,11 +1195,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- Departments and Institutions are free-form, or sequences of lines -->
-<xsl:template match="department|institution|location">
+<xsl:template match="position|department|institution|location">
     <xsl:apply-templates/>
 </xsl:template>
 
-<xsl:template match="department[line]|institution[line]|location[line]">
+<xsl:template match="position[line]|department[line]|institution[line]|location[line]">
     <xsl:apply-templates select="line" />
 </xsl:template>
 
@@ -1217,10 +1214,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </div>
 </xsl:template>
 
-<!-- General support (not for a particular author) -->
+<!-- General support (not for a particular author).  The schema -->
+<!-- says a "support" statement is text-level, mixed content    -->
 <xsl:template match="bibinfo/support">
     <div class="support">
-        <xsl:apply-templates select="*"/>
+        <xsl:apply-templates select="node()"/>
     </div>
 </xsl:template>
 
@@ -1753,11 +1751,25 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <!-- https://stackoverflow.com/questions/538293/find-common-parent-using-xpath -->
             <xsl:variable name="nearest-common-ancestor"
                           select="./ancestor::*[count(. | $link/ancestor::*) = count($link/ancestor::*)] [1]"/>
-            <xsl:variable name="nearest-ancestor-level">
-                <xsl:apply-templates select="$nearest-common-ancestor" mode="enclosing-level"/>
-            </xsl:variable>
-            <!-- remove not(), replace operator with <, then radically different behavior -->
-            <xsl:value-of select="not($nearest-ancestor-level >= $chunk-level)"/>
+            <xsl:choose>
+                <!-- A division's "introduction" or "conclusion" renders on   -->
+                <!-- its division's page, whole, whatever the chunk level.    -->
+                <!-- So a link and target together inside one companion are   -->
+                <!-- always on one page, though the companion's level would   -->
+                <!-- say otherwise.  Deliberately a containment test, not     -->
+                <!-- level arithmetic: the levels of these companions are     -->
+                <!-- slated for rework.                                       -->
+                <xsl:when test="$nearest-common-ancestor/ancestor-or-self::introduction[parent::*[&STRUCTURAL-FILTER;]] or $nearest-common-ancestor/ancestor-or-self::conclusion[parent::*[&STRUCTURAL-FILTER;]]">
+                    <xsl:value-of select="false()"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:variable name="nearest-ancestor-level">
+                        <xsl:apply-templates select="$nearest-common-ancestor" mode="enclosing-level"/>
+                    </xsl:variable>
+                    <!-- remove not(), replace operator with <, then radically different behavior -->
+                    <xsl:value-of select="not($nearest-ancestor-level >= $chunk-level)"/>
+                </xsl:otherwise>
+            </xsl:choose>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -2754,14 +2766,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- specific notes at 3.80).  Adjacency is the presentation: a note   -->
 <!-- sits just below its table, so there is no knowl.                  -->
 <xsl:template match="tabular//tn">
+    <xsl:variable name="note-number">
+        <xsl:apply-templates select="." mode="number"/>
+    </xsl:variable>
     <sup class="tablenote-mark">
+        <xsl:apply-templates select="." mode="html-id-attribute"/>
         <a>
             <xsl:attribute name="href">
                 <xsl:text>#</xsl:text>
-                <xsl:apply-templates select="." mode="unique-id"/>
+                <xsl:apply-templates select="." mode="html-id"/>
+                <xsl:text>-note</xsl:text>
+            </xsl:attribute>
+            <xsl:attribute name="aria-label">
+                <xsl:text>Go to table note </xsl:text>
+                <xsl:value-of select="$note-number"/>
             </xsl:attribute>
             <i>
-                <xsl:apply-templates select="." mode="number"/>
+                <xsl:value-of select="$note-number"/>
             </i>
         </a>
     </sup>
@@ -6093,10 +6114,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:element>
 </xsl:template>
 
-<!-- A "headnote" prefaces the content of a "glossary".  Below -->
-<!-- is modeled on block introductions (just above), but with  -->
-<!-- no "title" and with a provisional recycled CSS class.     -->
-<xsl:template match="glossary/headnote">
+<!-- A "headnote" prefaces the list of a list-like division: a -->
+<!-- "glossary", a "references", an "index", an "appendix"     -->
+<!-- that is a notation list.  Below is modeled on block       -->
+<!-- introductions (just above), but with no "title".          -->
+<xsl:template match="glossary/headnote|references/headnote|index/headnote|appendix/headnote">
     <xsl:param name="b-original" select="true()" />
     <section class="headnote">
         <xsl:if test="$b-original">
@@ -8167,22 +8189,38 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- to tables: CMoS 18th ed., 3.77-3.81; specific notes at       -->
     <!-- 3.80).  Disjoint from true footnote numbering.               -->
     <xsl:if test=".//tn">
-        <!-- each note is a plain "div" (not a "p"): one tight -->
-        <!-- line per note, free of paragraph margins          -->
-        <div class="tablenotes">
+        <!-- each note is a list item (not a "p"): one tight -->
+        <!-- line per note, free of paragraph margins        -->
+        <ol class="tablenotes" aria-label="Table notes">
             <xsl:for-each select=".//tn">
-                <div class="tablenote">
-                    <xsl:apply-templates select="." mode="html-id-attribute"/>
+                <xsl:variable name="note-number">
+                    <xsl:apply-templates select="." mode="number"/>
+                </xsl:variable>
+                <li class="tablenote">
+                    <xsl:attribute name="id">
+                        <xsl:apply-templates select="." mode="html-id"/>
+                        <xsl:text>-note</xsl:text>
+                    </xsl:attribute>
                     <sup>
-                        <i>
-                            <xsl:apply-templates select="." mode="number"/>
-                        </i>
+                        <a>
+                            <xsl:attribute name="href">
+                                <xsl:text>#</xsl:text>
+                                <xsl:apply-templates select="." mode="html-id"/>
+                            </xsl:attribute>
+                            <xsl:attribute name="aria-label">
+                                <xsl:text>Back to table note reference </xsl:text>
+                                <xsl:value-of select="$note-number"/>
+                            </xsl:attribute>
+                            <i>
+                                <xsl:value-of select="$note-number"/>
+                            </i>
+                        </a>
                     </sup>
                     <xsl:text> </xsl:text>
                     <xsl:apply-templates/>
-                </div>
+                </li>
             </xsl:for-each>
-        </div>
+        </ol>
     </xsl:if>
 </xsl:template>
 
@@ -9112,8 +9150,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </code>
 </xsl:template>
 
+<!-- A copy button serves a block of code; within a "tabular"  -->
+<!-- cell the content is short and the floating button crowds  -->
+<!-- the cell, so there we decline to provide one.             -->
 <xsl:template name="insert-clipboardable-class">
-    <xsl:text> clipboardable</xsl:text>
+    <xsl:if test="not(ancestor::tabular)">
+        <xsl:text> clipboardable</xsl:text>
+    </xsl:if>
 </xsl:template>
 
 <!-- 100% analogue of LaTeX's verbatim            -->
@@ -10415,30 +10458,30 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- HTML Code                                                  -->
-<!-- Simply create deep-copy of HTML elements                   -->
 <!-- TODO: should this be a div, with width and height?         -->
-<!-- Authored HTML goes into the page verbatim.  But a plain    -->
-<!-- "xsl:copy-of" materializes every namespace in scope at the -->
-<!-- source location as a declaration on the copy: the source   -->
-<!-- file's own declarations (such as XInclude) and any         -->
-<!-- namespace employed by the assembly machinery.  So instead  -->
-<!-- we rebuild each element, which carries along only the      -->
-<!-- namespaces actually in use.                                -->
+<!-- Authored HTML goes into the page, which is the content's   -->
+<!-- only destination, and an HTML parser has no notion of      -->
+<!-- namespaces.  So the copy keeps just the local name of each -->
+<!-- element: an author declares the XHTML namespace once (say, -->
+<!-- a prefix on the "slate") to satisfy validation, and the    -->
+<!-- output carries plain HTML tags with no declarations at     -->
+<!-- all.  (This utility may serve other embedded-markup        -->
+<!-- copying; nothing about it is specific to a "slate".)       -->
 <xsl:template match="slate[@surface = 'html']">
-    <xsl:apply-templates select="*" mode="copy-authored-html"/>
+    <xsl:apply-templates select="*" mode="copy-authored-xml"/>
 </xsl:template>
 
 <!-- Attributes in the internal namespace are the assembly's     -->
 <!-- identification stamps, not the author's work, so they stay  -->
 <!-- out of the copy.                                            -->
-<xsl:template match="*" mode="copy-authored-html">
-    <xsl:element name="{name()}" namespace="{namespace-uri()}">
+<xsl:template match="*" mode="copy-authored-xml">
+    <xsl:element name="{local-name()}">
         <xsl:copy-of select="@*[namespace-uri(.) != 'http://pretextbook.org/2020/pretext/internal']"/>
-        <xsl:apply-templates select="node()" mode="copy-authored-html"/>
+        <xsl:apply-templates select="node()" mode="copy-authored-xml"/>
     </xsl:element>
 </xsl:template>
 
-<xsl:template match="text()|comment()|processing-instruction()" mode="copy-authored-html">
+<xsl:template match="text()|comment()|processing-instruction()" mode="copy-authored-xml">
     <xsl:copy/>
 </xsl:template>
 
@@ -11140,7 +11183,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- WeBWorK Javascript header -->
 <xsl:template name="webwork-js">
     <xsl:if test="$b-has-webwork-reps">
-        <script src="{$html.js.dir}/pretext-webwork/2.{$webwork-minor-version}/pretext-webwork.js"></script>
+        <script src="{$html.js.dir}/pretext-webwork.js"></script>
         <script src="{$webwork-server}/webwork2_files/node_modules/iframe-resizer/js/iframeResizer.min.js"></script>
     </xsl:if>
 </xsl:template>
@@ -11211,19 +11254,22 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:param name="b-has-answer"/>
     <xsl:param name="b-has-solution"/>
 
-    <!-- For Runestone, the WW problem is handled in isolation, -->
-    <!-- yet capturing and storing student work/results needs   -->
-    <!-- to be associated with the parent/enclosing "exercise"  -->
-    <!-- (or PROJECT-LIKE).  So in this case (only) we place    -->
-    <!-- an id value on the  div.exercise-wrapper that is       -->
-    <!-- derived from the parent.  Otherwise, we use the        -->
-    <!-- parent @pi:assembly-id with a "-ww-inner" suffix.      -->
-    <!-- The suffix ensures the inner wrapper's DOM id is       -->
-    <!-- distinct from the enclosing "exercise" article's       -->
-    <!-- id (which also holds the @pi:assembly-id value).       -->
-    <!-- Without the suffix, JavaScript (handleWW) would        -->
-    <!-- look up the inner id with getElementById and find      -->
-    <!-- the outer "exercise" article instead.                  -->
+    <!-- For Runestone, the WW problem is handled in isolation,   -->
+    <!-- yet capturing and storing student work/results needs     -->
+    <!-- to be associated with the parent/enclosing "exercise"    -->
+    <!-- (or PROJECT-LIKE).  So in this case (only) we place      -->
+    <!-- an id value on the  div.exercise-wrapper that is         -->
+    <!-- derived from the parent.  Otherwise, we use the          -->
+    <!-- @assembly-id of this "webwork-reps" with a "-ww-inner"   -->
+    <!-- suffix.  That attribute is NOT the assembly stamp and    -->
+    <!-- carries no "pi" prefix: it is written by webwork.py into -->
+    <!-- the generated representation file, naming it for the     -->
+    <!-- exercise it belongs to.  The suffix ensures the inner    -->
+    <!-- wrapper's DOM id is distinct from the enclosing          -->
+    <!-- "exercise" article's id, which holds the same value.     -->
+    <!-- Without the suffix, JavaScript (handleWW) would          -->
+    <!-- look up the inner id with getElementById and find        -->
+    <!-- the outer "exercise" article instead.                    -->
     <xsl:variable name="inner-id">
         <xsl:choose>
             <xsl:when test="$b-host-runestone">
@@ -11231,7 +11277,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:text>-ww-rs</xsl:text>
             </xsl:when>
             <xsl:otherwise>
-                <xsl:value-of select="concat(@pi:assembly-id, '-ww-inner')"/>
+                <xsl:value-of select="concat(@assembly-id, '-ww-inner')"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
@@ -11379,7 +11425,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:variable>
     <!-- build the iframe -->
     <!-- mimicking Mike Gage's blog post -->
-    <iframe name="{concat(@pi:assembly-id, '-ww-inner')}" width="{$design-width}" src="{$the-url}" data-seed="{static/@seed}"/>
+    <iframe name="{concat(@assembly-id, '-ww-inner')}" width="{$design-width}" src="{$the-url}" data-seed="{static/@seed}"/>
     <script>
         <xsl:text>iFrameResize({log:true,inPageLinks:true,resizeFrom:'child',checkOrigin:["</xsl:text>
         <xsl:value-of select="$webwork-server" />
@@ -13239,6 +13285,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:if test="not($the-number = '')">
                 <span class="codenumber">
                     <xsl:value-of select="$the-number" />
+                    <xsl:apply-templates select="." mode="division-number-separator"/>
                 </span>
                 <!-- separating space, only if needed -->
                 <xsl:text> </xsl:text>

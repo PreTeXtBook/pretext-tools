@@ -5,6 +5,10 @@
 
 import { ensureXIncludeNamespace, slugify, withProlog } from "../layout/shared";
 import { renderProjectPtx, renderPublicationPtx } from "../layout/templates";
+import {
+  filePrefixForDivision,
+  isSingletonDivision,
+} from "../pretext-divisions";
 import type { ImportedDivision, ImportedProject } from "../types";
 
 export interface SerializeProjectFilesOptions {
@@ -40,7 +44,7 @@ export function divisionChildRefs(content: string): string[] {
   return refs;
 }
 
-/** `ch-` / `sec-` prefixed slug of a division's xmlId, for its filename. */
+/** Type-prefixed slug of a division's xmlId, for its filename (`ch-intro`). */
 function prefixedSlug(xmlId: string, prefix: string): string {
   const cleaned = slugify(xmlId) || "division";
   return cleaned.startsWith(`${prefix}-`) ? cleaned : `${prefix}-${cleaned}`;
@@ -63,11 +67,11 @@ function claimName(taken: Set<string>, preferred: string): string {
  * `ch-01-sec-02`; its file lives in that chapter's directory already, so the
  * chapter prefix would be redundant in the filename.
  */
-function sectionFileBasis(sectionXmlId: string, chapterXmlId: string): string {
-  const prefix = `${chapterXmlId}-`;
-  return sectionXmlId.startsWith(prefix)
-    ? sectionXmlId.slice(prefix.length)
-    : sectionXmlId;
+function childFileBasis(childXmlId: string, parentXmlId: string): string {
+  const prefix = `${parentXmlId}-`;
+  return childXmlId.startsWith(prefix)
+    ? childXmlId.slice(prefix.length)
+    : childXmlId;
 }
 
 function replacePlaceholders(
@@ -106,61 +110,86 @@ export function serializeProjectToFiles(
     throw new Error("Division pool has no root division.");
   }
 
-  const takenNames = new Set<string>();
-  // href values are relative to the main source's directory (source/), which
-  // is also where xi:include resolution happens for nested section files.
+  // href values are relative to the including file's own directory: a chapter
+  // file at source/ch-intro.ptx includes its sections as ch-intro/sec-1.ptx.
   const hrefByRef = new Map<string, string>();
   const sourceDir = mainSourcePath.includes("/")
     ? mainSourcePath.slice(0, mainSourcePath.lastIndexOf("/") + 1)
     : "";
 
-  // First pass: assign filenames (chapters at source/, their children in a
-  // per-chapter directory), so hrefs can be resolved in any order.
+  // First pass: assign a file to every division, so hrefs can be resolved in
+  // any order. Each division's children live in a directory named after it,
+  // recursing for as many levels as the pool was split into.
   interface PlacedDivision {
     division: ImportedDivision;
     filePath: string;
   }
   const placed: PlacedDivision[] = [];
+  const placedIds = new Set<string>();
+  // Filenames only have to be unique within their own directory.
+  const takenByDirectory = new Map<string, Set<string>>();
 
-  for (const chapterRef of divisionChildRefs(root.content)) {
-    const chapter = byRef.get(chapterRef);
-    if (!chapter) continue;
-    const chapterSlug = claimName(
-      takenNames,
-      prefixedSlug(chapter.xmlId, "ch"),
+  function claimInDirectory(directory: string, preferred: string): string {
+    let taken = takenByDirectory.get(directory);
+    if (!taken) {
+      taken = new Set<string>();
+      takenByDirectory.set(directory, taken);
+    }
+    return claimName(taken, preferred);
+  }
+
+  function place(
+    division: ImportedDivision,
+    directory: string,
+    hrefPrefix: string,
+    parentXmlId: string,
+  ): void {
+    if (placedIds.has(division.xmlId)) {
+      return;
+    }
+    placedIds.add(division.xmlId);
+
+    const slug = claimInDirectory(
+      directory,
+      isSingletonDivision(division.type)
+        ? division.type
+        : prefixedSlug(
+            childFileBasis(division.xmlId, parentXmlId),
+            filePrefixForDivision(division.type),
+          ),
     );
-    hrefByRef.set(chapter.xmlId, `${chapterSlug}.ptx`);
-    placed.push({
-      division: chapter,
-      filePath: `${sourceDir}${chapterSlug}.ptx`,
-    });
+    hrefByRef.set(division.xmlId, `${hrefPrefix}${slug}.ptx`);
+    placed.push({ division, filePath: `${directory}${slug}.ptx` });
 
-    const sectionNames = new Set<string>();
-    for (const sectionRef of divisionChildRefs(chapter.content)) {
-      const section = byRef.get(sectionRef);
-      if (!section) continue;
-      const sectionSlug = claimName(
-        sectionNames,
-        prefixedSlug(sectionFileBasis(section.xmlId, chapter.xmlId), "sec"),
-      );
-      hrefByRef.set(section.xmlId, `${chapterSlug}/${sectionSlug}.ptx`);
-      placed.push({
-        division: section,
-        filePath: `${sourceDir}${chapterSlug}/${sectionSlug}.ptx`,
-      });
+    for (const childRef of divisionChildRefs(division.content)) {
+      const child = byRef.get(childRef);
+      if (child) {
+        place(child, `${directory}${slug}/`, `${slug}/`, division.xmlId);
+      }
+    }
+  }
+
+  for (const childRef of divisionChildRefs(root.content)) {
+    const child = byRef.get(childRef);
+    if (child) {
+      place(child, sourceDir, "", root.xmlId);
     }
   }
 
   // Orphans (divisions reachable from no placeholder — the multi-root case,
   // SPEC §3.3/§4.1) still get a file at source/ so nothing silently
   // disappears; they just aren't xi:included anywhere.
-  const placedIds = new Set(placed.map((p) => p.division.xmlId));
+  const referenced = new Set<string>();
   for (const division of project.divisions) {
-    if (division.isRoot || placedIds.has(division.xmlId)) continue;
-    const prefix = division.type === "section" ? "sec" : "ch";
-    const slug = claimName(takenNames, prefixedSlug(division.xmlId, prefix));
-    hrefByRef.set(division.xmlId, `${slug}.ptx`);
-    placed.push({ division, filePath: `${sourceDir}${slug}.ptx` });
+    for (const childRef of divisionChildRefs(division.content)) {
+      referenced.add(childRef);
+    }
+  }
+  for (const division of project.divisions) {
+    if (division.isRoot || referenced.has(division.xmlId)) {
+      continue;
+    }
+    place(division, sourceDir, "", root.xmlId);
   }
 
   // Second pass: write each division file with placeholders resolved.

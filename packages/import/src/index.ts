@@ -17,8 +17,47 @@ export type {
 export {
   importProjectFromFiles,
   handleImportUploadFile,
+  extractUpload,
+  type ExtractedUpload,
   type ImportProjectOptions,
 } from "./lib/upload";
+export {
+  analyzeImportSources,
+  type AnalyzeOptions,
+  type RootCandidate,
+  type RootReason,
+  type UploadAnalysis,
+} from "./lib/project/analyze";
+export {
+  attachLatexRoots,
+  attachMarkdownRoots,
+  defaultAttachLevel,
+  type AttachLevel,
+  type AttachedRootRecord,
+  type AttachRootsResult,
+  type RootAttachment,
+} from "./lib/project/attach-roots";
+export {
+  defaultManifestTarget,
+  findProjectManifest,
+  parseProjectManifest,
+  type ManifestTarget,
+  type ProjectManifest,
+} from "./lib/project/manifest";
+export {
+  carryOverProjectFiles,
+  renderProjectPtxFromManifest,
+  type CarryOverOptions,
+  type CarryOverResult,
+} from "./lib/project/existing-project";
+export {
+  PRETEXT_DIVISION_TAGS,
+  PRETEXT_ROOT_TAGS,
+  filePrefixForDivision,
+  isDivisionTag,
+  type PretextDivisionTag,
+  type PretextRootTag,
+} from "./lib/pretext-divisions";
 export {
   filesForImportMode,
   assetsForImportMode,
@@ -47,6 +86,7 @@ export type {
 } from "./lib/layout";
 export {
   buildDivisionPool,
+  resolveSplitLevel,
   buildNativeDivisionPool,
   sanitizeRef,
   serializeProjectToFiles,
@@ -62,6 +102,7 @@ export type {
 } from "./lib/pool";
 export type {
   SourceFormat,
+  ProjectLayout,
   ConversionContext,
   ConvertedPretextResult,
   UploadStatusType,

@@ -120,10 +120,10 @@ You can track the ongoing development progress in the [Changelog](CHANGELOG.md).
 
 ## Contributions
 
-Like this extension? [Star it on GitHub](https://github.com/oscarlevin/pretext-tools/stargazers)!
+Like this extension? [Star it on GitHub](https://github.com/PreTeXtBook/pretext-tools)!
 
-Do you have an idea or suggestion? [Open a feature request](https://github.com/oscarlevin/pretext-tools/issues).
+Do you have an idea or suggestion? [Open a feature request](https://github.com/PreTeXtBook/pretext-tools/issues).
 
-Found something wrong? [File an issue](https://github.com/oscarlevin/pretext-tools//issues).
+Found something wrong? [File an issue](https://github.com/PreTeXtBook/pretext-tools/issues).
 
 Pull requests welcome.

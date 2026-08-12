@@ -1,31 +1,24 @@
 // Inlines <xi:include href="..."/> references within a PreTeXt document.
 // Modeled on expandTexInputs in upload.ts.
 
+import { dirname, joinPath, normalizePath } from "../project/paths";
+
 const XI_INCLUDE_RE =
   /<xi:include\b[^>]*\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*\/>/g;
 
-function directoryOf(pathName: string): string {
-  const slash = pathName.lastIndexOf("/");
-  return slash >= 0 ? pathName.slice(0, slash) : "";
-}
-
-function normalizePath(value: string): string {
-  return value.replace(/\\/g, "/").replace(/^\.\//, "");
-}
-
-function resolveIncludeTarget(
+export function resolveIncludeTarget(
   requested: string,
   baseFile: string,
   files: Record<string, string>,
 ): string | null {
-  const baseDir = directoryOf(baseFile);
+  const baseDir = dirname(baseFile);
   const candidates = [
     requested,
     `${requested}.ptx`,
     `${requested}.xml`,
-    baseDir ? `${baseDir}/${requested}` : null,
-    baseDir ? `${baseDir}/${requested}.ptx` : `${requested}.ptx`,
-    baseDir ? `${baseDir}/${requested}.xml` : `${requested}.xml`,
+    baseDir ? joinPath(baseDir, requested) : null,
+    baseDir ? joinPath(baseDir, `${requested}.ptx`) : `${requested}.ptx`,
+    baseDir ? joinPath(baseDir, `${requested}.xml`) : `${requested}.xml`,
   ].filter((c): c is string => c !== null);
 
   for (const candidate of candidates) {
@@ -47,6 +40,8 @@ export interface PretextIncludeExpansion {
   expandedText: string;
   expandedCount: number;
   missingIncludes: string[];
+  /** Paths whose contents were inlined — they are parts, not roots. */
+  consumedPaths: string[];
 }
 
 export function expandPretextIncludes(
@@ -58,6 +53,7 @@ export function expandPretextIncludes(
   let expandedCount = 0;
   const missingIncludes: string[] = [];
   const visitStack: string[] = [];
+  const consumed = new Set<string>();
 
   const expandOnce = (
     text: string,
@@ -81,6 +77,7 @@ export function expandPretextIncludes(
         }
         changed = true;
         expandedCount += 1;
+        consumed.add(target);
         return stripXmlProlog(files[target]);
       },
     );
@@ -102,7 +99,30 @@ export function expandPretextIncludes(
     expandedText: current,
     expandedCount,
     missingIncludes,
+    consumedPaths: [...consumed],
   };
+}
+
+/**
+ * Every `.ptx`/`.xml` file that some other file `xi:include`s — i.e. the files
+ * that are parts of a larger document rather than roots in their own right.
+ */
+export function collectPretextIncludeTargets(
+  files: Record<string, string>,
+): Set<string> {
+  const included = new Set<string>();
+  for (const [path, contents] of Object.entries(files)) {
+    XI_INCLUDE_RE.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = XI_INCLUDE_RE.exec(contents)) !== null) {
+      const requested = match[1] ?? match[2] ?? "";
+      const target = resolveIncludeTarget(requested, path, files);
+      if (target && target !== path) {
+        included.add(target);
+      }
+    }
+  }
+  return included;
 }
 
 const PTX_ROOT_RE = /<(pretext|book|article)\b/;

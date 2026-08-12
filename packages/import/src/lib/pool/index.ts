@@ -1,5 +1,6 @@
 export {
   buildDivisionPool,
+  resolveSplitLevel,
   sanitizeRef,
   type BuildDivisionPoolOptions,
   type BuildDivisionPoolResult,

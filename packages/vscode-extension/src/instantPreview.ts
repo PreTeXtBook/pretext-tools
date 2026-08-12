@@ -1236,6 +1236,13 @@ function renderToPanel(extensionPath: string): void {
     // scope); a complete document carries its own docinfo, so it is ignored
     // there, including project scope where renderPath is the main file itself.
     docinfoSourcePath: currentSource.mainSourcePath,
+    // Render a fragment where it really sits in the book, so it is numbered
+    // ("Theorem 3.2.1", not "Theorem 1.1") and its cross-references out of the
+    // file resolve instead of showing PreTeXt's missing-target placeholder.
+    // Supersedes docinfoSourcePath above when it takes effect; falls back to
+    // the standalone wrapper when the fragment's @xml:id is not in the main
+    // document, so a brand new file still previews.
+    contextSourcePath: currentSource.mainSourcePath,
     // id ↔ file/line map for two-way sync; costs a few ms per render.
     sourceMap: true,
     // Bake the editor's current theme into the page so it opens matching VS

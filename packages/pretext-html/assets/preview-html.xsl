@@ -210,6 +210,22 @@
     
 </xsl:template>
 
+<!-- Chunk at the subtree root's own level, so a fragment preview can name a  -->
+<!-- division of any depth as $subtree. Without this, portable's chunk level  -->
+<!-- of 0 makes upstream abort on every division below the document root.     -->
+<!-- See SUBTREE_CHUNK_LEVEL_OVERRIDE in refresh-xsl.mjs.                     -->
+<xsl:param name="subtree-level" select="''"/>
+<xsl:variable name="chunk-level">
+    <xsl:choose>
+        <xsl:when test="$subtree != '' and $subtree-level != ''">
+            <xsl:value-of select="number($subtree-level)"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="$html-chunk-level"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>
+
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->
 <!-- and a host that resolves that query against its own URL sends the reader -->

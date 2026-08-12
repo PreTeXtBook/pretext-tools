@@ -5,6 +5,7 @@ export type {
   ImportWizardProps,
   ImportMode,
   ImportEngine,
+  PreparedUpload,
 } from "./import-wizard";
 
 export { ImportSourceForm } from "./import-source-form";

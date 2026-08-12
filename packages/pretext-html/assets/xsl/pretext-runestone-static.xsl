@@ -545,6 +545,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Parson (Horizontal) -->
 
 <xsl:template match="*[@pi:exercise-interactive = 'parson-horizontal']" mode="runestone-to-static">
+    <!-- Natural-language blocks (mathematics included) must stay in  -->
+    <!-- the normal flow, where markup is processed; only genuine     -->
+    <!-- program code belongs in a verbatim code display.  This       -->
+    <!-- mirrors the vertical Parsons template above.                 -->
+    <xsl:variable name="language">
+        <xsl:apply-templates select="." mode="get-programming-language"/>
+    </xsl:variable>
+    <xsl:variable name="b-natural" select="($language = '') or ($language = 'natural')"/>
     <xsl:attribute name="language">
         <xsl:apply-templates select="." mode="active-language"/>
     </xsl:attribute>
@@ -552,20 +560,31 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- Statement -->
     <statement>
         <xsl:copy-of select="statement/node()"/>
-        <!-- programming language version -->
         <p>
-            <cd>
-                <cline>
-                    <!-- hard to tell which is last once sorted, -->
-                    <!-- so we just mark front *and* end         -->
+            <!-- hard to tell which is last once sorted, -->
+            <!-- so we just mark front *and* end         -->
+            <xsl:choose>
+                <xsl:when test="$b-natural">
                     <xsl:text> | </xsl:text>
                     <xsl:for-each select="blocks/block[@order]">
                         <xsl:sort select="@order"/>
-                        <xsl:apply-templates select="." mode="static-horizontal-block"/>
+                        <xsl:apply-templates select="." mode="static-horizontal-block-flow"/>
                         <xsl:text> | </xsl:text>
                     </xsl:for-each>
-                </cline>
-            </cd>
+                </xsl:when>
+                <xsl:otherwise>
+                    <cd>
+                        <cline>
+                            <xsl:text> | </xsl:text>
+                            <xsl:for-each select="blocks/block[@order]">
+                                <xsl:sort select="@order"/>
+                                <xsl:apply-templates select="." mode="static-horizontal-block"/>
+                                <xsl:text> | </xsl:text>
+                            </xsl:for-each>
+                        </cline>
+                    </cd>
+                </xsl:otherwise>
+            </xsl:choose>
         </p>
     </statement>
     <!-- We provide a complete solution below, -->
@@ -577,22 +596,34 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- versions on authored ones.                                   -->
     <xsl:copy-of select="solution"/>
     <solution>
-        <!-- programming language version -->
         <!-- filter out distractors for the solution -->
         <xsl:variable name="the-blocks" select="blocks/block[not(@correct = 'no')]"/>
         <p>
-            <cd>
-                <cline>
+            <xsl:choose>
+                <xsl:when test="$b-natural">
                     <!-- authored in order, but need to follow @ref -->
                     <xsl:for-each select="$the-blocks">
-                        <xsl:apply-templates select="." mode="static-horizontal-block"/>
-                        <!-- context shift should handle distractors at the end -->
+                        <xsl:apply-templates select="." mode="static-horizontal-block-flow"/>
                         <xsl:if test="following-sibling::block">
                             <xsl:text> </xsl:text>
                         </xsl:if>
                     </xsl:for-each>
-                </cline>
-            </cd>
+                </xsl:when>
+                <xsl:otherwise>
+                    <cd>
+                        <cline>
+                            <!-- authored in order, but need to follow @ref -->
+                            <xsl:for-each select="$the-blocks">
+                                <xsl:apply-templates select="." mode="static-horizontal-block"/>
+                                <!-- context shift should handle distractors at the end -->
+                                <xsl:if test="following-sibling::block">
+                                    <xsl:text> </xsl:text>
+                                </xsl:if>
+                            </xsl:for-each>
+                        </cline>
+                    </cd>
+                </xsl:otherwise>
+            </xsl:choose>
         </p>
     </solution>
 </xsl:template>
@@ -606,6 +637,24 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- otherwisr duplicate children -->
         <xsl:otherwise>
             <xsl:copy-of select="node()"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
+<!-- The flow variant serves natural-language blocks: the children  -->
+<!-- of a block are "p", whose contents join the running line, so   -->
+<!-- mathematics and other markup process normally.                 -->
+<!-- A natural-language block may wrap its content in a "p", or -->
+<!-- carry short inline content directly; the flow copy handles -->
+<!-- both shapes, following @ref to a reused source block first -->
+<xsl:template match="blocks/block" mode="static-horizontal-block-flow">
+    <xsl:variable name="the-block" select="id(@ref)|self::*[not(@ref)]"/>
+    <xsl:choose>
+        <xsl:when test="$the-block/p">
+            <xsl:copy-of select="$the-block/p/node()"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:copy-of select="$the-block/node()"/>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -1172,23 +1221,26 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <xsl:template match="statement" mode="fillin-solution">
     <xsl:variable name="exercise" select=".."/>
+    <xsl:variable name="ordered-evaluates" select="$exercise/evaluation/evaluate[not(@all = 'yes')]"/>
     <solution>
         <xsl:apply-templates select="node()|@*" mode="fillin-solution"/>
         <!-- xerox feedback for correct response on each var -->
         <xsl:for-each select="../setup/var/condition[1]/feedback">
             <xsl:apply-templates select="node()" mode="fillin-solution"/>
         </xsl:for-each>
-        <xsl:for-each select=".//fillin[@answer]">
+        <xsl:for-each select=".//fillin">
             <xsl:variable name="fillin-name" select="@name"/>
             <xsl:variable name="fillin-pos" select="position()"/>
+            <xsl:variable name="named-evaluate" select="$exercise/evaluation/evaluate[@name = $fillin-name]"/>
+            <xsl:variable name="ordered-evaluate" select="$ordered-evaluates[position() = $fillin-pos]"/>
             <xsl:choose>
                 <!-- If #evaluate matches by name, find feedback on a correct result -->
-                <xsl:when test="$exercise/evaluation/evaluate[@name='$fillin-name']/test[@correct='yes']">
-                    <xsl:apply-templates select="$exercise/evaluation/evaluate[@name='$fillin-name']/test[@correct='yes']/feedback/node()" mode="fillin-solution"/>
+                <xsl:when test="$named-evaluate/test[@correct = 'yes']">
+                    <xsl:apply-templates select="$named-evaluate/test[@correct = 'yes']/feedback/node()" mode="fillin-solution"/>
                 </xsl:when>
                 <!-- Otherwise #evaluate matches by order, find feedback on a correct result -->
-                <xsl:when test="$exercise/evaluation/evaluate[$fillin-pos]/test[@correct='yes']">
-                    <xsl:apply-templates select="$exercise/evaluation/evaluate[$fillin-pos]/test[@correct='yes']/feedback/node()" mode="fillin-solution"/>
+                <xsl:when test="$ordered-evaluate/test[@correct = 'yes']">
+                    <xsl:apply-templates select="$ordered-evaluate/test[@correct = 'yes']/feedback/node()" mode="fillin-solution"/>
                 </xsl:when>
             </xsl:choose>
         </xsl:for-each>

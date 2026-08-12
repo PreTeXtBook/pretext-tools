@@ -1,19 +1,35 @@
 import JSZip from "jszip";
 import { convertSourceToPretext } from "./convert";
-import { detectSourceFormat } from "./detect-source-format";
-import {
-  expandPretextIncludes,
-  findLikelyMainPretextPath,
-} from "./clean/pretext-includes";
+import { expandTexInputs } from "./clean/latex-includes";
+import { expandPretextIncludes } from "./clean/pretext-includes";
 import { type BuildProjectFilesOptions } from "./layout";
+import { renderPublicationPtx } from "./layout/templates";
 import {
   buildDivisionPool,
   buildNativeDivisionPool,
   serializeProjectToFiles,
 } from "./pool";
+import {
+  analyzeImportSources,
+  type RootCandidate,
+  type UploadAnalysis,
+} from "./project/analyze";
+import {
+  attachLatexRoots,
+  attachMarkdownRoots,
+  type AttachedRootRecord,
+  type RootAttachment,
+} from "./project/attach-roots";
+import {
+  carryOverProjectFiles,
+  renderProjectPtxFromManifest,
+} from "./project/existing-project";
+import type { ManifestTarget, ProjectManifest } from "./project/manifest";
+import { basename, extension, normalizePath } from "./project/paths";
 import type {
   ImportedProject,
   ImportedProjectResult,
+  ProjectLayout,
   SourceFormat,
   UploadSourceType,
   UploadStatusMessage,
@@ -24,6 +40,31 @@ export interface ImportProjectOptions extends BuildProjectFilesOptions {
   buildLayout?: boolean;
   /** Raw binary assets keyed by their source path (e.g. images, PDFs). */
   assets?: Record<string, Uint8Array>;
+  /**
+   * Force the source format, overriding detection — the format dropdown a host
+   * shows when an upload contains more than one kind of source.
+   */
+  sourceFormat?: SourceFormat;
+  /** Force which uploaded file is the document root (a path in `files`). */
+  mainFile?: string;
+  /**
+   * How many levels of division to split into separate files/records.
+   * Overrides `splitChapters`/`splitSections`; see `resolveSplitLevel`.
+   */
+  splitLevel?: number;
+  /**
+   * What to do with roots other than the main one (SPEC §3.3). Defaults to
+   * attaching every detected extra root as a division of the main document;
+   * pass `false` to import the main file alone, or a list to choose the level,
+   * heading, and order per file.
+   */
+  attachRoots?: RootAttachment[] | false;
+  /**
+   * For an upload with a `project.ptx`: keep the project's own publication
+   * file, assets, and directory layout (default). Set false to import it as
+   * loose source into this package's standard layout instead.
+   */
+  preserveProjectLayout?: boolean;
 }
 
 const SUPPORTED_UPLOAD_PATTERN =
@@ -80,12 +121,12 @@ function isBinaryExtension(ext: string): boolean {
   return BINARY_EXTENSIONS.has(ext.toLowerCase());
 }
 
-function basenameOf(pathName: string): string {
-  return pathName.split("/").pop() ?? pathName;
-}
-
+/**
+ * Where a binary lands in a freshly scaffolded project. Existing projects skip
+ * this entirely — their assets keep the paths their source already references.
+ */
 function routeAssetPath(originalPath: string): string | null {
-  const base = basenameOf(originalPath);
+  const base = basename(originalPath);
   const ext = extension(base);
   if (IMAGE_EXTENSIONS.has(ext)) {
     return `source/assets/${base}`;
@@ -94,7 +135,7 @@ function routeAssetPath(originalPath: string): string | null {
 }
 
 function routeTextAuxiliaryPath(originalPath: string): string | null {
-  const base = basenameOf(originalPath);
+  const base = basename(originalPath);
   const ext = extension(base);
   if (ext === "bib") {
     return `source/${base}`;
@@ -104,10 +145,6 @@ function routeTextAuxiliaryPath(originalPath: string): string | null {
 
 function normalizeText(value: string): string {
   return value.replace(/\r\n?/g, "\n").replace(/(\n *){3,}/g, "\n\n");
-}
-
-function normalizePath(value: string): string {
-  return value.replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
 function getUploadSourceType(fileName: string): UploadSourceType | null {
@@ -183,7 +220,7 @@ async function decompressGzip(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   return result.buffer;
 }
 
-interface ExtractedUpload {
+export interface ExtractedUpload {
   files: Record<string, string>;
   assets: Record<string, Uint8Array>;
 }
@@ -226,7 +263,15 @@ function parseTar(data: Uint8Array): ExtractedUpload {
   return { files, assets };
 }
 
-async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
+/**
+ * Unpack an upload into text files and binaries, without converting anything.
+ *
+ * Exported so a host can run the two-phase flow the pickers need: extract
+ * once, `analyzeImportSources` to populate a format dropdown and main-file
+ * list, then `importProjectFromFiles` with the user's answers — instead of
+ * re-reading and re-unzipping the file for every choice the user changes.
+ */
+export async function extractUpload(file: File): Promise<ExtractedUpload> {
   const sourceType = getUploadSourceType(file.name);
 
   if (!sourceType) {
@@ -275,132 +320,6 @@ async function extractFilesFromUpload(file: File): Promise<ExtractedUpload> {
   return parseTar(new Uint8Array(decompressed));
 }
 
-function extension(pathName: string): string {
-  const match = pathName.toLowerCase().match(/\.([^.\/]+)$/);
-  return match ? match[1] : "";
-}
-
-function findLikelyMainTexPath(files: Record<string, string>): string | null {
-  const texPaths = Object.keys(files)
-    .filter((pathName) => extension(pathName) === "tex")
-    .sort();
-
-  if (texPaths.length === 0) {
-    return null;
-  }
-
-  const withDocument = texPaths.find((pathName) =>
-    /\\begin *\{document\}/.test(files[pathName]),
-  );
-
-  return withDocument ?? texPaths[0];
-}
-
-function findDirectory(pathName: string): string {
-  const slashIndex = pathName.lastIndexOf("/");
-  return slashIndex >= 0 ? pathName.slice(0, slashIndex) : "";
-}
-
-function resolveInputTarget(
-  requestedPath: string,
-  baseFile: string,
-  texFiles: Record<string, string>,
-): string | null {
-  const baseDirectory = findDirectory(baseFile);
-  const candidates = [
-    requestedPath,
-    `${requestedPath}.tex`,
-    baseDirectory ? `${baseDirectory}/${requestedPath}` : requestedPath,
-    baseDirectory
-      ? `${baseDirectory}/${requestedPath}.tex`
-      : `${requestedPath}.tex`,
-  ].map(normalizePath);
-
-  return candidates.find((candidate) => candidate in texFiles) ?? null;
-}
-
-function expandTexInputs(
-  mainTex: string,
-  baseFile: string,
-  texFiles: Record<string, string>,
-): { expandedText: string; expandedCount: number; missingInputs: string[] } {
-  let expandedCount = 0;
-  const missingInputs: string[] = [];
-
-  const expandOnce = (text: string): { output: string; changed: boolean } => {
-    let changed = false;
-    const output = text.replace(
-      /(\\(input|include) *\{([^{}]+)\})/g,
-      (
-        _match: string,
-        _directive: string,
-        _kind: string,
-        requested: string,
-      ) => {
-        const target = resolveInputTarget(requested, baseFile, texFiles);
-        if (!target) {
-          if (!missingInputs.includes(requested)) {
-            missingInputs.push(requested);
-          }
-          return _match;
-        }
-        changed = true;
-        expandedCount += 1;
-        return texFiles[target];
-      },
-    );
-
-    return { output, changed };
-  };
-
-  let current = mainTex;
-  for (let pass = 0; pass < 3; pass += 1) {
-    const { output, changed } = expandOnce(current);
-    current = output;
-    if (!changed) {
-      break;
-    }
-  }
-
-  return { expandedText: normalizeText(current), expandedCount, missingInputs };
-}
-
-// Shouldn't we already know the source type at this point?
-function pickPrimarySourcePath(files: Record<string, string>): {
-  sourcePath: string;
-  sourceType: UploadSourceType;
-} {
-  const texPath = findLikelyMainTexPath(files);
-  if (texPath) {
-    return { sourcePath: texPath, sourceType: "tex" };
-  }
-
-  const sortedPaths = Object.keys(files).sort();
-  const markdownPath = sortedPaths.find((pathName) => {
-    const ext = extension(pathName);
-    return ext === "md" || ext === "markdown";
-  });
-  if (markdownPath) {
-    return { sourcePath: markdownPath, sourceType: "markdown" };
-  }
-
-  const pretextPath = findLikelyMainPretextPath(files);
-  if (pretextPath) {
-    return { sourcePath: pretextPath, sourceType: "pretext" };
-  }
-
-  if (sortedPaths.length === 0) {
-    throw new Error("No files were found in the uploaded source.");
-  }
-
-  const fallbackPath = sortedPaths[0];
-  const detected = detectSourceFormat(files[fallbackPath]);
-  return {
-    sourcePath: fallbackPath,
-    sourceType: detected === "latex" ? "tex" : detected,
-  };
-}
-
 function getTrackedTypeCounts(
   files: Record<string, string>,
 ): Record<string, number> {
@@ -436,14 +355,50 @@ function appendCountsStatus(
   }
 }
 
-function toConversionSourceFormat(sourceType: UploadSourceType): SourceFormat {
-  if (sourceType === "tex") {
-    return "latex";
+function uploadSourceTypeFor(format: SourceFormat): UploadSourceType {
+  if (format === "latex") {
+    return "tex";
   }
-  if (sourceType === "markdown") {
-    return "markdown";
+  return format === "markdown" ? "markdown" : "pretext";
+}
+
+/** The manifest target whose source is `path`, if any. */
+function targetForPath(
+  manifest: ProjectManifest,
+  projectRelativeSource: string,
+): ManifestTarget | undefined {
+  return manifest.targets.find(
+    (target) => target.source === projectRelativeSource,
+  );
+}
+
+/**
+ * Turn the caller's `attachRoots` option into a concrete list. The default —
+ * attach every extra root the analysis found, in the order it found them —
+ * lives here so the wizard's checkbox list and a bare API call agree.
+ */
+function resolveAttachments(
+  option: ImportProjectOptions["attachRoots"],
+  analysis: UploadAnalysis,
+): RootAttachment[] {
+  if (option === false) {
+    return [];
   }
-  return "pretext";
+  if (Array.isArray(option)) {
+    return option.filter((attachment) => attachment.include !== false);
+  }
+  return analysis.extraRoots.map((root) => ({ path: root.path }));
+}
+
+/** Human-readable note about which root the import followed and why. */
+function describePrimary(primary: RootCandidate): string {
+  if (primary.reason === "manifest-target") {
+    const target = primary.targetName
+      ? ` (target \`${primary.targetName}\`)`
+      : "";
+    return `Main source file: ${primary.path}${target}`;
+  }
+  return `Main source file: ${primary.path}`;
 }
 
 export function importProjectFromFiles(
@@ -452,7 +407,6 @@ export function importProjectFromFiles(
 ): ImportedProjectResult {
   const statusMessages: UploadStatusMessage[] = [];
   try {
-    // Haven't these been normalized already?
     const normalizedFiles = Object.fromEntries(
       Object.entries(files).map(([pathName, content]) => [
         normalizePath(pathName),
@@ -467,73 +421,145 @@ export function importProjectFromFiles(
     });
     appendCountsStatus(statusMessages, normalizedFiles);
 
-    const { sourcePath, sourceType } = pickPrimarySourcePath(normalizedFiles);
-    let sourceText = normalizedFiles[sourcePath] ?? "";
+    // One survey of the upload decides everything downstream: which file is
+    // the root, what format it is, and which other roots are on offer. Hosts
+    // call the same function to build their pickers, so what the user sees and
+    // what the import does cannot drift apart.
+    const analysis = analyzeImportSources(normalizedFiles, {
+      sourceFormat: options.sourceFormat,
+      mainFile: options.mainFile ? normalizePath(options.mainFile) : undefined,
+    });
+    const primary = analysis.primary;
+    if (!primary) {
+      throw new Error("No files were found in the uploaded source.");
+    }
 
-    if (sourceType === "tex") {
+    const sourcePath = primary.path;
+    const sourceType = uploadSourceTypeFor(primary.format);
+    let sourceText = normalizedFiles[sourcePath] ?? "";
+    // Paths folded into the imported document: they must not also be copied
+    // through verbatim when an existing project is preserved.
+    const consumedPaths = new Set<string>([sourcePath]);
+
+    if (analysis.manifest) {
+      const targetCount = analysis.manifest.targets.length;
+      statusMessages.push({
+        type: "success",
+        message: `Found ${analysis.manifest.manifestPath} with ${targetCount} target${
+          targetCount === 1 ? "" : "s"
+        }: ${analysis.manifest.targets.map((t) => t.name).join(", ")}.`,
+      });
+    }
+
+    const attachments = resolveAttachments(options.attachRoots, analysis);
+    let attachedRoots: AttachedRootRecord[] = [];
+    const attachWarnings = [];
+
+    if (primary.format === "latex") {
       const texFiles = Object.fromEntries(
         Object.entries(normalizedFiles).filter(
           ([pathName]) => extension(pathName) === "tex",
         ),
       );
 
-      const { expandedText, expandedCount, missingInputs } = expandTexInputs(
-        sourceText,
-        sourcePath,
-        texFiles,
-      );
-      sourceText = expandedText;
+      const expanded = expandTexInputs(sourceText, sourcePath, texFiles);
+      sourceText = normalizeText(expanded.expandedText);
+      expanded.consumedPaths.forEach((path) => consumedPaths.add(path));
 
-      if (expandedCount > 0) {
+      if (expanded.expandedCount > 0) {
         statusMessages.push({
           type: "success",
-          message: `Expanded ${expandedCount} input/include reference${expandedCount === 1 ? "" : "s"}.`,
+          message: `Expanded ${expanded.expandedCount} input/include reference${
+            expanded.expandedCount === 1 ? "" : "s"
+          }.`,
         });
       }
-      if (missingInputs.length > 0) {
+      if (expanded.missingInputs.length > 0) {
         statusMessages.push({
           type: "error",
-          message: `Missing input/include files: ${missingInputs.join(", ")}.`,
+          message: `Missing input/include files: ${expanded.missingInputs.join(", ")}.`,
         });
       }
-    } else if (sourceType === "pretext") {
+
+      if (attachments.length > 0) {
+        // Each attached root gets its own \input expansion first, so a
+        // multi-file chapter attaches whole.
+        const attachSources: Record<string, string> = {};
+        for (const attachment of attachments) {
+          const contents = normalizedFiles[attachment.path];
+          if (contents === undefined) {
+            continue;
+          }
+          const attachExpansion = expandTexInputs(
+            contents,
+            attachment.path,
+            texFiles,
+          );
+          attachSources[attachment.path] = attachExpansion.expandedText;
+          attachExpansion.consumedPaths.forEach((path) =>
+            consumedPaths.add(path),
+          );
+          consumedPaths.add(attachment.path);
+        }
+
+        const result = attachLatexRoots(sourceText, attachments, attachSources);
+        sourceText = normalizeText(result.source);
+        attachedRoots = result.attached;
+        attachWarnings.push(...result.warnings);
+      }
+    } else if (primary.format === "markdown") {
+      if (attachments.length > 0) {
+        const result = attachMarkdownRoots(
+          sourceText,
+          attachments,
+          normalizedFiles,
+        );
+        sourceText = normalizeText(result.source);
+        attachedRoots = result.attached;
+        attachWarnings.push(...result.warnings);
+        attachedRoots.forEach((root) => consumedPaths.add(root.path));
+      }
+    } else {
       const ptxFiles = Object.fromEntries(
         Object.entries(normalizedFiles).filter(([pathName]) => {
           const ext = extension(pathName);
           return ext === "ptx" || ext === "xml";
         }),
       );
-      const { expandedText, expandedCount, missingIncludes } =
-        expandPretextIncludes(sourceText, sourcePath, ptxFiles);
-      sourceText = expandedText;
+      const expansion = expandPretextIncludes(sourceText, sourcePath, ptxFiles);
+      sourceText = expansion.expandedText;
+      expansion.consumedPaths.forEach((path) => consumedPaths.add(path));
 
-      if (expandedCount > 0) {
+      if (expansion.expandedCount > 0) {
         statusMessages.push({
           type: "success",
-          message: `Expanded ${expandedCount} xi:include reference${expandedCount === 1 ? "" : "s"}.`,
+          message: `Expanded ${expansion.expandedCount} xi:include reference${
+            expansion.expandedCount === 1 ? "" : "s"
+          }.`,
         });
       }
-      if (missingIncludes.length > 0) {
+      if (expansion.missingIncludes.length > 0) {
         statusMessages.push({
           type: "error",
-          message: `Missing xi:include targets: ${missingIncludes.join(", ")}.`,
+          message: `Missing xi:include targets: ${expansion.missingIncludes.join(", ")}.`,
         });
       }
     }
 
-    statusMessages.push({
-      type: "success",
-      message: `Main source file: ${sourcePath}`,
-    });
+    statusMessages.push({ type: "success", message: describePrimary(primary) });
+    for (const root of attachedRoots) {
+      statusMessages.push({
+        type: "success",
+        message: `Attached ${root.path} as a ${root.level}: ${root.title}`,
+      });
+    }
 
-    // Now do the conversion to conversionFormat
-    const conversionFormat = toConversionSourceFormat(sourceType);
-    const result = convertSourceToPretext(sourceText, conversionFormat);
+    const result = convertSourceToPretext(sourceText, primary.format);
     if ("pretextError" in result) {
       return {
         pretextError: result.pretextError,
         statusMessages,
-        warnings: result.warnings,
+        warnings: [...result.warnings, ...attachWarnings],
       };
     }
 
@@ -543,16 +569,82 @@ export function importProjectFromFiles(
       ...layoutOptions
     } = options;
 
+    // An upload with a project.ptx keeps its own layout: the target's source
+    // path, its publication file, and every asset at the path the document
+    // already references.
+    const manifest = analysis.manifest;
+    const manifestTarget =
+      manifest && primary.reason === "manifest-target"
+        ? targetForPath(
+            manifest,
+            primary.path.slice(
+              manifest.projectRoot ? manifest.projectRoot.length + 1 : 0,
+            ),
+          )
+        : undefined;
+    const preserveProject =
+      buildLayout &&
+      manifest !== null &&
+      manifestTarget !== undefined &&
+      (options.preserveProjectLayout ?? true);
+
+    const projectLayout: ProjectLayout = {
+      mainSourcePath:
+        layoutOptions.mainSourcePath ??
+        (preserveProject && manifestTarget
+          ? manifestTarget.source
+          : "source/main.ptx"),
+      publicationPath:
+        layoutOptions.publicationPath ??
+        (preserveProject && manifestTarget?.publication
+          ? manifestTarget.publication
+          : "publication/publication.ptx"),
+      projectFilePath: layoutOptions.projectFilePath ?? "project.ptx",
+      preserved: preserveProject,
+    };
+
     const outputAssets: Record<string, Uint8Array> = {};
     const importableAssets: Record<string, Uint8Array> = {};
+    const outputFiles: Record<string, string> = {};
 
-    // Route binary assets to source/assets/<filename>; the same set feeds
-    // the division pool's ref-keyed asset list.
-    for (const [originalPath, bytes] of Object.entries(rawAssets)) {
-      const routed = routeAssetPath(originalPath);
-      if (routed) {
-        outputAssets[routed] = bytes;
+    if (preserveProject && manifest && manifestTarget) {
+      const carried = carryOverProjectFiles({
+        manifest,
+        target: manifestTarget,
+        files: normalizedFiles,
+        assets: rawAssets,
+        consumedPaths,
+      });
+      Object.assign(outputFiles, carried.files);
+      Object.assign(outputAssets, carried.assets);
+      for (const [originalPath, bytes] of Object.entries(rawAssets)) {
         importableAssets[originalPath] = bytes;
+      }
+      statusMessages.push({
+        type: "success",
+        message: `Carried over ${Object.keys(carried.files).length} project file${
+          Object.keys(carried.files).length === 1 ? "" : "s"
+        } and ${Object.keys(carried.assets).length} asset${
+          Object.keys(carried.assets).length === 1 ? "" : "s"
+        } unchanged.`,
+      });
+      if (carried.skipped.length > 0) {
+        statusMessages.push({
+          type: "success",
+          message: `Skipped build output: ${carried.skipped.length} file${
+            carried.skipped.length === 1 ? "" : "s"
+          }.`,
+        });
+      }
+    } else {
+      // Route binary assets to source/assets/<filename>; the same set feeds
+      // the division pool's ref-keyed asset list.
+      for (const [originalPath, bytes] of Object.entries(rawAssets)) {
+        const routed = routeAssetPath(originalPath);
+        if (routed) {
+          outputAssets[routed] = bytes;
+          importableAssets[originalPath] = bytes;
+        }
       }
     }
 
@@ -561,18 +653,37 @@ export function importProjectFromFiles(
     // projections of the same pool.
     const pool = buildDivisionPool(result.pretextSource, {
       documentKind: layoutOptions.documentKind,
+      splitLevel: buildLayout ? layoutOptions.splitLevel : 0,
       splitChapters: buildLayout ? layoutOptions.splitChapters : false,
       splitSections: buildLayout ? layoutOptions.splitSections : false,
       assets: importableAssets,
     });
 
-    const outputFiles: Record<string, string> = buildLayout
-      ? serializeProjectToFiles(pool.project, {
-          mainSourcePath: layoutOptions.mainSourcePath,
-          publicationPath: layoutOptions.publicationPath,
-          projectFilePath: layoutOptions.projectFilePath,
-        }).files
-      : { "source/main.ptx": result.pretextSource };
+    if (buildLayout) {
+      Object.assign(
+        outputFiles,
+        serializeProjectToFiles(pool.project, {
+          mainSourcePath: projectLayout.mainSourcePath,
+          publicationPath: projectLayout.publicationPath,
+          projectFilePath: projectLayout.projectFilePath,
+          // A preserved project brings its own publication file; only the
+          // manifest is regenerated, from the original targets.
+          includeScaffold: !preserveProject,
+        }).files,
+      );
+      if (preserveProject && manifest && manifestTarget) {
+        outputFiles[projectLayout.projectFilePath] =
+          renderProjectPtxFromManifest(manifest, manifestTarget, {
+            mainSource: projectLayout.mainSourcePath,
+            publication: projectLayout.publicationPath,
+          });
+        if (!(projectLayout.publicationPath in outputFiles)) {
+          outputFiles[projectLayout.publicationPath] = renderPublicationPtx();
+        }
+      }
+    } else {
+      outputFiles["source/main.ptx"] = result.pretextSource;
+    }
 
     // Route text auxiliaries (e.g., .bib) into output as well.
     for (const [originalPath, content] of Object.entries(normalizedFiles)) {
@@ -583,7 +694,11 @@ export function importProjectFromFiles(
     }
 
     const documentKind = pool.project.documentKind;
-    const combinedWarnings = [...result.warnings, ...pool.warnings];
+    const combinedWarnings = [
+      ...result.warnings,
+      ...attachWarnings,
+      ...pool.warnings,
+    ];
 
     let nativeOutputFiles: Record<string, string> | undefined;
     let nativeProject: ImportedProject | undefined;
@@ -629,8 +744,11 @@ export function importProjectFromFiles(
       ...result,
       warnings: combinedWarnings,
       sourcePath,
-      sourceName: sourcePath.split("/").pop() ?? sourcePath,
+      sourceName: basename(sourcePath),
       sourceType,
+      analysis,
+      attachedRoots,
+      projectLayout,
       project: pool.project,
       nativeProject,
       files: normalizedFiles,
@@ -679,7 +797,7 @@ export async function handleImportUploadFile(
   });
 
   try {
-    const { files, assets } = await extractFilesFromUpload(file);
+    const { files, assets } = await extractUpload(file);
     const imported = importProjectFromFiles(files, { ...options, assets });
     return {
       ...imported,

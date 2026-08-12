@@ -369,6 +369,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\AtBeginDocument{\setlength{\ptxnormalparindent}{\parindent}}&#xa;</xsl:text>
     <xsl:text>\AtBeginDocument{\setlength{\ptxnormalparskip}{\parskip}}&#xa;</xsl:text>
     <xsl:text>\newcommand{\ptxsetparstyle}{\setlength{\parindent}{\ptxnormalparindent}\setlength{\parskip}{\ptxnormalparskip}}</xsl:text>
+    <xsl:text>%% An appendix is numbered by a letter, and a bare letter beside a&#xa;</xsl:text>
+    <xsl:text>%% title is ambiguous ("A Trip Abroad"), so a letter composed with&#xa;</xsl:text>
+    <xsl:text>%% a title carries a period ("A. Trip Abroad").  These macros are&#xa;</xsl:text>
+    <xsl:text>%% seams in the division styles, empty until the appendices arrive&#xa;</xsl:text>
+    <xsl:text>%% (chapter-level for a book, section-level for an article, so a&#xa;</xsl:text>
+    <xsl:text>%% multi-part number like "E.1" never gains a period); see the&#xa;</xsl:text>
+    <xsl:text>%% uses at  \appendix&#xa;</xsl:text>
+    <xsl:text>\newcommand{\ptxappendixperiodchapter}{}&#xa;</xsl:text>
+    <xsl:text>\newcommand{\ptxappendixperiodsection}{}&#xa;</xsl:text>
     <xsl:text>%% Hyperref should be here, but likes to be loaded late&#xa;</xsl:text>
     <xsl:text>%%&#xa;</xsl:text>
     <xsl:text>%% Inline math delimiters, \(, \), need to be robust&#xa;</xsl:text>
@@ -1536,6 +1545,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- unexpected-value-for-option-hidelinkshyperref-is-ignored -->
         <!-- https://tex.stackexchange.com/a/503001                   -->
         <xsl:text>\hypersetup{hidelinks}&#xa;</xsl:text>
+        <xsl:text>%% A print PDF needs no internal anchors, nor links to them:&#xa;</xsl:text>
+        <xsl:text>%% both dissolve to their content, which preserves spacing&#xa;</xsl:text>
+        <xsl:text>\renewcommand{\hypertarget}[2]{#2}&#xa;</xsl:text>
+        <xsl:text>\renewcommand{\hyperlink}[2]{#2}&#xa;</xsl:text>
     </xsl:if>
     <!-- Hyperref gives names to destinations for links that look like      -->
     <!-- "section*.5.2" which you can guess is the second section of        -->
@@ -1956,14 +1969,24 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:for-each>
     <!-- INTRODUCTION, CONCLUSION (divisional) -->
     <xsl:variable name="introduction-reps" select="
-        ($root/article/introduction|$document-root//chapter/introduction|$document-root//section/introduction|$document-root//subsection/introduction|$document-root//appendix/introduction|$document-root//exercises/introduction|$document-root//solutions/introduction|$document-root//worksheet/introduction|$document-root//handout/introduction|$document-root//reading-questions/introduction|$document-root//glossary/introduction|$document-root//references/introduction)[1]|
-        ($root/article/conclusion|$document-root//chapter/conclusion|$document-root//section/conclusion|$document-root//subsection/conclusion|$document-root//appendix/conclusion|$document-root//exercises/conclusion|$document-root//solutions/conclusion|$document-root//worksheet/conclusion|$document-root//handout/conclusion|$document-root//handout/conclusion|$document-root//reading-questions/conclusion|$document-root//glossary/conclusion|$document-root//references/conclusion)[1]"/>
+        ($root/article/introduction|$document-root//chapter/introduction|$document-root//section/introduction|$document-root//subsection/introduction|$document-root//appendix/introduction|$document-root//exercises/introduction|$document-root//solutions/introduction|$document-root//worksheet/introduction|$document-root//handout/introduction|$document-root//reading-questions/introduction)[1]|
+        ($root/article/conclusion|$document-root//chapter/conclusion|$document-root//section/conclusion|$document-root//subsection/conclusion|$document-root//appendix/conclusion|$document-root//exercises/conclusion|$document-root//solutions/conclusion|$document-root//worksheet/conclusion|$document-root//handout/conclusion|$document-root//reading-questions/conclusion)[1]"/>
     <xsl:if test="$introduction-reps">
         <xsl:text>%%&#xa;</xsl:text>
         <xsl:text>%% xparse environments for introductions and conclusions of divisions&#xa;</xsl:text>
         <xsl:text>%%&#xa;</xsl:text>
     </xsl:if>
     <xsl:for-each select="$introduction-reps">
+        <xsl:apply-templates select="." mode="environment"/>
+    </xsl:for-each>
+    <!-- HEADNOTE (prefatory note of a list-like division) -->
+    <xsl:variable name="headnote-reps" select="($document-root//headnote)[1]"/>
+    <xsl:if test="$headnote-reps">
+        <xsl:text>%%&#xa;</xsl:text>
+        <xsl:text>%% xparse environment for headnotes of list-like divisions&#xa;</xsl:text>
+        <xsl:text>%%&#xa;</xsl:text>
+    </xsl:if>
+    <xsl:for-each select="$headnote-reps">
         <xsl:apply-templates select="." mode="environment"/>
     </xsl:for-each>
     <!-- MISCELLANEOUS -->
@@ -2358,6 +2381,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>{}</xsl:text>
         </xsl:when>
     </xsl:choose>
+    <xsl:text>&#xa;</xsl:text>
+</xsl:template>
+
+<!-- A "headnote" is the prefatory note of a list-like division -->
+<!-- (a glossary, a references, an index, an appendix that is a -->
+<!-- notation list).  It functions just like an "introduction", -->
+<!-- though a headnote never carries a title of its own.        -->
+<xsl:template match="headnote" mode="environment">
+    <xsl:text>%% headnote: prefatory note of a list-like division&#xa;</xsl:text>
+    <xsl:text>\NewDocumentEnvironment{headnote}{m}&#xa;</xsl:text>
+    <xsl:text>{\notblank{#1}{\noindent\textbf{#1}\space}{}}</xsl:text>
+    <xsl:text>{\par\medskip}</xsl:text>
     <xsl:text>&#xa;</xsl:text>
 </xsl:template>
 
@@ -3350,6 +3385,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Preprocessor always puts Department, Institution, and Location         -->
 <!-- inside Affiliation. This just adds line breaks between them as needed. -->
 <xsl:template match="affiliation">
+    <xsl:if test="position">
+        <xsl:text>\\&#xa;</xsl:text>
+        <xsl:apply-templates select="position" />
+    </xsl:if>
     <xsl:if test="department">
         <xsl:text>\\&#xa;</xsl:text>
         <xsl:apply-templates select="department" />
@@ -3374,11 +3413,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Departments, Institutions, and Addresses are free-form, or sequences of lines  -->
 <!-- Line breaks are inserted above, due to \and, etc, so do not end last line here -->
-<xsl:template match="department|institution|location">
+<xsl:template match="position|department|institution|location">
     <xsl:apply-templates/>
 </xsl:template>
 
-<xsl:template match="department[line]|institution[line]|location[line]">
+<xsl:template match="position[line]|department[line]|institution[line]|location[line]">
     <xsl:apply-templates select="line" />
 </xsl:template>
 
@@ -3424,6 +3463,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="appendix|solutions">
         <xsl:text>%&#xa;</xsl:text>
         <xsl:text>\appendix%&#xa;</xsl:text>
+        <xsl:text>%% Appendix letters compose with titles, so take a period: in&#xa;</xsl:text>
+        <xsl:text>%% contents entries (scoped: the .toc file is read within a group)&#xa;</xsl:text>
+        <xsl:text>\addtocontents{toc}{\protect\renewcommand{\protect\ptxappendixperiodsection}{.}}%&#xa;</xsl:text>
+        <xsl:text>%% and in the hang-shape division headings from here on&#xa;</xsl:text>
+        <xsl:text>\renewcommand{\ptxappendixperiodsection}{.}%&#xa;</xsl:text>
         <xsl:text>%&#xa;</xsl:text>
         <xsl:text>%% A lineskip in table of contents as a transition to the appendices&#xa;</xsl:text>
         <xsl:text>\addtocontents{toc}{\vspace{\normalbaselineskip}}%&#xa;</xsl:text>
@@ -3443,6 +3487,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="appendix|solutions">
         <xsl:text>%&#xa;</xsl:text>
         <xsl:text>\appendix%&#xa;</xsl:text>
+        <xsl:text>%% Appendix letters compose with titles in contents entries, so&#xa;</xsl:text>
+        <xsl:text>%% take a period (scoped: the .toc file is read within a group;&#xa;</xsl:text>
+        <xsl:text>%% display-shape chapter headings do not compose, and stay bare)&#xa;</xsl:text>
+        <xsl:text>\addtocontents{toc}{\protect\renewcommand{\protect\ptxappendixperiodchapter}{.}}%&#xa;</xsl:text>
         <!-- When the equation counter is scoped to "part" (see the         -->
         <!-- equation-numbering template), the LaTeX book class's chapter   -->
         <!-- reset of "equation" has been removed, so \appendix no longer   -->
@@ -3555,13 +3603,25 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <!-- infrastructure and not so hard-coded as it is here.     -->
             <xsl:text>\newpage%&#xa;</xsl:text>
             <xsl:apply-templates select="." mode="latex-division-heading"/>
+            <xsl:apply-templates select="headnote"/>
             <xsl:apply-templates select="index-list"/>
             <xsl:apply-templates select="." mode="latex-division-footing"/>
         </xsl:when>
         <xsl:when test="$index-maker = 'latex'">
+            <xsl:apply-templates select="headnote" mode="index-prologue"/>
             <xsl:apply-templates select="index-list"/>
         </xsl:when>
     </xsl:choose>
+</xsl:template>
+
+<!-- The \printindex of the  imakeidx  package makes the division  -->
+<!-- heading itself, so a headnote cannot simply precede it.  The  -->
+<!-- package's \indexprologue stores the note, and \printindex     -->
+<!-- sets it after the heading and before the entries.             -->
+<xsl:template match="index/headnote" mode="index-prologue">
+    <xsl:text>\indexprologue{%&#xa;</xsl:text>
+    <xsl:apply-templates select="."/>
+    <xsl:text>}%&#xa;</xsl:text>
 </xsl:template>
 
 <!-- TEMPORARY (2024-08-11) (migrate to publisher)  -->
@@ -4094,8 +4154,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:text>}&#xa;</xsl:text>
     </xsl:if>
     <!-- For references we open a list to hold "biblio" -->
-    <!-- unless we need to wait for an "introduction"   -->
-    <xsl:if test="self::references and not(introduction)">
+    <!-- unless we need to wait for a "headnote"         -->
+    <xsl:if test="self::references and not(headnote)">
         <xsl:call-template name="open-reference-list"/>
     </xsl:if>
 </xsl:template>
@@ -4135,9 +4195,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Footings are straightforward -->
 <xsl:template match="part|chapter|appendix|section|subsection|subsubsection|acknowledgement|foreword|preface|exercises|solutions|reading-questions|glossary|references|index|worksheet|handout" mode="latex-division-footing">
-    <!-- For references we close a list holding "biblio"    -->
-    <!-- unless we already added it before the "conclusion" -->
-    <xsl:if test="self::references and not(conclusion)">
+    <!-- For references we close a list holding "biblio" -->
+    <xsl:if test="self::references">
         <xsl:call-template name="close-reference-list"/>
     </xsl:if>
 
@@ -4158,7 +4217,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Title optional (and discouraged), in argument    -->
 <!-- typically just a few paragraphs                  -->
 <!-- NB: a glossary has a "headnote" (elsewhere) and does not have a "conclusion" -->
-<xsl:template match="article/introduction|chapter/introduction|section/introduction|subsection/introduction|appendix/introduction|exercises/introduction|solutions/introduction|worksheet/introduction|handout/introduction|reading-questions/introduction|references/introduction">
+<xsl:template match="article/introduction|chapter/introduction|section/introduction|subsection/introduction|appendix/introduction|exercises/introduction|solutions/introduction|worksheet/introduction|handout/introduction|reading-questions/introduction">
     <xsl:text>\begin{introduction}</xsl:text>
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="title-full" />
@@ -4170,19 +4229,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>%&#xa;</xsl:text>
     <xsl:apply-templates select="*"/>
     <xsl:text>\end{introduction}%&#xa;</xsl:text>
-    <!-- We have not opened the list of references yet    -->
-    <!-- when it has an "introduction".  Now is the time. -->
-    <xsl:if test="parent::references">
-        <xsl:call-template name="open-reference-list"/>
-    </xsl:if>
 </xsl:template>
 
-<xsl:template match="article/conclusion|chapter/conclusion|section/conclusion|subsection/conclusion|appendix/conclusion|exercises/conclusion|solutions/conclusion|worksheet/conclusion|handout/conclusion|reading-questions/conclusion|references/conclusion">
-    <!-- We will not close the list of references when -->
-    <!-- it has an "introduction".  Now is the time.   -->
-    <xsl:if test="parent::references">
-        <xsl:call-template name="close-reference-list"/>
-    </xsl:if>
+<xsl:template match="article/conclusion|chapter/conclusion|section/conclusion|subsection/conclusion|appendix/conclusion|exercises/conclusion|solutions/conclusion|worksheet/conclusion|handout/conclusion|reading-questions/conclusion">
     <xsl:text>\begin{conclusion}</xsl:text>
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="title-full" />
@@ -8755,6 +8804,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="xref-as-ref">
         <xsl:apply-templates select="$target" mode="xref-as-ref" />
     </xsl:variable>
+    <!-- Under the author's draft mode a forward reference, one     -->
+    <!-- preceding its target in document order, colors distinctly, -->
+    <!-- so material moved out of logical order announces itself.   -->
+    <!-- The count-union membership test reads document order.      -->
+    <xsl:variable name="b-draft-forward-reference" select="$b-latex-draft-mode and not(ancestor::title|ancestor::subtitle) and (count(current()|$target/preceding::*) = count($target/preceding::*))"/>
+    <xsl:if test="$b-draft-forward-reference">
+        <xsl:text>{\hypersetup{linkcolor=green}</xsl:text>
+    </xsl:if>
     <xsl:choose>
         <!-- inactive in titles, just text               -->
         <!-- With protection against incorrect, sloppy   -->
@@ -8801,6 +8858,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>}</xsl:text>
         </xsl:otherwise>
     </xsl:choose>
+    <xsl:if test="$b-draft-forward-reference">
+        <xsl:text>}</xsl:text>
+    </xsl:if>
 </xsl:template>
 
 <xsl:template match="xref|&PROOF-LIKE;" mode="latex-page-number">
@@ -9137,12 +9197,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:if>
 </xsl:template>
 
-<!-- TEMPORARILY: render a glossary "headnote" as an "introduction" -->
-<xsl:template match="glossary/headnote">
-    <xsl:text>%% this should be a new (isomorphic) "headnote" environment&#xa;</xsl:text>
-    <xsl:text>\begin{introduction}{}%&#xa;</xsl:text>
+<!-- A "headnote" prefaces the list of a list-like division; the -->
+<!-- index is special (see the "index-prologue" mode nearby its  -->
+<!-- division template), the other hosts render it in place      -->
+<xsl:template match="glossary/headnote|references/headnote|index/headnote|appendix/headnote">
+    <xsl:text>\begin{headnote}{}%&#xa;</xsl:text>
     <xsl:apply-templates select="*"/>
-    <xsl:text>\end{introduction}%&#xa;</xsl:text>
+    <xsl:text>\end{headnote}%&#xa;</xsl:text>
+    <!-- We have not opened the list of references yet when -->
+    <!-- a "headnote" intervenes.  Now is the time.         -->
+    <xsl:if test="parent::references">
+        <xsl:call-template name="open-reference-list"/>
+    </xsl:if>
 </xsl:template>
 
 <!-- Defined Terms, in a Glossary -->
@@ -9252,14 +9318,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- and \bibitem seems comfortable there, so our source -->
 <!-- is nearly compatible with the usual usage           -->
 
-<!-- We open and close a single "referencelist" environment,    -->
-<!-- which we create in the preamble.  It opens right after     -->
-<!-- a "references" division, or after optional "introduction". -->
-<!-- It closes right before the "references" division closes,   -->
-<!-- or right before the "conclusion" begins.  The templates    -->
-<!-- below ensure consistency, and help with overrides.  You    -->
-<!-- can search on them to see the two pairs of scenarios       -->
-<!-- just described.                                            -->
+<!-- We open and close a single "referencelist" environment,   -->
+<!-- which we create in the preamble.  It opens right after a  -->
+<!-- "references" division, or after an optional "headnote",   -->
+<!-- and closes right before the division does.  The templates -->
+<!-- below ensure consistency, and help with overrides.        -->
 
 <xsl:template name="open-reference-list">
     <xsl:text>%% If this is a top-level references&#xa;</xsl:text>
@@ -9587,7 +9650,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:value-of select="$font-name"/>
     <xsl:text>}{}{\GenericError{}{The font "</xsl:text>
     <xsl:value-of select="$font-name"/>
-    <xsl:text>" requested by PreTeXt output processed by the  xelatex  executable is not available.  Either a file cannot be located in default locations via a filename, or a font is not known by its name as part of your system.}{Consult the PreTeXt Guide for help with LaTeX fonts, or perhaps try using  pdflatex  as a test.}{}}&#xa;</xsl:text>
+    <xsl:text>" requested by PreTeXt output processed by the  xelatex  executable is not available.  Either a file cannot be located in default locations via a filename, or a font is not known by its name as part of your system.}{Perhaps try using  pdflatex  as a test.}{}}&#xa;</xsl:text>
 </xsl:template>
 
 <!-- Miscellaneous -->

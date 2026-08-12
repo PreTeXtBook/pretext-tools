@@ -49,10 +49,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <xsl:output method="text" indent="no" encoding="UTF-8"/>
 
-<!-- The Beamer theme, an author/publisher choice.  A string parameter -->
-<!-- until slideshow options mature in the publisher file.             -->
-<xsl:param name="beamer.theme" select="'Boadilla'"/>
-
 <!-- Blocks on slides never carry a LaTeX \label, so cross-reference -->
 <!-- numbers are hard-coded rather than realized through \ref        -->
 <xsl:variable name="b-latex-hardcode-numbers" select="true()"/>
@@ -90,7 +86,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="frontmatter"/>
     <!-- an overview of the sections, when there are sections -->
     <xsl:if test="section">
-        <xsl:text>\begin{frame}&#xa;</xsl:text>
+        <xsl:text>\begin{frame}[</xsl:text>
+        <xsl:call-template name="valign-letter">
+            <xsl:with-param name="valign" select="$slides-valign-default"/>
+        </xsl:call-template>
+        <xsl:text>]&#xa;</xsl:text>
         <xsl:text>\frametitle{</xsl:text>
         <xsl:apply-templates select="." mode="type-name">
             <xsl:with-param name="string-id" select="'toc'"/>
@@ -152,14 +152,22 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:apply-templates select="$bibinfo/date"/>
     </xsl:if>
     <xsl:text>}&#xa;&#xa;</xsl:text>
-    <xsl:text>\begin{frame}[plain]&#xa;</xsl:text>
+    <xsl:text>\begin{frame}[plain,</xsl:text>
+    <xsl:call-template name="valign-letter">
+        <xsl:with-param name="valign" select="$slides-valign-default"/>
+    </xsl:call-template>
+    <xsl:text>]&#xa;</xsl:text>
     <xsl:text>\titlepage&#xa;</xsl:text>
     <xsl:text>\end{frame}&#xa;&#xa;</xsl:text>
     <xsl:apply-templates select="abstract"/>
 </xsl:template>
 
 <xsl:template match="slideshow/frontmatter/abstract">
-    <xsl:text>\begin{frame}&#xa;</xsl:text>
+    <xsl:text>\begin{frame}[</xsl:text>
+    <xsl:call-template name="valign-letter">
+        <xsl:with-param name="valign" select="$slides-valign-default"/>
+    </xsl:call-template>
+    <xsl:text>]&#xa;</xsl:text>
     <xsl:text>\frametitle{</xsl:text>
     <xsl:apply-templates select="." mode="type-name"/>
     <xsl:text>}&#xa;</xsl:text>
@@ -171,13 +179,35 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Sections, Slides, Pauses -->
 <!-- ######################## -->
 
+<!-- Beamer places a frame's content by single-letter frame options -->
+<!-- ("t", "c", "b"), so every frame gets the letter realizing its  -->
+<!-- effective vertical alignment.                                  -->
+<xsl:template name="valign-letter">
+    <xsl:param name="valign"/>
+    <xsl:choose>
+        <xsl:when test="$valign = 'top'">
+            <xsl:text>t</xsl:text>
+        </xsl:when>
+        <xsl:when test="$valign = 'bottom'">
+            <xsl:text>b</xsl:text>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>c</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
 <!-- A "section" is a Beamer section (navigation, table of contents) -->
 <!-- with a section-title frame, as in the reveal.js conversion.     -->
 <xsl:template match="slideshow/section">
     <xsl:text>&#xa;\section{</xsl:text>
     <xsl:apply-templates select="." mode="title-full"/>
     <xsl:text>}&#xa;</xsl:text>
-    <xsl:text>\begin{frame}&#xa;</xsl:text>
+    <xsl:text>\begin{frame}[</xsl:text>
+    <xsl:call-template name="valign-letter">
+        <xsl:with-param name="valign" select="$slides-valign-default"/>
+    </xsl:call-template>
+    <xsl:text>]&#xa;</xsl:text>
     <xsl:text>\sectionpage&#xa;</xsl:text>
     <xsl:text>\end{frame}&#xa;&#xa;</xsl:text>
     <xsl:apply-templates select="slide"/>
@@ -187,11 +217,16 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- realized through the "listings" package (or other verbatim-like -->
 <!-- material) must be marked "fragile".                             -->
 <xsl:template match="slide">
-    <xsl:text>\begin{frame}</xsl:text>
+    <xsl:text>\begin{frame}[</xsl:text>
+    <xsl:call-template name="valign-letter">
+        <xsl:with-param name="valign">
+            <xsl:apply-templates select="." mode="valign"/>
+        </xsl:with-param>
+    </xsl:call-template>
     <xsl:if test="descendant::program or descendant::console or descendant::sage or descendant::cd or descendant::pre">
-        <xsl:text>[fragile]</xsl:text>
+        <xsl:text>,fragile</xsl:text>
     </xsl:if>
-    <xsl:text>&#xa;</xsl:text>
+    <xsl:text>]&#xa;</xsl:text>
     <xsl:text>\frametitle{</xsl:text>
     <xsl:apply-templates select="." mode="title-full"/>
     <xsl:text>}&#xa;</xsl:text>
@@ -449,8 +484,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:value-of select="$latex.preamble.early" />
         <xsl:text>&#xa;</xsl:text>
     </xsl:if>
+    <!-- A theme name unknown to the installation would surface as    -->
+    <!-- a cryptic missing-file error, so test for the theme's file   -->
+    <!-- first and die early with advice.  "\usetheme{X}" loads       -->
+    <!-- "beamerthemeX.sty", and "\IfFileExists" performs the same    -->
+    <!-- search, so a theme local to the document is also honored.    -->
+    <xsl:text>\IfFileExists{beamertheme</xsl:text>
+    <xsl:value-of select="$beamer-theme"/>
+    <xsl:text>.sty}{}{\errmessage{The Beamer theme "</xsl:text>
+    <xsl:value-of select="$beamer-theme"/>
+    <xsl:text>" is not part of this TeX installation.  Theme names are case-sensitive, so check capitalization first.  Install the theme, or remove the theme entry of the publication file to accept the default theme}}&#xa;</xsl:text>
     <xsl:text>\usetheme{</xsl:text>
-    <xsl:value-of select="$beamer.theme"/>
+    <xsl:value-of select="$beamer-theme"/>
     <xsl:text>}&#xa;</xsl:text>
     <xsl:text>\usefonttheme[onlymath]{serif}&#xa;</xsl:text>
     <xsl:text>%% quash navigation symbols&#xa;</xsl:text>

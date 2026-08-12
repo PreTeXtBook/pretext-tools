@@ -140,6 +140,41 @@ export const lineEndTags = [
   "volume",
   "year",
   "xi:include",
+  // Short scalar values — bibliography/metadata fields, publication settings, and
+  // inline markup-documentation tags. Each belongs on one line with its tags;
+  // otherwise appendBlock pushes the value onto a line of its own.
+  "DOI",
+  "ISBN",
+  "ISSN",
+  "archive",
+  "attr",
+  "de-number",
+  "document-id",
+  "dropping-particle",
+  "email",
+  "genre",
+  "genus",
+  "geometry",
+  "initialism",
+  "issue",
+  "kbd",
+  "literal",
+  "macro-file",
+  "mag",
+  "non-dropping-particle",
+  "number-of-pages",
+  "page-first",
+  "pages",
+  "rename",
+  "scaledeg",
+  "series",
+  "species",
+  "static-ordering",
+  "suffix",
+  "tag",
+  "tage",
+  "watermark",
+  "xhtml:button",
 ];
 // empty tags that should be on their own line
 const docEmpty = [
@@ -191,6 +226,20 @@ export const verbatimTags = [
   "code",
   "c",
   "cd",
+  // Code-carrying elements whose text is executed, rendered, or matched as-is.
+  // Re-indenting them changes what they mean, so they must round-trip exactly.
+  "strcmp", // literal/regex a fill-in answer is compared against
+  "jscmp", // JavaScript comparison expression
+  "mermaid", // Mermaid source; relative indentation is significant
+  "stdin", // data piped to a <program>
+  "asymptote-preamble",
+  "setupScript", // JavaScript run before an <interactive> renders
+  "postRenderScript", // JavaScript run after an <interactive> renders
+  "source", // <interactive> source text
+  "pf", // inline verbatim, like <c> — see isBlockChild in format.ts
+  "config-json", // JSON configuration for an <interactive>
+  "program-preamble", // fixed code before a Parsons <program> solution
+  "program-postamble", // fixed code after a Parsons <program> solution
 ];
 export const newlineTags = [
   ...docStructure,
@@ -245,4 +294,7 @@ export const smartParTags = [
   "response",
   "li",
   "cell",
+  // Prose-like metadata: single line when it fits, reflowed when it does not.
+  "blurb",
+  "plaintitle",
 ];

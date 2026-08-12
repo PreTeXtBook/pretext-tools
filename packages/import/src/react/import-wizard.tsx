@@ -1,13 +1,22 @@
 import { useRef, useState } from "react";
 import {
+  extractUpload,
   handleImportUploadFile,
+  importProjectFromFiles,
   type ImportProjectOptions,
 } from "../lib/upload";
 import { filesForImportMode, type ImportMode } from "../lib/import-mode";
 import type { DocumentKind } from "../lib/layout/document-kind";
+import {
+  analyzeImportSources,
+  type RootCandidate,
+  type UploadAnalysis,
+} from "../lib/project/analyze";
+import type { AttachLevel, RootAttachment } from "../lib/project/attach-roots";
 import type {
   ImportedProjectResult,
   ImportedProjectSuccess,
+  SourceFormat,
 } from "../lib/types";
 
 export type { ImportMode };
@@ -26,10 +35,27 @@ const DEFAULT_ACCEPT_EXTENSIONS = [
 ];
 
 /**
+ * An upload that has been unpacked and surveyed but not yet converted. Holding
+ * this lets the wizard offer source choices (format, main file, extra roots)
+ * and re-run the conversion as the user changes them, without unzipping the
+ * upload again each time.
+ */
+export interface PreparedUpload {
+  fileName: string;
+  files: Record<string, string>;
+  assets: Record<string, Uint8Array>;
+  analysis: UploadAnalysis;
+}
+
+/**
  * A pluggable conversion engine. The wizard owns the whole UI (upload, review,
  * preview, confirm) and only delegates the source → result step to the selected
  * engine, so hosts can inject their own converters (e.g. a VS Code-only pandoc
  * engine that round-trips to the extension host) without touching this package.
+ *
+ * An engine that implements the optional `prepare`/`convertPrepared` pair also
+ * gets the source-selection step; one that only implements `convertFile` keeps
+ * the original single-shot flow.
  */
 export interface ImportEngine {
   /** Stable identifier, used as the radio value. */
@@ -45,6 +71,13 @@ export interface ImportEngine {
     file: File,
     options: ImportProjectOptions,
   ) => Promise<ImportedProjectResult>;
+  /** Unpack and survey an upload without converting it. */
+  prepare?: (file: File) => Promise<PreparedUpload>;
+  /** Convert an already-prepared upload with the user's source choices. */
+  convertPrepared?: (
+    prepared: PreparedUpload,
+    options: ImportProjectOptions,
+  ) => ImportedProjectResult;
 }
 
 /** The default engine: the in-browser pure-TS pipeline, no external tools. */
@@ -55,6 +88,20 @@ const BUILTIN_ENGINE: ImportEngine = {
     "Create a new project starting with LaTeX, Markdown, or PreTeXt files.",
   acceptExtensions: DEFAULT_ACCEPT_EXTENSIONS,
   convertFile: handleImportUploadFile,
+  prepare: async (file) => {
+    const { files, assets } = await extractUpload(file);
+    return {
+      fileName: file.name,
+      files,
+      assets,
+      analysis: analyzeImportSources(files),
+    };
+  },
+  convertPrepared: (prepared, options) =>
+    importProjectFromFiles(prepared.files, {
+      ...options,
+      assets: prepared.assets,
+    }),
 };
 
 export interface ImportWizardProps {
@@ -75,8 +122,56 @@ export interface ImportWizardProps {
 type Step =
   | { name: "upload" }
   | { name: "processing" }
+  | { name: "sources"; prepared: PreparedUpload }
   | { name: "review"; result: ImportedProjectSuccess }
   | { name: "error"; message: string };
+
+/** How an extra root should be folded in, keyed by its path. */
+type AttachChoices = Record<string, { include: boolean; level?: AttachLevel }>;
+
+const FORMAT_LABELS: Record<SourceFormat, string> = {
+  pretext: "PreTeXt",
+  latex: "LaTeX",
+  markdown: "Markdown",
+};
+
+/**
+ * Is there a choice here worth interrupting the user for? A `project.ptx` that
+ * names one target already answers the question — a stray README alongside it
+ * is not a real alternative — so the step is skipped and offered from the
+ * review screen instead.
+ */
+/** One-line explanation of why a file is offered as the document root. */
+function describeCandidate(candidate: RootCandidate): string {
+  const reason =
+    candidate.reason === "manifest-target"
+      ? `project.ptx target “${candidate.targetName}”`
+      : candidate.reason === "latex-root"
+        ? "LaTeX document"
+        : candidate.reason === "pretext-root"
+          ? "PreTeXt document"
+          : candidate.reason === "markdown-root"
+            ? "Markdown document"
+            : "possible document";
+  return candidate.title ? `${candidate.title} — ${reason}` : reason;
+}
+
+function hasSourceChoices(analysis: UploadAnalysis): boolean {
+  const manifestTargets = analysis.candidates.filter(
+    (candidate) => candidate.reason === "manifest-target",
+  );
+  if (manifestTargets.length > 1) {
+    return true;
+  }
+  if (analysis.manifest && analysis.primary?.reason === "manifest-target") {
+    return false;
+  }
+  return (
+    analysis.formats.length > 1 ||
+    analysis.candidates.length > 1 ||
+    analysis.extraRoots.length > 0
+  );
+}
 
 export function ImportWizard({
   onConfirm,
@@ -97,6 +192,12 @@ export function ImportWizard({
   const [mode, setMode] = useState<ImportMode>("converted");
   const [showPreview, setShowPreview] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  const [prepared, setPrepared] = useState<PreparedUpload | null>(null);
+  const [formatChoice, setFormatChoice] = useState<SourceFormat | "auto">(
+    "auto",
+  );
+  const [mainFileChoice, setMainFileChoice] = useState<string | null>(null);
+  const [attachChoices, setAttachChoices] = useState<AttachChoices>({});
 
   const selectedEngine =
     engineList.find((engine) => engine.id === selectedEngineId) ??
@@ -104,15 +205,76 @@ export function ImportWizard({
   const acceptExtensions =
     selectedEngine.acceptExtensions ?? DEFAULT_ACCEPT_EXTENSIONS;
 
+  /** The options every conversion starts from: the upload step's controls. */
+  const baseOptions = (): ImportProjectOptions =>
+    importOptions ?? {
+      documentKind:
+        documentKindChoice === "auto" ? undefined : documentKindChoice,
+      splitSections,
+    };
+
+  /** Re-survey the upload under the user's current format/main-file choices. */
+  const currentAnalysis = (upload: PreparedUpload): UploadAnalysis =>
+    analyzeImportSources(upload.files, {
+      sourceFormat: formatChoice === "auto" ? undefined : formatChoice,
+      mainFile: mainFileChoice ?? undefined,
+    });
+
+  const runImport = (upload: PreparedUpload) => {
+    setStep({ name: "processing" });
+    try {
+      const analysis = currentAnalysis(upload);
+      const attachRoots: RootAttachment[] = analysis.extraRoots.map((root) => ({
+        path: root.path,
+        include: attachChoices[root.path]?.include ?? true,
+        level: attachChoices[root.path]?.level,
+      }));
+      const result = selectedEngine.convertPrepared!(upload, {
+        ...baseOptions(),
+        sourceFormat: formatChoice === "auto" ? undefined : formatChoice,
+        mainFile: mainFileChoice ?? undefined,
+        attachRoots,
+      });
+      if ("pretextError" in result) {
+        setStep({ name: "error", message: result.pretextError });
+      } else {
+        setStep({ name: "review", result });
+      }
+    } catch (err) {
+      setStep({
+        name: "error",
+        message:
+          err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
+    }
+  };
+
   const processFile = async (file: File) => {
     setStep({ name: "processing" });
     try {
-      const options: ImportProjectOptions = importOptions ?? {
-        documentKind:
-          documentKindChoice === "auto" ? undefined : documentKindChoice,
-        splitSections,
-      };
-      const result = await selectedEngine.convertFile(file, options);
+      // Two-phase engines unpack first, so the user can settle which file is
+      // the document before anything is converted. Single-shot engines (a
+      // host-provided pandoc bridge, say) keep the original flow.
+      if (selectedEngine.prepare && selectedEngine.convertPrepared) {
+        const upload = await selectedEngine.prepare(file);
+        setPrepared(upload);
+        setFormatChoice("auto");
+        setMainFileChoice(null);
+        setAttachChoices({});
+        if (hasSourceChoices(upload.analysis)) {
+          setStep({ name: "sources", prepared: upload });
+          return;
+        }
+        const result = selectedEngine.convertPrepared(upload, baseOptions());
+        setStep(
+          "pretextError" in result
+            ? { name: "error", message: result.pretextError }
+            : { name: "review", result },
+        );
+        return;
+      }
+
+      const result = await selectedEngine.convertFile(file, baseOptions());
       if ("pretextError" in result) {
         setStep({ name: "error", message: result.pretextError });
       } else {
@@ -132,6 +294,7 @@ export function ImportWizard({
     setMode("converted");
     setShowPreview(false);
     setExpandedFiles(new Set());
+    setPrepared(null);
   };
 
   function sortPaths(paths: string[], mainPath: string): string[] {
@@ -144,7 +307,10 @@ export function ImportWizard({
 
   function openFirstFile(result: ImportedProjectSuccess, m: ImportMode) {
     const files = filesForImportMode(result, m);
-    const mainPath = m === "converted" ? "source/main.ptx" : result.sourcePath;
+    const mainPath =
+      m === "converted"
+        ? result.projectLayout.mainSourcePath
+        : result.sourcePath;
     const first = sortPaths(Object.keys(files), mainPath)[0];
     setExpandedFiles(first ? new Set([first]) : new Set());
   }
@@ -187,6 +353,191 @@ export function ImportWizard({
     );
   }
 
+  if (step.name === "sources") {
+    const upload = step.prepared;
+    const analysis = currentAnalysis(upload);
+    const manifest = analysis.manifest;
+    const chosenPath = analysis.primary?.path ?? "";
+
+    return (
+      <div className="flex flex-col gap-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">
+            Choose what to import
+          </h3>
+          <p className="mt-1 text-sm text-slate-500">
+            {upload.fileName} contains more than one possible starting point.
+          </p>
+        </div>
+
+        {manifest ? (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+            <p className="font-medium">
+              Found {manifest.manifestPath} — an existing PreTeXt project.
+            </p>
+            <p className="mt-1 text-blue-800">
+              Its publication file, assets, and directory layout will be kept as
+              they are. Targets:{" "}
+              {manifest.targets.map((target) => target.name).join(", ")}.
+            </p>
+          </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="flex items-center gap-2 text-slate-700">
+            <span className="text-slate-500">Source format</span>
+            <select
+              value={formatChoice}
+              onChange={(e) => {
+                setFormatChoice(e.currentTarget.value as SourceFormat | "auto");
+                // Candidates are format-scoped; a stale pick would silently
+                // override the new format.
+                setMainFileChoice(null);
+                setAttachChoices({});
+              }}
+              className="rounded border border-slate-300 px-2 py-1 text-sm"
+            >
+              <option value="auto">
+                Auto detect
+                {analysis.primary
+                  ? ` (${FORMAT_LABELS[analysis.primary.format]})`
+                  : ""}
+              </option>
+              {analysis.formats.map((format) => (
+                <option key={format} value={format}>
+                  {FORMAT_LABELS[format]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {analysis.candidates.length > 1 ? (
+          <fieldset className="rounded-lg border border-slate-200 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Main document
+            </legend>
+            <div className="mt-2 flex flex-col gap-2">
+              {analysis.candidates.map((candidate) => (
+                <label
+                  key={candidate.path}
+                  className="flex cursor-pointer items-start gap-3 text-sm"
+                >
+                  <input
+                    type="radio"
+                    name="main-file"
+                    value={candidate.path}
+                    checked={chosenPath === candidate.path}
+                    onChange={() => {
+                      setMainFileChoice(candidate.path);
+                      setAttachChoices({});
+                    }}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-mono text-xs text-slate-900">
+                      {candidate.path}
+                    </span>
+                    <span className="block text-slate-500">
+                      {describeCandidate(candidate)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
+
+        {analysis.extraRoots.length > 0 ? (
+          <fieldset className="rounded-lg border border-slate-200 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Other documents
+            </legend>
+            <p className="mt-1 text-sm text-slate-500">
+              These files also stand on their own. Attach them to the main
+              document, or leave them out.
+            </p>
+            <div className="mt-3 flex flex-col gap-2">
+              {analysis.extraRoots.map((root) => {
+                const choice = attachChoices[root.path];
+                const included = choice?.include ?? true;
+                return (
+                  <div
+                    key={root.path}
+                    className="flex flex-wrap items-center gap-3 text-sm"
+                  >
+                    <label className="flex flex-1 cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={included}
+                        onChange={(e) =>
+                          setAttachChoices((prev) => ({
+                            ...prev,
+                            [root.path]: {
+                              ...prev[root.path],
+                              include: e.currentTarget.checked,
+                            },
+                          }))
+                        }
+                      />
+                      <span className="font-mono text-xs text-slate-900">
+                        {root.path}
+                      </span>
+                      {root.title ? (
+                        <span className="text-slate-500">— {root.title}</span>
+                      ) : null}
+                    </label>
+                    <label className="flex items-center gap-2 text-slate-700">
+                      <span className="text-slate-500">Attach as</span>
+                      <select
+                        value={choice?.level ?? "auto"}
+                        disabled={!included}
+                        onChange={(e) =>
+                          setAttachChoices((prev) => ({
+                            ...prev,
+                            [root.path]: {
+                              include: prev[root.path]?.include ?? true,
+                              level:
+                                e.currentTarget.value === "auto"
+                                  ? undefined
+                                  : (e.currentTarget.value as AttachLevel),
+                            },
+                          }))
+                        }
+                        className="rounded border border-slate-300 px-2 py-1 text-sm disabled:opacity-50"
+                      >
+                        <option value="auto">Auto</option>
+                        <option value="chapter">Chapter</option>
+                        <option value="section">Section</option>
+                      </select>
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
+        ) : null}
+
+        <div className="flex items-center justify-between gap-3 pt-1">
+          <button
+            type="button"
+            onClick={restart}
+            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+          >
+            Start Over
+          </button>
+          <button
+            type="button"
+            onClick={() => runImport(upload)}
+            className="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (step.name === "review") {
     const { result } = step;
     const isLatex = result.detectedSourceFormat === "latex";
@@ -195,7 +546,9 @@ export function ImportWizard({
 
     const currentPreviewFiles = filesForImportMode(result, mode);
     const mainPath =
-      mode === "converted" ? "source/main.ptx" : result.sourcePath;
+      mode === "converted"
+        ? result.projectLayout.mainSourcePath
+        : result.sourcePath;
     const sortedPreviewPaths = sortPaths(
       Object.keys(currentPreviewFiles),
       mainPath,
@@ -225,6 +578,24 @@ export function ImportWizard({
             </dd>
             <dt className="text-slate-500">Output files</dt>
             <dd className="font-medium text-slate-900">{fileCount}</dd>
+            {result.projectLayout.preserved ? (
+              <>
+                <dt className="text-slate-500">Existing project</dt>
+                <dd className="font-medium text-slate-900">
+                  Kept publication file, assets, and layout
+                </dd>
+              </>
+            ) : null}
+            {result.attachedRoots.length > 0 ? (
+              <>
+                <dt className="text-slate-500">Attached</dt>
+                <dd className="font-medium text-slate-900">
+                  {result.attachedRoots
+                    .map((root) => `${root.title} (${root.level})`)
+                    .join(", ")}
+                </dd>
+              </>
+            ) : null}
           </dl>
         </div>
 
@@ -343,6 +714,15 @@ export function ImportWizard({
             {onCancel ? "Cancel" : "Start Over"}
           </button>
           <div className="flex gap-2">
+            {prepared ? (
+              <button
+                type="button"
+                onClick={() => setStep({ name: "sources", prepared })}
+                className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Change Sources
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => {

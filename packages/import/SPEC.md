@@ -44,17 +44,27 @@ uploads; the paste flow (`convertSourceToPretext`) starts at stage 4.
 upload (File)
   │ 1. extract        zip (JSZip) / tar.gz (DecompressionStream + minimal tar
   │                   parser) / single file; split text vs. binary by extension
-  │ 2. pick main      find the primary source file among the extracted files
+  │ 2. analyze        find project.ptx; enumerate every possible root and the
+  │                   formats on offer; pick the primary (§3.3)
   │ 3. expand         inline \input/\include (LaTeX) or xi:include (PreTeXt)
-  │ 4. detect/clean   detect format; for LaTeX, run the PreprocessLaTeX port
-  │ 5. convert        LaTeX → unified-latex; Markdown → remark-pretext;
+  │ 4. attach         fold any other roots into the main document (§3.12)
+  │ 5. detect/clean   detect format; for LaTeX, run the PreprocessLaTeX port
+  │ 6. convert        LaTeX → unified-latex; Markdown → remark-pretext;
   │                   PreTeXt → normalize only. Then format via @pretextbook/format
-  │ 6. layout         split books into chapter (and optionally section) files;
-  │                   generate project.ptx and publication.ptx
-  │ 7. route          images → source/assets/, .bib → source/
+  │ 7. split          divisions → the pool, to `splitLevel` levels deep (§3.8)
+  │ 8. layout         serialize the pool; generate or preserve project.ptx and
+  │                   publication.ptx (§3.13)
+  │ 9. route          images → source/assets/ (new projects) or their original
+  │                   paths (existing projects); .bib → source/
   ▼
 ImportedProjectResult  (outputFiles + outputAssets + warnings + statusMessages)
 ```
+
+Stage 2 is exposed on its own as `analyzeImportSources(files)`, and stage 1 as
+`extractUpload(file)`. A host that wants to _ask_ before importing runs
+extract → analyze → (show pickers) → `importProjectFromFiles(files, options)`;
+`handleImportUploadFile` remains the one-shot path that does all of it with
+defaults.
 
 ### 3.1 Supported inputs
 
@@ -79,26 +89,54 @@ Marker heuristics, checked in order:
 The user can always override detection (format dropdown in the UI; the
 `sourceFormat` argument in the API).
 
-### 3.3 Main-file selection (`pickPrimarySourcePath`)
+### 3.3 Root selection (`analyzeImportSources`)
 
-For multi-file uploads:
+One survey of the upload answers every "which file?" question, and both the
+pipeline and the host's pickers read it, so what the user is shown and what the
+import actually does cannot drift apart:
 
-Uploaded files may contain multiple files that are "root" documents. We
-decide if there is only one of them, otherwise ask the user to select one of the
-candidates. The heuristics for identifying root documents are:
+```ts
+interface UploadAnalysis {
+  manifest: ProjectManifest | null; // the project.ptx governing the upload
+  candidates: RootCandidate[]; // every file that could be the root, best first
+  formats: SourceFormat[]; // formats represented, in preference order
+  primary: RootCandidate | null; // what the import will use
+  extraRoots: RootCandidate[]; // other roots of the same format (§3.12)
+}
 
-- **LaTeX**: the `.tex` file containing `\begin{document}`, else the first
-  `.tex` alphabetically.
-- **Markdown**: the first `.md`/`.markdown` alphabetically.
-- **PreTeXt**: `findLikelyMainPretextPath` (prefers a file with a `<pretext>`
-  root / xi:includes).
-- Fallback: first file alphabetically, re-detected by content.
+interface RootCandidate {
+  path: string;
+  format: SourceFormat;
+  reason:
+    | "manifest-target"
+    | "latex-root"
+    | "pretext-root"
+    | "markdown-root"
+    | "fallback";
+  title?: string; // mined from <title> / \title / `# heading`
+  targetName?: string; // when it came from a project.ptx target
+  targetFormat?: string;
+}
+```
 
-If the set of uploaded files contains multiple formats, the user is prompted
-to choose which format to use for the main document. Root files that are not
-chosen as the main file,
-or files that are not "reachable" from the main file via includes can still be
-converted as standalone orphaned divisions.
+Candidates are gathered per format and ranked:
+
+- **`project.ptx` targets** win outright — an existing project knows its own
+  root. The default target is the first non-`standalone` one (§3.12).
+- **LaTeX**: files that are not `\input` by another file and declare
+  `\documentclass` or `\begin{document}`. Ranked by: real `\documentclass`
+  first; then a conventional driver name (`main`, `book`, `index`, `thesis`, …);
+  then how many files it pulls in; then alphabetically.
+- **Markdown**: all `.md`/`.markdown`, preferring `main`/`index`/`book` and
+  demoting `README`, `CHANGELOG`, `LICENSE` — repository documentation is not
+  the book.
+- **PreTeXt**: files with a `<pretext>`/`<book>`/`<article>` root that no other
+  file `xi:include`s (and never `project.ptx`/`publication.ptx` themselves).
+
+Two options override the ranking, and are exactly what a host's controls bind
+to: `sourceFormat` restricts candidates to one format, `mainFile` names the
+root outright. Roots that are neither chosen nor reachable from the chosen one
+are offered as `extraRoots` (§3.12).
 
 ### 3.4 Include expansion
 
@@ -111,6 +149,11 @@ converted as standalone orphaned divisions.
   from included fragments. Missing targets reported, non-fatal.
 - **Markdown**: no include mechanism (single file only). Todo: add support
   for pretext-plus style includes, as well as quarto style includes.
+
+Both expanders report the paths they consumed. That set is what tells an
+existing-project import which files were folded into the document (and so must
+_not_ also be copied through verbatim — §3.13), and what keeps a file that is
+merely a chapter part out of the root candidate list (§3.3).
 
 ### 3.5 LaTeX cleaning (`lib/clean/`)
 
@@ -169,41 +212,60 @@ thrown.
 
 The user can also elect to keep the source in its native format.
 
-### 3.8 Project scaffolding (`lib/layout/`)
+### 3.8 Division splitting (`lib/pool/division-pool.ts`)
 
-`buildPretextProjectFiles` turns a single converted PreTeXt string into a
-standard project file map:
+The converted document is split into the division pool (§4.1) by walking its
+divisions to a configurable depth:
 
 ```
-project.ptx                     ptx-version="2"; web (html) + print (pdf) targets
-publication/publication.ptx    directories external/generated; chunking level 1
-source/main.ptx                root document
-source/ch-<xml:id>.ptx         one per chapter (books, when splitChapters)
-source/<ch-slug>/sec-*.ptx     one per section (when splitSections)
+splitLevel 0   whole document in one division
+splitLevel 1   the root's own divisions: chapters, but also <frontmatter>,
+               <part>, <preface>, <appendix>, <backmatter>, <worksheet>, …
+splitLevel 2   …and each of those divisions' own children (a book's sections)
 ```
 
-- **Document kind**: auto-detected (`<book>` → book; `<article>` → article;
-  bare `<chapter>` → book; else article) or overridden via `documentKind`.
-  If told "book" but no `<book>` element exists, falls back to a single-file
-  article layout with a warning.
-- **Chapter files**: named `ch-<slugified xml:id>.ptx`; chapters without an
-  `xml:id` get a zero-padded index (`ch-01.ptx`) plus an info warning.
-  Duplicate slugs get `-2`, `-3`, … suffixes.
-- **Splitting**: `splitChapters` defaults to true for books; `splitSections`
-  is opt-in and nests section files under a per-chapter directory.
-- `main.ptx` is rebuilt with `<xi:include>` references, the `xmlns:xi`
-  namespace added to the root, `<pretext>` wrapper and XML prolog ensured.
-- XML structure is located with a lightweight tokenizer (`xml-scan.ts`) that
-  tracks nesting and skips comments/CDATA/PIs — deliberately not a full
-  parser, since input at this stage is our own formatter's output.
+`splitLevel` defaults to 1 for a book and 0 for an article. The older
+`splitChapters`/`splitSections` booleans still work and are resolved against
+the document kind by `resolveSplitLevel` — `splitSections` means depth 2 in a
+book but depth 1 in an article, since an article's sections _are_ its top
+level.
+
+Any tag in the PreTeXt division vocabulary (`lib/pretext-divisions.ts`) is a
+split point, not just `chapter`/`section` — which is what an existing project
+imported from `project.ptx` actually contains. Elements that are structural but
+never chunked on their own (`<introduction>`, `<conclusion>`) are deliberately
+excluded.
+
+Each extracted division:
+
+- carries `xml:id` equal to its ref — an existing id is kept when it is
+  REF_REGEX-safe and unused, sanitized with a warning when not, and generated
+  otherwise (`ch-01` at the top level, `methods-sec-02` deeper down, so ids
+  stay unique and self-describing);
+- is replaced in its parent by `<plus:TYPE ref="…"/>`.
+
+**File names** (`lib/pool/serialize-files.ts`): a division's children live in a
+directory named after it, recursing for as many levels as were split —
+`source/ch-body.ptx` + `source/ch-body/sec-one.ptx` +
+`source/ch-body/sec-one/subsec-a.ptx`. Names use the community's prefixes
+(`ch-`, `sec-`, `subsec-`, `app-`); divisions a document has only one of are
+named for themselves (`frontmatter.ptx`, `preface.ptx`), matching the
+pretext-cli template. Names only have to be unique within their own directory.
 
 ### 3.9 Asset and auxiliary routing
 
-- Image-like binaries (`png jpg … pdf eps ps`) → `assets/<basename>`
-  (path flattened). TODO: Note this needs to be changed from current location.
+For a **new** project (LaTeX/Markdown/loose PreTeXt input):
+
+- Image-like binaries (`png jpg … pdf eps ps`) → `source/assets/<basename>`
+  (path flattened). TODO: Note this needs to be changed from current location,
+  and image references in the converted document are still not rewritten (§7).
 - `.bib` files → `source/<basename>`.
 - Everything else (`.sty`, `.bbl`, `.txt`, …) is counted in the status log
   but not copied into the output project.
+
+For an **existing** project (§3.13) none of this applies: every file keeps its
+original project-relative path, so `<image source="…"/>` and the publication
+file's `<directories external="…"/>` keep resolving exactly as they did.
 
 ### 3.10 Native mode ("keep as LaTeX/Markdown")
 
@@ -224,6 +286,95 @@ Two channels, both returned on every result:
 - `warnings: CleaningWarning[]` — structured record of every cleaning
   mutation and layout anomaly (see 3.5), suitable for a collapsible
   "what changed" report.
+
+### 3.12 Multi-root uploads (`lib/project/attach-roots.ts`)
+
+An upload often holds several standalone documents — a `\documentclass` per
+chapter is a normal way to write a book in LaTeX, since each chapter then
+compiles on its own. `analyzeImportSources` picks one as the main document and
+offers the rest as `extraRoots`; by default they are **attached as divisions**
+of it.
+
+Attachment happens _before_ conversion, on the source text: each extra root's
+body is spliced into the main document under a heading of the chosen level. One
+conversion pass still runs, macros defined in the main preamble are in scope for
+the attached content, and the splitter downstream sees an ordinary single
+document.
+
+```ts
+attachRoots?: RootAttachment[] | false;
+interface RootAttachment {
+  path: string;
+  level?: "chapter" | "section"; // default: the main document's top level
+  title?: string; // default: the file's \title, else its filename
+  include?: boolean; // false leaves it out
+}
+```
+
+- **Level** defaults to `chapter` when the main document is book-like
+  (`\documentclass{book|report|memoir|…}` or it already uses `\chapter`),
+  `section` otherwise.
+- A file that **already opens with its own heading** at that level is not
+  wrapped again.
+- Each attached file's **own `\input`s are expanded first**, so a multi-file
+  chapter attaches whole.
+- **Macro definitions** in an attached file's preamble are hoisted into the
+  main preamble; the rest of its preamble is dropped.
+- `attachRoots: false` imports the main file alone, and the extra roots stay
+  listed on `analysis.extraRoots` so a host can offer them later.
+
+Every attachment is reported both as a status message and on
+`result.attachedRoots`, and a path that is not in the upload produces an
+`attached_root_missing` warning rather than failing the import.
+
+Markdown has the same entry point (`attachMarkdownRoots`), but only at the top
+level: `remark-pretext` maps a depth-1 heading to the document's top-level
+division, so the chapter/section choice does not yet apply there.
+
+### 3.13 Existing PreTeXt projects (`lib/project/`)
+
+When an upload contains a `project.ptx`, it is not loose source — it is a
+project, and it is imported as one.
+
+**Reading the manifest** (`manifest.ts`). `findProjectManifest` takes the
+shallowest `project.ptx` with a real `<project>` root (archives usually nest
+everything under `my-book-main/`, so depth, not alphabetical order, decides).
+`parseProjectManifest` re-implements the `pretext` CLI's resolution rules — the
+same ones `packages/vscode-extension/src/project-manifest.ts` applies, ported
+off `xml2js`/`node:path` so they run in a browser:
+
+- a `<source>` **child element** is relative to the project root;
+- a `source` **attribute** is relative to the project's source directory (the
+  project-level `source` attribute, default `source`);
+- neither → `<sourceDir>/main.ptx`.
+
+`publication` and `output-dir` split the same way against the project-level
+`publication` and `output` directories. Legacy v1 manifests (`<format>`,
+`<source>`, `<output-dir>` as child elements) and pre-`<targets>` manifests
+both parse. The import follows the first non-`standalone` target unless
+`mainFile` names another.
+
+**What is kept** (`existing-project.ts`). The document itself is rewritten: the
+target's source is expanded, re-split, and written back at _its original path_.
+Everything else is the author's and is copied through untouched at its original
+project-relative path — the publication file, images, custom XSL, `.bib` files,
+`requirements.txt`. The exceptions are narrow:
+
+| Dropped                                                                    | Why                                              |
+| -------------------------------------------------------------------------- | ------------------------------------------------ |
+| Files consumed into the document (the target source and its `xi:include`s) | They come back as rewritten source               |
+| `project.ptx`                                                              | Regenerated to match the layout actually written |
+| `output/`, each target's output dir, `.git/`, `node_modules/`, `.ptx/`, …  | Build output and tooling state, not content      |
+
+**The regenerated manifest** preserves every original target — its name,
+format, output directory, and `standalone` flag — and repoints the imported
+target at the layout written. Targets are emitted in the v2 child-element form
+(project-root-relative), the same form `renderProjectPtx` uses for new
+projects, so every manifest this package produces reads the same way.
+
+`preserveProjectLayout: false` opts out, importing the project as loose source
+into this package's standard layout instead. `result.projectLayout` reports
+which paths were used and whether the existing layout was preserved.
 
 ## 4. Output shapes (result contract)
 
@@ -403,16 +554,19 @@ for this host).
 
 `ImportedProjectSuccess` (see `lib/types.ts`) — field guide:
 
-| Field                                      | Meaning                                                                           |
-| ------------------------------------------ | --------------------------------------------------------------------------------- |
-| `files` / `assets`                         | The extracted _input_ file map (text / binary), as uploaded                       |
-| `pretextSource`                            | The full converted PreTeXt document (single string, pre-split)                    |
-| `outputFiles`                              | The _project to write_: main/chapters/project.ptx/publication.ptx + routed `.bib` |
-| `outputAssets`                             | Binary assets to write (`source/assets/…`)                                        |
-| `nativeOutputFiles`                        | Optional cleaned-native alternative (`source/main.tex` or `.md`)                  |
-| `sourcePath` / `sourceName` / `sourceType` | Which input file drove the import                                                 |
-| `documentKind`                             | `article` \| `book` (detected or overridden)                                      |
-| `statusMessages`, `warnings`               | Diagnostics (see 3.11)                                                            |
+| Field                                      | Meaning                                                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `files` / `assets`                         | The extracted _input_ file map (text / binary), as uploaded                                  |
+| `pretextSource`                            | The full converted PreTeXt document (single string, pre-split)                               |
+| `outputFiles`                              | The _project to write_: main/chapters/project.ptx/publication.ptx + routed `.bib`            |
+| `outputAssets`                             | Binary assets to write (`source/assets/…`)                                                   |
+| `nativeOutputFiles`                        | Optional cleaned-native alternative (`source/main.tex` or `.md`)                             |
+| `sourcePath` / `sourceName` / `sourceType` | Which input file drove the import                                                            |
+| `documentKind`                             | `article` \| `book` (detected or overridden)                                                 |
+| `analysis`                                 | The upload survey that drove it (§3.3) — hosts build their pickers from this                 |
+| `attachedRoots`                            | Extra roots folded into the main document (§3.12)                                            |
+| `projectLayout`                            | Paths used for main source / publication / manifest, and whether they were preserved (§3.13) |
+| `statusMessages`, `warnings`               | Diagnostics (see 3.11)                                                                       |
 
 Errors are the union alternative `{ pretextError, statusMessages, warnings }` —
 consumers discriminate with `"pretextError" in result`.
@@ -424,8 +578,14 @@ hosts consume projections of the same pool and the webview protocol (§6.2)
 keeps working unchanged. `serializeProjectToPlusPayload` produces §4.3's
 payload. `buildPretextProjectFiles` remains exported for compatibility but
 the pipeline no longer uses it. Still to migrate: `<plus:image ref>`
-placeholder rewriting (image refs in content are untouched, §7), native-mode
-divisions, and multi-root pools (§3.3).
+placeholder rewriting (image refs in content are untouched, §7) and native-mode
+division depth (the native pool still splits at chapters/sections only, not by
+`splitLevel`).
+
+Multi-root uploads (§3.3) are resolved before the pool is built rather than
+inside it: the extra roots are attached to the main document (§3.12), so the
+pool still has exactly one root and no orphan divisions. The serializer's
+orphan handling remains, since a pool assembled by hand may still have them.
 
 Host-side helpers (`lib/import-mode.ts`) define mode resolution once for
 every consumer — the wizard's preview, the VS Code webview app, and the
@@ -448,12 +608,29 @@ Three components, increasing in completeness:
   multi-step flow:
   1. **Upload** — drop zone + options (document kind, split sections)
   2. **Processing** — spinner
-  3. **Review** — import summary (source, detected format, kind, file
-     count); collapsible warnings list; for LaTeX input, a "Convert to
+  3. **Sources** — shown only when the upload leaves a real choice open:
+     source-format dropdown, main-document radio list (each candidate labelled
+     with its title and why it qualifies), and a row per extra root with an
+     include checkbox and a chapter/section selector. A `project.ptx` is called
+     out here, along with the note that its publication file, assets, and
+     layout will be kept.
+  4. **Review** — import summary (source, detected format, kind, file
+     count, whether an existing project's layout was preserved, what was
+     attached); collapsible warnings list; for LaTeX input, a "Convert to
      PreTeXt" vs "Keep as LaTeX" mode choice; expandable per-file preview
-     of the output tree; Cancel / Confirm buttons
-  4. Terminal — `onConfirm(result, mode)` fires; host writes the files
+     of the output tree; Cancel / **Change Sources** / Confirm buttons
+  5. Terminal — `onConfirm(result, mode)` fires; host writes the files
      (upload to pretext-plus storage, or write to disk in VS Code)
+
+  The Sources step is skipped when the answer is not in doubt — a lone `.tex`
+  file, or a `project.ptx` that names one target — but "Change Sources" on the
+  review step always reopens it, so nothing is unreachable.
+
+  Step 3 requires a two-phase engine: `prepare(file)` unpacks and surveys the
+  upload into a `PreparedUpload`, and `convertPrepared(prepared, options)` runs
+  the conversion with the user's answers. An engine that only implements
+  `convertFile` (a host-provided pandoc bridge, say) keeps the original
+  single-shot flow and never shows the step.
 
   Error state offers "Try Another File".
 
@@ -521,12 +698,15 @@ versions. The host rejects any path containing `..` or an absolute prefix
 
 ## 7. Known limitations (current implementation)
 
-- **Image references are not rewritten.** Binaries are routed to
-  `source/assets/`, but `<image source="…">` paths in the converted document
-  still point at the original relative paths. Imports with images will need
-  a path-rewriting pass (or route assets preserving directory structure).
-- **Asset basenames are flattened** — two images with the same name in
-  different directories collide silently.
+- **Image references are not rewritten** for _new_ projects. Binaries are
+  routed to `source/assets/`, but `<image source="…">` paths in the converted
+  document still point at the original relative paths. Imports with images will
+  need a path-rewriting pass (or route assets preserving directory structure).
+  Existing-project imports (§3.13) do not have this problem: paths are
+  preserved, so references keep resolving.
+- **Asset basenames are flattened** for new projects — two images with the same
+  name in different directories collide silently. (Existing projects keep their
+  directory structure.)
 - Only the **first author** is imported; `\and` co-authors are dropped.
 - `.bib` files are copied but **bibliographies are not converted** to
   PreTeXt `<biblio>`; `\cite` handling depends on what unified-latex emits.
@@ -534,7 +714,16 @@ versions. The host rejects any path containing `..` or an absolute prefix
   original multi-file structure is not preserved, and the emitted
   `project.ptx` still points at `source/main.ptx`, not the native source.
 - The **tar parser is minimal**: no PAX/GNU long-name entries, no symlinks.
-- **Markdown** has no multi-file story (first `.md` wins, no includes).
+- **Markdown multi-file support is partial**: several `.md` roots can be
+  attached to the main document (§3.12), but only at the top level, and there
+  is still no include mechanism.
+- **Native mode ignores `splitLevel`** — the native (LaTeX/Markdown) pool still
+  splits at chapters/sections only.
+- **A second target sharing includes with the imported one can break.** If
+  target B's source `xi:include`s a file that target A (the imported one)
+  consumed, that file is not carried over and B's source is left pointing at
+  it. Targets that share the _same_ source file are fine, which is the common
+  case.
 - Detection heuristics favor LaTeX: a Markdown document containing
   `\section` or `\begin{` anywhere is detected as LaTeX.
 - `docinfoPath` option exists (`source/docinfo.ptx` default) but **nothing
@@ -551,10 +740,10 @@ comments in `upload.ts`):
    text, then `importProjectFromFiles` normalizes again. Harmless but
    redundant; keep the second pass (public API may be called directly with
    un-normalized maps) or drop the first?
-2. **`pickPrimarySourcePath` re-derives the source type** even when a
-   single-file upload already knows it (e.g. a lone `.xml` file whose
-   content looks like LaTeX would be treated as LaTeX). Should the upload
-   extension win, or content sniffing?
+2. ~~**`pickPrimarySourcePath` re-derives the source type**~~ — _resolved:_
+   `analyzeImportSources` (§3.3) classifies by extension and only sniffs
+   content as a last resort, and the user can override with `sourceFormat` /
+   `mainFile` either way.
 3. **Hand-rolled tar parser** — keep it dependency-free, or take a small,
    maintained dependency for robustness (long names, sparse files)?
 4. **Wizard native mode**: should "Keep as LaTeX" preserve the original
@@ -569,23 +758,38 @@ comments in `upload.ts`):
    `importProjectFromFiles` (path map). Should there be a third,
    Node-friendly `importProjectFromDisk(dir)` helper for the extension, or
    does that belong in the extension itself?
-7. **Where do split thresholds live?** Chapter splitting is automatic for
-   books; sections opt-in. Should very large articles split by section too?
+7. **Where do split thresholds live?** _Partly resolved:_ `splitLevel` (§3.8)
+   makes the depth a single explicit number, defaulting to 1 for a book and 0
+   for an article. Still open: should a very large article default to splitting
+   its sections, and should the wizard expose depth as a number rather than the
+   current "split sections" checkbox?
 8. **Publication defaults** — chunking level 1, external/generated dirs:
    confirm these match current pretext-cli template output.
-9. **Scope of `project.ptx` targets** — web + print only; add epub or
-   others, or keep minimal?
-10. **Versioning/publish plan** — is `@pretextbook/import` versioned with
+9. **Scope of `project.ptx` targets** — web + print only for _new_ projects;
+   add epub or others, or keep minimal? (An imported project keeps whatever
+   targets it already had — §3.13.)
+10. **Attachment defaults for multi-root uploads** — everything is attached by
+    default (§3.12). Should a root that looks like a slide deck, a solutions
+    manual, or a `beamer` document be excluded by default instead?
+11. **Versioning/publish plan** — is `@pretextbook/import` versioned with
     the monorepo's semantic-release, and does pretext-plus pin or float?
 
 ## 9. Test coverage
 
-Vitest specs live alongside sources: cleaning (`clean-latex`, `latex-clean`,
-`latex-preamble`, `latex-scan`, `latex-utils`, `pretext-includes`), detection
-(`detect-source-format`), layout (`build-project-files`, `document-kind`,
-`xml-scan`), and the upload pipeline (`upload.spec.ts`). The React components
-have no automated tests yet — the playground smoke page
+Vitest specs live alongside sources:
+
+| Area              | Specs                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| LaTeX cleaning    | `clean-latex`, `latex-clean`, `latex-preamble`, `latex-scan`, `latex-utils`        |
+| Includes          | `pretext-includes`                                                                 |
+| Detection         | `detect-source-format`                                                             |
+| Layout / scanning | `build-project-files`, `document-kind`, `xml-scan`                                 |
+| Division pool     | `division-pool`, `native-pool`, `serialize`                                        |
+| Manifests         | `project/manifest`                                                                 |
+| Pipeline          | `upload`, `import-project` (existing projects, §3.13), `import-multi-root` (§3.12) |
+
+The React components have no automated tests yet — the playground smoke page
 (`packages/playground/import-smoke.html`) is the manual harness.
 
-Note: the monorepo root `npm test` does **not** include this package; run
-`npm run test -w @pretextbook/import` directly.
+The monorepo root `npm test` runs this package's suite as part of
+`test:libraries`; `npm run test -w @pretextbook/import` runs it alone.

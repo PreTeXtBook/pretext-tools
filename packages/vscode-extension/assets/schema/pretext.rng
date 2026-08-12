@@ -10,6 +10,7 @@
       <ref name="Subsection"/>
       <ref name="Subsubsection"/>
       <ref name="Printout"/>
+      <ref name="Slideshow"/>
       <ref name="Paragraphs"/>
       <ref name="ReadingQuestions"/>
       <ref name="Exercises"/>
@@ -43,6 +44,7 @@
         <ref name="Article"/>
         <ref name="Letter"/>
         <ref name="Memorandum"/>
+        <ref name="Slideshow"/>
       </choice>
     </element>
   </define>
@@ -160,6 +162,67 @@
   <define name="Memorandum">
     <element name="memo">
       <empty/>
+    </element>
+  </define>
+  <define name="Slideshow">
+    <element name="slideshow">
+      <ref name="MetaDataLinedSubtitle"/>
+      <optional>
+        <ref name="ArticleFrontMatter"/>
+      </optional>
+      <choice>
+        <oneOrMore>
+          <ref name="SlideshowSection"/>
+        </oneOrMore>
+        <oneOrMore>
+          <ref name="Slide"/>
+        </oneOrMore>
+      </choice>
+    </element>
+  </define>
+  <!-- a slideshow's "section" organizes slides, nothing more -->
+  <define name="SlideshowSection">
+    <element name="section">
+      <ref name="MetaDataAltTitle"/>
+      <oneOrMore>
+        <ref name="Slide"/>
+      </oneOrMore>
+    </element>
+  </define>
+  <define name="Slide">
+    <element name="slide">
+      <optional>
+        <!--
+          vertical placement of this slide's content,
+          overriding the document-wide default
+        -->
+        <attribute name="valign">
+          <choice>
+            <value>top</value>
+            <value>middle</value>
+            <value>bottom</value>
+          </choice>
+        </attribute>
+      </optional>
+      <ref name="MetaDataAltTitle"/>
+      <oneOrMore>
+        <choice>
+          <ref name="BlockDivision"/>
+          <ref name="List"/>
+          <ref name="Subslide"/>
+        </choice>
+      </oneOrMore>
+    </element>
+  </define>
+  <!-- a group of material appearing all at once, after a pause -->
+  <define name="Subslide">
+    <element name="subslide">
+      <oneOrMore>
+        <choice>
+          <ref name="BlockDivision"/>
+          <ref name="List"/>
+        </choice>
+      </oneOrMore>
     </element>
   </define>
   <define name="Part">
@@ -531,6 +594,12 @@
             </optional>
           </interleave>
         </group>
+        <group>
+          <optional>
+            <ref name="HeadNote"/>
+          </optional>
+          <ref name="NotationList"/>
+        </group>
       </choice>
     </element>
   </define>
@@ -612,12 +681,21 @@
             </optional>
           </interleave>
         </group>
+        <group>
+          <optional>
+            <ref name="HeadNote"/>
+          </optional>
+          <ref name="NotationList"/>
+        </group>
       </choice>
     </element>
   </define>
   <define name="IndexDivision">
     <element name="index">
       <ref name="MetaDataAltTitleOptional"/>
+      <optional>
+        <ref name="HeadNote"/>
+      </optional>
       <ref name="IndexList"/>
     </element>
   </define>
@@ -722,6 +800,9 @@
     <element name="affiliation">
       <interleave>
         <optional>
+          <ref name="Position"/>
+        </optional>
+        <optional>
           <ref name="Department"/>
         </optional>
         <optional>
@@ -731,6 +812,16 @@
           <ref name="Location"/>
         </optional>
       </interleave>
+    </element>
+  </define>
+  <define name="Position">
+    <element name="position">
+      <choice>
+        <ref name="TextSimple"/>
+        <oneOrMore>
+          <ref name="ShortLine"/>
+        </oneOrMore>
+      </choice>
     </element>
   </define>
   <define name="Department">
@@ -830,6 +921,9 @@
         <choice>
           <interleave>
             <optional>
+              <ref name="Position"/>
+            </optional>
+            <optional>
               <ref name="Department"/>
             </optional>
             <optional>
@@ -861,6 +955,9 @@
       <optional>
         <choice>
           <interleave>
+            <optional>
+              <ref name="Position"/>
+            </optional>
             <optional>
               <ref name="Department"/>
             </optional>
@@ -1183,18 +1280,19 @@
       </optional>
     </element>
   </define>
+  <!--
+    A "references" is a list-like division: its one preface
+    is a "headnote", and it has no "conclusion"
+  -->
   <define name="References">
     <element name="references">
       <ref name="MetaDataAltTitleOptional"/>
       <optional>
-        <ref name="IntroductionDivision"/>
+        <ref name="HeadNote"/>
       </optional>
       <oneOrMore>
         <ref name="BibliographyItem"/>
       </oneOrMore>
-      <optional>
-        <ref name="ConclusionDivision"/>
-      </optional>
     </element>
   </define>
   <define name="Glossary">
@@ -1693,6 +1791,10 @@
       <text/>
     </element>
   </define>
+  <!--
+    A checkpoint's prompt and feedback are short bursts of
+    marked-up text, not sequences of blocks
+  -->
   <define name="CodelensCheckpoint">
     <element name="checkpoint">
       <attribute name="line"/>
@@ -1701,15 +1803,11 @@
         <attribute name="answer-variable"/>
       </choice>
       <element name="prompt">
-        <oneOrMore>
-          <ref name="BlockText"/>
-        </oneOrMore>
+        <ref name="TextLong"/>
       </element>
       <optional>
         <element name="feedback">
-          <oneOrMore>
-            <ref name="BlockText"/>
-          </oneOrMore>
+          <ref name="TextLong"/>
         </element>
       </optional>
     </element>
@@ -1767,11 +1865,9 @@
         <attribute name="codetailor-fallback"/>
       </optional>
       <optional>
+        <!-- the codelens trace step (1-based) to open on -->
         <attribute name="starting-step">
-          <choice>
-            <value>yes</value>
-            <value>no</value>
-          </choice>
+          <data type="integer"/>
         </attribute>
       </optional>
       <optional>
@@ -1782,6 +1878,9 @@
       </optional>
       <optional>
         <attribute name="database"/>
+      </optional>
+      <optional>
+        <attribute name="datafile"/>
       </optional>
       <optional>
         <attribute name="add-files"/>
@@ -1842,6 +1941,12 @@
       </optional>
       <optional>
         <attribute name="timelimit"/>
+      </optional>
+      <optional>
+        <attribute name="pck"/>
+      </optional>
+      <optional>
+        <attribute name="scene"/>
       </optional>
       <choice>
         <text/>
@@ -1910,6 +2015,15 @@
         <optional>
           <attribute name="marker"/>
         </optional>
+        <optional>
+          <!-- pausing, within a slideshow: items appear one at a time -->
+          <attribute name="pause">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
         <oneOrMore>
           <ref name="ListItem"/>
         </oneOrMore>
@@ -1939,6 +2053,14 @@
             </choice>
           </attribute>
         </optional>
+        <optional>
+          <attribute name="pause">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
+            </choice>
+          </attribute>
+        </optional>
         <oneOrMore>
           <ref name="ListItem"/>
         </oneOrMore>
@@ -1953,6 +2075,14 @@
               <value>narrow</value>
               <value>medium</value>
               <value>wide</value>
+            </choice>
+          </attribute>
+        </optional>
+        <optional>
+          <attribute name="pause">
+            <choice>
+              <value>yes</value>
+              <value>no</value>
             </choice>
           </attribute>
         </optional>
@@ -2444,8 +2574,10 @@
           <ref name="SideBySide"/>
           <ref name="SideBySideGroup"/>
           <ref name="MuseScore"/>
+          <ref name="Paragraph"/>
         </choice>
       </element>
+      <!-- the one route to a numbered, titled "tabular" -->
       <element name="table">
         <ref name="MetaDataAltTitle"/>
         <optional>
@@ -2499,6 +2631,15 @@
     </optional>
     <optional>
       <attribute name="margins"/>
+    </optional>
+    <optional>
+      <!-- pausing, within a slideshow -->
+      <attribute name="pause">
+        <choice>
+          <value>yes</value>
+          <value>no</value>
+        </choice>
+      </attribute>
     </optional>
     <optional>
       <attribute name="landscape">
@@ -2595,7 +2736,27 @@
     <choice>
       <ref name="ImageRaster"/>
       <ref name="ImageCode"/>
+      <ref name="ImagePG"/>
     </choice>
+  </define>
+  <!--
+    An image drawn by the PG code of a WeBWorK problem, named
+    by @pg-name.  Like "var", the form is admitted schema-wide
+    (it can appear deep within list items, say) but is
+    exclusive to a "webwork" problem; the validation-plus
+    stylesheet enforces the location.
+  -->
+  <define name="ImagePG">
+    <element name="image">
+      <attribute name="pg-name"/>
+      <optional>
+        <attribute name="width"/>
+      </optional>
+      <optional>
+        <attribute name="margins"/>
+      </optional>
+      <empty/>
+    </element>
   </define>
   <define name="ImageDescription">
     <element name="description">
@@ -2607,9 +2768,18 @@
       </oneOrMore>
     </element>
   </define>
+  <!--
+    A "var" may ride along, per the schema-wide "var" pattern:
+    the validation-plus stylesheet confines it to a WeBWorK problem
+  -->
   <define name="ImageShortDescription">
     <element name="shortdescription">
-      <text/>
+      <zeroOrMore>
+        <choice>
+          <text/>
+          <ref name="WWVariable"/>
+        </choice>
+      </zeroOrMore>
     </element>
   </define>
   <define name="ImageShortDescriptionCode">
@@ -2635,6 +2805,15 @@
       </optional>
       <optional>
         <attribute name="margins"/>
+      </optional>
+      <optional>
+        <!-- pausing, within a slideshow -->
+        <attribute name="pause">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
       </optional>
       <optional>
         <attribute name="rotate"/>
@@ -2689,6 +2868,15 @@
       </optional>
       <optional>
         <attribute name="margins"/>
+      </optional>
+      <optional>
+        <!-- pausing, within a slideshow -->
+        <attribute name="pause">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
       </optional>
       <optional>
         <attribute name="archive"/>
@@ -3108,6 +3296,10 @@
         <ref name="AttributesYouTubePlaylist"/>
         <ref name="AttributesVimeo"/>
       </choice>
+      <optional>
+        <!-- names the video, as in a Runestone manifest -->
+        <ref name="Title"/>
+      </optional>
       <zeroOrMore>
         <ref name="Track"/>
       </zeroOrMore>
@@ -3831,6 +4023,11 @@
       </choice>
     </element>
   </define>
+  <!--
+    A "webwork" with @copy is an empty, lightweight reference
+    to another authored problem (perhaps reseeded); the
+    assembly resolves it to a duplicate
+  -->
   <define name="WebWorkAuthored">
     <element name="webwork">
       <choice>
@@ -3848,9 +4045,6 @@
             <attribute name="seed">
               <data type="integer"/>
             </attribute>
-          </optional>
-          <optional>
-            <attribute name="copy"/>
           </optional>
           <optional>
             <ref name="WWDescription"/>
@@ -3885,6 +4079,24 @@
               </optional>
             </group>
           </choice>
+        </group>
+        <group>
+          <optional>
+            <ref name="UniqueID"/>
+          </optional>
+          <optional>
+            <ref name="LabelID"/>
+          </optional>
+          <optional>
+            <ref name="Component"/>
+          </optional>
+          <attribute name="copy"/>
+          <optional>
+            <attribute name="seed">
+              <data type="integer"/>
+            </attribute>
+          </optional>
+          <empty/>
         </group>
         <text/>
       </choice>
@@ -3946,7 +4158,7 @@
   </define>
   <define name="WWVariable">
     <element name="var">
-      <a:documentation>The WeBWorK "var" element appears in the RELAX-NG schema as a child of many elements, but almost always as a descendant of a "p" element or a "cell" element.  As an element that is only relevant for a WeBWorK problem, occurrences of "var" must be within a "webwork" element.  PreTeXt's additional validation will check on these two situations.</a:documentation>
+      <a:documentation>The WeBWorK "var" element appears in the RELAX-NG schema as a child of many elements, but almost always as a descendant of a "p" element or a "cell" element.  As an element that is only relevant for a WeBWorK problem, occurrences of "var" must be within a "webwork" element.  The validation-plus stylesheet will check on these two situations.</a:documentation>
       <choice>
         <group>
           <attribute name="name"/>
@@ -3955,6 +4167,12 @@
           </optional>
           <optional>
             <attribute name="width"/>
+          </optional>
+          <optional>
+            <!-- the variable holds PGML markup to be processed -->
+            <attribute name="data">
+              <value>pgml</value>
+            </attribute>
           </optional>
           <optional>
             <attribute name="category">
@@ -3984,6 +4202,7 @@
                 <value>buttons</value>
                 <value>checkboxes</value>
                 <value>none</value>
+                <value>array</value>
               </choice>
             </attribute>
           </optional>
@@ -4393,6 +4612,15 @@
       </optional>
       <optional>
         <attribute name="workspace"/>
+      </optional>
+      <optional>
+        <!-- pausing, within a slideshow -->
+        <attribute name="pause">
+          <choice>
+            <value>yes</value>
+            <value>no</value>
+          </choice>
+        </attribute>
       </optional>
       <ref name="TextParagraph"/>
     </element>
@@ -5436,6 +5664,19 @@
           <element name="parsons">
             <optional>
               <attribute name="language"/>
+            </optional>
+          </element>
+        </optional>
+        <optional>
+          <element name="slides">
+            <optional>
+              <attribute name="valign">
+                <choice>
+                  <value>top</value>
+                  <value>middle</value>
+                  <value>bottom</value>
+                </choice>
+              </attribute>
             </optional>
           </element>
         </optional>

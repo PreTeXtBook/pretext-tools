@@ -1,5 +1,8 @@
 import type { CleaningWarning } from "./clean/warnings";
 import type { DocumentKind } from "./layout/document-kind";
+import type { PretextDivisionTag, PretextRootTag } from "./pretext-divisions";
+import type { UploadAnalysis } from "./project/analyze";
+import type { AttachedRootRecord } from "./project/attach-roots";
 
 export type SourceFormat = "latex" | "markdown" | "pretext";
 
@@ -39,10 +42,10 @@ export interface UploadStatusMessage {
 
 /**
  * The PreTeXt element type of an imported division. Values match the XML tag
- * name. Only the types the import pipeline currently emits are listed; the
- * pretext-plus editor accepts many more.
+ * name: either a document root (`book`/`article`) or any division the splitter
+ * can lift into its own file (see `pretext-divisions.ts`).
  */
-export type ImportedDivisionType = "book" | "article" | "chapter" | "section";
+export type ImportedDivisionType = PretextRootTag | PretextDivisionTag;
 
 /**
  * One division record in the intermediate model (SPEC §4.1): a flat pool of
@@ -137,12 +140,39 @@ export interface PlusProjectPayload {
   assets_attributes: PlusAssetAttributes[];
 }
 
+/**
+ * Where the imported project's own scaffolding files live. For an upload that
+ * carried a `project.ptx`, these are the paths that project already used, so
+ * its publication file and image references keep resolving.
+ */
+export interface ProjectLayout {
+  /** Path of the root source file within the written project. */
+  mainSourcePath: string;
+  /** Path of the publication file within the written project. */
+  publicationPath: string;
+  /** Path of the manifest within the written project. */
+  projectFilePath: string;
+  /** True when an existing project's layout and publication file were kept. */
+  preserved: boolean;
+}
+
 export interface ImportedProjectSuccess extends ConversionContext {
   pretextSource: string;
   sourcePath: string;
   sourceName: string;
   sourceType: UploadSourceType;
   documentKind: DocumentKind;
+  /**
+   * The survey of the upload that drove this import — the manifest it found,
+   * every root it could have used, and the formats on offer. Hosts render
+   * their format/main-file pickers from this and re-run the import with the
+   * user's choices as `ImportProjectOptions`.
+   */
+  analysis: UploadAnalysis;
+  /** Extra roots folded into the main document (SPEC §3.3). */
+  attachedRoots: AttachedRootRecord[];
+  /** Scaffolding paths used for the written project. */
+  projectLayout: ProjectLayout;
   /** Intermediate model of the imported project (SPEC §4.1). */
   project: ImportedProject;
   /**

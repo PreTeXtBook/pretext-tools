@@ -34,6 +34,13 @@ Options:
   --docinfo-source <file>   Complete source file (e.g. main.ptx) to lift the
                             <docinfo> from for --fragment mode, resolving
                             xi:includes (used when --docinfo is not given)
+  --context <file>          Complete document (e.g. main.ptx) the fragment
+                            belongs to. Renders it in place, so it is numbered
+                            and its cross-references resolve as in the built
+                            book. Supersedes --docinfo-source
+  --off-page-message <text> Tooltip on links whose target is not on the
+                            previewed page, which cannot navigate in a
+                            single-page preview
   --source-map <file>       Also write a JSON source map: HTML id → source
                             file/line for every element (for editor sync)
   --no-open-knowls          Leave solutions, hints and other born-hidden
@@ -100,6 +107,12 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--docinfo-source":
         options.docinfoSourcePath = next();
+        break;
+      case "--context":
+        options.contextSourcePath = next();
+        break;
+      case "--off-page-message":
+        options.offPageMessage = next();
         break;
       case "--source-map":
         sourceMapPath = next();

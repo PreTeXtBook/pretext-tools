@@ -36,10 +36,14 @@ export function spliceReplacements(
   return result;
 }
 
-/** Add `xmlns:xi` to the first root-like element that lacks it. */
+/**
+ * Add `xmlns:xi` to the first element that lacks it — the wrapper of whatever
+ * file we are writing, which may be any division (a `<part>` and a
+ * `<frontmatter>` can hold xi:includes just as a `<chapter>` can).
+ */
 export function ensureXIncludeNamespace(content: string): string {
   return content.replace(
-    /<(pretext|book|article|chapter)\b([^>]*)>/,
+    /<([a-zA-Z_][\w:.-]*)\b([^>]*)>/,
     (whole, tag: string, attrs: string) => {
       if (/\bxmlns:xi\s*=/.test(attrs)) {
         return whole;
