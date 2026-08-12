@@ -1,5 +1,12 @@
 # @pretextbook/ptxast-util-to-mdast
 
+## 0.0.10
+
+### Patch Changes
+
+- Updated dependencies [6678cc6]
+  - @pretextbook/ptxast@0.2.0
+
 ## 0.0.9
 
 ### Patch Changes

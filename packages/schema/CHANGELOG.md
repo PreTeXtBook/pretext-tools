@@ -1,5 +1,11 @@
 # @pretextbook/schema
 
+## 0.5.0
+
+### Minor Changes
+
+- 6678cc6: Improvements to import and live preview features
+
 ## 0.4.0
 
 ### Minor Changes
