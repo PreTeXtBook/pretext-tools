@@ -1,5 +1,11 @@
 # @pretextbook/ptxast
 
+## 0.2.0
+
+### Minor Changes
+
+- 6678cc6: Improvements to import and live preview features
+
 ## 0.1.0
 
 ### Minor Changes

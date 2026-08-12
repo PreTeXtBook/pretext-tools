@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.9.0
+
+### Minor Changes
+
+- 6678cc6: Improvements to import and live preview features
+
 ## 0.8.0
 
 ### Minor Changes

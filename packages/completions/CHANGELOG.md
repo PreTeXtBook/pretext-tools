@@ -1,5 +1,11 @@
 # @pretextbook/completions
 
+## 0.3.0
+
+### Minor Changes
+
+- 6678cc6: Improvements to import and live preview features
+
 ## 0.2.0
 
 ### Minor Changes
