@@ -7,23 +7,24 @@ This monorepo contains the [PreTeXt Tools VS Code extension](https://marketplace
 
 ## Packages
 
-| Package | Description |
-|---|---|
-| [`pretext-tools`](packages/vscode-extension) | VS Code extension — language support, CLI front-end, live preview, visual editor, formatter, and more |
-| [`@pretextbook/completions`](packages/completions) | Reusable completion/intellisense engine |
-| [`@pretextbook/schema`](packages/schema) | Schema-based validation (duplicate ids, cross-references, and more) |
-| [`@pretextbook/format`](packages/format) | PreTeXt document formatter library |
-| [`@pretextbook/latex-pretext`](packages/latex-pretext) | LaTeX-to-PreTeXt conversion |
-| [`@pretextbook/import`](packages/import) | Import wizard for turning existing documents into PreTeXt projects |
-| [`@pretextbook/pretext-html`](packages/pretext-html) | PreTeXt-to-HTML rendering in pure JS (official XSLT via WebAssembly), powering Instant/Live Preview |
-| [`@pretextbook/visual-editor`](packages/visual-editor) | React/TipTap-based WYSIWYG editor (webview UI) |
-| [`@pretextbook/ptxast`](packages/ptxast) | TypeScript types for the PreTeXt AST |
-| [`@pretextbook/remark-pretext`](packages/remark-pretext) | Markdown ⇄ PreTeXt AST conversion |
-| [`@pretextbook/ptxast-util-to-mdast`](packages/ptxast-util-to-mdast) | PreTeXt AST ⇄ Markdown AST conversion |
+| Package                                                              | Description                                                                                           |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| [`pretext-tools`](packages/vscode-extension)                         | VS Code extension — language support, CLI front-end, live preview, visual editor, formatter, and more |
+| [`@pretextbook/completions`](packages/completions)                   | Reusable completion/intellisense engine                                                               |
+| [`@pretextbook/schema`](packages/schema)                             | Schema-based validation (duplicate ids, cross-references, and more)                                   |
+| [`@pretextbook/format`](packages/format)                             | PreTeXt document formatter library                                                                    |
+| [`@pretextbook/latex-pretext`](packages/latex-pretext)               | LaTeX-to-PreTeXt conversion                                                                           |
+| [`@pretextbook/import`](packages/import)                             | Import wizard for turning existing documents into PreTeXt projects                                    |
+| [`@pretextbook/pretext-html`](packages/pretext-html)                 | PreTeXt-to-HTML rendering in pure JS (official XSLT via WebAssembly), powering Instant/Live Preview   |
+| [`@pretextbook/visual-editor`](packages/visual-editor)               | React/TipTap-based WYSIWYG editor (webview UI)                                                        |
+| [`@pretextbook/ptxast`](packages/ptxast)                             | TypeScript types for the PreTeXt AST                                                                  |
+| [`@pretextbook/remark-pretext`](packages/remark-pretext)             | Markdown ⇄ PreTeXt AST conversion                                                                     |
+| [`@pretextbook/ptxast-util-to-mdast`](packages/ptxast-util-to-mdast) | PreTeXt AST ⇄ Markdown AST conversion                                                                 |
 
 ## Development
 
 This workspace uses npm workspaces. After cloning, install dependencies with:
+
 ```bash
 npm install
 ```
@@ -67,7 +68,7 @@ npm run refresh:schemas
 
 ## Contributing
 
-Like this project? [Star it on GitHub](https://github.com/PreTeXtBook/pretext-tools/stargazers)!
+Like this project? [Star it on GitHub](https://github.com/PreTeXtBook/pretext-tools)!
 
 Have an idea or suggestion? [Open a feature request](https://github.com/PreTeXtBook/pretext-tools/issues).
 

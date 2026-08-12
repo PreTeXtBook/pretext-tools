@@ -130,6 +130,15 @@ export function findTopLevelElements(
   source: string,
   name: string,
 ): XmlElementSpan[] {
+  return findTopLevelElementsMatching(source, (tag) => tag === name);
+}
+
+// As findTopLevelElements, but matching any tag the predicate accepts — used
+// to split on "whatever division comes next" rather than one known tag.
+export function findTopLevelElementsMatching(
+  source: string,
+  matches: (name: string) => boolean,
+): XmlElementSpan[] {
   const tokens = tokenize(source);
   const out: XmlElementSpan[] = [];
   let depth = 0;
@@ -137,9 +146,9 @@ export function findTopLevelElements(
 
   for (const tok of tokens) {
     if (tok.kind === "selfclose") {
-      if (depth === 0 && tok.name === name) {
+      if (depth === 0 && matches(tok.name)) {
         out.push({
-          name,
+          name: tok.name,
           start: tok.pos,
           startTagEnd: tok.end,
           contentEnd: tok.end,
@@ -152,7 +161,7 @@ export function findTopLevelElements(
       continue;
     }
     if (tok.kind === "open") {
-      if (depth === 0 && tok.name === name && !currentOpen) {
+      if (depth === 0 && matches(tok.name) && !currentOpen) {
         currentOpen = tok;
       }
       depth += 1;
@@ -161,9 +170,9 @@ export function findTopLevelElements(
     // close
     depth -= 1;
     if (depth < 0) depth = 0;
-    if (currentOpen && depth === 0 && tok.name === name) {
+    if (currentOpen && depth === 0 && tok.name === currentOpen.name) {
       out.push({
-        name,
+        name: currentOpen.name,
         start: currentOpen.pos,
         startTagEnd: currentOpen.end,
         contentEnd: tok.pos,

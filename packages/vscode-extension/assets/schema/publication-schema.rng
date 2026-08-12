@@ -28,6 +28,9 @@
           <ref name="Revealjs"/>
         </optional>
         <optional>
+          <ref name="Beamer"/>
+        </optional>
+        <optional>
           <ref name="Epub"/>
         </optional>
         <optional>
@@ -41,6 +44,9 @@
         </optional>
         <optional>
           <ref name="Webwork"/>
+        </optional>
+        <optional>
+          <ref name="Dynamics"/>
         </optional>
       </interleave>
     </element>
@@ -857,6 +863,7 @@
             <value>sql</value>
             <value>c</value>
             <value>cpp</value>
+            <value>gdscript</value>
             <value>java</value>
             <value>kotlin</value>
             <value>python3</value>
@@ -1347,6 +1354,18 @@
       </optional>
     </element>
   </define>
+  <define name="Beamer">
+    <element name="beamer">
+      <optional>
+        <ref name="AppearanceBeamer"/>
+      </optional>
+    </element>
+  </define>
+  <define name="AppearanceBeamer">
+    <element name="appearance">
+      <attribute name="theme"/>
+    </element>
+  </define>
   <define name="Epub">
     <element name="epub">
       <element name="cover">
@@ -1411,6 +1430,23 @@
             <value>all</value>
           </choice>
         </attribute>
+      </optional>
+    </element>
+  </define>
+  <define name="Dynamics">
+    <element name="dynamics">
+      <optional>
+        <element name="remote-libraries">
+          <zeroOrMore>
+            <element name="library">
+              <attribute name="url">
+                <data type="string">
+                  <param name="pattern">https://.*</param>
+                </data>
+              </attribute>
+            </element>
+          </zeroOrMore>
+        </element>
       </optional>
     </element>
   </define>

@@ -1048,3 +1048,171 @@ describe("concurrent renders", () => {
     }
   });
 });
+
+/**
+ * Rendering a fragment in the context of its document (contextSourcePath).
+ *
+ * The point of the mode is that the fragment is numbered, and its
+ * cross-references resolved, exactly as the built book would do it — so each
+ * test here compares against what the whole document produces, rather than
+ * against a hard-coded number that would not show a drift for what it is.
+ */
+describe("renderHtml in document context", () => {
+  let dir: string;
+  let mainPath: string;
+  let sectionPath: string;
+
+  // Two chapters. The previewed section is 2.1; it references a theorem in
+  // chapter 1, which a standalone fragment render cannot see at all.
+  const MAIN = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+  <docinfo><macros>\\newcommand{\\Zed}{\\mathbb{Z}}</macros></docinfo>
+  <book xml:id="ctx-book">
+    <title>Context Book</title>
+    <chapter xml:id="ctx-ch1">
+      <title>First Chapter</title>
+      <section xml:id="ctx-s11">
+        <title>Early Section</title>
+        <theorem xml:id="ctx-far"><title>Far Theorem</title>
+          <statement><p>Distinctive far prose.</p></statement></theorem>
+      </section>
+    </chapter>
+    <chapter xml:id="ctx-ch2">
+      <title>Second Chapter</title>
+      <xi:include href="section.ptx"/>
+    </chapter>
+  </book>
+</pretext>
+`;
+
+  const SECTION = `<?xml version="1.0" encoding="UTF-8"?>
+<section xml:id="ctx-s21">
+  <title>Previewed Section</title>
+  <theorem xml:id="ctx-near"><title>Near Theorem</title>
+    <statement><p>Uses <m>\\Zed</m>.</p></statement></theorem>
+  <p>Refers to <xref ref="ctx-far"/> and to <xref ref="ctx-near"/>.</p>
+</section>
+`;
+
+  beforeAll(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-ctx-"));
+    mainPath = path.join(dir, "main.ptx");
+    sectionPath = path.join(dir, "section.ptx");
+    fs.writeFileSync(mainPath, MAIN);
+    fs.writeFileSync(sectionPath, SECTION);
+  });
+
+  afterAll(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("numbers the fragment as the whole document does", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    // Chapter 2, first section, first block.
+    expect(html).toContain("2.1.1");
+    // The standalone wrapper would restart at 1.1 and never mention 2.1.
+    expect(html).toContain("Previewed Section");
+  });
+
+  it("resolves a cross-reference leaving the fragment", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    expect(html).not.toContain("cross-reference to target");
+    // The far theorem is numbered from its real position, not guessed at.
+    expect(html).toContain("Theorem 1.1.1");
+  });
+
+  it("emits only the previewed division, not the whole book", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    expect(html).toContain("Uses");
+    // Chapter 1's prose is skeleton, so it must not appear in the page body.
+    // (The lunr search index is a separate JSON blob and is not checked here.)
+    const body = html.slice(html.indexOf('id="ptx-content"'));
+    expect(body).not.toContain("Distinctive far prose.");
+  });
+
+  it("keeps the document's macros available to the fragment", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    expect(html).toContain("\\Zed");
+  });
+
+  it("renders unsaved fragment text, not the copy on disk", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      sourceContent: SECTION.replace(
+        "Previewed Section",
+        "Edited In The Buffer",
+      ),
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    expect(html).toContain("Edited In The Buffer");
+    expect(html).not.toContain("Previewed Section");
+    // Still numbered from its place in the document.
+    expect(html).toContain("2.1.1");
+  });
+
+  it("makes a link to a target outside the fragment inert, and says why", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+      offPageMessage: "Only one section is being previewed.",
+    });
+    expect(html).toContain("Only one section is being previewed.");
+    expect(html).toContain('aria-disabled="true"');
+    // No link anywhere still points at a page that was never written.
+    expect(html).not.toMatch(/href="[^"#]*\.html/);
+  });
+
+  it("keeps a reference inside the fragment clickable", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    // ctx-near is on this page, so its link survives as a same-page anchor.
+    expect(html).toContain('href="#ctx-near"');
+  });
+
+  it("falls back to the standalone wrapper when the id is not in the document", async () => {
+    const orphan = path.join(dir, "orphan.ptx");
+    fs.writeFileSync(
+      orphan,
+      `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<section xml:id="not-in-the-book"><title>Orphan</title>` +
+        `<p>Standalone.</p></section>\n`,
+    );
+    const { html } = await renderHtml({
+      sourcePath: orphan,
+      fragment: true,
+      contextSourcePath: mainPath,
+    });
+    expect(html).toContain("Orphan");
+    expect(html).toContain("</html>");
+  });
+
+  it("falls back when the document cannot be read", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: path.join(dir, "no-such-main.ptx"),
+    });
+    expect(html).toContain("Previewed Section");
+  });
+});

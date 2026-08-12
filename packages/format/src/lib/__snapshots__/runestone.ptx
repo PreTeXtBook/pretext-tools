@@ -205,9 +205,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
                         return 0;
                     }
         </code>
-        <stdin>
-          Jane
-        </stdin>
+        <stdin>Jane</stdin>
       </program>
     </listing>
 
@@ -5346,10 +5344,7 @@ TEST_CASE( "Test the add function" ) {
           </test>
           <!-- Example C -->
           <test>
-            <strcmp>
-              [0-9]+
-            </strcmp>
-
+            <strcmp>[0-9]+</strcmp>
             <feedback>
               <p>
                 You typed a word made out of digits.
@@ -5367,10 +5362,7 @@ TEST_CASE( "Test the add function" ) {
           </test>
           <!-- Example E -->
           <test>
-            <strcmp strip="no" case="insensitive">
-              z.+z
-            </strcmp>
-
+            <strcmp strip="no" case="insensitive">z.+z</strcmp>
             <feedback>
               <p>
                 Your answer includes text surrounded by z's.
@@ -5399,11 +5391,9 @@ TEST_CASE( "Test the add function" ) {
       <evaluation>
         <evaluate>
           <test correct="yes">
-            <jscmp>
-              <!-- test if number is in a list -->
-              [2, 3, 5, 7, 11, 13, 17, 19].includes(Number(ans))
+            <jscmp><!-- test if number is in a list -->
+                        [2, 3, 5, 7, 11, 13, 17, 19].includes(Number(ans))
             </jscmp>
-
             <feedback>
               <p>
                 Any number from the list <m>\{2, 3, 5, 7, 11, 13, 17, 19\}</m>
@@ -5412,9 +5402,7 @@ TEST_CASE( "Test the add function" ) {
             </feedback>
           </test>
           <test>
-            <jscmp>
-              <!-- find why it fails to be in list -->
-              <![CDATA[
+            <jscmp><!-- find why it fails to be in list --><![CDATA[
                         function(){
                         const val=Number(ans);
                         if (val <= 0) { return "You need to give a positive integer." }
@@ -5441,9 +5429,8 @@ TEST_CASE( "Test the add function" ) {
       <evaluation>
         <evaluate>
           <test correct="yes">
-            <jscmp>
-              <!-- test if string is palindrome -->
-              function(){
+            <jscmp><!-- test if string is palindrome -->
+                        function(){
                             const r1 = new RegExp("^\\w+$");
                             var result=r1.test(ans);
                             if (result) {
@@ -5453,7 +5440,6 @@ TEST_CASE( "Test the add function" ) {
                             return result;
                         }()
             </jscmp>
-
             <feedback>
               <p>
                 Any word that is the same forward and backward is a palindrome.
@@ -5461,10 +5447,7 @@ TEST_CASE( "Test the add function" ) {
             </feedback>
           </test>
           <test>
-            <strcmp strip="no">
-              \w+\s\w+
-            </strcmp>
-
+            <strcmp strip="no">\w+\s\w+</strcmp>
             <feedback>
               <p>
                 Your response needs to be a single word.
@@ -5486,7 +5469,7 @@ TEST_CASE( "Test the add function" ) {
       </statement>
       <setup seed="1234">
         <setupScript>
-          v.myNum=RNG.randDiscrete(2, 12, 1);
+                v.myNum=RNG.randDiscrete(2, 12, 1);
                 v.mySquare=v.myNum**2;
         </setupScript>
       </setup>
@@ -5545,9 +5528,7 @@ TEST_CASE( "Test the add function" ) {
           <de-random distribution="discrete" min="-10" max="10"/>
         </de-object>
         <de-object name="negB" context="number">
-          <de-number reduce="yes">
-            -b
-          </de-number>
+          <de-number reduce="yes">-b</de-number>
         </de-object>
         <de-object name="theFunction" context="formula">
           <de-expression mode="formula" reduce="yes">
@@ -5618,14 +5599,10 @@ TEST_CASE( "Test the add function" ) {
           <de-random distribution="discrete" min="2" max="5"/>
         </de-object>
         <de-object name="nm1" context="number">
-          <de-number reduce="yes">
-            n-1
-          </de-number>
+          <de-number reduce="yes">n-1</de-number>
         </de-object>
         <de-object name="nm2" context="number">
-          <de-number reduce="yes">
-            n-2
-          </de-number>
+          <de-number reduce="yes">n-2</de-number>
         </de-object>
         <de-object name="b" context="number">
           <de-random distribution="discrete" min="-10" max="10" nonzero="yes"/>

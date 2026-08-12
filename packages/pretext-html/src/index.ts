@@ -27,6 +27,17 @@ export type { RevealView, RevealViewOptions } from "./reveal.js";
 // unless RenderOptions.openKnowls is false; exported so an embedder can apply
 // it to HTML it already has, without re-rendering.
 export { openBornHiddenKnowls } from "./knowls.js";
+// Placing a fragment in its document, so it is numbered and cross-referenced
+// as the built book will be (see skeleton.ts). The renderer does this itself
+// when RenderOptions.contextSourcePath is set; exported for embedders that
+// prepare source themselves.
+export { buildSkeleton, divisionLevel, replaceDivision } from "./skeleton.js";
+export type { Skeleton } from "./skeleton.js";
+// Making a subtree render's links honest about the one page it produced (see
+// xrefs.ts). Applied by the renderer; exported so an embedder can apply it to
+// HTML it already has, or reword the tooltip.
+export { OFF_PAGE_MESSAGE, rewriteXrefLinks } from "./xrefs.js";
+export type { RewriteXrefLinkOptions } from "./xrefs.js";
 // Retargeting the `external/` and `generated/` asset URLs a portable build
 // emits onto something the host can serve (see assets.ts). Pair with
 // RenderResult.assetDirs.

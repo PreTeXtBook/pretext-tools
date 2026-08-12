@@ -418,6 +418,43 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:copy>
 </xsl:template>
 
+<!-- The highest format version of the substitutions file this stylesheet  -->
+<!-- knows how to read.  Version 1 is the form in which an "eval-subst"    -->
+<!-- carries "latex" and "plain" children.  Files written before that      -->
+<!-- distinction existed carry no @version and hold text directly; they    -->
+<!-- are read as version 0 by the fallback in "dynamic-representation".    -->
+<xsl:variable name="dynamic-substitutions-format" select="1"/>
+
+<!-- The root of this pass, which runs once, and so is where a check on    -->
+<!-- the substitutions file as a whole belongs rather than at each of the  -->
+<!-- individual lookups.  Without this the file would be read by a         -->
+<!-- stylesheet older than the script that wrote it, and the mismatch      -->
+<!-- would surface as substitutions quietly coming out wrong instead of    -->
+<!-- as a statement of what is actually the matter.                        -->
+<xsl:template match="/" mode="dynamic-substitution">
+    <xsl:if test="($exercise-style = 'static') and not($b-extracting) and not($dynamic-substitutions-file = '')">
+        <xsl:variable name="recorded" select="document($dynamic-substitutions-file,$original)/*/@version"/>
+        <!-- A missing @version is an older file, and is silent: the        -->
+        <!-- representation template already falls back for those.  Only a  -->
+        <!-- version from the future is worth saying anything about.        -->
+        <xsl:if test="$recorded &gt; $dynamic-substitutions-format">
+            <xsl:message>
+                <xsl:text>PTX:WARNING: the dynamic substitutions file records format version </xsl:text>
+                <xsl:value-of select="$recorded"/>
+                <xsl:text>,&#xa;</xsl:text>
+                <xsl:text>but this version of PreTeXt reads version </xsl:text>
+                <xsl:value-of select="$dynamic-substitutions-format"/>
+                <xsl:text> at the newest.  The file was written by a&#xa;</xsl:text>
+                <xsl:text>newer PreTeXt, and dynamic exercises may come out wrong.  Either update&#xa;</xsl:text>
+                <xsl:text>PreTeXt, or delete the file and let this version generate it again.</xsl:text>
+            </xsl:message>
+        </xsl:if>
+    </xsl:if>
+    <xsl:copy>
+        <xsl:apply-templates select="node()|@*" mode="dynamic-substitution"/>
+    </xsl:copy>
+</xsl:template>
+
 <xsl:template match="node()|@*" mode="representations">
     <xsl:copy>
         <xsl:apply-templates select="node()|@*" mode="representations"/>
@@ -621,21 +658,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- them it is the identity, so we skip the full-tree copy.  NB: a         -->
 <!-- new template in the mode must be reflected in this test.               -->
 <xsl:variable name="b-has-dynamic-markup" select="boolean($assembly-label//setup | $assembly-label//numcmp | $assembly-label//strcmp | $assembly-label//jscmp | $assembly-label//mathcmp | $assembly-label//logic | $assembly-label//fillin[@ansobj] | $assembly-label//eval[@obj])"/>
+<!-- "assembly-id-only" emits $assembly-label, so every pass below is   -->
+<!-- discarded in that mode.  $post-label is empty then, and each later -->
+<!-- pass takes its input from $post-label, so each one copies nothing  -->
+<!-- and opens no file.  The test is written once, here, instead of     -->
+<!-- being repeated in every pass: libxslt computes a global variable   -->
+<!-- even when nothing uses the result, so a pass is not skipped just   -->
+<!-- by leaving its variable unread.                                    -->
+<xsl:variable name="post-label" select="$assembly-label[not($b-assembly-id-only)]"/>
 <xsl:variable name="dynamic-rtf">
     <xsl:if test="$b-has-dynamic-markup">
-        <xsl:apply-templates select="$assembly-label" mode="dynamic-substitution"/>
+        <xsl:apply-templates select="$post-label" mode="dynamic-substitution"/>
     </xsl:if>
 </xsl:variable>
-<xsl:variable name="dynamic" select="exsl:node-set($dynamic-rtf)[$b-has-dynamic-markup] | $assembly-label[not($b-has-dynamic-markup)]"/>
+<xsl:variable name="dynamic" select="exsl:node-set($dynamic-rtf)[$b-has-dynamic-markup] | $post-label[not($b-has-dynamic-markup)]"/>
 
 <xsl:variable name="representations-rtf">
-    <xsl:choose>
-        <!-- short-circuit to stop after adding @pi:assembly-id -->
-        <xsl:when test="$b-assembly-id-only"/>
-        <xsl:otherwise>
-            <xsl:apply-templates select="$dynamic" mode="representations"/>
-        </xsl:otherwise>
-    </xsl:choose>
+    <xsl:apply-templates select="$dynamic" mode="representations"/>
 </xsl:variable>
 <xsl:variable name="representations" select="exsl:node-set($representations-rtf)"/>
 
@@ -1651,7 +1690,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
     <!-- Identify this evaluate's position among its siblings and its name, -->
     <!-- to locate the corresponding fillin by name first, position second. -->
-    <xsl:variable name="eval-position" select="count(preceding-sibling::evaluate) + 1"/>
+    <xsl:variable name="eval-position" select="count(preceding-sibling::evaluate[not(@all='yes')]) + 1"/>
     <xsl:variable name="eval-name" select="@name"/>
 
     <!-- Navigate to the exercise/project/task parent of evaluation -->
@@ -1691,7 +1730,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 </xsl:when>
                 <xsl:otherwise>
                     <xsl:message>PTX:WARNING: fillin in "<xsl:value-of
-                        select="$exercise-parent/@visible-id"/>" has @answer but
+                        select="$exercise-parent/@pi:original-id"/>" has @answer but
                         @mode is missing or not recognized (expected 'number' or
                         'string'). No default correct test synthesized.</xsl:message>
                 </xsl:otherwise>
@@ -1738,8 +1777,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:variable>
             <xsl:variable name="eval-subs" select="document($dynamic-substitutions-file,$original)"/>
             <xsl:variable name="object" select="@ansobj"/>
+            <xsl:variable name="recorded" select="$eval-subs//dynamic-substitution[@id=$parent-id]/eval-subst[@obj=$object]"/>
+            <!-- An answer is typeset as mathematics for the same modes that   -->
+            <!-- "fillin-solution" in  pretext-runestone-static.xsl  wraps in  -->
+            <!-- "m", so the two have to agree on which representation to use. -->
             <xsl:variable name="substitution">
-                <xsl:value-of select="$eval-subs//dynamic-substitution[@id=$parent-id]/eval-subst[@obj=$object]"/>
+                <xsl:apply-templates select="$recorded" mode="dynamic-representation">
+                    <xsl:with-param name="b-latex" select="(@mode = 'math') or (@mode = 'number')"/>
+                </xsl:apply-templates>
             </xsl:variable>
             <xsl:copy>
                 <xsl:attribute name="answer">
@@ -1769,8 +1814,17 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:variable>
             <xsl:variable name="eval-subs" select="document($dynamic-substitutions-file,$original)"/>
             <xsl:variable name="object" select="@obj"/>
+            <xsl:variable name="recorded" select="$eval-subs//dynamic-substitution[@id=$parent-id]/eval-subst[@obj=$object]"/>
+            <!-- The value lands wherever the "eval" stood, so the surrounding  -->
+            <!-- markup decides which representation is wanted.  This is the    -->
+            <!-- same test the HTML version makes when it wraps a reference in  -->
+            <!-- "toTeX" in  pretext-runestone-fitb.xsl , and the two must      -->
+            <!-- agree.  "md" is included because its single-line form holds    -->
+            <!-- text directly, with no "mrow" for an ancestor step to find.    -->
             <xsl:variable name="substitution">
-                <xsl:value-of select="$eval-subs//dynamic-substitution[@id=$parent-id]/eval-subst[@obj=$object]"/>
+                <xsl:apply-templates select="$recorded" mode="dynamic-representation">
+                    <xsl:with-param name="b-latex" select="boolean(ancestor::m|ancestor::md|ancestor::mrow)"/>
+                </xsl:apply-templates>
             </xsl:variable>
             <xsl:value-of select="$substitution"/>
         </xsl:when>
@@ -1781,6 +1835,49 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:copy>
                 <xsl:apply-templates select="node()|@*" mode="dynamic-substitution"/>
             </xsl:copy>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
+<!-- Pick a recorded substitution's representation.                       -->
+<!--                                                                      -->
+<!-- One generated object is routinely referenced more than once, and     -->
+<!-- not always in the same way: as the answer of a "fillin" and again    -->
+<!-- inside an "m" in the solution, say.  Those want different strings    -->
+<!-- from the same object, and the substitutions file is keyed only by    -->
+<!-- the object, so it cannot record which was meant.  Instead it records -->
+<!-- both, and the caller, which does know its own context, chooses.      -->
+<!--                                                                      -->
+<!-- Substitution files generated before this distinction existed hold    -->
+<!-- text and no children; that text is used for either request.          -->
+<xsl:template match="eval-subst" mode="dynamic-representation">
+    <xsl:param name="b-latex" select="false()"/>
+    <!-- Each representation is independent: a request for one never looks -->
+    <!-- at whether the other happens to be present.  A v1 substitution    -->
+    <!-- carries both children together, or neither (the legacy case,      -->
+    <!-- below), never just one, but the fallback is written per-child     -->
+    <!-- regardless, since that is the contract, not an assumption about   -->
+    <!-- which files exist.                                                -->
+    <xsl:choose>
+        <xsl:when test="$b-latex">
+            <xsl:choose>
+                <xsl:when test="latex">
+                    <xsl:value-of select="latex"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="."/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:choose>
+                <xsl:when test="plain">
+                    <xsl:value-of select="plain"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:value-of select="."/>
+                </xsl:otherwise>
+            </xsl:choose>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -3138,14 +3235,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:copy>
         <!-- Include "personname" first -->
         <xsl:apply-templates select="personname|@*" mode="repair"/>
-        <!-- If there are bare deparmtment/institution/address, wrap them in affailiation -->
-        <xsl:if test="department or institution or location">
+        <!-- If there are bare position/department/institution/address, wrap them in affiliation -->
+        <xsl:if test="position or department or institution or location">
             <affiliation>
-                <xsl:apply-templates select="department|institution|location" mode="repair"/>
+                <xsl:apply-templates select="position|department|institution|location" mode="repair"/>
             </affiliation>
         </xsl:if>
         <!-- Include all additional elements as they are -->
-        <xsl:apply-templates select="*[not(self::personname or self::department or self::institution or self::location)]" mode="repair"/>
+        <xsl:apply-templates select="*[not(self::personname or self::position or self::department or self::institution or self::location)]" mode="repair"/>
     </xsl:copy>
 </xsl:template>
 
@@ -3547,6 +3644,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- specialized divisions, which are never structured, and so are   -->
 <!-- never summary pages (the situation that demands the heading)    -->
 <xsl:template match="introduction[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title|conclusion[parent::article or parent::chapter or parent::appendix or parent::section or parent::subsection]/title" mode="repair"/>
+
+<!-- 2026-08-06  a "references" preface is a "headnote" -->
+
+<!-- The "introduction" becomes a "headnote", which never carries a  -->
+<!-- "title", so any title is discarded; the deprecation warning     -->
+<!-- says so plainly                                                 -->
+<xsl:template match="references/introduction" mode="repair">
+    <headnote>
+        <xsl:apply-templates select="node()[not(self::title)]|@*" mode="repair"/>
+    </headnote>
+</xsl:template>
+
+<!-- A "references" has no "conclusion": the element is dropped -->
+<!-- whole, and the deprecation warning says so plainly         -->
+<xsl:template match="references/conclusion" mode="repair"/>
 
 <!-- ########## -->
 <!-- Enrichment -->
@@ -4207,12 +4319,31 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:param name="project-nodes"/>
     <xsl:param name="exercise-nodes"/>
     <xsl:param name="openproblem-nodes"/>
-    <!-- terminal: holds content directly, so it has no child divisions of  -->
-    <!-- any kind.  Specialized divisions ("worksheet", "handout", etc.)     -->
-    <!-- count here just like the traditional ones, else a division whose    -->
-    <!-- children are specialized divisions is wrongly deemed terminal and   -->
-    <!-- pools their blocks into one scope instead of one scope apiece.      -->
-    <xsl:variable name="b-terminal" select="not(part|chapter|appendix|section|subsection|subsubsection|preface|exercises|worksheet|handout|reading-questions|references|glossary|solutions)"/>
+    <!-- Terminal: this division's items pool into one flat scope  -->
+    <!-- here.  For a traditional division the authority is the    -->
+    <!-- two-model test "is-structured-division": an unstructured  -->
+    <!-- division (content, plus at most one of each specialized   -->
+    <!-- division) is terminal, its specialized divisions pooling  -->
+    <!-- into its scope; a structured division (traditional        -->
+    <!-- subdivisions, or only worksheets) recurses, and each      -->
+    <!-- worksheet then opens a scope apiece.  The test does not   -->
+    <!-- apply to "frontmatter", "backmatter", a "preface", or the -->
+    <!-- specialized divisions themselves, which keep the plain    -->
+    <!-- child-division inspection.                                -->
+    <xsl:variable name="terminal">
+        <xsl:choose>
+            <xsl:when test="self::book or self::article or self::part or self::chapter or self::appendix or self::section or self::subsection or self::subsubsection">
+                <xsl:variable name="is-structured">
+                    <xsl:apply-templates select="." mode="is-structured-division"/>
+                </xsl:variable>
+                <xsl:value-of select="$is-structured = 'false'"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="not(part|chapter|appendix|section|subsection|subsubsection|preface|exercises|worksheet|handout|reading-questions|references|glossary|solutions)"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="b-terminal" select="$terminal = 'true'"/>
     <xsl:variable name="b-open-eq"          select="not($eq-nodes)          and ($b-terminal or (@pi:level &gt;= $numbering-equations))"/>
     <xsl:variable name="b-open-fn"          select="not($fn-nodes)          and ($b-terminal or (@pi:level &gt;= $numbering-footnotes))"/>
     <xsl:variable name="b-open-blocks"      select="not($blocks-nodes)      and ($b-terminal or (@pi:level &gt;= $numbering-blocks))"/>
@@ -4595,7 +4726,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:template match="book|article|part|chapter|appendix|section|subsection|subsubsection" mode="is-structured-division">
     <xsl:variable name="has-traditional" select="boolean(&TRADITIONAL-DIVISION;)"/>
     <xsl:variable name="all-children" select="*"/>
-    <xsl:variable name="all-worksheet" select="title|shorttitle|plaintitle|idx|introduction|worksheet|handout|conclusion"/>
+    <xsl:variable name="all-worksheet" select="title|subtitle|shorttitle|plaintitle|idx|frontmatter|introduction|worksheet|handout|conclusion"/>
     <xsl:variable name="only-worksheets" select="count($all-children) = count($all-worksheet)"/>
 
     <xsl:value-of select="$has-traditional or $only-worksheets"/>

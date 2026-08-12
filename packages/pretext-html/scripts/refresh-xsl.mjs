@@ -111,6 +111,43 @@ const PRINTOUT_LINK_OVERRIDE = `<xsl:template match="*" mode="standalone-printou
 </xsl:template>`;
 
 /**
+ * Let `$subtree` name a division at any depth.
+ *
+ * Upstream's `$subtree` parameter (pretext-html.xsl) assembles the whole
+ * document — so numbering and every `id()` lookup see the complete source —
+ * but emits only the division carrying that @xml:id. That is exactly what a
+ * fragment preview wants: the section on screen numbered as it will be in the
+ * built book, with cross-references to the rest of the document resolved.
+ *
+ * It refuses to run here unmodified. Portable builds pin `html-chunk-level` to
+ * 0 (publisher-variables.xsl), and upstream aborts with a FATAL when the
+ * subtree root sits below the chunk level — "only a partial HTML page at the
+ * current chunking level". Every division except the document root is below
+ * level 0, so every fragment preview would abort.
+ *
+ * Raising the chunk level to the subtree root's own level clears that check
+ * and still yields exactly one page: only `$subtree-node` is walked, and
+ * everything inside it is below the chunk level and so stays on the page.
+ * Chunk level is left alone when `$subtree` is empty, so whole-document
+ * previews are byte-identical to before.
+ *
+ * `$chunk-level` is a variable, not a parameter, so it cannot be set from the
+ * outside — hence the separate `$subtree-level` parameter and the override
+ * here. Import precedence makes this definition win over the imported one.
+ */
+const SUBTREE_CHUNK_LEVEL_OVERRIDE = `<xsl:param name="subtree-level" select="''"/>
+<xsl:variable name="chunk-level">
+    <xsl:choose>
+        <xsl:when test="$subtree != '' and $subtree-level != ''">
+            <xsl:value-of select="number($subtree-level)"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="$html-chunk-level"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>`;
+
+/**
  * Extract the entries of a zip archive that `wanted` accepts.
  *
  * The archive is read in process rather than by shelling out to an unzip tool,
@@ -280,6 +317,12 @@ function generatePreviewXsl() {
 
 <!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed -->
 ${inlineTemplate}
+
+<!-- Chunk at the subtree root's own level, so a fragment preview can name a  -->
+<!-- division of any depth as $subtree. Without this, portable's chunk level  -->
+<!-- of 0 makes upstream abort on every division below the document root.     -->
+<!-- See SUBTREE_CHUNK_LEVEL_OVERRIDE in refresh-xsl.mjs.                     -->
+${SUBTREE_CHUNK_LEVEL_OVERRIDE}
 
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->

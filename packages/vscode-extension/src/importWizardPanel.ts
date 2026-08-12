@@ -319,7 +319,7 @@ function getHtmlForWebview(
               --color-slate-100: #22303f;
               --color-slate-200: #334155;
               --color-slate-300: #3f4d62;
-              --color-slate-400: #64748b;
+              --color-slate-400: #8296ad;
               /* text: lighter as the number grows, matching the light scale */
               --color-slate-500: #94a3b8;
               --color-slate-600: #cbd5e1;
@@ -328,9 +328,14 @@ function getHtmlForWebview(
               --color-slate-900: #f8fafc;
               /* primary accent → follow the theme's button color */
               --color-blue-50: #17314e;
+              --color-blue-200: #2f5480;
               --color-blue-500: #3b82f6;
               --color-blue-600: var(--vscode-button-hoverBackground, #2563eb);
               --color-blue-700: var(--vscode-button-background, #2f6fed);
+              /* 800/900 sit as text on the blue-50 notice fill, so they invert
+                 like the slate scale rather than following the button color. */
+              --color-blue-800: #bfdbfe;
+              --color-blue-900: #eff6ff;
               /* status: dark fills, light text */
               --color-amber-50: #3a2f14;
               --color-amber-100: #4a3c17;
@@ -341,6 +346,17 @@ function getHtmlForWebview(
               --color-red-200: #6b2b2b;
               --color-red-800: #fca5a5;
               --color-green-700: #86efac;
+            }
+
+            /* Native dropdowns: Tailwind's preflight strips their background,
+               and Chromium paints the option popup from the control's own
+               background — transparent leaves it unreadable on a dark theme.
+               Point both at VS Code's dropdown colors so the control matches
+               the editor in every theme. */
+            select,
+            select option {
+              background-color: var(--vscode-dropdown-background, #ffffff);
+              color: var(--vscode-dropdown-foreground, var(--vscode-editor-foreground, #0f172a));
             }
 
             /* --color-white does double duty (button label + preview code

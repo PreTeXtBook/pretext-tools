@@ -36,6 +36,10 @@ import {
   resolveXIncludes,
   resolveXIncludesToTree,
 } from "./xinclude.js";
+import { buildSkeleton, replaceDivision } from "./skeleton.js";
+import { rewriteXrefLinks } from "./xrefs.js";
+import { fromXml } from "xast-util-from-xml";
+import type { Element, Root } from "xast";
 
 export interface RenderOptions {
   /** Path to the root PreTeXt source file (typically source/main.ptx). */
@@ -168,6 +172,41 @@ export interface RenderOptions {
    * the book's chapters. Only used in fragment mode.
    */
   docinfoSourcePath?: string;
+  /**
+   * Path to the complete document (typically the project's main.ptx) that the
+   * fragment being rendered belongs to. Renders the fragment **in place** in
+   * that document instead of standalone, which is what makes its numbering and
+   * its cross-references match the built book.
+   *
+   * A fragment rendered on its own restarts numbering at 1 and cannot see any
+   * `<xref>` target outside itself, so previewing section 3.2 shows "Theorem
+   * 1.1" where the book says "Theorem 3.2.1", and references leaving the
+   * section render as PreTeXt's `[cross-reference to target(s) ... missing]`
+   * placeholder. With this set, the document is pruned to a skeleton — every
+   * division, the previewed fragment verbatim, and the divisions holding the
+   * targets it references — and rendered with upstream's `subtree` parameter,
+   * which emits only the previewed division. See skeleton.ts for why that
+   * numbers identically to rendering the whole document, and for the cost.
+   *
+   * The fragment supplies its own content, so unsaved editor text is what gets
+   * rendered; the document on disk supplies only the structure around it. That
+   * matching is by `@xml:id`: a fragment whose root element has none, or whose
+   * id is not in the document, silently falls back to the standalone wrapper.
+   *
+   * Supersedes `docinfoSourcePath`, since the skeleton carries the document's
+   * real `<docinfo>`. Only used in fragment mode; ignored for whole documents.
+   */
+  contextSourcePath?: string;
+  /**
+   * Tooltip for links whose target is not on the previewed page — the table of
+   * contents, and cross-references reaching outside the fragment. Those cannot
+   * navigate in a single-page preview, so they are stripped of their `@href`
+   * and given this as an explanation (see xrefs.ts). Defaults to
+   * {@link OFF_PAGE_MESSAGE}.
+   *
+   * Whole-document previews link only within the page, so nothing is affected.
+   */
+  offPageMessage?: string;
   /**
    * Also compute a source map: one entry per element, in document order,
    * mapping the element's @unique-id (its HTML id, when the page emits one)
@@ -419,6 +458,54 @@ function wrapFragment(
         : "article";
   const docinfoBlock = docinfo?.trim() ? `${docinfo.trim()}\n` : "";
   return `<pretext>\n${docinfoBlock}<${wrapper}>\n<title/>\n${body}\n</${wrapper}>\n</pretext>\n`;
+}
+
+/**
+ * Place `fragmentContent` where it belongs in the document at
+ * `documentSourcePath`, and prune that document to a skeleton around it (see
+ * skeleton.ts). The result renders with upstream's `subtree` parameter, which
+ * emits only the fragment's own division.
+ *
+ * Returns undefined — meaning "render it standalone instead" — whenever the
+ * fragment cannot be located: no `@xml:id` on its root element, no division
+ * with that id in the document, or a document that cannot be read or parsed.
+ * All of these are ordinary states while writing (a brand new file, an id
+ * being typed), not errors worth failing a preview over.
+ */
+async function placeFragmentInDocument(
+  fragmentContent: string,
+  documentSourcePath: string,
+  projectDir: string,
+): Promise<
+  { content: string; tree: Root; divisionId: string; level: number } | undefined
+> {
+  const fragmentRoot = fromXml(fragmentContent).children.find(
+    (node): node is Element => node.type === "element",
+  );
+  const divisionId = fragmentRoot?.attributes["xml:id"];
+  if (!fragmentRoot || !divisionId) return undefined;
+
+  const documentPath = path.resolve(documentSourcePath);
+  const documentSource = await readSource(documentPath);
+  if (documentSource === undefined) return undefined;
+
+  let tree: Root;
+  try {
+    tree = (
+      await resolveXIncludesToTree(documentSource, documentPath, projectDir)
+    ).tree;
+  } catch {
+    // A malformed or unreachable include elsewhere in the book should not stop
+    // the author previewing the file in front of them.
+    return undefined;
+  }
+  // The editor's copy wins over the one on disk, so unsaved work is what gets
+  // rendered; the document supplies only the structure around it.
+  if (!replaceDivision(tree, divisionId, fragmentRoot)) return undefined;
+
+  const skeleton = buildSkeleton(tree, divisionId);
+  if (!skeleton) return undefined;
+  return { ...skeleton, tree };
 }
 
 /**
@@ -710,8 +797,41 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     // document element is a child of the (virtual) root: parent "root",
     // position 1 → "root-1". Fragment wrapping re-seats the walk (below).
     let mapRoot = { parentId: "root", position: 1 };
+    // Set when the fragment was placed in its document (see contextSourcePath):
+    // the division to emit, and its numbering level.
+    let subtree: { divisionId: string; level: number } | undefined;
+    // The file a source-map walk should attribute the root element to. In
+    // skeleton mode that is the document the skeleton was built from, not the
+    // fragment; nodes spliced in from elsewhere carry their own file already.
+    let mapRootFile = sourcePath;
     if (rootElement !== "pretext" && rootElement !== "mathbook") {
-      if (options.fragment) {
+      if (!options.fragment) {
+        throw new Error(
+          `The document root is <${rootElement ?? "?"}>, not <pretext> — ` +
+            `this looks like an xi:included fragment. Render the project's ` +
+            `main source file instead, or pass the fragment option.`,
+        );
+      }
+      if (options.contextSourcePath) {
+        // Preferred path: render the fragment where it really sits, so the
+        // stylesheets number it — and resolve its cross-references — against
+        // the whole document. Falls back to the standalone wrapper below when
+        // the fragment cannot be located in that document.
+        const placed = await placeFragmentInDocument(
+          mergedContent,
+          options.contextSourcePath,
+          projectDir,
+        );
+        if (placed) {
+          mergedContent = placed.content;
+          // The skeleton is a complete <pretext> document, so the id walk
+          // starts where it does for any whole document — mapRoot stands.
+          mergedTree = options.sourceMap ? placed.tree : undefined;
+          mapRootFile = path.resolve(options.contextSourcePath);
+          subtree = { divisionId: placed.divisionId, level: placed.level };
+        }
+      }
+      if (!subtree) {
         // Prefer an explicit docinfo string; otherwise lift one (resolving
         // xi:includes) from the project's main file so the fragment keeps its
         // macros. Reads only the docinfo, so the chapters are not merged.
@@ -732,17 +852,11 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         // and the fragment root sits after the wrapper's empty <title/>.
         const wrapperId = docinfo?.trim() ? "root-1-2" : "root-1-1";
         mapRoot = { parentId: wrapperId, position: 2 };
-      } else {
-        throw new Error(
-          `The document root is <${rootElement ?? "?"}>, not <pretext> — ` +
-            `this looks like an xi:included fragment. Render the project's ` +
-            `main source file instead, or pass the fragment option.`,
-        );
       }
     }
 
     const sourceMap = mergedTree
-      ? computeSourceMap(mergedTree, sourcePath, mapRoot)
+      ? computeSourceMap(mergedTree, mapRootFile, mapRoot)
       : undefined;
 
     const doc = await XmlDocument.fromString(mergedContent, {
@@ -755,6 +869,14 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     };
     for (const [name, value] of Object.entries(DEFAULT_STRING_PARAMS)) {
       params[name] = xpathStringLiteral(value);
+    }
+    if (subtree) {
+      // Emit only the previewed division, out of the whole assembled document.
+      // "subtree-level" raises the chunk level to that division's own, which
+      // portable html otherwise pins to 0 — see SUBTREE_CHUNK_LEVEL_OVERRIDE
+      // in scripts/refresh-xsl.mjs.
+      params["subtree"] = xpathStringLiteral(subtree.divisionId);
+      params["subtree-level"] = xpathStringLiteral(String(subtree.level));
     }
     // Last, so a caller can override any default above.
     for (const [name, value] of Object.entries(options.stringParams ?? {})) {
@@ -778,6 +900,14 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     }
     try {
       let html = fixMathJaxImport(result.toHtmlString());
+      // Point links at what this one page can actually reach, and make the
+      // ones reaching past it inert rather than silently dead. A no-op for a
+      // whole-document preview, which links only within the page.
+      html = rewriteXrefLinks(html, {
+        ...(options.offPageMessage !== undefined
+          ? { offPageMessage: options.offPageMessage }
+          : {}),
+      });
       // Before the target-specific bridges, so both a document and a deck get
       // their knowls opened.
       if (options.openKnowls ?? true) {

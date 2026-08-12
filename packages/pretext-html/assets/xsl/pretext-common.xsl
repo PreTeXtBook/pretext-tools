@@ -2834,7 +2834,7 @@ Book (with parts), "section" at level 3
     <xsl:value-of select="true()"/>
 </xsl:template>
 <!-- Introductions and Conclusions -->
-<xsl:template match="article/introduction|chapter/introduction|section/introduction|subsection/introduction|appendix/introduction|exercises/introduction|solutions/introduction|worksheet/introduction|handout/introduction|reading-questions/introduction|glossary/introduction|references/introduction|article/conclusion|chapter/conclusion|section/conclusion|subsection/conclusion|appendix/conclusion|exercises/conclusion|solutions/conclusion|worksheet/conclusion|handout/conclusion|reading-questions/conclusion|glossary/conclusion|references/conclusion" mode="title-wants-punctuation">
+<xsl:template match="article/introduction|chapter/introduction|section/introduction|subsection/introduction|appendix/introduction|exercises/introduction|solutions/introduction|worksheet/introduction|handout/introduction|reading-questions/introduction|article/conclusion|chapter/conclusion|section/conclusion|subsection/conclusion|appendix/conclusion|exercises/conclusion|solutions/conclusion|worksheet/conclusion|handout/conclusion|reading-questions/conclusion" mode="title-wants-punctuation">
     <xsl:value-of select="true()"/>
 </xsl:template>
 <xsl:template match="*" mode="title-wants-punctuation">
@@ -3207,7 +3207,7 @@ Book (with parts), "section" at level 3
             <xsl:text>[</xsl:text>
             <xsl:value-of select="$str-id" />
             <xsl:text>]</xsl:text>
-            <xsl:message>PTX:BUG:     could not translate string with id "<xsl:value-of select="$str-id"/>" into language for code "<xsl:value-of select="$lang"/>"</xsl:message>
+            <xsl:message>PTX:WARNING: could not translate string with id "<xsl:value-of select="$str-id"/>" into language for code "<xsl:value-of select="$lang"/>"</xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -3221,6 +3221,19 @@ Book (with parts), "section" at level 3
     <xsl:apply-templates select="." mode="type-name">
         <xsl:with-param name="string-id" select="@string-id"/>
     </xsl:apply-templates>
+</xsl:template>
+
+<!-- A bare appendix letter beside a title is ambiguous ("A Trip    -->
+<!-- Abroad"), so wherever the letter and title compose on one line -->
+<!-- a period follows the letter: "A. Trip Abroad".  A "solutions"  -->
+<!-- division in the back matter shares the letter sequence (see    -->
+<!-- "division-serial-number" in the assembly), so it is treated    -->
+<!-- identically.  Only the top-level letter: subdivision numbers   -->
+<!-- ("A.2") are already unambiguous.  Styling refinements are      -->
+<!-- anticipated.                                                   -->
+<xsl:template match="*" mode="division-number-separator"/>
+<xsl:template match="appendix|backmatter/solutions" mode="division-number-separator">
+    <xsl:text>.</xsl:text>
 </xsl:template>
 
 <!-- Most PreTeXt elements have names, and their localizations, indexed   -->
@@ -3825,7 +3838,7 @@ Book (with parts), "section" at level 3
                 <xsl:text>has been encountered without a @label attribute.  For reasons of backward-compatibility &#xa;</xsl:text>
                 <xsl:text>we have used the value of an @xml:id.  This may not be what you want, and as of 2024-02-15 &#xa;</xsl:text>
                 <xsl:text>is no longer best practice.  You can copy the @xml:id value exactly into a new @label &#xa;</xsl:text>
-                <xsl:text>attribute and this warning will stop AND your project's entries in any Runestone database &#xa;</xsl:text>
+                <xsl:text>attribute and this message will stop AND your project's entries in any Runestone database &#xa;</xsl:text>
                 <xsl:text>will be preserved and function exactly as before.&#xa;</xsl:text>
                 <xsl:text>[You may get more than one message about this instance.]&#xa;</xsl:text>
             </xsl:message>
@@ -6490,7 +6503,7 @@ Book (with parts), "section" at level 3
     <xsl:if test="@primary='no' or @secondary='yes'">
         <xsl:text>Secondary </xsl:text>
     </xsl:if>
-    <xsl:value-of select="."/>
+    <xsl:value-of select="normalize-space(.)"/>
     <xsl:choose>
         <xsl:when test="following-sibling::keyword[1][@primary='no' or @secondary='yes']">
             <xsl:text>; </xsl:text>
@@ -7468,6 +7481,35 @@ Book (with parts), "section" at level 3
         </xsl:for-each>
     </xsl:if>
 </xsl:variable>
+
+<!-- The content of a "slide" of a "slideshow" may be placed at   -->
+<!-- the top, middle, or bottom of the slide.  A document-wide    -->
+<!-- default comes from "docinfo/defaults/slides/@valign"; absent -->
+<!-- an expressed preference, content is placed at the top.       -->
+<xsl:variable name="slides-valign-default">
+    <xsl:choose>
+        <xsl:when test="$docinfo/defaults/slides/@valign">
+            <xsl:value-of select="$docinfo/defaults/slides/@valign"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>top</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>
+
+<!-- A "slide" may override the document-wide default with its  -->
+<!-- own "@valign"; the conversions consult this modal template -->
+<!-- for the effective vertical alignment of a slide's content. -->
+<xsl:template match="slide" mode="valign">
+    <xsl:choose>
+        <xsl:when test="@valign">
+            <xsl:value-of select="@valign"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="$slides-valign-default"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
 
 <!-- Determine programming language to use. First choice is @language     -->
 <!-- on current element. If that is not available, check docinfo default. -->
@@ -9026,18 +9068,32 @@ Book (with parts), "section" at level 3
                 <!-- content override of type-prefix -->
                 <xsl:when test="$b-has-content">
                     <xsl:copy-of select="$custom-text" />
-                    <xsl:apply-templates select="." mode="xref-text-separator"/>
-                    <xsl:apply-templates select="$target" mode="xref-number">
-                        <xsl:with-param name="xref" select="." />
-                    </xsl:apply-templates>
+                    <xsl:variable name="the-number">
+                        <xsl:apply-templates select="$target" mode="xref-number">
+                            <xsl:with-param name="xref" select="." />
+                        </xsl:apply-templates>
+                    </xsl:variable>
+                    <!-- an unnumbered target ("paragraphs", squelched  -->
+                    <!-- numbering) contributes no separator, either    -->
+                    <xsl:if test="not($the-number = '')">
+                        <xsl:apply-templates select="." mode="xref-text-separator"/>
+                    </xsl:if>
+                    <xsl:copy-of select="$the-number"/>
                 </xsl:when>
                 <!-- usual, default case -->
                 <xsl:otherwise>
                     <xsl:apply-templates select="$target" mode="type-name" />
-                    <xsl:apply-templates select="." mode="xref-text-separator"/>
-                    <xsl:apply-templates select="$target" mode="xref-number">
-                        <xsl:with-param name="xref" select="." />
-                    </xsl:apply-templates>
+                    <xsl:variable name="the-number">
+                        <xsl:apply-templates select="$target" mode="xref-number">
+                            <xsl:with-param name="xref" select="." />
+                        </xsl:apply-templates>
+                    </xsl:variable>
+                    <!-- an unnumbered target ("paragraphs", squelched  -->
+                    <!-- numbering) contributes no separator, either    -->
+                    <xsl:if test="not($the-number = '')">
+                        <xsl:apply-templates select="." mode="xref-text-separator"/>
+                    </xsl:if>
+                    <xsl:copy-of select="$the-number"/>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:when>
@@ -9046,14 +9102,50 @@ Book (with parts), "section" at level 3
                 <!-- content override of type-prefix -->
                 <xsl:when test="$b-has-content">
                     <xsl:copy-of select="$custom-text" />
-                    <xsl:apply-templates select="." mode="xref-text-separator"/>
-                    <xsl:apply-templates select="$target" mode="serial-number" />
+                    <xsl:variable name="the-number">
+                        <xsl:apply-templates select="$target" mode="serial-number" />
+                    </xsl:variable>
+                    <!-- an unnumbered target ("paragraphs", squelched  -->
+                    <!-- numbering) contributes no separator, either    -->
+                    <xsl:if test="not($the-number = '')">
+                        <xsl:apply-templates select="." mode="xref-text-separator"/>
+                    </xsl:if>
+                    <!-- a task's local serial reads as its rendered  -->
+                    <!-- label: "Task (a)", not "Task a"              -->
+                    <xsl:choose>
+                        <xsl:when test="$target/self::task">
+                            <xsl:text>(</xsl:text>
+                            <xsl:copy-of select="$the-number"/>
+                            <xsl:text>)</xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:copy-of select="$the-number"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
                 </xsl:when>
                 <!-- usual, default case -->
                 <xsl:otherwise>
                     <xsl:apply-templates select="$target" mode="type-name" />
-                    <xsl:apply-templates select="." mode="xref-text-separator"/>
-                    <xsl:apply-templates select="$target" mode="serial-number" />
+                    <xsl:variable name="the-number">
+                        <xsl:apply-templates select="$target" mode="serial-number" />
+                    </xsl:variable>
+                    <!-- an unnumbered target ("paragraphs", squelched  -->
+                    <!-- numbering) contributes no separator, either    -->
+                    <xsl:if test="not($the-number = '')">
+                        <xsl:apply-templates select="." mode="xref-text-separator"/>
+                    </xsl:if>
+                    <!-- a task's local serial reads as its rendered  -->
+                    <!-- label: "Task (a)", not "Task a"              -->
+                    <xsl:choose>
+                        <xsl:when test="$target/self::task">
+                            <xsl:text>(</xsl:text>
+                            <xsl:copy-of select="$the-number"/>
+                            <xsl:text>)</xsl:text>
+                        </xsl:when>
+                        <xsl:otherwise>
+                            <xsl:copy-of select="$the-number"/>
+                        </xsl:otherwise>
+                    </xsl:choose>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:when>
@@ -9068,19 +9160,26 @@ Book (with parts), "section" at level 3
                     <xsl:apply-templates select="$target" mode="type-name" />
                 </xsl:otherwise>
             </xsl:choose>
-            <xsl:apply-templates select="." mode="xref-text-separator"/>
             <!-- only difference in behavior is global/local number -->
-            <xsl:choose>
-                <xsl:when test="$text-style = 'type-global-title'">
-                    <xsl:apply-templates select="$target" mode="xref-number">
-                        <xsl:with-param name="xref" select="." />
-                    </xsl:apply-templates>
-                </xsl:when>
-                <xsl:when test="$text-style = 'type-local-title'">
-                    <xsl:apply-templates select="$target" mode="serial-number"/>
-                </xsl:when>
-                <xsl:otherwise/>
-            </xsl:choose>
+            <xsl:variable name="the-number">
+                <xsl:choose>
+                    <xsl:when test="$text-style = 'type-global-title'">
+                        <xsl:apply-templates select="$target" mode="xref-number">
+                            <xsl:with-param name="xref" select="." />
+                        </xsl:apply-templates>
+                    </xsl:when>
+                    <xsl:when test="$text-style = 'type-local-title'">
+                        <xsl:apply-templates select="$target" mode="serial-number"/>
+                    </xsl:when>
+                    <xsl:otherwise/>
+                </xsl:choose>
+            </xsl:variable>
+            <!-- an unnumbered target ("paragraphs", squelched  -->
+            <!-- numbering) contributes no separator, either    -->
+            <xsl:if test="not($the-number = '')">
+                <xsl:apply-templates select="." mode="xref-text-separator"/>
+            </xsl:if>
+            <xsl:copy-of select="$the-number"/>
             <xsl:variable name="the-title">
                 <xsl:apply-templates select="$target" mode="title-xref"/>
             </xsl:variable>
@@ -11915,6 +12014,20 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="occurrences" select="&quot;$document-root//tabular//fn&quot;" />
         <xsl:with-param name="date-string" select="'2026-07-31'" />
         <xsl:with-param name="message" select="'a footnote (&quot;fn&quot;) within a &quot;tabular&quot; cell is now a table note, the &quot;tn&quot; element, lettered and placed at the bottom of the table.  We will honor your intent, but please convert to &quot;tn&quot;.  Note that a table note is not part of the numbering of true footnotes, and is not a target for a cross-reference.'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-08-06  references "introduction" is now a "headnote" -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//references/introduction&quot;" />
+        <xsl:with-param name="date-string" select="'2026-08-06'" />
+        <xsl:with-param name="message" select="'a &quot;references&quot; &quot;introduction&quot; is now a &quot;headnote&quot;.  We will attempt to fix your source, but a &quot;title&quot; on such an &quot;introduction&quot; is discarded entirely: its text will not appear in any output.  Please convert to a &quot;headnote&quot; yourself'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-08-06  references "conclusion" is obsolete -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//references/conclusion&quot;" />
+        <xsl:with-param name="date-string" select="'2026-08-06'" />
+        <xsl:with-param name="message" select="'a &quot;references&quot; division no longer has a &quot;conclusion&quot;.  The element is discarded entirely: its content will not appear in any output.  Please relocate the content, perhaps following the &quot;references&quot;'"/>
     </xsl:call-template>
     <!--  -->
 </xsl:template>

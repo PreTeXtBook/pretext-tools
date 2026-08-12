@@ -5,10 +5,13 @@ import {
 } from "@pretextbook/import/react";
 import "@pretextbook/import/react.css";
 import {
+  analyzeImportSources,
   assetsForImportMode,
+  extractUpload,
   filesForImportMode,
   formatWarningLine,
   handleImportUploadFile,
+  importProjectFromFiles,
   type ImportedProjectResult,
   type ImportedProjectSuccess,
   type ImportProjectOptions,
@@ -88,6 +91,23 @@ const builtinEngine: ImportEngine = {
     ".tgz",
   ],
   convertFile: handleImportUploadFile,
+  // Two-phase support: unpack and survey the upload so the wizard can offer
+  // the source-selection step (format, main file, extra roots) before
+  // anything is converted.
+  prepare: async (file) => {
+    const { files, assets } = await extractUpload(file);
+    return {
+      fileName: file.name,
+      files,
+      assets,
+      analysis: analyzeImportSources(files),
+    };
+  },
+  convertPrepared: (prepared, options) =>
+    importProjectFromFiles(prepared.files, {
+      ...options,
+      assets: prepared.assets,
+    }),
 };
 
 // Pandoc runs in the extension host, so the pandoc engine round-trips the file

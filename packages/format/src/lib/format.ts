@@ -203,6 +203,9 @@ function appendVerbatim(
     .map((c) => {
       if (c.type === "text") return escText(c.value);
       if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
+      // Comments are part of the authored content here; dropping them would
+      // silently delete text from the document.
+      if (c.type === "comment") return `<!--${c.value}-->`;
       return "";
     })
     .join("");
@@ -629,9 +632,10 @@ function meaningfulChildren(node: Element): ElementContent[] {
 function isBlockChild(child: ElementContent): boolean {
   if (child.type !== "element") return false;
   const name = child.name;
-  // <c> is in verbatimTags (inline code) but is always rendered inline, never as a
-  // structural block, so it must be excluded before the verbatimTags check below.
-  if (name === "c") return false;
+  // <c> and <pf> are in verbatimTags (inline code) but are always rendered inline,
+  // never as a structural block, so they must be excluded before the verbatimTags
+  // check below.
+  if (name === "c" || name === "pf") return false;
   // Some tag names are reused for both a block-level environment (with content,
   // e.g. the root <pretext> document or a <webwork> exercise) and an inline macro
   // (empty/self-closing, e.g. the <pretext/> logo or an embedded <webwork/>

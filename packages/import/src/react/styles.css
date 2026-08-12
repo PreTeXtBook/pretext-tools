@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/*
+ * Tailwind's preflight resets native form controls to `background-color:
+ * transparent; color: inherit`. For <select> that leaves the option popup with
+ * no surface of its own — Chromium paints the popup from the control's own
+ * background, so on a dark page it comes out light-on-light and unreadable.
+ * Pin both to the palette instead: hosts that remap the Tailwind color
+ * variables for dark mode (the VS Code panel does) then get a readable
+ * dropdown without knowing which elements are involved.
+ */
+select,
+select option {
+  background-color: var(--color-slate-50, #f8fafc);
+  color: var(--color-slate-900, #0f172a);
+}

@@ -10,9 +10,14 @@ import { padIndex, spliceReplacements } from "../layout/shared";
 import {
   findAnyElement,
   findFirstElement,
-  findTopLevelElements,
+  findTopLevelElementsMatching,
   type XmlElementSpan,
 } from "../layout/xml-scan";
+import {
+  filePrefixForDivision,
+  isDivisionTag,
+  type PretextDivisionTag,
+} from "../pretext-divisions";
 import type { ImportedDivision, ImportedProject } from "../types";
 import {
   buildAssets,
@@ -28,10 +33,39 @@ export { sanitizeRef } from "./refs";
 
 export interface BuildDivisionPoolOptions {
   documentKind?: DocumentKind;
+  /**
+   * How many levels of division to split out of the root, e.g. 1 splits a
+   * book's chapters (and its frontmatter/backmatter/appendices), 2 also splits
+   * each chapter's sections, 0 keeps the whole document in one division.
+   * Takes precedence over `splitChapters`/`splitSections`.
+   */
+  splitLevel?: number;
   splitChapters?: boolean;
   splitSections?: boolean;
   /** Binary assets keyed by their original (input) path. */
   assets?: Record<string, Uint8Array>;
+}
+
+/**
+ * Reconcile the split options into a single depth. `splitChapters` and
+ * `splitSections` predate `splitLevel` and stay supported, but they mean
+ * different depths in a book (chapters at 1, sections at 2) than in an article
+ * (sections at 1), so they are resolved against the document kind.
+ */
+export function resolveSplitLevel(
+  options: BuildDivisionPoolOptions,
+  documentKind: DocumentKind,
+): number {
+  if (options.splitLevel !== undefined) {
+    return Math.max(0, options.splitLevel);
+  }
+  if (options.splitChapters === false) {
+    return 0;
+  }
+  if (options.splitSections) {
+    return documentKind === "book" ? 2 : 1;
+  }
+  return documentKind === "book" ? 1 : 0;
 }
 
 export interface BuildDivisionPoolResult {
@@ -94,15 +128,88 @@ function rebuildOuter(span: XmlElementSpan, newInner: string): string {
   return openTag + newInner + closeTag;
 }
 
+interface SplitContext {
+  refs: RefPool;
+  divisions: ImportedDivision[];
+  warnings: CleaningWarning[];
+  /** Deepest level of division to extract; 0 extracts nothing. */
+  maxDepth: number;
+}
+
+/**
+ * Split a division's content at each of its direct-child divisions, recursing
+ * until `maxDepth`. Returns the parent's content with every extracted child
+ * replaced by a `<plus:TYPE ref="…"/>` placeholder; the children themselves
+ * are appended to the (flat) pool.
+ *
+ * Any tag in the PreTeXt division vocabulary is a split point, so a book's
+ * frontmatter, parts, appendices, and worksheets travel the same path as its
+ * chapters — which is what an existing project imported from `project.ptx`
+ * actually contains.
+ */
+function splitChildDivisions(
+  inner: string,
+  parentRef: string,
+  depth: number,
+  context: SplitContext,
+): string {
+  if (depth > context.maxDepth) {
+    return inner;
+  }
+  const childSpans = findTopLevelElementsMatching(inner, isDivisionTag);
+  if (childSpans.length === 0) {
+    return inner;
+  }
+
+  const replacements = childSpans.map((span, index) => {
+    const position = index + 1;
+    const prefix = filePrefixForDivision(span.name);
+    const numbered = `${prefix}-${padIndex(position, childSpans.length)}`;
+    // Top-level fallbacks read as `ch-01`; deeper ones are scoped by their
+    // parent (`methods-sec-02`) so ids stay unique and self-describing.
+    const fallback = depth === 1 ? numbered : `${parentRef}-${numbered}`;
+    const claim = claimRef(span, context.refs, fallback);
+    pushRefWarnings(context.warnings, claim, span.name, position);
+
+    const childInner = splitChildDivisions(
+      span.inner,
+      claim.ref,
+      depth + 1,
+      context,
+    );
+
+    context.divisions.push({
+      xmlId: claim.ref,
+      type: span.name as PretextDivisionTag,
+      title: extractTitleText(span.inner),
+      sourceFormat: "pretext",
+      content: withXmlId(
+        rebuildOuter(span, childInner),
+        span.startTagEnd - span.start,
+        claim.ref,
+      ),
+      isRoot: false,
+    });
+
+    return {
+      start: span.start,
+      end: span.end,
+      replacement: `<plus:${span.name} ref="${claim.ref}"/>`,
+    };
+  });
+
+  return spliceReplacements(inner, replacements);
+}
+
 /**
  * Parse a converted PreTeXt document
  * (`<pretext><docinfo>…</docinfo><book|article>…`) into the division pool.
  *
  * - `docinfo` and the document `<title>` become project-level fields (the
  *   plus data model); the file-tree serializer re-inlines them.
- * - With `splitChapters` (default for books), each `<chapter>` becomes its
- *   own division, replaced in the root by `<plus:chapter ref="…"/>`;
- *   `splitSections` does the same for `<section>`s within each chapter.
+ * - Divisions are split out to `splitLevel` levels deep (default: 1 for a
+ *   book, 0 for an article), each replaced in its parent by a
+ *   `<plus:TYPE ref="…"/>` placeholder.
  * - Every division's wrapper element carries `xml:id` equal to its ref;
  *   missing ids are generated (`ch-01`, …), invalid/duplicate ids are
  *   sanitized with a warning.
@@ -114,8 +221,7 @@ export function buildDivisionPool(
   const warnings: CleaningWarning[] = [];
   const documentKind: DocumentKind =
     options.documentKind ?? detectDocumentKind(pretextSource);
-  const splitChapters = options.splitChapters ?? documentKind === "book";
-  const splitSections = options.splitSections ?? false;
+  const splitLevel = resolveSplitLevel(options, documentKind);
 
   const pretextSpan = findAnyElement(pretextSource, "pretext");
   const scope = pretextSpan ? pretextSpan.inner : pretextSource;
@@ -169,72 +275,12 @@ export function buildDivisionPool(
   }
   const title = extractTitleText(rootSpan.inner);
 
-  let rootInner = rootSpan.inner;
-
-  if (splitChapters && documentKind === "book") {
-    const chapterSpans = findTopLevelElements(rootSpan.inner, "chapter");
-    const replacements = chapterSpans.map((chapterSpan, index) => {
-      const claim = claimRef(
-        chapterSpan,
-        refs,
-        `ch-${padIndex(index + 1, chapterSpans.length)}`,
-      );
-      pushRefWarnings(warnings, claim, "chapter", index + 1);
-
-      let chapterInner = chapterSpan.inner;
-      if (splitSections) {
-        const sectionSpans = findTopLevelElements(chapterSpan.inner, "section");
-        const sectionReplacements = sectionSpans.map((sectionSpan, sIndex) => {
-          const sectionClaim = claimRef(
-            sectionSpan,
-            refs,
-            `${claim.ref}-sec-${padIndex(sIndex + 1, sectionSpans.length)}`,
-          );
-          pushRefWarnings(warnings, sectionClaim, "section", sIndex + 1);
-          divisions.push({
-            xmlId: sectionClaim.ref,
-            type: "section",
-            title: extractTitleText(sectionSpan.inner),
-            sourceFormat: "pretext",
-            content: withXmlId(
-              sectionSpan.outer,
-              sectionSpan.startTagEnd - sectionSpan.start,
-              sectionClaim.ref,
-            ),
-            isRoot: false,
-          });
-          return {
-            start: sectionSpan.start,
-            end: sectionSpan.end,
-            replacement: `<plus:section ref="${sectionClaim.ref}"/>`,
-          };
-        });
-        chapterInner = spliceReplacements(
-          chapterSpan.inner,
-          sectionReplacements,
-        );
-      }
-
-      divisions.push({
-        xmlId: claim.ref,
-        type: "chapter",
-        title: extractTitleText(chapterSpan.inner),
-        sourceFormat: "pretext",
-        content: withXmlId(
-          rebuildOuter(chapterSpan, chapterInner),
-          chapterSpan.startTagEnd - chapterSpan.start,
-          claim.ref,
-        ),
-        isRoot: false,
-      });
-      return {
-        start: chapterSpan.start,
-        end: chapterSpan.end,
-        replacement: `<plus:chapter ref="${claim.ref}"/>`,
-      };
-    });
-    rootInner = spliceReplacements(rootSpan.inner, replacements);
-  }
+  const rootInner = splitChildDivisions(rootSpan.inner, rootClaim.ref, 1, {
+    refs,
+    divisions,
+    warnings,
+    maxDepth: splitLevel,
+  });
 
   const rootDivision: ImportedDivision = {
     xmlId: rootClaim.ref,
