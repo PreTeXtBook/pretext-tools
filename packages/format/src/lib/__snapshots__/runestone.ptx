@@ -3952,13 +3952,15 @@ TEST_CASE( "Test the add function" ) {
       <!-- note that the blank lines in pre and postabmbles are intentional to -->
       <!-- separate those from user code, but you might not always want them   -->
       <program-preamble>
-        print("Using your code to isolate the red in the Golden Gate Bridge image.")
+                print("Using your code to isolate the red in the Golden Gate Bridge image.")
                 import image
+
       </program-preamble>
       <!-- the program is empty as its contents will be replaced by student code -->
       <program datafile="golden-gate.png" codelens="no"/>
       <program-postamble>
-        img = image.Image("golden-gate.png")
+
+                img = image.Image("golden-gate.png")
                 win = image.ImageWin(img.getWidth(), img.getHeight())
                 img.draw(win)
 

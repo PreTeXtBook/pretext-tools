@@ -237,6 +237,9 @@ export const verbatimTags = [
   "postRenderScript", // JavaScript run after an <interactive> renders
   "source", // <interactive> source text
   "pf", // inline verbatim, like <c> — see isBlockChild in format.ts
+  "config-json", // JSON configuration for an <interactive>
+  "program-preamble", // fixed code before a Parsons <program> solution
+  "program-postamble", // fixed code after a Parsons <program> solution
 ];
 export const newlineTags = [
   ...docStructure,

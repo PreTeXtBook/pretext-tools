@@ -108,6 +108,18 @@ describe("format", () => {
         `<docinfo><asymptote-preamble>size(6cm);\nimport graph;</asymptote-preamble></docinfo>`,
       ],
       ["source", `<interactive><source>a  b</source></interactive>`],
+      [
+        "config-json",
+        `<interactive><setup><config-json>{ "a":  1 }</config-json></setup></interactive>`,
+      ],
+      [
+        "program-preamble",
+        `<exercise><program-preamble>import sys\nx = 1</program-preamble></exercise>`,
+      ],
+      [
+        "program-postamble",
+        `<exercise><program-postamble>  print(x)</program-postamble></exercise>`,
+      ],
     ])("does not re-indent the contents of <%s>", (tag, input) => {
       const result = formatPretext(input);
 
