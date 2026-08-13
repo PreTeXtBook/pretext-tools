@@ -195,8 +195,26 @@ export interface RenderOptions {
    *
    * Supersedes `docinfoSourcePath`, since the skeleton carries the document's
    * real `<docinfo>`. Only used in fragment mode; ignored for whole documents.
+   * Optional when `contextSourceContent` is given — see there — but still
+   * used as the virtual base for xi:include resolution and source-map paths
+   * even then, so pass it whenever a real path is available.
    */
   contextSourcePath?: string;
+  /**
+   * The complete document's source text, used instead of reading
+   * `contextSourcePath` from disk. Lets a browser host that already holds the
+   * whole project in memory place a fragment in its document — with
+   * correct numbering and resolved `<xref>`s — without a filesystem or
+   * network round trip, and lets the skeleton see *unsaved* sibling
+   * divisions that a read from disk never would.
+   *
+   * `contextSourcePath` becomes optional when this is given, defaulting to
+   * `sourcePath` as the virtual base for resolving the document's own
+   * xi:includes; pass `contextSourcePath` too when a real one is available,
+   * for more useful source-map/error paths. Exactly parallel to
+   * `sourceContent` vs. `sourcePath`.
+   */
+  contextSourceContent?: string;
   /**
    * Tooltip for links whose target is not on the previewed page — the table of
    * contents, and cross-references reaching outside the fragment. Those cannot
@@ -476,6 +494,7 @@ async function placeFragmentInDocument(
   fragmentContent: string,
   documentSourcePath: string,
   projectDir: string,
+  documentSourceContent?: string,
 ): Promise<
   { content: string; tree: Root; divisionId: string; level: number } | undefined
 > {
@@ -486,7 +505,8 @@ async function placeFragmentInDocument(
   if (!fragmentRoot || !divisionId) return undefined;
 
   const documentPath = path.resolve(documentSourcePath);
-  const documentSource = await readSource(documentPath);
+  const documentSource =
+    documentSourceContent ?? (await readSource(documentPath));
   if (documentSource === undefined) return undefined;
 
   let tree: Root;
@@ -812,22 +832,33 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
             `main source file instead, or pass the fragment option.`,
         );
       }
-      if (options.contextSourcePath) {
+      if (options.contextSourcePath || options.contextSourceContent) {
         // Preferred path: render the fragment where it really sits, so the
         // stylesheets number it — and resolve its cross-references — against
         // the whole document. Falls back to the standalone wrapper below when
         // the fragment cannot be located in that document.
+        //
+        // With no real contextSourcePath, the context document still needs a
+        // virtual identity to resolve its own xi:includes against — but it
+        // must not be sourcePath itself: the context document legitimately
+        // xi:includes the previewed fragment, and reusing the fragment's own
+        // path here would make that include look like a self-cycle back to
+        // the file already on the resolution stack, silently dropping it.
+        const contextPath =
+          options.contextSourcePath ??
+          path.join(path.dirname(sourcePath), "__pretext-preview-context.ptx");
         const placed = await placeFragmentInDocument(
           mergedContent,
-          options.contextSourcePath,
+          contextPath,
           projectDir,
+          options.contextSourceContent,
         );
         if (placed) {
           mergedContent = placed.content;
           // The skeleton is a complete <pretext> document, so the id walk
           // starts where it does for any whole document — mapRoot stands.
           mergedTree = options.sourceMap ? placed.tree : undefined;
-          mapRootFile = path.resolve(options.contextSourcePath);
+          mapRootFile = path.resolve(contextPath);
           subtree = { divisionId: placed.divisionId, level: placed.level };
         }
       }

@@ -29,8 +29,8 @@ export type { RevealView, RevealViewOptions } from "./reveal.js";
 export { openBornHiddenKnowls } from "./knowls.js";
 // Placing a fragment in its document, so it is numbered and cross-referenced
 // as the built book will be (see skeleton.ts). The renderer does this itself
-// when RenderOptions.contextSourcePath is set; exported for embedders that
-// prepare source themselves.
+// when RenderOptions.contextSourcePath or .contextSourceContent is set;
+// exported for embedders that prepare source themselves.
 export { buildSkeleton, divisionLevel, replaceDivision } from "./skeleton.js";
 export type { Skeleton } from "./skeleton.js";
 // Making a subtree render's links honest about the one page it produced (see

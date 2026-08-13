@@ -14,6 +14,10 @@
  *    only as a virtual base for URL and xi:include resolution.
  *  - **`xi:include`s are not resolved from disk.** Pre-merge them, or pass the
  *    already-merged document as `sourceContent`.
+ *  - **Use `contextSourceContent`, not `contextSourcePath`**, to place a
+ *    fragment in its document for correct numbering and resolved `<xref>`s
+ *    (see `RenderOptions.contextSourceContent`) — `contextSourcePath` alone
+ *    is unreadable for the same reason `sourcePath` alone is.
  *  - **Assets come from jsDelivr by default**, version-pinned to this package.
  *    Call `setAssetsBase()` before the first render to self-host.
  */

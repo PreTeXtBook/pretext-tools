@@ -69,6 +69,34 @@ describe("importProjectFromFiles", () => {
     );
   });
 
+  it("resolves nested xi:includes against their own file's directory and reports missing ones as warnings", () => {
+    const files = {
+      "source/main.ptx": `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+<article xml:id="art"><title>Doc</title>
+  <xi:include href="sections/sec-a.ptx"/>
+  <xi:include href="missing.ptx"/>
+</article></pretext>`,
+      "source/sections/sec-a.ptx": `<section xml:id="sec-a" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <title>Sec A</title>
+  <xi:include href="sub-included.ptx"/>
+</section>`,
+      "source/sections/sub-included.ptx": `<subsection xml:id="sub-included">
+  <title>Included</title><p>from a separate file</p>
+</subsection>`,
+    };
+    const result = importProjectFromFiles(files);
+    if ("pretextError" in result) {
+      throw new Error(`unexpected error: ${result.pretextError}`);
+    }
+    const outputSource = Object.values(result.outputFiles).join("\n");
+    expect(outputSource).toContain("from a separate file");
+    expect(
+      result.warnings.some(
+        (w) => w.category === "missing_include" && w.severity === "error",
+      ),
+    ).toBe(true);
+  });
+
   it("routes image assets to source/assets and .bib files to source/", () => {
     const files = {
       "main.tex":

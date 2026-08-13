@@ -1,5 +1,10 @@
-import * as path from "path";
-import { pathToFileURL, fileURLToPath } from "url";
+import {
+  dirname,
+  resolve,
+  pathToFileURL,
+  fileURLToPath,
+  readFileUtf8,
+} from "./platform";
 import type { FileReader } from "./types";
 
 /** Where a line in the merged document originated. */
@@ -37,18 +42,9 @@ export interface ResolvedDocument {
 
 const XINCLUDE_RE = /<xi:include\b[^>]*?\bhref\s*=\s*("|')(.*?)\1[^>]*?\/>/;
 
-/** Default reader backed by Node's `fs`. */
+/** Default reader backed by Node's `fs` (throws if invoked from the browser build). */
 export function defaultFileReader(): FileReader {
-  // Lazy require so bundlers targeting the browser don't choke.
-
-  const fs = require("fs") as typeof import("fs");
-  return (absolutePath: string) => {
-    try {
-      return fs.readFileSync(absolutePath, "utf8");
-    } catch {
-      return undefined;
-    }
-  };
+  return readFileUtf8;
 }
 
 function stripXmlDeclaration(text: string): {
@@ -73,7 +69,7 @@ function uriToPath(uri: string): string {
 }
 
 function pathToUri(p: string): string {
-  return pathToFileURL(p).toString();
+  return pathToFileURL(p);
 }
 
 /**
@@ -112,8 +108,8 @@ export function resolveXIncludes(
       const before = line.slice(0, match.index);
       const after = line.slice(match.index + match[0].length);
       const href = match[2];
-      const baseDir = path.dirname(uriToPath(uri));
-      const targetPath = path.resolve(baseDir, href);
+      const baseDir = dirname(uriToPath(uri));
+      const targetPath = resolve(baseDir, href);
       const targetUri = pathToUri(targetPath);
 
       // Any non-include text preceding the include stays on its own line,

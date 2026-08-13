@@ -26,6 +26,7 @@ import {
 } from "./project/existing-project";
 import type { ManifestTarget, ProjectManifest } from "./project/manifest";
 import { basename, extension, normalizePath } from "./project/paths";
+import type { CleaningWarning } from "./clean/warnings";
 import type {
   ImportedProject,
   ImportedProjectResult,
@@ -454,6 +455,7 @@ export function importProjectFromFiles(
     const attachments = resolveAttachments(options.attachRoots, analysis);
     let attachedRoots: AttachedRootRecord[] = [];
     const attachWarnings = [];
+    const pretextIncludeWarnings: CleaningWarning[] = [];
 
     if (primary.format === "latex") {
       const texFiles = Object.fromEntries(
@@ -543,6 +545,16 @@ export function importProjectFromFiles(
           type: "error",
           message: `Missing xi:include targets: ${expansion.missingIncludes.join(", ")}.`,
         });
+        pretextIncludeWarnings.push({
+          action: "anomaly",
+          severity: "error",
+          kind: "structure",
+          category: "missing_include",
+          macro: "xi:include",
+          occurrences: expansion.missingIncludes.length,
+          examples: expansion.missingIncludes,
+          message: `Missing xi:include targets: ${expansion.missingIncludes.join(", ")}. This content is missing from the import.`,
+        });
       }
     }
 
@@ -559,7 +571,11 @@ export function importProjectFromFiles(
       return {
         pretextError: result.pretextError,
         statusMessages,
-        warnings: [...result.warnings, ...attachWarnings],
+        warnings: [
+          ...result.warnings,
+          ...attachWarnings,
+          ...pretextIncludeWarnings,
+        ],
       };
     }
 
@@ -697,6 +713,7 @@ export function importProjectFromFiles(
     const combinedWarnings = [
       ...result.warnings,
       ...attachWarnings,
+      ...pretextIncludeWarnings,
       ...pool.warnings,
     ];
 

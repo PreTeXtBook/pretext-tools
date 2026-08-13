@@ -1,5 +1,4 @@
-import * as path from "path";
-import { fileURLToPath } from "url";
+import { dirname, isAbsolute, resolve, fileURLToPath } from "./platform";
 import type { FileReader } from "./types";
 
 /** Used when a caller doesn't know (or care) how to locate the project's root document(s). */
@@ -58,9 +57,9 @@ function collectFromFile(
   for (const m of text.matchAll(LABEL_RE)) {
     addRef(refs.labels, m[2], absolutePath);
   }
-  const baseDir = path.dirname(absolutePath);
+  const baseDir = dirname(absolutePath);
   for (const m of text.matchAll(XINCLUDE_HREF_RE)) {
-    collectFromFile(path.resolve(baseDir, m[2]), readFile, visited, refs);
+    collectFromFile(resolve(baseDir, m[2]), readFile, visited, refs);
   }
   return true;
 }
@@ -90,15 +89,15 @@ export function collectBookReferences(
   if (roots.length === 0) {
     return undefined;
   }
-  const baseDir = path.dirname(uriToPath(documentUri));
+  const baseDir = dirname(uriToPath(documentUri));
   const refs: BookReferences = { ids: new Map(), labels: new Map() };
   const visited = new Set<string>();
   let foundAny = false;
   for (const root of roots) {
     const rootPath = uriToPath(root);
-    const absolute = path.isAbsolute(rootPath)
+    const absolute = isAbsolute(rootPath)
       ? rootPath
-      : path.resolve(baseDir, rootPath);
+      : resolve(baseDir, rootPath);
     if (collectFromFile(absolute, readFile, visited, refs)) {
       foundAny = true;
     }

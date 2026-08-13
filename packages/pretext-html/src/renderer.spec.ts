@@ -1215,4 +1215,29 @@ describe("renderHtml in document context", () => {
     });
     expect(html).toContain("Previewed Section");
   });
+
+  it("uses contextSourceContent instead of reading contextSourcePath from disk", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      // A path that cannot be read on its own (see the previous test) —
+      // contextSourceContent must be what actually supplies the document.
+      contextSourcePath: path.join(dir, "no-such-main.ptx"),
+      contextSourceContent: MAIN,
+    });
+    expect(html).toContain("2.1.1");
+    expect(html).not.toContain("cross-reference to target");
+    expect(html).toContain("Theorem 1.1.1");
+  });
+
+  it("numbers the fragment from contextSourceContent alone, with no contextSourcePath at all", async () => {
+    const { html } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourceContent: MAIN,
+    });
+    expect(html).toContain("2.1.1");
+    expect(html).not.toContain("cross-reference to target");
+    expect(html).toContain("Theorem 1.1.1");
+  });
 });

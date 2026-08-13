@@ -3,8 +3,9 @@
 
 import { dirname, joinPath, normalizePath } from "../project/paths";
 
-const XI_INCLUDE_RE =
-  /<xi:include\b[^>]*\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*\/>/g;
+const XI_INCLUDE_SOURCE = String.raw`<xi:include\b[^>]*\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')[^>]*\/>`;
+
+const XI_INCLUDE_RE = new RegExp(XI_INCLUDE_SOURCE, "g");
 
 export function resolveIncludeTarget(
   requested: string,
@@ -52,18 +53,18 @@ export function expandPretextIncludes(
 ): PretextIncludeExpansion {
   let expandedCount = 0;
   const missingIncludes: string[] = [];
-  const visitStack: string[] = [];
+  // Chain of files currently being expanded, from the root down to the
+  // include being processed right now — used both to detect cycles and, via
+  // its top element, as the base each include's own href resolves against.
+  const visitStack: string[] = [baseFile];
   const consumed = new Set<string>();
 
-  const expandOnce = (
-    text: string,
-    currentBase: string,
-  ): { output: string; changed: boolean } => {
-    let changed = false;
-    const output = text.replace(
-      XI_INCLUDE_RE,
+  const expand = (text: string, depth: number): string =>
+    text.replace(
+      new RegExp(XI_INCLUDE_SOURCE, "g"),
       (whole: string, dq?: string, sq?: string) => {
         const requested = dq ?? sq ?? "";
+        const currentBase = visitStack[visitStack.length - 1];
         const target = resolveIncludeTarget(requested, currentBase, files);
         if (!target) {
           if (!missingIncludes.includes(requested)) {
@@ -71,32 +72,23 @@ export function expandPretextIncludes(
           }
           return whole;
         }
-        if (visitStack.includes(target)) {
-          // Cycle: leave the include in place.
+        if (visitStack.includes(target) || depth >= maxDepth) {
+          // Cycle, or nested past maxDepth: leave the include in place.
           return whole;
         }
-        changed = true;
         expandedCount += 1;
         consumed.add(target);
-        return stripXmlProlog(files[target]);
+        visitStack.push(target);
+        const inner = expand(stripXmlProlog(files[target]), depth + 1);
+        visitStack.pop();
+        return inner;
       },
     );
-    return { output, changed };
-  };
 
-  let current = mainContent;
-  for (let pass = 0; pass < maxDepth; pass += 1) {
-    visitStack.push(baseFile);
-    const { output, changed } = expandOnce(current, baseFile);
-    visitStack.pop();
-    current = output;
-    if (!changed) {
-      break;
-    }
-  }
+  const expandedText = expand(mainContent, 1);
 
   return {
-    expandedText: current,
+    expandedText,
     expandedCount,
     missingIncludes,
     consumedPaths: [...consumed],
