@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.10.0
+
+### Minor Changes
+
+- f179033: Tweaks to make pretext.plus happy
+
 ## 0.9.0
 
 ### Minor Changes

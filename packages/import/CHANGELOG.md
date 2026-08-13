@@ -1,5 +1,11 @@
 # @pretextbook/import
 
+## 0.5.0
+
+### Minor Changes
+
+- f179033: Tweaks to make pretext.plus happy
+
 ## 0.4.0
 
 ### Minor Changes
