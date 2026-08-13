@@ -94,6 +94,70 @@ describe("buildDivisionPool", () => {
     expect(generated?.content).toContain('xml:id="methods-sec-02"');
   });
 
+  it("splits handout, introduction, and conclusion divisions and their contents", () => {
+    const source = `<pretext><article xml:id="art">
+  <title>Doc</title>
+  <section xml:id="sec-a">
+    <title>Sec A</title>
+    <subsection xml:id="sub-a1"><title>A1</title><p>x</p></subsection>
+  </section>
+  <handout xml:id="hand-a">
+    <title>Handout</title>
+    <subsection xml:id="hand-sub-1"><title>H1</title><p>y</p></subsection>
+    <subsection xml:id="hand-sub-2"><title>H2</title><p>z</p></subsection>
+  </handout>
+  <worksheet xml:id="ws-a">
+    <title>Worksheet</title>
+    <subsection xml:id="ws-sub-1"><title>W1</title><p>w</p></subsection>
+  </worksheet>
+</article></pretext>`;
+
+    const { project } = buildDivisionPool(source, { splitLevel: 3 });
+
+    const root = project.divisions.find((d) => d.isRoot);
+    expect(root?.content).toContain('<plus:handout ref="hand-a"/>');
+    expect(root?.content).not.toContain("<subsection");
+
+    const handout = project.divisions.find((d) => d.xmlId === "hand-a");
+    expect(handout?.type).toBe("handout");
+    expect(handout?.content).toContain('<plus:subsection ref="hand-sub-1"/>');
+    expect(handout?.content).toContain('<plus:subsection ref="hand-sub-2"/>');
+    expect(handout?.content).not.toContain("H1");
+
+    expect(
+      project.divisions.find((d) => d.xmlId === "hand-sub-1")?.content,
+    ).toContain("<p>y</p>");
+    expect(
+      project.divisions.find((d) => d.xmlId === "hand-sub-2")?.content,
+    ).toContain("<p>z</p>");
+  });
+
+  it("splits introduction and conclusion out of a chapter", () => {
+    const source = `<pretext><book><title>T</title>
+<chapter xml:id="ch-1">
+  <title>One</title>
+  <introduction xml:id="ch-1-intro"><p>intro</p></introduction>
+  <section xml:id="ch-1-sec"><title>S</title><p>body</p></section>
+  <conclusion xml:id="ch-1-outro"><p>outro</p></conclusion>
+</chapter>
+</book></pretext>`;
+
+    const { project } = buildDivisionPool(source, { splitLevel: 2 });
+
+    const chapter = project.divisions.find((d) => d.xmlId === "ch-1");
+    expect(chapter?.content).toContain('<plus:introduction ref="ch-1-intro"/>');
+    expect(chapter?.content).toContain('<plus:conclusion ref="ch-1-outro"/>');
+    expect(chapter?.content).not.toContain("<p>intro</p>");
+    expect(chapter?.content).not.toContain("<p>outro</p>");
+
+    expect(
+      project.divisions.find((d) => d.xmlId === "ch-1-intro")?.content,
+    ).toContain("<p>intro</p>");
+    expect(
+      project.divisions.find((d) => d.xmlId === "ch-1-outro")?.content,
+    ).toContain("<p>outro</p>");
+  });
+
   it("generates ids for chapters without xml:id and warns", () => {
     const source = `<pretext><book><title>T</title>
 <chapter><title>One</title><p>a</p></chapter>

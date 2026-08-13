@@ -2,9 +2,10 @@
 //
 // A "division" here means an element that can legitimately live in its own
 // file behind an `xi:include` — which is also what pretext-plus stores as a
-// division record. Elements that are structural but never chunked on their own
-// (`<introduction>`, `<conclusion>`, `<objectives>`, …) are deliberately
-// absent: splitting them produces files no author would have written.
+// division record (its own `SECTION_TAGS` matches this list). Elements that
+// are structural but never chunked on their own (`<objectives>`, …) are
+// deliberately absent: splitting them produces files no author would have
+// written.
 
 /** Root elements of a PreTeXt document. */
 export const PRETEXT_ROOT_TAGS = ["book", "article"] as const;
@@ -18,12 +19,15 @@ export const PRETEXT_DIVISION_TAGS = [
   "biography",
   "contributors",
   "part",
+  "introduction",
   "chapter",
   "section",
   "subsection",
   "subsubsection",
+  "conclusion",
   "exercises",
   "worksheet",
+  "handout",
   "reading-questions",
   "references",
   "solutions",
