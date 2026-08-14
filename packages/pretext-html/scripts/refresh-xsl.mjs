@@ -79,7 +79,8 @@ const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
 
 /**
  * Neutralize the print-preview buttons upstream puts on printout headings
- * (worksheet, handout, and whatever &PRINTOUT; grows to include later).
+ * (worksheet, handout, and whatever &PRINTOUT; grows to include later), and
+ * label them so a host can find the printouts on the page.
  *
  * Upstream's button is a link to `?printpreview=<id>`, which reloads the page
  * with a query parameter that pretext-core.js picks up on DOMContentLoaded and
@@ -87,12 +88,24 @@ const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
  * it is rendered in memory and handed to a host, so the navigation at best does
  * nothing and at worst — when the host resolves that query against its own URL,
  * as pretext.plus does — takes the reader somewhere unrelated to the document.
+ * The print-preview *layout* is reachable all the same, from the embedder's own
+ * UI: see src/printout.ts, which supplies the query parameter without a
+ * navigation.
  *
  * The button is still drawn, because its absence would misrepresent the built
- * page, but it is grayed out and carries no @href. Dropping @href is all it
- * takes to make it inert: nothing binds a click handler to `.print-link`, the
- * URL parameter is the entire mechanism. The theme's styling is class-based
- * (`.heading .print-links .print-link`), so layout is unaffected.
+ * page, but it is grayed out, carries no @href, and takes no clicks. Dropping
+ * @href is nearly enough on its own — the URL parameter is the whole mechanism
+ * — but pretext-core.js does bind one delegated handler to `a.print-link`
+ * inside a `summary` (a project born hidden as a knowl) and hands `link.href`
+ * to `location.assign`, which with no @href would navigate the preview to
+ * "undefined". `pointer-events: none` settles that for good. The theme's
+ * styling is class-based (`.heading .print-links .print-link`), so layout is
+ * unaffected either way.
+ *
+ * The `data-printout*` attributes are this package's own: they are what
+ * listPrintouts (src/printout.ts) reads to offer the reader a menu of the
+ * page's printouts. The id is the one `?printpreview=` expects, and the three
+ * label parts are kept separate so the embedder can compose them to taste.
  *
  * Matched on `*` rather than the printout element names: the generated wrapper
  * has no DTD, so the &PRINTOUT; entity the upstream template matches on is not
@@ -102,7 +115,19 @@ const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
  */
 const PRINTOUT_LINK_OVERRIDE = `<xsl:template match="*" mode="standalone-printout-links">
     <div class="print-links">
-        <a class="print-link" style="opacity:0.45;cursor:default" aria-disabled="true" title="Print preview is not available in the live preview">
+        <a class="print-link" style="opacity:0.45;cursor:default;pointer-events:none" aria-disabled="true" title="Print preview: select this printout from the live preview's own controls">
+            <xsl:attribute name="data-printout">
+                <xsl:apply-templates select="." mode="html-id"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-type">
+                <xsl:apply-templates select="." mode="type-name"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-number">
+                <xsl:apply-templates select="." mode="number"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-title">
+                <xsl:apply-templates select="." mode="title-simple"/>
+            </xsl:attribute>
             <xsl:call-template name="insert-symbol">
                 <xsl:with-param name="name" select="'print'"/>
             </xsl:call-template>
@@ -327,7 +352,10 @@ ${SUBTREE_CHUNK_LEVEL_OVERRIDE}
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->
 <!-- and a host that resolves that query against its own URL sends the reader -->
-<!-- somewhere unrelated. See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.      -->
+<!-- somewhere unrelated. The button carries data-printout* attributes all    -->
+<!-- the same, which is how the embedder finds the page's printouts and       -->
+<!-- offers the same layout from its own UI (src/printout.ts).                -->
+<!-- See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.                           -->
 ${PRINTOUT_LINK_OVERRIDE}
 
 <!-- Stub out the remaining file writers (every other template reachable    -->

@@ -356,10 +356,69 @@ describe("renderHtml", () => {
     expect(html.match(/class="print-links"/g)).toHaveLength(2);
     expect(html.match(/class="print-link"/g)).toHaveLength(2);
     // ...but it navigates nowhere: no @href at all, hence no query parameter
-    // for a host to resolve against the wrong URL.
+    // for a host to resolve against the wrong URL, and no clicks either (a
+    // print-link inside a knowl's summary is the one upstream binds a handler
+    // to, and it hands `link.href` straight to location.assign).
     expect(html).not.toContain("printpreview");
     expect(html).not.toMatch(/<a[^>]*class="print-link"[^>]*href=/);
     expect(html).toMatch(/<a class="print-link"[^>]*aria-disabled="true"/);
+    expect(html).toMatch(/<a class="print-link"[^>]*pointer-events:none/);
+  });
+
+  it("reports the page's printouts, for a host to offer print preview", async () => {
+    const { html, printouts, rootPrintout } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: PRINTOUT_ARTICLE,
+    });
+    // The ids are the ones the print-preview layout keys on, so they have to
+    // be ids the page actually carries.
+    expect(printouts.map((printout) => printout.label)).toEqual([
+      "Worksheet 1: A Worksheet",
+      "Handout 2: A Handout",
+    ]);
+    for (const printout of printouts) {
+      expect(html).toContain(`id="${printout.id}"`);
+    }
+    // This article merely contains printouts; it is not one, so it opens as
+    // itself rather than as a worksheet.
+    expect(rootPrintout).toBeUndefined();
+  });
+
+  it("defaults a lone worksheet to its own print preview", async () => {
+    const { printouts, rootPrintout } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "worksheet.ptx"),
+      projectDir,
+      fragment: true,
+      sourceContent: `<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xml:id="ws-alone">
+  <title>A Lone Worksheet</title>
+  <page>
+    <exercise><statement><p>Work it out.</p></statement>
+      <workspace height="1in"/>
+    </exercise>
+  </page>
+</worksheet>
+`,
+    });
+    expect(printouts.map((printout) => printout.id)).toEqual(["ws-alone"]);
+    expect(rootPrintout).toBe("ws-alone");
+  });
+
+  it("renders straight into the print-preview layout when asked", async () => {
+    const { html } = await renderHtml({
+      sourcePath: path.join(projectDir, "source", "main.ptx"),
+      projectDir,
+      sourceContent: PRINTOUT_ARTICLE,
+      printPreview: "handout-one",
+    });
+    // The page carries the bridge that makes pretext-core.js lay the handout
+    // out for print; printout.spec.ts covers what the bridge then does.
+    expect(html).toContain("<!--ptx-print-preview-->");
+    expect(html).toContain('"handout-one"');
+    // Together with the print controls upstream emits for a page with a
+    // printout, which are what drive paper size and headers/footers.
+    expect(html).toContain('class="print-preview-header"');
   });
 
   it("expands born-hidden knowls so preview edits are visible", async () => {

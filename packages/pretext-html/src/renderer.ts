@@ -24,6 +24,12 @@ import {
 import { openBornHiddenKnowls } from "./knowls.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import {
+  injectPrintPreview,
+  listPrintouts,
+  rootPrintoutId,
+  type PrintoutInfo,
+} from "./printout.js";
+import {
   forcePortablePublication,
   readAssetDirectories,
 } from "./publication.js";
@@ -267,6 +273,21 @@ export interface RenderOptions {
    * settings"), so there is no default text here.
    */
   previewBanner?: PreviewBannerOptions;
+  /**
+   * Open the page in the print-preview layout for the printout with this HTML
+   * id — paginated to a paper size, headers and footers, workspaces at their
+   * true height (see printout.ts). The ids to choose from come back as
+   * {@link RenderResult.printouts}; {@link RenderResult.rootPrintout} names the
+   * one worth defaulting to.
+   *
+   * Omit for the ordinary layout, which leaves the output byte-identical to a
+   * render without this option. An embedder that toggles the layout should
+   * re-inject over the rendered HTML instead of re-rendering
+   * (`injectPrintPreview`), which is both instant and — because it states the
+   * *off* case explicitly — the only way to leave print preview in a host that
+   * rewrites its document in place.
+   */
+  printPreview?: string;
 }
 
 export interface RenderResult {
@@ -280,6 +301,20 @@ export interface RenderResult {
   target: RenderTarget;
   /** Present when RenderOptions.sourceMap was set. */
   sourceMap?: PtxSourceMap;
+  /**
+   * The page's printouts — worksheets, handouts, and projects with a workspace
+   * — in document order, each of which can be shown in the print-preview
+   * layout (see printout.ts). Empty when the document has none, which is also
+   * when the page carries no print controls to drive that layout with.
+   */
+  printouts: PrintoutInfo[];
+  /**
+   * The printout to open in print preview by default, set when the rendered
+   * document *is* a printout rather than merely containing some — previewing a
+   * `worksheet.ptx`, whose root element is the `<worksheet>` itself. Undefined
+   * otherwise, meaning the page should open in the ordinary layout.
+   */
+  rootPrintout?: string;
   /**
    * Absolute directories that the `external/` and `generated/` URL prefixes in
    * `html` refer to, resolved from the publication file against the main
@@ -961,11 +996,22 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
       if (options.previewBanner) {
         html = injectPreviewBanner(html, options.previewBanner);
       }
+      // A deck has no printouts and none of the print controls that drive the
+      // layout, so this is a document-only affair.
+      const printouts = target === "slides" ? [] : listPrintouts(html);
+      // The root element as authored, before any fragment wrapping: that is
+      // what says whether this document *is* a printout. See rootPrintoutId.
+      const rootPrintout = rootPrintoutId(printouts, rootElement);
+      if (options.printPreview) {
+        html = injectPrintPreview(html, options.printPreview);
+      }
       return {
         html,
         target,
+        printouts,
         ...(sourceMap ? { sourceMap } : {}),
         ...(assetDirs ? { assetDirs } : {}),
+        ...(rootPrintout ? { rootPrintout } : {}),
       };
     } catch (error) {
       throwIfWasmFailure(error);

@@ -125,6 +125,14 @@ function previewBannerCss(): string {
     ".ptx-preview-banner-restore:hover {",
     "  opacity: 0.85;",
     "}",
+    // Printing a preview is a real workflow — the print-preview layout exists
+    // to be printed from (see printout.ts) — and a warning about the preview
+    // has no business on the paper.
+    "@media print {",
+    "  .ptx-preview-banner, .ptx-preview-banner-restore {",
+    "    display: none !important;",
+    "  }",
+    "}",
     "</style>",
   ].join("\n");
 }

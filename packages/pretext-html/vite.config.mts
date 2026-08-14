@@ -86,6 +86,10 @@ export default defineConfig(({ mode }) => {
               // a deck between scroll and presentation view re-injects into
               // HTML already rendered, which is host-side work.
               reveal: "src/reveal.ts",
+              // And for the print-preview layout, which is host-side for the
+              // same reason again: entering and leaving it only re-injects a
+              // bridge into HTML the renderer already produced.
+              printout: "src/printout.ts",
             },
         // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI
         // anyway, so there is no CommonJS audience for this package.

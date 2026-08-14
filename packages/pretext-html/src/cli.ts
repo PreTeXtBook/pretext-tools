@@ -7,6 +7,7 @@
 
 import { readFile, writeFile } from "node:fs/promises";
 import * as process from "node:process";
+import { injectPrintPreview } from "./printout.js";
 import { renderHtml, type RenderOptions } from "./renderer.js";
 
 const USAGE = `Usage: pretext-html <source.ptx> [options]
@@ -47,6 +48,12 @@ Options:
                             knowls collapsed, as a real PreTeXt build does.
                             They are expanded by default, since these pages
                             are previews of work in progress
+  --print-preview[=id]      Open the page in the print-preview layout: the
+                            named printout paginated to a paper size, with
+                            workspaces at their true height. Without an id, the
+                            document's own printout is used (a lone worksheet
+                            or handout), or failing that its first. The page's
+                            printouts are listed on stderr
   -h, --help                Show this help
 `;
 
@@ -55,6 +62,13 @@ interface CliArgs {
   output?: string;
   docinfoPath?: string;
   sourceMapPath?: string;
+  /**
+   * `--print-preview`: a printout id, or `true` for "whichever printout this
+   * document is about". Which one that is cannot be known until the page has
+   * been rendered, so unlike the other options this one is applied afterwards
+   * (see main).
+   */
+  printPreview?: string | true;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -62,6 +76,7 @@ export function parseArgs(argv: string[]): CliArgs {
   let output: string | undefined;
   let docinfoPath: string | undefined;
   let sourceMapPath: string | undefined;
+  let printPreview: string | true | undefined;
   const options: Partial<RenderOptions> = {};
   const stringParams: Record<string, string> = {};
 
@@ -118,6 +133,11 @@ export function parseArgs(argv: string[]): CliArgs {
         sourceMapPath = next();
         options.sourceMap = true;
         break;
+      // Attached form only (--print-preview=<id>), so that a bare
+      // --print-preview cannot swallow the source file as its id.
+      case "--print-preview":
+        printPreview = true;
+        break;
       case "--param": {
         const pair = next();
         const eq = pair.indexOf("=");
@@ -128,6 +148,10 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       }
       default:
+        if (arg.startsWith("--print-preview=")) {
+          printPreview = arg.slice("--print-preview=".length);
+          break;
+        }
         if (arg.startsWith("-")) {
           throw new Error(`Unknown option: ${arg}`);
         }
@@ -149,17 +173,42 @@ export function parseArgs(argv: string[]): CliArgs {
     output,
     docinfoPath,
     sourceMapPath,
+    printPreview,
   };
 }
 
 export async function main(argv: string[]): Promise<void> {
-  const { options, output, docinfoPath, sourceMapPath } = parseArgs(argv);
+  const { options, output, docinfoPath, sourceMapPath, printPreview } =
+    parseArgs(argv);
   if (docinfoPath) {
     options.docinfo = await readFile(docinfoPath, "utf8");
   }
   const started = Date.now();
-  const { html, sourceMap } = await renderHtml(options);
+  const result = await renderHtml(options);
+  const { sourceMap, printouts, rootPrintout } = result;
+  let html = result.html;
   process.stderr.write(`pretext-html: rendered in ${Date.now() - started}ms\n`);
+  if (printPreview !== undefined) {
+    for (const printout of printouts) {
+      process.stderr.write(
+        `pretext-html: printout ${printout.id} - ${printout.label}\n`,
+      );
+    }
+    const wanted =
+      typeof printPreview === "string"
+        ? printPreview
+        : (rootPrintout ?? printouts[0]?.id);
+    if (wanted) {
+      process.stderr.write(`pretext-html: print preview of ${wanted}\n`);
+      html = injectPrintPreview(html, wanted);
+    } else {
+      process.stderr.write(
+        "pretext-html: --print-preview: this document has no printouts " +
+          "(worksheet, handout, or project with a workspace); writing the " +
+          "ordinary page.\n",
+      );
+    }
+  }
   if (sourceMapPath && sourceMap) {
     await writeFile(sourceMapPath, JSON.stringify(sourceMap, null, 2));
     process.stderr.write(`pretext-html: wrote ${sourceMapPath}\n`);
