@@ -232,7 +232,19 @@
 <!-- somewhere unrelated. See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.      -->
 <xsl:template match="*" mode="standalone-printout-links">
     <div class="print-links">
-        <a class="print-link" style="opacity:0.45;cursor:default" aria-disabled="true" title="Print preview is not available in the live preview">
+        <a class="print-link" style="opacity:0.45;cursor:default;pointer-events:none" aria-disabled="true" title="Print preview: select this printout from the live preview's own controls">
+            <xsl:attribute name="data-printout">
+                <xsl:apply-templates select="." mode="html-id"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-type">
+                <xsl:apply-templates select="." mode="type-name"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-number">
+                <xsl:apply-templates select="." mode="number"/>
+            </xsl:attribute>
+            <xsl:attribute name="data-printout-title">
+                <xsl:apply-templates select="." mode="title-simple"/>
+            </xsl:attribute>
             <xsl:call-template name="insert-symbol">
                 <xsl:with-param name="name" select="'print'"/>
             </xsl:call-template>

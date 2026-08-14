@@ -24,6 +24,7 @@ import {
   runCli,
   type PreviewBannerOptions,
   type PreviewTheme,
+  type PrintoutInfo,
   type PtxSourceMap,
   type RenderOptions,
   type RenderTarget,
@@ -82,6 +83,15 @@ type RenderResponse =
       sourceMap?: PtxSourceMap;
       /** Real directories behind the page's `external/`/`generated/` URLs. */
       assetDirs?: { external: string; generated: string };
+      /**
+       * The page's printouts (worksheets, handouts, and projects with a
+       * workspace), which the toolbar offers a print preview of. Entering that
+       * layout is host-side work — it only re-injects a bridge into this same
+       * HTML — so just the menu has to travel.
+       */
+      printouts: PrintoutInfo[];
+      /** The printout to open in print preview by default, if there is one. */
+      rootPrintout?: string;
     }
   | { id: number; ok: false; error: string };
 
@@ -158,7 +168,7 @@ function serve(): void {
         previewBanner: request.previewBanner,
       };
       try {
-        const { html, target, sourceMap, assetDirs } =
+        const { html, target, sourceMap, assetDirs, printouts, rootPrintout } =
           await renderHtml(options);
         const response: RenderResponse = {
           id: request.id,
@@ -168,6 +178,8 @@ function serve(): void {
           target,
           sourceMap,
           assetDirs,
+          printouts,
+          rootPrintout,
         };
         send(response);
       } catch (error) {

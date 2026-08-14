@@ -73,6 +73,20 @@ export {
   previewBannerScript,
 } from "./banner.js";
 export type { PreviewBannerOptions } from "./banner.js";
+// The print-preview layout for worksheets, handouts and workspace-bearing
+// projects (see printout.ts). The renderer injects it when
+// RenderOptions.printPreview is set and reports the page's printouts either
+// way; embedders re-inject over rendered HTML to switch the layout without a
+// re-render. Also published as the dependency-free
+// "@pretextbook/pretext-html/printout" subpath.
+export {
+  PRINT_PREVIEW_GLOBAL,
+  injectPrintPreview,
+  listPrintouts,
+  printPreviewBridgeScript,
+  rootPrintoutId,
+} from "./printout.js";
+export type { PrintoutInfo } from "./printout.js";
 // The CLI driver, re-exported so embedders that fork a bundled worker (the
 // VS Code extension) can reuse the argument parsing and stdout protocol.
 export { main as runCli } from "./cli.js";

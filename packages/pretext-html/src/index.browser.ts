@@ -56,6 +56,14 @@ export {
   previewBannerScript,
 } from "./banner.js";
 export type { PreviewBannerOptions } from "./banner.js";
+export {
+  PRINT_PREVIEW_GLOBAL,
+  injectPrintPreview,
+  listPrintouts,
+  printPreviewBridgeScript,
+  rootPrintoutId,
+} from "./printout.js";
+export type { PrintoutInfo } from "./printout.js";
 // Where this package's assets/ directory is served from. Browser-only: under
 // Node the equivalent is the PRETEXT_HTML_ASSETS environment variable.
 export { setAssetsBase } from "./host.js";

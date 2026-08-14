@@ -259,6 +259,67 @@ Two further notes:
   to a live deck — deliver it as a fresh document (`webview.html = …`, not an
   in-place rewrite) for the change to take.
 
+### Print preview (worksheets and handouts)
+
+A worksheet or handout is written to be printed, and PreTeXt lays one out very
+differently on paper than on screen: paginated to a paper size, headers and
+footers per sheet, solutions dropped, and every `<workspace>` grown to the
+height the author asked for — which is the only way to see how much room a
+student really gets. A built page reaches that layout through a URL query
+parameter (`?printpreview=<id>`), which an in-memory preview has nowhere to put.
+
+```js
+import { renderHtml } from "@pretextbook/pretext-html";
+// dependency-free subpath, like ./theme and ./reveal:
+import { injectPrintPreview } from "@pretextbook/pretext-html/printout";
+
+const { html, printouts, rootPrintout } = await renderHtml({
+  sourcePath: "source/worksheet-3.ptx",
+  fragment: true,
+});
+
+printouts; // [{ id: "ws-3", type: "Worksheet", number: "3",
+//              title: "Counting", label: "Worksheet 3: Counting" }]
+rootPrintout; // "ws-3" — this document *is* a printout, so open it on paper
+
+// Enter (or leave) the layout later — no re-render, just re-inject:
+const onPaper = injectPrintPreview(html, "ws-3");
+const onScreen = injectPrintPreview(html); // back to the ordinary page
+```
+
+`printouts` lists what the page offers, ready for a menu; `rootPrintout` is set
+only when the rendered document is a printout rather than merely containing
+some, which is the case worth defaulting to. Passing `printPreview: "<id>"` to
+`renderHtml` bakes the layout in at render time instead.
+
+Three things to know if you embed this:
+
+- **State the layout on every delivery, off included.** The injected bridge
+  keeps its answer on a window property, and a host that rewrites its document
+  in place (`document.open`/`write`/`close`) keeps the same `Window` — so a page
+  delivered without a bridge inherits whatever the previous one said. Call
+  `injectPrintPreview` on the way to the panel, every time.
+- **An unknown id is treated as "off".** pretext-core.js swaps in the print
+  stylesheet _before_ it looks the element up, so a stale id would strand the
+  reader on a print-styled page with nothing on it.
+- **The transformation is one-way.** It runs once, from a DOMContentLoaded
+  handler, and rearranges the DOM destructively; leaving print preview means
+  re-delivering the pristine HTML, not undoing anything.
+- **The print layout is always light**, whatever theme you asked for. Paper is,
+  and `print-worksheet.css` carries no dark palette — only a few incidental
+  `.dark-mode` rules — so the injection removes the `dark-mode` class and sets
+  `data-darkmode="disabled"`, which both pretext-core.js and the theme bridge
+  honour (a later `previewThemeMessage` cannot undo it). It also states the page
+  background explicitly: the print stylesheet paints none, expecting the theme
+  it replaced to have done it, so an embedded page would otherwise show its
+  host's backdrop through black print text. The ordinary page is untouched and
+  keeps its theme.
+
+The print stylesheet is fetched from the CDN when the layout is entered, and
+pretext-core.js waits for its `load` event before continuing — so with no
+network the page stops part-way, unstyled. That is upstream's flow, unchanged
+here.
+
 ## Requirements
 
 - **Node ≥ 24** launched with **`--experimental-wasm-jspi`** (WebAssembly

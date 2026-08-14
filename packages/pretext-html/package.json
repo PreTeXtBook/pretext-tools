@@ -26,6 +26,9 @@
       ],
       "reveal": [
         "./dist/reveal.d.ts"
+      ],
+      "printout": [
+        "./dist/printout.d.ts"
       ]
     }
   },
@@ -56,6 +59,11 @@
       "types": "./dist/reveal.d.ts",
       "import": "./dist/reveal.js",
       "default": "./dist/reveal.js"
+    },
+    "./printout": {
+      "types": "./dist/printout.d.ts",
+      "import": "./dist/printout.js",
+      "default": "./dist/printout.js"
     },
     "./cli": "./dist/cli.js"
   },

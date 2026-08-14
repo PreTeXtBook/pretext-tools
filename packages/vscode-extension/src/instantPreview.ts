@@ -64,6 +64,13 @@ import {
   injectRevealBridge,
   type RevealView,
 } from "@pretextbook/pretext-html/reveal";
+// And another: entering or leaving the print-preview layout for a worksheet or
+// handout only re-injects a bridge into HTML the worker already rendered, so it
+// costs no round trip either. See @pretextbook/pretext-html/printout.
+import {
+  injectPrintPreview,
+  type PrintoutInfo,
+} from "@pretextbook/pretext-html/printout";
 import {
   ensureCliServer,
   runCliBuild,
@@ -84,13 +91,30 @@ let currentSource: SourceInfo | undefined;
 // sourcemap.ts): HTML element ids ↔ source file/line, powering two-way sync.
 // Indexed by (normalized) file for cursor-follow and by id for click-to-source.
 /**
- * The last slideshow page the worker produced, held only so
- * {@link toggleSlidesView} can re-deliver it in the other view. Undefined
- * whenever the panel is showing an ordinary document, which is also what the
- * `previewIsSlideshow` context key reports to the command's `when` clause.
+ * The last page the worker produced, exactly as it produced it, so the panel
+ * can be re-delivered without a re-render.
+ *
+ * Two controls need that: the slideshow view toggle (reveal reads its view once,
+ * at initialize) and the print-preview layout (pretext-core.js applies it once,
+ * on DOMContentLoaded, destructively). Both are properties of *this* HTML, and
+ * both are re-injected from the pristine copy rather than from whatever is
+ * currently in the panel — the injections replace their own earlier block, and
+ * starting from untouched output keeps that simple.
+ *
+ * Undefined before the first successful live render, and again once the panel
+ * closes.
  */
 let lastRender:
-  | { html: string; assetDirs?: { external: string; generated: string } }
+  | {
+      html: string;
+      assetDirs?: { external: string; generated: string };
+      /** "slides" for a reveal.js deck; decides which controls apply. */
+      target: "html" | "slides";
+      /** The page's printouts, for the toolbar's print-preview menu. */
+      printouts: PrintoutInfo[];
+      /** The printout this document is *about*, when it is about one. */
+      rootPrintout?: string;
+    }
   | undefined;
 
 let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
@@ -188,6 +212,13 @@ interface RenderResponse {
    * Absent for legacy projects that declare neither in their publication file.
    */
   assetDirs?: { external: string; generated: string };
+  /**
+   * The page's printouts, for the toolbar's print-preview menu. Optional so a
+   * response from an older worker (mid-upgrade, before a restart) still parses.
+   */
+  printouts?: PrintoutInfo[];
+  /** The printout to open in print preview by default, if the page has one. */
+  rootPrintout?: string;
 }
 
 interface SourceInfo {
@@ -217,6 +248,19 @@ function previewScope(): PreviewScope {
     .getConfiguration("pretext-tools")
     .get<string>("instantPreview.scope", "current-file");
   return scope === "project" ? "project" : "current-file";
+}
+
+/**
+ * The file the live preview renders right now: the active one, or the project's
+ * main file in whole-project scope. Undefined before there is a source at all.
+ */
+function currentRenderPath(): string | undefined {
+  if (!currentSource) {
+    return undefined;
+  }
+  return previewScope() === "project"
+    ? (currentSource.mainSourcePath ?? currentSource.activePath)
+    : currentSource.activePath;
 }
 
 /**
@@ -260,6 +304,51 @@ let revealViewOverride: RevealView | undefined;
 /** The view a slideshow render should use right now. */
 function currentRevealView(): RevealView {
   return revealViewOverride ?? configuredRevealView();
+}
+
+/**
+ * Which printout the reader picked from the toolbar, if any:
+ *
+ * - `undefined` — no choice made; the document's own default applies, which
+ *   means print preview for a file that *is* a worksheet or handout and the
+ *   ordinary page for anything else.
+ * - `null` — explicitly the ordinary page, outranking that default.
+ * - a string — that printout, in the print-preview layout.
+ *
+ * A per-file choice, not a session-wide one: {@link renderToPanel} clears it
+ * when the preview moves to another source file. Deciding to look at worksheet
+ * 3 on paper says nothing about the chapter opened next, and a choice that
+ * outlived its file would either strand the reader in a layout they asked for
+ * once or suppress the default on a worksheet they went on to open.
+ */
+let printoutChoice: string | null | undefined;
+
+/** The file {@link printoutChoice} was made about; see there. */
+let printoutChoicePath: string | undefined;
+
+/**
+ * The printout the panel should be showing right now — the reader's choice
+ * when they made one and it still exists on the page, the document's own
+ * default otherwise, and undefined for the ordinary layout.
+ *
+ * Validated against the page rather than trusted, because the same choice
+ * survives every rebuild of the file it was made about: rename the worksheet's
+ * `xml:id`, or delete it mid-edit, and the id it names is simply gone. Falling
+ * back to the default beats asking pretext-core.js for a printout that is not
+ * there (which strands the page in print styling with nothing on it).
+ */
+function currentPrintout(): string | undefined {
+  const printouts = lastRender?.printouts ?? [];
+  if (printoutChoice === null) {
+    return undefined;
+  }
+  if (
+    printoutChoice !== undefined &&
+    printouts.some((printout) => printout.id === printoutChoice)
+  ) {
+    return printoutChoice;
+  }
+  return lastRender?.rootPrintout;
 }
 
 /**
@@ -384,7 +473,9 @@ function setupConfigWatcher(extensionPath: string): void {
         // nothing until the panel was reopened.
         revealViewOverride = undefined;
       }
-      redeliverSlideshow();
+      if (isSlideshowPreview()) {
+        redeliverPreview({ fresh: true });
+      }
     }
   });
 }
@@ -521,6 +612,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
           mode?: unknown;
           path?: unknown;
           follow?: unknown;
+          id?: unknown;
         };
         switch (msg?.command) {
           case "revealSource":
@@ -553,6 +645,12 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
                     : ConfigurationTarget.Global,
                 );
             }
+            return;
+          case "setPrintout":
+            // "" is the menu's "Off" entry: the ordinary page, deliberately.
+            setPreviewPrintout(
+              typeof msg.id === "string" && msg.id ? msg.id : undefined,
+            );
             return;
           case "slidesScroll":
             setPreviewSlidesView("scroll");
@@ -637,7 +735,7 @@ export async function cmdInstantPreviewScope(
 
 /** True when the page currently in the panel is a reveal.js deck. */
 function isSlideshowPreview(): boolean {
-  return lastRender !== undefined;
+  return lastRender?.target === "slides";
 }
 
 /**
@@ -680,24 +778,35 @@ function cmdStepPreviewSlidesZoom(delta: number): void {
 }
 
 /**
- * Re-inject the current deck and put it back in the panel.
+ * Put the last rendered page back in the panel, with the view controls applied
+ * as they now stand.
  *
- * Shared by the view toggle and the zoom stepper because both change only what
- * reveal is initialized with. Always injects from the worker's untouched
- * output, never from the previously injected page: the script guards against
- * double-wrapping but re-injection has to replace the whole block, and
- * starting from pristine HTML keeps that simple.
+ * Shared by the slideshow view toggle, the zoom stepper and the print-preview
+ * menu: none of them changes the *document*, only how the page it produced
+ * presents itself, so all three re-inject rather than re-render — instant even
+ * on a book-sized deck. Always injects into the worker's untouched output, never
+ * into the previously injected page: each injection replaces its own earlier
+ * block, and starting from pristine HTML keeps that simple.
+ *
+ * `fresh` forces a new document via webview.html rather than the usual in-place
+ * rewrite. Slideshows need it — reveal reads its view and slide size once, at
+ * initialize — but the print-preview layout does not: pretext-core.js applies
+ * that from a DOMContentLoaded handler, which a `document.write` fires just as a
+ * reload does, and the in-place path keeps the CDN assets already loaded.
  */
-function redeliverSlideshow(): void {
+function redeliverPreview({ fresh = false } = {}): void {
   if (!currentPanel || !lastRender) {
     return;
   }
-  const html = injectRevealBridge(lastRender.html, currentRevealView(), {
-    zoom: previewSlidesZoom(),
-  });
-  // Straight to webview.html rather than the in-place rewrite: reveal reads
-  // its view and slide size once, at initialize, so both need a new document.
-  panelHasContent = false;
+  const html =
+    lastRender.target === "slides"
+      ? injectRevealBridge(lastRender.html, currentRevealView(), {
+          zoom: previewSlidesZoom(),
+        })
+      : lastRender.html;
+  if (fresh) {
+    panelHasContent = false;
+  }
   updatePanelContent(
     prepareWebviewHtml(
       html,
@@ -740,9 +849,38 @@ function setPreviewSlidesView(view: RevealView): void {
     return;
   }
   revealViewOverride = view;
-  redeliverSlideshow();
+  redeliverPreview({ fresh: true });
   pretextOutputChannel.appendLine(
     `[Instant Preview] Slideshow view: ${view === "scroll" ? "scrolling deck" : "presentation"}`,
+  );
+}
+
+/**
+ * Show one of the page's printouts in the print-preview layout — paginated to
+ * a paper size, with each `<workspace>` at the height it will really have — or,
+ * with no id, the ordinary page again.
+ *
+ * No re-render: the layout is applied by pretext-core.js from the HTML the
+ * worker already produced (see @pretextbook/pretext-html/printout), so this
+ * only re-delivers the page with the bridge set the other way.
+ *
+ * The choice is remembered for as long as the preview stays on this file, and
+ * outranks the automatic default until then — including the "off" choice, so a
+ * reader who leaves the print layout on a lone worksheet is not put straight
+ * back into it by the next save.
+ */
+function setPreviewPrintout(id: string | undefined): void {
+  // The menu is hidden in full-build mode, whose page is an iframe onto the
+  // CLI server — re-delivering the live page over it would be a surprise.
+  if (!lastRender || previewMode !== "live") {
+    return;
+  }
+  printoutChoice = id ?? null;
+  printoutChoicePath = currentRenderPath();
+  redeliverPreview();
+  const printout = lastRender.printouts.find((entry) => entry.id === id);
+  pretextOutputChannel.appendLine(
+    `[Instant Preview] Print preview: ${printout ? printout.label : "off"}`,
   );
 }
 
@@ -1193,10 +1331,14 @@ function renderToPanel(extensionPath: string): void {
   }
 
   const scope = previewScope();
-  const renderPath =
-    scope === "project"
-      ? (currentSource.mainSourcePath ?? currentSource.activePath)
-      : currentSource.activePath;
+  const renderPath = currentRenderPath() ?? currentSource.activePath;
+
+  // A printout picked from the toolbar belongs to the file it was picked on;
+  // moving the preview elsewhere hands the new page back to its own default.
+  if (printoutChoicePath !== renderPath) {
+    printoutChoice = undefined;
+    printoutChoicePath = undefined;
+  }
 
   currentPanel.title =
     scope === "project"
@@ -1290,12 +1432,16 @@ function handleRenderResponse(message: RenderResponse): void {
     }
     crashRetries = 0;
     applySourceMap(message.sourceMap);
-    // Kept so the view can be toggled without a re-render: the toggle only
-    // rewrites reveal's config, which is a property of this exact HTML.
-    lastRender =
-      message.target === "slides"
-        ? { html, assetDirs: message.assetDirs }
-        : undefined;
+    // Kept so the view controls can be applied without a re-render: both the
+    // slideshow view and the print-preview layout are properties of this exact
+    // HTML, not of the document behind it.
+    lastRender = {
+      html,
+      assetDirs: message.assetDirs,
+      target: message.target === "slides" ? "slides" : "html",
+      printouts: message.printouts ?? [],
+      rootPrintout: message.rootPrintout,
+    };
     void commands.executeCommand(
       "setContext",
       "pretext-tools.previewIsSlideshow",
@@ -1644,6 +1790,26 @@ function toolbarCss(): string {
     "  opacity: 0.75; min-width: 3.2em; text-align: center;",
     "  font-variant-numeric: tabular-nums;",
     "}",
+    // The print-preview menu, shown only for a page that has printouts.
+    "#ptx-tools-bar:not([data-printouts='yes']) .ptx-tools-printout {",
+    "  display: none;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-printout {",
+    "  display: flex; align-items: center; gap: 4px;",
+    "}",
+    "#ptx-tools-bar .ptx-tools-printout label { opacity: 0.75; }",
+    "#ptx-tools-bar select {",
+    "  font: inherit; color: inherit; background: var(--ptx-tools-btn);",
+    "  border: 1px solid var(--ptx-tools-border); border-radius: 4px;",
+    "  padding: 2px 4px; cursor: pointer; max-width: 22em;",
+    "}",
+    // A printout being previewed is a printout on its way to a printer, and
+    // the toolbar has no business on the paper. The layout offset goes with it
+    // — see toolbarLayoutCss, which sets it.
+    "@media print {",
+    "  #ptx-tools-bar { display: none !important; }",
+    "  body { padding-top: 0 !important; }",
+    "}",
     "</style>",
   ].join("\n");
 }
@@ -1667,6 +1833,37 @@ function toolbarLayoutCss(): string {
   ].join("\n");
 }
 
+/**
+ * The print-preview menu: which of the page's printouts is laid out for paper,
+ * or none of them.
+ *
+ * One control for both cases the reader meets — a file that *is* a worksheet
+ * (one entry, already selected, so the menu just says what is being shown and
+ * how to leave it) and a chapter with several in it (pick one). Rendered as a
+ * `<select>` because the page it belongs to is replaced wholesale on every
+ * delivery, so the selected option *is* the state; there is nothing to keep in
+ * sync.
+ */
+function printoutMenuHtml(): string {
+  const printouts = lastRender?.printouts ?? [];
+  const selected = currentPrintout();
+  const option = (value: string, label: string) =>
+    `    <option value="${escapeHtml(value)}"` +
+    `${value === (selected ?? "") ? " selected" : ""}>` +
+    `${escapeHtml(label)}</option>`;
+  return [
+    '  <span class="ptx-tools-printout ptx-tools-live-only">',
+    '    <label for="ptx-tools-printout-select">Print preview</label>',
+    '    <select id="ptx-tools-printout-select"',
+    '      title="Show a worksheet or handout as it will print: paginated to a' +
+      ' paper size, with room to write in every workspace">',
+    option("", "Off"),
+    ...printouts.map((printout) => option(printout.id, printout.label)),
+    "    </select>",
+    "  </span>",
+  ].join("\n");
+}
+
 /** The toolbar markup for a given mode. `status` is the initial hint text. */
 function toolbarHtml(mode: PreviewMode, status: string): string {
   const pressed = (which: PreviewMode) => (which === mode ? "true" : "false");
@@ -1676,9 +1873,15 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
   const slides = isSlideshowPreview();
   const view = currentRevealView();
   const zoomPercent = Math.round(previewSlidesZoom() * 100);
+  // Likewise the print-preview menu, which is only shown for a page that has
+  // printouts on it — and only there is there anything to drive it with, since
+  // PreTeXt emits the paper-size and print-options controls for such pages
+  // alone.
+  const printouts = (lastRender?.printouts ?? []).length > 0;
   return [
     `<div id="ptx-tools-bar" data-mode="${mode}" data-scope="${previewScope()}"` +
-      ` data-slides="${slides ? "yes" : "no"}" data-slides-view="${view}">`,
+      ` data-slides="${slides ? "yes" : "no"}" data-slides-view="${view}"` +
+      ` data-printouts="${printouts ? "yes" : "no"}">`,
     '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
     '    <button type="button" data-ptx-mode="live"',
     `      aria-pressed="${pressed("live")}"`,
@@ -1709,6 +1912,7 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
     '      title="Show one slide at a time, with pauses, as it will be presented">',
     "      Present</button>",
     "  </div>",
+    printoutMenuHtml(),
     '  <button type="button" class="ptx-tools-live-only ptx-tools-file-only"',
     '    data-ptx-action="toggleFollow"',
     `    aria-pressed="${followActiveEditor() ? "true" : "false"}"`,
@@ -1774,6 +1978,14 @@ const TOOLBAR_SCRIPT_LINES: string[] = [
   "      }",
   "      api.postMessage({ command: action });",
   "    });",
+  // The print-preview menu is a <select>, so it reports through 'change'
+  // rather than the click handler above. Nothing to update optimistically: the
+  // extension answers by delivering a whole new page, selection included.
+  "    bar.addEventListener('change', function (event) {",
+  "      var select = event.target;",
+  "      if (!select || select.id !== 'ptx-tools-printout-select') { return; }",
+  "      api.postMessage({ command: 'setPrintout', id: select.value });",
+  "    });",
   "  }",
 ];
 
@@ -1833,10 +2045,18 @@ function assetUriResolver(
 
 /**
  * Adapt the standalone page for a VS Code webview: retarget project assets at
- * real files, allow CDN assets through a CSP meta tag, and add a bootstrap
+ * real files, put it in the print-preview layout when that is what the reader
+ * asked for, allow CDN assets through a CSP meta tag, and add a bootstrap
  * script that (a) preserves the scroll position across rebuilds and (b)
  * applies "update" messages from the extension by rewriting the document in
  * place (see updatePanelContent).
+ *
+ * The print-preview state is applied *here*, on the way to the panel, rather
+ * than beside the toolbar action that changes it — because every delivery has
+ * to state it. A rebuild while the reader is looking at a worksheet on paper
+ * must come back on paper, and the in-place rewrite that delivers it reuses the
+ * same Window, where a bridge from the previous page is still installed: a page
+ * that said nothing would inherit that stale answer rather than its own.
  */
 function prepareWebviewHtml(
   html: string,
@@ -1844,9 +2064,10 @@ function prepareWebviewHtml(
   projectDir: string,
   assetDirs?: { external: string; generated: string },
 ): string {
-  const page = assetDirs
+  const retargeted = assetDirs
     ? rewriteAssetUrls(html, assetUriResolver(webview, assetDirs, projectDir))
     : html;
+  const page = injectPrintPreview(retargeted, currentPrintout());
   const cspTag = cspMetaTag(webview);
   // Runs once per document, including documents written by the update path
   // below (the extension injects this same script into every rendered page).
@@ -2320,8 +2541,11 @@ export function disposeInstantPreview(): void {
   sourceMapById = undefined;
   lastRender = undefined;
   // A toggled view lasts as long as the panel does; the next one starts from
-  // the setting again.
+  // the setting again. Same for a picked printout, which does not even outlive
+  // moving the preview to another file.
   revealViewOverride = undefined;
+  printoutChoice = undefined;
+  printoutChoicePath = undefined;
   void commands.executeCommand(
     "setContext",
     "pretext-tools.previewIsSlideshow",
