@@ -37,7 +37,7 @@
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
-    "@pretextbook/latex-pretext": "^0.0.13"
+    "@pretextbook/latex-pretext": "*"
   },
   "publishConfig": {
     "access": "public"

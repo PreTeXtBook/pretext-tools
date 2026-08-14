@@ -12,7 +12,7 @@
  */
 
 /** html-static release, passed to the stylesheets as `cli.version`. */
-export const HTML_STATIC_VERSION = "2.48.1";
+export const HTML_STATIC_VERSION = "2.49.1";
 
 /** Runestone Services release built into it, reported as `eBookConfig.runestone_version`. */
 export const RUNESTONE_VERSION = "8.2.4";
