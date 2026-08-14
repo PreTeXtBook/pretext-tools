@@ -1,5 +1,11 @@
 # @pretextbook/latex-style-pretext
 
+## 0.1.1
+
+### Patch Changes
+
+- d537383: Updates to latex-to-pretext
+
 ## 0.1.0
 
 ### Minor Changes
