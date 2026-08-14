@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.10.1
+
+### Patch Changes
+
+- d537383: Updates to latex-to-pretext
+
 ## 0.10.0
 
 ### Minor Changes
