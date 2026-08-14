@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.11.0
+
+### Minor Changes
+
+- 3acaf89: Add print preview for live preview
+
 ## 0.10.1
 
 ### Patch Changes
