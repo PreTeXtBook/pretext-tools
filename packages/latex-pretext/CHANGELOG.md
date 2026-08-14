@@ -1,5 +1,11 @@
 # @pretextbook/latex-pretext
 
+## 0.0.16
+
+### Patch Changes
+
+- 82ef8b2: add bibtex to latex-to-pretext
+
 ## 0.0.15
 
 ### Patch Changes
