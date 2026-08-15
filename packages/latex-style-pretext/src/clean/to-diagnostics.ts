@@ -18,6 +18,12 @@ import {
   type LatexFix,
 } from "./find-fixes";
 import { KIND_DESCRIPTIONS, type MacroAlternative } from "./rules";
+import {
+  readMacroCall,
+  removalsAreEquivalent,
+  unwrapMacroText,
+  type MacroCall,
+} from "./macro-call";
 
 /**
  * Diagnostic source for cleaning findings. Deliberately distinct from `lint/`'s
@@ -150,7 +156,7 @@ export function latexFixesToCodeActions(
       continue;
     }
 
-    actions.push(...alternativeActions(text, fixes, fix, uri));
+    actions.push(...flaggedMacroActions(text, fixes, fix, uri));
   }
 
   if (includeCleanAll) {
@@ -185,60 +191,123 @@ export function latexFixesToCodeActions(
 }
 
 /**
- * Quick fixes for a flagged macro: one per semantic alternative, and — when the
- * same macro is flagged more than once — a "replace all" twin, the way a spell
- * checker offers both "Change" and "Change All".
+ * Quick fixes for a flagged macro, in increasing order of destructiveness:
+ * swap it for a semantic macro, drop the markup but keep the words, or delete
+ * the whole thing. Each gets an "all occurrences" twin once the macro appears
+ * more than once, the way a spell checker offers both "Change" and "Change All".
  *
  * Nothing here is ever applied automatically. `cleanLatexText` only applies
- * fixes that carry a `replacement`, and an alternative deliberately does not:
- * choosing between `\alert`, `\term` and `\emph` is a decision about meaning,
- * not a defect to repair, so it stays with the author.
+ * fixes that carry a `replacement`, and a flagged macro deliberately does not:
+ * choosing between `\alert`, `\term`, plain text, and nothing at all is a
+ * decision about meaning, not a defect to repair, so it stays with the author.
  */
-function alternativeActions(
+function flaggedMacroActions(
   text: string,
   allFixes: LatexFix[],
   fix: LatexFix,
   uri: string,
 ): CodeAction[] {
-  if (!fix.alternatives?.length) return [];
-
   const diagnostics = latexFixesToDiagnostics(text, [fix]);
   // "All" means every occurrence of the *same* macro. Sweeping up `\textit`
   // alongside `\textbf` would answer a question the author was not asked.
   const siblings = allFixes.filter((other) => other.ruleId === fix.ruleId);
-
   const actions: CodeAction[] = [];
-  for (const alt of fix.alternatives) {
-    const newText = `\\${alt.macro}`;
+
+  /**
+   * Build the single-occurrence action and, when there is more than one
+   * occurrence, its all-occurrences twin. `edit` maps an occurrence to its own
+   * replacement, because removal spans differ per occurrence — one `\textbf`
+   * may wrap two words and the next a whole sentence.
+   */
+  const offer = (
+    title: string,
+    allTitle: string,
+    edit: (
+      occurrence: LatexFix,
+    ) => { start: number; end: number; newText: string } | null,
+  ) => {
+    const own = edit(fix);
+    if (!own) return;
     actions.push({
-      title: `Replace \\${fix.macro} with \\${alt.macro} — ${alt.meaning}`,
+      title,
       kind: CodeActionKind.QuickFix,
       diagnostics,
       edit: {
         changes: {
           [uri]: [
-            { range: rangeFromOffsets(text, fix.start, fix.end), newText },
+            {
+              range: rangeFromOffsets(text, own.start, own.end),
+              newText: own.newText,
+            },
           ],
         },
       },
     });
 
-    if (siblings.length > 1) {
-      actions.push({
-        title: `Replace all ${siblings.length} \\${fix.macro} with \\${alt.macro}`,
-        kind: CodeActionKind.QuickFix,
-        diagnostics,
-        edit: {
-          changes: {
-            [uri]: siblings.map((sibling) => ({
-              range: rangeFromOffsets(text, sibling.start, sibling.end),
-              newText,
-            })),
-          },
+    if (siblings.length < 2) return;
+    const all = siblings.map(edit).filter((e) => e !== null);
+    if (all.length < 2) return;
+    actions.push({
+      title: allTitle.replace("{n}", String(all.length)),
+      kind: CodeActionKind.QuickFix,
+      diagnostics,
+      edit: {
+        changes: {
+          [uri]: all.map((e) => ({
+            range: rangeFromOffsets(text, e.start, e.end),
+            newText: e.newText,
+          })),
         },
-      });
-    }
+      },
+    });
+  };
+
+  for (const alt of fix.alternatives ?? []) {
+    offer(
+      `Replace \\${fix.macro} with \\${alt.macro} — ${alt.meaning}`,
+      `Replace all {n} \\${fix.macro} with \\${alt.macro}`,
+      (occurrence) => ({
+        start: occurrence.start,
+        end: occurrence.end,
+        newText: `\\${alt.macro}`,
+      }),
+    );
   }
+
+  const callAt = (occurrence: LatexFix): MacroCall | null =>
+    readMacroCall(text, occurrence.start);
+
+  // Keep the words, drop the markup. Not offered for a switch-style use
+  // (`{\textbf ...}`), where there is no argument to keep and this would be the
+  // same edit as deleting.
+  const own = callAt(fix);
+  if (own && !removalsAreEquivalent(own)) {
+    offer(
+      `Remove \\${fix.macro}, keep its text`,
+      `Remove all {n} \\${fix.macro}, keep their text`,
+      (occurrence) => {
+        const call = callAt(occurrence);
+        if (!call || removalsAreEquivalent(call)) return null;
+        return {
+          start: call.start,
+          end: call.end,
+          newText: unwrapMacroText(text, call),
+        };
+      },
+    );
+  }
+
+  offer(
+    own && !removalsAreEquivalent(own)
+      ? `Delete \\${fix.macro} and its text`
+      : `Delete \\${fix.macro}`,
+    `Delete all {n} \\${fix.macro} and their text`,
+    (occurrence) => {
+      const call = callAt(occurrence);
+      if (!call) return null;
+      return { start: call.start, end: call.end, newText: "" };
+    },
+  );
 
   return actions;
 }

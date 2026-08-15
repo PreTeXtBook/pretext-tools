@@ -79,6 +79,8 @@ describe("latexFixesToCodeActions", () => {
       "Replace \\textbf with \\alert — something the reader must not miss",
       "Replace \\textbf with \\term — a term being defined",
       "Replace \\textbf with \\emph — ordinary emphasis",
+      "Remove \\textbf, keep its text",
+      "Delete \\textbf and its text",
     ]);
   });
 
@@ -290,3 +292,94 @@ function applyEdits(
   }
   return lines.join("\n");
 }
+
+describe("removing a flagged macro", () => {
+  const doc = (body: string) => `\\begin{document}\n${body}`;
+
+  const actionsFor = (text: string) =>
+    latexFixesToCodeActions(text, wholeDoc, {
+      uri: URI,
+      includeCleanAll: false,
+    });
+
+  const applyTitled = (text: string, title: string) => {
+    const action = actionsFor(text).find((a) => a.title === title);
+    expect(action, `no action titled "${title}"`).toBeDefined();
+    return applyEdits(text, action!.edit!.changes![URI]);
+  };
+
+  it("unwraps the macro but keeps its text", () => {
+    expect(
+      applyTitled(
+        doc("\\textbf{bold words} after"),
+        "Remove \\textbf, keep its text",
+      ),
+    ).toContain("bold words after");
+  });
+
+  it("deletes the macro together with its text", () => {
+    const applied = applyTitled(
+      doc("before \\textbf{gone} after"),
+      "Delete \\textbf and its text",
+    );
+    expect(applied).toContain("before  after");
+    expect(applied).not.toContain("gone");
+  });
+
+  it("keeps nested braces intact when unwrapping", () => {
+    expect(
+      applyTitled(doc("\\texttt{a {b} c}"), "Remove \\texttt, keep its text"),
+    ).toContain("a {b} c");
+  });
+
+  it("orders actions least destructive first", () => {
+    const titles = actionsFor(doc("\\textit{x}")).map((a) => a.title);
+    const firstRemoval = titles.findIndex((t) => t.startsWith("Remove"));
+    const firstDelete = titles.findIndex((t) => t.startsWith("Delete"));
+    expect(
+      titles.slice(0, firstRemoval).every((t) => t.startsWith("Replace")),
+    ).toBe(true);
+    expect(firstRemoval).toBeLessThan(firstDelete);
+  });
+
+  it("offers only one removal for a switch-style use with nothing to keep", () => {
+    const titles = actionsFor(doc("{\\textbf bold words}")).map((a) => a.title);
+    expect(titles.filter((t) => t.startsWith("Remove"))).toEqual([]);
+    expect(titles).toContain("Delete \\textbf");
+  });
+
+  it("removes all occurrences of the same macro", () => {
+    const text = doc("\\textbf{one} then \\textbf{two} then \\textit{three}");
+    const applied = applyTitled(text, "Remove all 2 \\textbf, keep their text");
+    expect(applied).toContain("one then two then \\textit{three}");
+  });
+
+  it("deletes all occurrences of the same macro", () => {
+    const text = doc("\\textbf{one} then \\textbf{two} then \\textit{three}");
+    const applied = applyTitled(text, "Delete all 2 \\textbf and their text");
+    expect(applied).not.toContain("one");
+    expect(applied).not.toContain("two");
+    expect(applied).toContain("\\textit{three}");
+  });
+
+  it("handles occurrences of different lengths in one sweep", () => {
+    const text = doc("\\textbf{a} and \\textbf{a much longer run of words}");
+    const applied = applyTitled(text, "Remove all 2 \\textbf, keep their text");
+    expect(applied).toContain("a and a much longer run of words");
+  });
+
+  it("offers no all-occurrences twin for a lone occurrence", () => {
+    const titles = actionsFor(doc("\\textbf{only}")).map((a) => a.title);
+    expect(titles.some((t) => t.includes("all"))).toBe(false);
+  });
+
+  it("still leaves removal out of the bulk clean-up", () => {
+    const text = doc("\\textbf{kept} \\bigskip");
+    const cleanAll = latexFixesToCodeActions(text, wholeDoc, { uri: URI }).find(
+      (a) => a.kind === CodeActionKind.SourceFixAll,
+    );
+    expect(cleanAll!.edit!.changes![URI][0].newText).toContain(
+      "\\textbf{kept}",
+    );
+  });
+});
