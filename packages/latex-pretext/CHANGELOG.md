@@ -1,5 +1,11 @@
 # @pretextbook/latex-pretext
 
+## 0.1.0
+
+### Minor Changes
+
+- 6940e14: Improve import and add clean function
+
 ## 0.0.16
 
 ### Patch Changes
