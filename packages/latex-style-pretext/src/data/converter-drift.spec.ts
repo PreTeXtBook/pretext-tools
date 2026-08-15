@@ -69,20 +69,20 @@ const CONTEXT_USAGE: Record<string, string> = {
  * dropping content. The inverse check below fails when upstream gains support,
  * signalling the entry should be promoted out of this list.
  *
- * - centering, newline, input, paragraph: no replacement upstream (note
- *   subparagraph *is* handled; paragraph is not).
- * - maketitle, tableofcontents, frontmatter, mainmatter, backmatter:
- *   document-driver macros with no PreTeXt equivalent.
+ * - input, paragraph: no replacement upstream (note subparagraph *is*
+ *   handled; paragraph is not).
+ * - frontmatter, mainmatter, backmatter: document-driver macros with no
+ *   PreTeXt equivalent.
  * - scshape, normalfont: the streaming-command pass rewrites these to
  *   \textsc{}/plain content, but \textsc itself has no replacement.
+ *
+ * Converter 0.0.8 gained \centering, \newline, \maketitle and
+ * \tableofcontents; the inverse guard below caught that and they were promoted
+ * out of this list.
  */
 const KNOWN_UNCONVERTED = new Set([
-  "centering",
-  "newline",
   "input",
   "paragraph",
-  "maketitle",
-  "tableofcontents",
   "frontmatter",
   "mainmatter",
   "backmatter",

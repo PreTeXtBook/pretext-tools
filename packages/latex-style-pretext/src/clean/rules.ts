@@ -90,6 +90,12 @@ export interface CleanRule {
   reportMatch?: boolean;
   /** Regions to skip. Defaults to comments and verbatim bodies. */
   skipIn?: ProtectedRegionKind[];
+  /**
+   * Semantic macros to offer in place of this one. Only meaningful on a `flag`
+   * rule: the rule cannot decide, so the editor offers the choice. These never
+   * take part in a bulk clean-up — picking one is an editorial act.
+   */
+  alternatives?: MacroAlternative[];
 }
 
 /** Human-readable gloss for a rule kind, from upstream's `typeOfError`. */
@@ -102,22 +108,50 @@ export const KIND_DESCRIPTIONS: Record<string, string> = {
 };
 
 /**
- * PreTeXt elements to reach for instead of a flagged font macro. Surfaced in
- * the diagnostic message so the author is pointed somewhere, since these rules
- * flag rather than fix.
+ * A semantic macro to offer in place of a presentational one.
+ *
+ * `\textbf` says "make this bold", which is a statement about appearance. PreTeXt
+ * wants to know *why* it is bold — is it a warning, a defined term, ordinary
+ * emphasis? Only the author knows, so these become a menu of quick fixes rather
+ * than an automatic rewrite.
  */
-export const ALTERNATIVES: Record<string, Array<[string, string]>> = {
-  textit: [
-    ["emph", "emphasis"],
-    ["term", "terminology"],
-    ["alert", "warning"],
-  ],
+export interface MacroAlternative {
+  /** Macro to substitute, without the backslash. */
+  macro: string;
+  /** What choosing it would mean, for the action title. */
+  meaning: string;
+}
+
+/**
+ * Semantic replacements for each presentational font macro, best-guess first.
+ *
+ * Ordering matters: the first entry is what the editor lists at the top, so it
+ * should be the reading that is right most often. Bold most often means alert;
+ * italic most often means ordinary emphasis; small caps most often marks an
+ * initialism.
+ */
+export const MACRO_ALTERNATIVES: Record<string, MacroAlternative[]> = {
   textbf: [
-    ["emph", "emphasis"],
-    ["term", "terminology"],
-    ["alert", "warning"],
+    { macro: "alert", meaning: "something the reader must not miss" },
+    { macro: "term", meaning: "a term being defined" },
+    { macro: "emph", meaning: "ordinary emphasis" },
   ],
-  texttt: [["code", "code"]],
+  textit: [
+    { macro: "emph", meaning: "ordinary emphasis" },
+    { macro: "term", meaning: "a term being defined" },
+    { macro: "foreign", meaning: "a word from another language" },
+    { macro: "alert", meaning: "something the reader must not miss" },
+  ],
+  texttt: [
+    { macro: "code", meaning: "code or a literal value" },
+    { macro: "kbd", meaning: "a key the reader presses" },
+  ],
+  textsc: [
+    { macro: "init", meaning: "an initialism read letter by letter" },
+    { macro: "acro", meaning: "an acronym read as a word" },
+    { macro: "term", meaning: "a term being defined" },
+  ],
+  textrm: [{ macro: "emph", meaning: "ordinary emphasis" }],
 };
 
 // ---------------------------------------------------------------------------
@@ -428,14 +462,18 @@ export const ANOMALY_RULES: CleanRule[] = [
     },
   ),
 
-  // --- badPlainTeX: flagged, never deleted — only the author knows what was meant.
+  // --- badPlainTeX: flagged, never deleted — only the author knows what was
+  // meant. Each carries a menu of semantic macros the editor offers instead.
   ...macroRules(["textrm", "textit", "textbf", "textsc", "texttt"], {
     kind: "presentation",
     category: "latex_fonts",
     scope: "body",
     action: "flag",
     severity: "warning",
-  }),
+  }).map((rule) => ({
+    ...rule,
+    alternatives: MACRO_ALTERNATIVES[rule.id],
+  })),
 
   // --- badBodyEnvironments: the wrapper goes, the content stays.
   ...(["center", "minipage"] as const).map(

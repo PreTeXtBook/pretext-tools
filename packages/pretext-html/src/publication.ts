@@ -29,6 +29,9 @@ const MINIMAL_PUBLICATION = `<?xml version="1.0" encoding="UTF-8"?>
   <source>
     <directories external="../assets" generated="../generated-assets" />
   </source>
+  <common>
+    <tableofcontents level="0"/>
+  </common>
   <html>
     <platform portable="yes"/>
   </html>
