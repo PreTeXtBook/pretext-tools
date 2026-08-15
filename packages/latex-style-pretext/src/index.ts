@@ -8,4 +8,5 @@ export * from "./util/position";
 export * from "./completions/snippets";
 export * from "./completions/get-completions";
 export * from "./lint/get-diagnostics";
+export * from "./clean";
 export * from "./language";

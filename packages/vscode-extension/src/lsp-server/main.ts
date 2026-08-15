@@ -47,6 +47,8 @@ import {
   setValidationMode,
 } from "./validation";
 import {
+  cleanScopeFor,
+  flavorCleanDiagnostics,
   getFlavorLanguage,
   FLAVOR_ONLY_TRIGGER_CHARACTERS,
 } from "./flavor-languages";
@@ -103,7 +105,11 @@ connection.onInitialize((params: InitializeParams) => {
       // Links for `xi:include/@href` in source files and for the file
       // references in `project.ptx`.
       documentLinkProvider: { resolveProvider: false },
-      // codeActionProvider: { codeActionKinds: [CodeActionKind.QuickFix] },
+      // Quick fixes for LaTeX cleanup findings in flavor documents, plus the
+      // whole-file "Clean up LaTeX" source action.
+      codeActionProvider: {
+        codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll],
+      },
       executeCommandProvider: {
         commands: ["formatDocument", "formatText"],
       },
@@ -193,10 +199,15 @@ interface LspSettings {
     tabSize: number;
     insertSpaces: boolean;
   };
+  cleanup: {
+    /** Publish LaTeX cleanup findings as diagnostics. Quick fixes stay available either way. */
+    diagnostics: boolean;
+  };
 }
 
 const schemaConfigSection = "pretext-tools.schema";
 const formatterConfigSection = "pretext-tools.formatter";
+const cleanupConfigSection = "pretext-tools.cleanup";
 const editorConfigSection = "editor";
 const tabSizeConfigSection = "editor.tabSize";
 const insertSpacesConfigSection = "editor.insertSpaces";
@@ -210,6 +221,7 @@ const defaultSettings: LspSettings = {
     printWidth: 80,
   },
   editor: { tabSize: 2, insertSpaces: true },
+  cleanup: { diagnostics: true },
 };
 export const globalSettings: LspSettings = defaultSettings;
 
@@ -223,6 +235,13 @@ connection.onDidChangeConfiguration((change) => {
         if (formatterConfig && globalSettings.formatter !== formatterConfig) {
           globalSettings.formatter = formatterConfig;
           console.log("Formatter set to", formatterConfig);
+        }
+      });
+    connection.workspace
+      .getConfiguration(cleanupConfigSection)
+      .then((cleanupConfig) => {
+        if (cleanupConfig && globalSettings.cleanup !== cleanupConfig) {
+          globalSettings.cleanup = cleanupConfig;
         }
       });
     connection.workspace
@@ -312,7 +331,16 @@ documents.onDidChangeContent(async (change) => {
   if (flavor) {
     // Flavor documents (LaTeX/Markdown-style PreTeXt) get their own linear
     // scanner-based lint; the RNG schema pipeline below does not apply.
-    const diagnostics = await flavor.getDiagnostics(change.document.getText());
+    const text = change.document.getText();
+    const diagnostics = await flavor.getDiagnostics(text);
+    // Cleanup findings ride the same publish but carry their own `source`, so a
+    // user can filter them out in the Problems panel without losing conversion
+    // errors. They are opt-out because a document mid-import is full of them.
+    if (globalSettings.cleanup.diagnostics && flavor.getCleanFixes) {
+      diagnostics.push(
+        ...flavorCleanDiagnostics(flavor, text, change.document.languageId),
+      );
+    }
     connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
   } else if (isProjectPtx(change.document)) {
     const info = await getDocumentInfo(change.document.uri);
@@ -388,7 +416,20 @@ connection.onHover(async (params) => {
 });
 
 connection.onCodeAction((params) => {
-  return [{ title: "My Custom Action" }];
+  const document = documents.get(params.textDocument.uri);
+  if (!document) {
+    return [];
+  }
+  const flavor = getFlavorLanguage(document.languageId);
+  if (!flavor?.getCleanCodeActions) {
+    return [];
+  }
+  return flavor.getCleanCodeActions(
+    document.getText(),
+    params.range,
+    params.textDocument.uri,
+    cleanScopeFor(document.languageId),
+  );
 });
 connection.onExecuteCommand(async (params) => {
   // Handle commands sent from the client

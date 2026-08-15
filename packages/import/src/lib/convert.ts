@@ -1,7 +1,7 @@
 import { formatPretext } from "@pretextbook/format";
 import { latexToPretext } from "@pretextbook/latex-pretext";
 import { markdownToPretext } from "@pretextbook/remark-pretext";
-import { cleanLatex } from "./clean/clean-latex";
+import { cleanLatexInChunks, type CleanedChunk } from "./clean/clean-chunks";
 import {
   splitLatexAtDocument,
   extractPreambleInfo,
@@ -129,6 +129,12 @@ export interface LatexConversionResult {
   pretext: string;
   cleanedLatex: string;
   warnings: CleaningWarning[];
+  /**
+   * The cleaned source cut at its division headers, each piece carrying its own
+   * before/after text. The wizard's per-file diff reads these; see
+   * `clean-chunks.ts` for why cleaning is partitioned rather than global.
+   */
+  cleanChunks: CleanedChunk[];
 }
 
 export function convertLatexToPretext(
@@ -136,7 +142,7 @@ export function convertLatexToPretext(
 ): LatexConversionResult {
   const trimmedLatex = latexSource.trim();
   if (!trimmedLatex) {
-    return { pretext: "", cleanedLatex: "", warnings: [] };
+    return { pretext: "", cleanedLatex: "", warnings: [], cleanChunks: [] };
   }
 
   // Extract preamble metadata from the raw source before any cleaning so
@@ -160,9 +166,13 @@ export function convertLatexToPretext(
         .join("\n")
     : trimmedLatex; // no \begin{document} found — convert as-is
 
-  const { output: cleanedLatex, warnings } = cleanLatex(conversionSource);
+  const {
+    output: cleanedLatex,
+    warnings,
+    chunks: cleanChunks,
+  } = cleanLatexInChunks(conversionSource);
   if (!cleanedLatex.trim()) {
-    return { pretext: "", cleanedLatex, warnings };
+    return { pretext: "", cleanedLatex, warnings, cleanChunks };
   }
 
   // trimJunk strips \end{document} but unified-latex needs it to recognise the
@@ -175,12 +185,12 @@ export function convertLatexToPretext(
     latexToPretext(sourceForUnified),
   ).trim();
   if (!rawFragment) {
-    return { pretext: "", cleanedLatex, warnings };
+    return { pretext: "", cleanedLatex, warnings, cleanChunks };
   }
 
   const assembled = assemblePretextDocument(rawFragment, preambleInfo);
   const pretext = assembled ? normalizePretextSource(assembled) : "";
-  return { pretext, cleanedLatex, warnings };
+  return { pretext, cleanedLatex, warnings, cleanChunks };
 }
 
 export interface MarkdownConversionResult {
@@ -236,13 +246,15 @@ export function convertSourceToPretext(
       };
     }
 
-    const { pretext, cleanedLatex, warnings } = convertLatexToPretext(source);
+    const { pretext, cleanedLatex, warnings, cleanChunks } =
+      convertLatexToPretext(source);
     return {
       sourceFormat: finalSourceFormat,
       detectedSourceFormat,
       pretextSource: pretext,
       cleanedNativeSource: cleanedLatex,
       warnings,
+      cleanChunks,
     };
   } catch (error) {
     return {

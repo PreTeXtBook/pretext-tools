@@ -1,3 +1,4 @@
+import type { CleanedChunk } from "./clean/clean-chunks";
 import type { CleaningWarning } from "./clean/warnings";
 import type { DocumentKind } from "./layout/document-kind";
 import type { PretextDivisionTag, PretextRootTag } from "./pretext-divisions";
@@ -15,6 +16,8 @@ export interface ConvertedPretextSuccess extends ConversionContext {
   pretextSource: string;
   warnings: CleaningWarning[];
   cleanedNativeSource?: string;
+  /** Per-division before/after cleaning record; empty for non-LaTeX input. */
+  cleanChunks?: CleanedChunk[];
 }
 
 export interface ConvertedPretextError extends ConversionContext {
@@ -158,6 +161,8 @@ export interface ProjectLayout {
 
 export interface ImportedProjectSuccess extends ConversionContext {
   pretextSource: string;
+  /** Cleaned but unconverted source, when the input was LaTeX or Markdown. */
+  cleanedNativeSource?: string;
   sourcePath: string;
   sourceName: string;
   sourceType: UploadSourceType;
@@ -188,6 +193,15 @@ export interface ImportedProjectSuccess extends ConversionContext {
   outputFiles: Record<string, string>;
   outputAssets: Record<string, Uint8Array>;
   nativeOutputFiles?: Record<string, string>;
+  /**
+   * The cleaned source cut at every division header, each piece carrying its own
+   * before/after text and fix list (SPEC §3.5). Cut at the deepest level the
+   * document has, so a host can show any split depth by folding adjacent chunks
+   * (`mergeChunksAtLevel`) without re-running the import.
+   */
+  cleanChunks: CleanedChunk[];
+  /** The split depth this result was laid out at. */
+  splitLevel: number;
   statusMessages: UploadStatusMessage[];
   warnings: CleaningWarning[];
 }

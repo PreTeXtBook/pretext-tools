@@ -345,7 +345,10 @@ function getHtmlForWebview(
               --color-red-50: #3a1d1d;
               --color-red-200: #6b2b2b;
               --color-red-800: #fca5a5;
+              --color-red-900: #fca5a5;
+              --color-green-50: #16301f;
               --color-green-700: #86efac;
+              --color-green-900: #86efac;
             }
 
             /* Native dropdowns: Tailwind's preflight strips their background,

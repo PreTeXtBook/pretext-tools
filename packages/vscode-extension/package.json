@@ -599,6 +599,12 @@
             "default": false,
             "markdownDescription": "Treat `.md` files as Markdown-style PreTeXt (completions and validation for the PreTeXt conversion) when the workspace contains a `project.ptx`. Files matching `*.ptx.md` always get this treatment. Leave off to keep the built-in Markdown tooling for files like `README.md`; `files.associations` offers per-pattern control."
           },
+          "pretext-tools.cleanup.diagnostics": {
+            "order": 4,
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Flag legacy LaTeX markup (presentational spacing, plain-TeX font directives, low-level TeX) in LaTeX-style PreTeXt files. Quick fixes and the **Clean up LaTeX** action stay available whether or not this is on."
+          },
           "pretext-tools.formatter.blankLines": {
             "order": 4,
             "type": "string",

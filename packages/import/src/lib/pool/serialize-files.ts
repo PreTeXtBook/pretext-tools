@@ -21,6 +21,12 @@ export interface SerializeProjectFilesOptions {
 
 export interface SerializedProjectFiles {
   files: Record<string, string>;
+  /**
+   * Which file each division landed in, keyed by its `xml:id`. Hosts need this
+   * to attach anything division-shaped — a cleaning diff, a warning count — to
+   * the file the author is actually looking at.
+   */
+  pathByRef: Record<string, string>;
 }
 
 const DEFAULTS = {
@@ -222,5 +228,10 @@ export function serializeProjectToFiles(
     files[publicationPath] = renderPublicationPtx();
   }
 
-  return { files };
+  const pathByRef: Record<string, string> = { [root.xmlId]: mainSourcePath };
+  for (const { division, filePath } of placed) {
+    pathByRef[division.xmlId] = filePath;
+  }
+
+  return { files, pathByRef };
 }

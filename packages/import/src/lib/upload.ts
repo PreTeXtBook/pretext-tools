@@ -1,5 +1,7 @@
 import JSZip from "jszip";
 import { convertSourceToPretext } from "./convert";
+import { detectDocumentKind } from "./layout/document-kind";
+import { suggestSplitLevel } from "./latex-split";
 import { expandTexInputs } from "./clean/latex-includes";
 import { expandPretextIncludes } from "./clean/pretext-includes";
 import { type BuildProjectFilesOptions } from "./layout";
@@ -27,9 +29,11 @@ import {
 import type { ManifestTarget, ProjectManifest } from "./project/manifest";
 import { basename, extension, normalizePath } from "./project/paths";
 import type { CleaningWarning } from "./clean/warnings";
+import type { DocumentKind } from "./layout/document-kind";
 import type {
   ImportedProject,
   ImportedProjectResult,
+  ImportedProjectSuccess,
   ProjectLayout,
   SourceFormat,
   UploadSourceType,
@@ -667,11 +671,26 @@ export function importProjectFromFiles(
     // Build the intermediate model (division pool, SPEC §4.1); outputFiles
     // is derived from it via the file-tree serializer so both hosts consume
     // projections of the same pool.
+    // How deep to split. When the caller expressed no preference, the depth is
+    // derived from the document's own size and shape rather than fixed at
+    // "chapters for a book, nothing for an article" — which used to leave a
+    // thirty-section article in one enormous file (SPEC §8.7).
+    // Detected here rather than left to `buildDivisionPool`: the split depth
+    // depends on whether this is a book or an article, so the kind has to be
+    // settled before the depth can be.
+    const resolvedKind =
+      layoutOptions.documentKind ?? detectDocumentKind(result.pretextSource);
+    const splitLevel = buildLayout
+      ? resolveImportSplitLevel(layoutOptions, {
+          format: result.sourceFormat,
+          latexSource: result.cleanedNativeSource,
+          documentKind: resolvedKind,
+        })
+      : 0;
+
     const pool = buildDivisionPool(result.pretextSource, {
-      documentKind: layoutOptions.documentKind,
-      splitLevel: buildLayout ? layoutOptions.splitLevel : 0,
-      splitChapters: buildLayout ? layoutOptions.splitChapters : false,
-      splitSections: buildLayout ? layoutOptions.splitSections : false,
+      documentKind: resolvedKind,
+      splitLevel,
       assets: importableAssets,
     });
 
@@ -739,8 +758,7 @@ export function importProjectFromFiles(
         result.sourceFormat,
         {
           documentKind,
-          splitChapters: buildLayout ? layoutOptions.splitChapters : false,
-          splitSections: buildLayout ? layoutOptions.splitSections : false,
+          splitLevel,
           title: pool.project.title,
           docinfo: pool.project.docinfo,
           assets: importableAssets,
@@ -774,6 +792,8 @@ export function importProjectFromFiles(
       outputAssets,
       nativeOutputFiles,
       documentKind,
+      cleanChunks: result.cleanChunks ?? [],
+      splitLevel,
       statusMessages,
     };
   } catch (error) {
@@ -828,4 +848,129 @@ export async function handleImportUploadFile(
       warnings: [],
     };
   }
+}
+
+/**
+ * Decide the split depth for an import.
+ *
+ * An explicit `splitLevel` wins; the legacy `splitChapters`/`splitSections`
+ * booleans are honoured next (they predate the depth number and still appear in
+ * host options); otherwise the depth is suggested from the source's size and
+ * structure.
+ */
+export interface SplitLevelContext {
+  format: SourceFormat;
+  /** Cleaned LaTeX source, when there is one. */
+  latexSource?: string;
+  documentKind?: DocumentKind;
+}
+
+export function resolveImportSplitLevel(
+  options: ImportProjectOptions,
+  context: SplitLevelContext,
+): number {
+  if (options.splitLevel !== undefined) {
+    return Math.max(0, options.splitLevel);
+  }
+  if (options.splitChapters === false) {
+    return 0;
+  }
+  if (options.splitSections) {
+    return context.documentKind === "book" ? 2 : 1;
+  }
+  if (options.splitChapters) {
+    return 1;
+  }
+
+  // The size heuristic reads LaTeX sectioning commands, so it only speaks for a
+  // LaTeX import. Markdown and PreTeXt keep the historical default — a book
+  // splits its chapters, an article stays whole — until they grow an equivalent
+  // of their own.
+  if (context.format === "latex" && context.latexSource) {
+    return suggestSplitLevel(
+      context.latexSource,
+      context.documentKind ??
+        (context.latexSource.includes("\\chapter") ? "book" : "article"),
+    );
+  }
+  return context.documentKind === "book" ? 1 : 0;
+}
+
+/**
+ * Re-derive an import's file layout at a different split depth.
+ *
+ * Everything expensive — extraction, include expansion, cleaning, and the
+ * unified-latex conversion — already happened and is carried on `result`. This
+ * only rebuilds the division pool and re-serializes it, so a host can offer a
+ * live split-depth control without re-importing. Pure: same input, same output,
+ * no closures, safe to call across a webview boundary.
+ */
+export function relayoutImport(
+  result: ImportedProjectSuccess,
+  splitLevel: number,
+): ImportedProjectSuccess {
+  const depth = Math.max(0, splitLevel);
+  if (depth === result.splitLevel) {
+    return result;
+  }
+
+  const pool = buildDivisionPool(result.pretextSource, {
+    documentKind: result.documentKind,
+    splitLevel: depth,
+    assets: result.assets,
+  });
+
+  const outputFiles: Record<string, string> = {};
+  // Non-source files (publication, manifest, .bib, and anything an existing
+  // project carried over) are independent of split depth, so they are kept as
+  // they were rather than regenerated.
+  for (const [path, content] of Object.entries<string>(result.outputFiles)) {
+    if (!isSplitDerivedPath(path, result.projectLayout.mainSourcePath)) {
+      outputFiles[path] = content;
+    }
+  }
+  Object.assign(
+    outputFiles,
+    serializeProjectToFiles(pool.project, {
+      mainSourcePath: result.projectLayout.mainSourcePath,
+      publicationPath: result.projectLayout.publicationPath,
+      projectFilePath: result.projectLayout.projectFilePath,
+      includeScaffold: !result.projectLayout.preserved,
+    }).files,
+  );
+
+  let nativeProject = result.nativeProject;
+  if (
+    result.cleanedNativeSource &&
+    (result.sourceFormat === "latex" || result.sourceFormat === "markdown")
+  ) {
+    nativeProject = buildNativeDivisionPool(
+      result.cleanedNativeSource,
+      result.sourceFormat,
+      {
+        documentKind: result.documentKind,
+        splitLevel: depth,
+        title: pool.project.title,
+        docinfo: pool.project.docinfo,
+        assets: result.assets,
+      },
+    ).project;
+  }
+
+  return {
+    ...result,
+    splitLevel: depth,
+    project: pool.project,
+    nativeProject,
+    outputFiles,
+  };
+}
+
+/** True for a file the division serializer owns and will regenerate. */
+function isSplitDerivedPath(path: string, mainSourcePath: string): boolean {
+  if (path === mainSourcePath) return true;
+  const sourceDir = mainSourcePath.includes("/")
+    ? mainSourcePath.slice(0, mainSourcePath.lastIndexOf("/") + 1)
+    : "";
+  return path.startsWith(sourceDir) && path.endsWith(".ptx");
 }

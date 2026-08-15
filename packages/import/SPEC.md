@@ -157,17 +157,27 @@ merely a chapter part out of the root candidate list (§3.3).
 
 ### 3.5 LaTeX cleaning (`lib/clean/`)
 
-A TypeScript port of David Farmer's
+The rules themselves live in **`@pretextbook/latex-style-pretext`'s `clean/`
+module**, shared with the editors (pretext-plus's Monaco, the VS Code LSP
+server) so an author who cleans up LaTeX in the editor gets exactly what the
+importer would have done. They descend from David Farmer's
 [PreprocessLaTeX](https://github.com/davidfarmer/PreprocessLaTeX)
-`describeFiles` flow. Steps, in order (`cleanLatex`):
+`describeFiles` flow; see `docs/latex-clean-and-split-blueprint.md`.
 
-1. `trimJunk` — strip comments, `\end{document}` trailers, collapse blank runs
-2. `specialPreprocess` — targeted rewrites that must happen first
-3. `fixPlainTeX` × 2 — rewrite plain-TeX font directives (`{\bf …}` etc.);
-   two passes catch nesting
-4. `scanForAnomalies` — splits preamble/body/bibliography, then deletes or
-   saves known-bad macro groups (presentation macros, publisher options,
-   `eliminateAndSave` items) per the tables in `latex-data.ts`
+What remains on this side is import-specific:
+
+1. `trimJunk` — strip comments, `\end{document}` trailers, collapse blank runs.
+   Deliberately not shared: deleting every comment is right for an import and
+   wrong for an editor.
+2. `cleanLatexText` (from the shared engine) — find every positioned fix and
+   apply them to a fixpoint. Rules never fire inside comments or verbatim
+   bodies, and the bibliography is off-limits to all of them.
+3. `fixesToWarnings` — roll the positioned fixes up into the aggregate
+   `CleaningWarning` rows the wizard's summary list renders.
+
+`cleanLatexInChunks` (`clean-chunks.ts`) is the same pass, cut at every
+division header so each piece carries its own before/after text and fix list —
+see §3.8. Its `output` is what conversion consumes.
 
 Every mutation is recorded as a structured `CleaningWarning`:
 
@@ -224,11 +234,29 @@ splitLevel 1   the root's own divisions: chapters, but also <frontmatter>,
 splitLevel 2   …and each of those divisions' own children (a book's sections)
 ```
 
-`splitLevel` defaults to 1 for a book and 0 for an article. The older
-`splitChapters`/`splitSections` booleans still work and are resolved against
-the document kind by `resolveSplitLevel` — `splitSections` means depth 2 in a
-book but depth 1 in an article, since an article's sections _are_ its top
-level.
+For a LaTeX import with no explicit preference, `splitLevel` comes from
+`suggestSplitLevel` (`lib/latex-split.ts`): it starts from the old default (1
+for a book, 0 for an article) and goes deeper while the document — or one of
+its divisions — is still large and the next level has at least three divisions
+to split into. A thirty-section article no longer lands in one file. Markdown
+and PreTeXt imports keep the old default, since the heuristic reads LaTeX
+sectioning commands. The older `splitChapters`/`splitSections` booleans still
+work and are resolved against the document kind by `resolveSplitLevel` —
+`splitSections` means depth 2 in a book but depth 1 in an article, since an
+article's sections _are_ its top level.
+
+The **native (LaTeX) pool** answers to the same number. `lib/latex-split.ts`
+parses the source into a division tree over the document's own hierarchy —
+whichever of `\part`, `\chapter`, `\section`, `\subsection`,
+`\subsubsection` it actually uses, so an article's sections are depth 1 — and
+`buildNativeDivisionPool` walks it to `splitLevel`. This replaces the previous
+chapter-then-section special case (former SPEC §7 limitation).
+
+**Changing the depth after the fact.** `relayoutImport(result, splitLevel)`
+re-derives the file layout from an already-converted result: it rebuilds the
+division pool and re-serializes, leaving the publication file, manifest, and
+carried-over project files untouched. Nothing expensive re-runs, so a host can
+offer a live split-depth control (the wizard does).
 
 Any tag in the PreTeXt division vocabulary (`lib/pretext-divisions.ts`) is a
 split point, not just `chapter`/`section` — which is what an existing project
@@ -717,8 +745,6 @@ versions. The host rejects any path containing `..` or an absolute prefix
 - **Markdown multi-file support is partial**: several `.md` roots can be
   attached to the main document (§3.12), but only at the top level, and there
   is still no include mechanism.
-- **Native mode ignores `splitLevel`** — the native (LaTeX/Markdown) pool still
-  splits at chapters/sections only.
 - **A second target sharing includes with the imported one can break.** If
   target B's source `xi:include`s a file that target A (the imported one)
   consumed, that file is not carried over and B's source is left pointing at
@@ -758,11 +784,11 @@ comments in `upload.ts`):
    `importProjectFromFiles` (path map). Should there be a third,
    Node-friendly `importProjectFromDisk(dir)` helper for the extension, or
    does that belong in the extension itself?
-7. **Where do split thresholds live?** _Partly resolved:_ `splitLevel` (§3.8)
-   makes the depth a single explicit number, defaulting to 1 for a book and 0
-   for an article. Still open: should a very large article default to splitting
-   its sections, and should the wizard expose depth as a number rather than the
-   current "split sections" checkbox?
+7. ~~**Where do split thresholds live?**~~ — _resolved:_ `splitLevel` (§3.8) is
+   a single explicit number; `suggestSplitLevel` derives a default from document
+   size and shape, so a large article does split its sections; and the wizard
+   exposes the depth as a chooser on the review step rather than a checkbox on
+   the upload step.
 8. **Publication defaults** — chunking level 1, external/generated dirs:
    confirm these match current pretext-cli template output.
 9. **Scope of `project.ptx` targets** — web + print only for _new_ projects;
@@ -778,15 +804,16 @@ comments in `upload.ts`):
 
 Vitest specs live alongside sources:
 
-| Area              | Specs                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| LaTeX cleaning    | `clean-latex`, `latex-clean`, `latex-preamble`, `latex-scan`, `latex-utils`        |
-| Includes          | `pretext-includes`                                                                 |
-| Detection         | `detect-source-format`                                                             |
-| Layout / scanning | `build-project-files`, `document-kind`, `xml-scan`                                 |
-| Division pool     | `division-pool`, `native-pool`, `serialize`                                        |
-| Manifests         | `project/manifest`                                                                 |
-| Pipeline          | `upload`, `import-project` (existing projects, §3.13), `import-multi-root` (§3.12) |
+| Area              | Specs                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| LaTeX cleaning    | `clean-latex`, `clean-chunks`, `latex-preamble`, `latex-utils` (rules: `latex-style-pretext`'s `clean/`) |
+| Includes          | `pretext-includes`                                                                                       |
+| Detection         | `detect-source-format`                                                                                   |
+| Layout / scanning | `build-project-files`, `document-kind`, `xml-scan`                                                       |
+| Division pool     | `division-pool`, `native-pool`, `serialize`, `latex-split`                                               |
+| Layout + diff     | `relayout`, `file-changes`, `diff`                                                                       |
+| Manifests         | `project/manifest`                                                                                       |
+| Pipeline          | `upload`, `import-project` (existing projects, §3.13), `import-multi-root` (§3.12)                       |
 
 The React components have no automated tests yet — the playground smoke page
 (`packages/playground/import-smoke.html`) is the manual harness.

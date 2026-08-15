@@ -1,7 +1,13 @@
-import type { CompletionItem, Diagnostic } from "vscode-languageserver-types";
+import type {
+  CompletionItem,
+  Diagnostic,
+  Range,
+} from "vscode-languageserver-types";
 import type { GetCompletionsParams, PretextFlavorLanguage } from "./types";
 import { getLatexCompletions } from "./completions/get-completions";
 import { getLatexDiagnostics } from "./lint/get-diagnostics";
+import { findLatexFixes, type FindFixesOptions } from "./clean/find-fixes";
+import { latexFixesToCodeActions } from "./clean/to-diagnostics";
 
 /** Language id used by VS Code and Monaco for LaTeX-style PreTeXt. */
 export const PRETEXT_LATEX_LANGUAGE_ID = "pretext-latex";
@@ -23,5 +29,16 @@ export const pretextLatexLanguage: PretextFlavorLanguage = {
   },
   async getDiagnostics(text: string): Promise<Diagnostic[]> {
     return getLatexDiagnostics(text);
+  },
+  getCleanFixes(text: string, options?: FindFixesOptions) {
+    return findLatexFixes(text, options);
+  },
+  getCleanCodeActions(
+    text: string,
+    range: Range,
+    uri: string,
+    options?: FindFixesOptions,
+  ) {
+    return latexFixesToCodeActions(text, range, { ...options, uri });
   },
 };
