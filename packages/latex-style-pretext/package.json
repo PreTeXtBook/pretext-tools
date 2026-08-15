@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/latex-style-pretext",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Editor intelligence (completions + validation) for LaTeX-style PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
