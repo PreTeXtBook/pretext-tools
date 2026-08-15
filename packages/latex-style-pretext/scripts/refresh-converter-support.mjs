@@ -29,13 +29,15 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { processLatexViaUnified } from "@unified-latex/unified-latex";
 import {
   environments,
   macros,
   plusMacros,
   defaultPlusTypes,
+  unifiedLatexToPretext,
+  xmlCompilePlugin,
 } from "@pretextbook/unified-latex-to-pretext";
-import { latexToPretext } from "@pretextbook/latex-pretext";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, "../../..");
@@ -83,6 +85,27 @@ function pretextElementNames() {
     );
   }
   return names;
+}
+
+/**
+ * The converter pipeline, assembled here rather than imported from
+ * `@pretextbook/latex-pretext`.
+ *
+ * This is deliberate: that package's entry point re-exports a `dist/` build
+ * artifact, so importing it would make this script — and the CI check that runs
+ * it — depend on `build:libs` having run first. It also meant a stale `dist/`
+ * could snapshot an old converter and pass, which is the "green and wrong"
+ * failure the snapshot exists to prevent.
+ *
+ * The snapshot's job is to record what *upstream* supports, so it goes straight
+ * to upstream. `converter-drift.spec.ts` still imports the workspace wrapper and
+ * covers the other direction: what our pipeline actually converts.
+ */
+function latexToPretext(latex) {
+  return processLatexViaUnified()
+    .use(unifiedLatexToPretext, { producePretextFragment: true })
+    .use(xmlCompilePlugin)
+    .processSync({ value: latex });
 }
 
 function convertsCleanly(latex, kind) {

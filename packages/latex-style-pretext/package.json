@@ -40,7 +40,8 @@
   },
   "devDependencies": {
     "@pretextbook/latex-pretext": "*",
-    "@pretextbook/unified-latex-to-pretext": "^0.0.8"
+    "@pretextbook/unified-latex-to-pretext": "^0.0.8",
+    "@unified-latex/unified-latex": "^1.8.4"
   },
   "publishConfig": {
     "access": "public"
