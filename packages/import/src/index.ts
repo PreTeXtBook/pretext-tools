@@ -18,9 +18,41 @@ export {
   importProjectFromFiles,
   handleImportUploadFile,
   extractUpload,
+  relayoutImport,
+  resolveImportSplitLevel,
   type ExtractedUpload,
   type ImportProjectOptions,
+  type SplitLevelContext,
 } from "./lib/upload";
+export {
+  LATEX_DIVISION_COMMANDS,
+  findLatexHeaders,
+  latexDivisionHierarchy,
+  parseLatexDivisions,
+  divisionsAtLevel,
+  suggestSplitLevel,
+  MAX_SUGGESTED_SPLIT_LEVEL,
+  type LatexDivision,
+  type LatexDivisionCommand,
+} from "./lib/latex-split";
+export {
+  fileChangesForImport,
+  type FileChangeRecord,
+} from "./lib/file-changes";
+export {
+  diffLines,
+  diffHunks,
+  diffStats,
+  type DiffLine,
+  type DiffHunk,
+  type DiffStats,
+} from "./lib/diff";
+export {
+  cleanLatexInChunks,
+  mergeChunksAtLevel,
+  type CleanedChunk,
+  type CleanLatexChunksResult,
+} from "./lib/clean/clean-chunks";
 export {
   analyzeImportSources,
   type AnalyzeOptions,
@@ -65,8 +97,27 @@ export {
   formatWarningLine,
   type ImportMode,
 } from "./lib/import-mode";
-export { cleanLatex } from "./lib/clean/clean-latex";
-export type { CleanLatexResult } from "./lib/clean/clean-latex";
+export { cleanLatex, fixesToWarnings } from "./lib/clean/clean-latex";
+export type {
+  CleanLatexOptions,
+  CleanLatexResult,
+} from "./lib/clean/clean-latex";
+// Re-exported so a host that only depends on @pretextbook/import can read the
+// positioned fixes behind a change report without adding a second dependency.
+export {
+  CLEAN_RULES,
+  findLatexFixes,
+  applyLatexFixes,
+  cleanLatexText,
+  getLatexCleanDiagnostics,
+  latexFixesToCodeActions,
+} from "@pretextbook/latex-style-pretext";
+export type {
+  CleanRule,
+  CleanScope,
+  FindFixesOptions,
+  LatexFix,
+} from "@pretextbook/latex-style-pretext";
 export { expandPretextIncludes } from "./lib/clean/pretext-includes";
 export type {
   CleaningWarning,

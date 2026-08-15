@@ -1,10 +1,17 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   extractUpload,
   handleImportUploadFile,
   importProjectFromFiles,
+  relayoutImport,
   type ImportProjectOptions,
 } from "../lib/upload";
+import {
+  fileChangesForImport,
+  type FileChangeRecord,
+} from "../lib/file-changes";
+import { MAX_SUGGESTED_SPLIT_LEVEL } from "../lib/latex-split";
+import type { DiffHunk } from "../lib/diff";
 import { filesForImportMode, type ImportMode } from "../lib/import-mode";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import {
@@ -187,7 +194,11 @@ export function ImportWizard({
   const [documentKindChoice, setDocumentKindChoice] = useState<
     DocumentKind | "auto"
   >(defaultDocumentKind);
-  const [splitSections, setSplitSections] = useState(false);
+  // Split depth is a review-step control now: changing it re-lays-out the
+  // already-converted result rather than re-running the import, so the file
+  // tree can update as the user drags it.
+  const [splitLevel, setSplitLevel] = useState<number | null>(null);
+  const [showDiff, setShowDiff] = useState<Set<string>>(new Set());
   const [selectedEngineId, setSelectedEngineId] = useState(engineList[0].id);
   const [mode, setMode] = useState<ImportMode>("converted");
   const [showPreview, setShowPreview] = useState(false);
@@ -205,12 +216,34 @@ export function ImportWizard({
   const acceptExtensions =
     selectedEngine.acceptExtensions ?? DEFAULT_ACCEPT_EXTENSIONS;
 
+  // Re-laying out is cheap next to a conversion (pool + serialize only), but it
+  // still walks the whole division pool — and `fileChangesForImport` serializes
+  // it a second time — so both are keyed to the depth rather than recomputed on
+  // every render. Hoisted above the step branches because hooks may not run
+  // conditionally.
+  const reviewResult = step.name === "review" ? step.result : null;
+  const displayedResult = useMemo(
+    () =>
+      reviewResult && splitLevel !== null
+        ? relayoutImport(reviewResult, splitLevel)
+        : reviewResult,
+    [reviewResult, splitLevel],
+  );
+  const changesByPath = useMemo(
+    () =>
+      new Map<string, FileChangeRecord>(
+        displayedResult
+          ? fileChangesForImport(displayedResult).map((r) => [r.path, r])
+          : [],
+      ),
+    [displayedResult],
+  );
+
   /** The options every conversion starts from: the upload step's controls. */
   const baseOptions = (): ImportProjectOptions =>
     importOptions ?? {
       documentKind:
         documentKindChoice === "auto" ? undefined : documentKindChoice,
-      splitSections,
     };
 
   /** Re-survey the upload under the user's current format/main-file choices. */
@@ -294,6 +327,8 @@ export function ImportWizard({
     setMode("converted");
     setShowPreview(false);
     setExpandedFiles(new Set());
+    setShowDiff(new Set());
+    setSplitLevel(null);
     setPrepared(null);
   };
 
@@ -539,7 +574,8 @@ export function ImportWizard({
   }
 
   if (step.name === "review") {
-    const { result } = step;
+    const result = displayedResult ?? step.result;
+    const currentLevel = result.splitLevel;
     const isLatex = result.detectedSourceFormat === "latex";
     const warningCount = result.warnings.length;
     const fileCount = Object.keys(result.outputFiles).length;
@@ -557,6 +593,15 @@ export function ImportWizard({
     function handleModeChange(newMode: ImportMode) {
       setMode(newMode);
       if (showPreview) openFirstFile(result, newMode);
+    }
+
+    function toggleDiff(path: string) {
+      setShowDiff((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+        return next;
+      });
     }
 
     return (
@@ -672,6 +717,53 @@ export function ImportWizard({
           </fieldset>
         ) : null}
 
+        {!importOptions && result.cleanChunks.length > 0 ? (
+          <fieldset className="rounded-lg border border-slate-200 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Split into files
+            </legend>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {Array.from(
+                { length: MAX_SUGGESTED_SPLIT_LEVEL + 1 },
+                (_, level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setSplitLevel(level)}
+                    aria-pressed={currentLevel === level}
+                    className={
+                      currentLevel === level
+                        ? "rounded bg-blue-700 px-3 py-1 text-sm font-medium text-white"
+                        : "rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+                    }
+                  >
+                    {level === 0
+                      ? "One file"
+                      : `${level} level${level === 1 ? "" : "s"}`}
+                  </button>
+                ),
+              )}
+              <span className="ml-2 text-sm text-slate-500">
+                {sortedPreviewPaths.length} file
+                {sortedPreviewPaths.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            <ul className="mt-3 max-h-48 overflow-auto font-mono text-xs text-slate-600">
+              {sortedPreviewPaths.map((path) => (
+                <li key={path} className="truncate py-0.5">
+                  {path}
+                  {changesByPath.get(path)?.fixCount ? (
+                    <span className="ml-2 text-amber-700">
+                      {changesByPath.get(path)!.fixCount} change
+                      {changesByPath.get(path)!.fixCount === 1 ? "" : "s"}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </fieldset>
+        ) : null}
+
         {showPreview ? (
           <div className="overflow-hidden rounded-lg border border-slate-200 text-sm">
             {sortedPreviewPaths.map((path) => {
@@ -695,9 +787,33 @@ export function ImportWizard({
                     </span>
                   </button>
                   {isOpen ? (
-                    <pre className="m-0 max-h-72 overflow-auto bg-white p-4 font-mono text-xs leading-relaxed text-slate-800">
-                      {currentPreviewFiles[path]}
-                    </pre>
+                    <div className="bg-white">
+                      {changesByPath.get(path)?.hunks.length ? (
+                        <div className="flex gap-2 border-b border-slate-200 px-4 py-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleDiff(path)}
+                            className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+                          >
+                            {showDiff.has(path)
+                              ? "Show converted file"
+                              : "Show what changed"}
+                          </button>
+                          <span className="text-xs text-slate-500">
+                            +{changesByPath.get(path)!.stats.added} −
+                            {changesByPath.get(path)!.stats.removed} in the
+                            LaTeX source
+                          </span>
+                        </div>
+                      ) : null}
+                      {showDiff.has(path) && changesByPath.has(path) ? (
+                        <DiffView hunks={changesByPath.get(path)!.hunks} />
+                      ) : (
+                        <pre className="m-0 max-h-72 overflow-auto p-4 font-mono text-xs leading-relaxed text-slate-800">
+                          {currentPreviewFiles[path]}
+                        </pre>
+                      )}
+                    </div>
                   ) : null}
                 </div>
               );
@@ -802,14 +918,6 @@ export function ImportWizard({
               <option value="book">Book</option>
             </select>
           </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={splitSections}
-              onChange={(e) => setSplitSections(e.currentTarget.checked)}
-            />
-            Split sections into separate files
-          </label>
         </div>
       ) : null}
 
@@ -861,6 +969,51 @@ export function ImportWizard({
           }}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * A unified before/after view of what cleaning did to one file's LaTeX source.
+ *
+ * Hunks, not whole files: a cleaning pass touches a handful of scattered lines,
+ * so the untouched runs between them are elided rather than scrolled past.
+ */
+function DiffView({ hunks }: { hunks: DiffHunk[] }) {
+  if (hunks.length === 0) {
+    return (
+      <p className="m-0 px-4 py-3 text-xs text-slate-500">
+        Nothing was changed in this file.
+      </p>
+    );
+  }
+
+  return (
+    <div className="max-h-72 overflow-auto bg-white font-mono text-xs leading-relaxed">
+      {hunks.map((hunk, index) => (
+        <div key={index} className="border-b border-slate-100 last:border-b-0">
+          {index > 0 ? (
+            <div className="bg-slate-50 px-4 py-1 text-slate-400">⋯</div>
+          ) : null}
+          {hunk.lines.map((line, lineIndex) => (
+            <div
+              key={lineIndex}
+              className={
+                line.op === "add"
+                  ? "bg-green-50 px-4 text-green-900"
+                  : line.op === "remove"
+                    ? "bg-red-50 px-4 text-red-900"
+                    : "px-4 text-slate-600"
+              }
+            >
+              <span className="mr-2 select-none text-slate-400">
+                {line.op === "add" ? "+" : line.op === "remove" ? "−" : " "}
+              </span>
+              {line.text || " "}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

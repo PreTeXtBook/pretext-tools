@@ -19,6 +19,13 @@ import type { CleaningWarning } from "../clean/warnings";
 import { splitLatexAtDocument } from "../clean/latex-preamble";
 import type { DocumentKind } from "../layout/document-kind";
 import { padIndex, slugify } from "../layout/shared";
+import { filePrefixForDivision } from "../pretext-divisions";
+import { resolveSplitLevel } from "./division-pool";
+import {
+  latexDivisionHierarchy,
+  parseLatexDivisions,
+  type LatexDivision,
+} from "../latex-split";
 import type { ImportedDivision } from "../types";
 import type { BuildDivisionPoolResult } from "./division-pool";
 import {
@@ -31,6 +38,12 @@ import {
 
 export interface BuildNativeDivisionPoolOptions {
   documentKind?: DocumentKind;
+  /**
+   * How many levels of the document's own division hierarchy to split out —
+   * the same number `buildDivisionPool` takes. Takes precedence over
+   * `splitChapters`/`splitSections`.
+   */
+  splitLevel?: number;
   splitChapters?: boolean;
   splitSections?: boolean;
   /** Project title, hoisted from the converted PreTeXt pool. */
@@ -100,120 +113,6 @@ function mintDivisionRef(
 // LaTeX
 // ---------------------------------------------------------------------------
 
-/** Reduce a LaTeX title fragment to plain text for the division `title` field. */
-function latexTitleToPlainText(tex: string): string {
-  return tex
-    .replace(/\\[a-zA-Z]+\{([^{}]*)\}/g, "$1") // \emph{x} → x
-    .replace(/\\[a-zA-Z]+/g, "") // stray control words
-    .replace(/[{}]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/** Read a balanced `{...}` group at/after `pos` (skipping leading whitespace). */
-function readBraceGroup(
-  text: string,
-  pos: number,
-): { inner: string; end: number } | null {
-  let i = pos;
-  while (i < text.length && /\s/.test(text[i])) i++;
-  if (text[i] !== "{") return null;
-  const start = i;
-  let depth = 0;
-  for (; i < text.length; i++) {
-    const c = text[i];
-    if (c === "\\") {
-      i++;
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}") {
-      depth--;
-      if (depth === 0) return { inner: text.slice(start + 1, i), end: i + 1 };
-    }
-  }
-  return null;
-}
-
-/** Skip a balanced optional `[...]` group at/after `pos`, if present. */
-function skipOptionalArg(text: string, pos: number): number {
-  let i = pos;
-  while (i < text.length && /\s/.test(text[i])) i++;
-  if (text[i] !== "[") return pos;
-  let depth = 0;
-  for (; i < text.length; i++) {
-    const c = text[i];
-    if (c === "\\") {
-      i++;
-      continue;
-    }
-    if (c === "[") depth++;
-    else if (c === "]") {
-      depth--;
-      if (depth === 0) return i + 1;
-    }
-  }
-  return pos;
-}
-
-/** Unescaped brace depth of `text` up to (not including) `index`. */
-function braceDepthAt(text: string, index: number): number {
-  let depth = 0;
-  for (let i = 0; i < index; i++) {
-    const c = text[i];
-    if (c === "\\") {
-      i++;
-      continue;
-    }
-    if (c === "{") depth++;
-    else if (c === "}") depth--;
-  }
-  return depth;
-}
-
-interface LatexDivision {
-  /** Index in the source where `\chapter`/`\section` begins. */
-  start: number;
-  /** Raw (LaTeX) title, as it appeared in the header's braces. */
-  rawTitle: string;
-  /** Index just past the header (and any consumed `\label`). */
-  contentStart: number;
-  /** Ref from a `\label` immediately after the header, if any. */
-  labelId?: string;
-}
-
-/**
- * Find top-level `\<cmd>{…}` divisions (chapters or sections) in `source`:
- * commands at brace depth 0, each with its title and an optional trailing
- * `\label`. Divisions partition the source between successive `start`s.
- */
-function findTopLevelLatexDivisions(
-  source: string,
-  cmd: string,
-): LatexDivision[] {
-  const divisions: LatexDivision[] = [];
-  const cmdRe = new RegExp(`\\\\${cmd}\\*?(?![a-zA-Z])`, "g");
-  let m: RegExpExecArray | null;
-  while ((m = cmdRe.exec(source)) !== null) {
-    const start = m.index;
-    if (braceDepthAt(source, start) !== 0) continue;
-    const title = readBraceGroup(
-      source,
-      skipOptionalArg(source, start + m[0].length),
-    );
-    if (!title) continue;
-    let contentStart = title.end;
-    let labelId: string | undefined;
-    const label = /^\s*\\label\s*\{([^{}]*)\}/.exec(source.slice(title.end));
-    if (label) {
-      labelId = label[1].trim();
-      contentStart = title.end + label[0].length;
-    }
-    divisions.push({ start, rawTitle: title.inner, contentStart, labelId });
-  }
-  return divisions;
-}
-
 function buildLatexDivisionPool(
   nativeSource: string,
   options: BuildNativeDivisionPoolOptions,
@@ -222,58 +121,26 @@ function buildLatexDivisionPool(
   const { body } = splitLatexAtDocument(nativeSource);
   const source = (body || nativeSource).trim();
 
-  const chapterMatches = findTopLevelLatexDivisions(source, "chapter");
+  const roots = parseLatexDivisions(source);
+  const hierarchy = latexDivisionHierarchy(source);
   const documentKind: DocumentKind =
-    options.documentKind ?? (chapterMatches.length > 0 ? "book" : "article");
-  const splitChapters = options.splitChapters ?? documentKind === "book";
-  const splitSections = options.splitSections ?? false;
+    options.documentKind ??
+    (hierarchy.includes("chapter") || hierarchy.includes("part")
+      ? "book"
+      : "article");
+  const splitLevel = resolveSplitLevel(options, documentKind);
 
   const refs = new RefPool();
   const rootRef = refs.claim("document");
   const divisions: ImportedDivision[] = [];
 
-  let rootContent = source;
-
-  if (splitChapters && documentKind === "book" && chapterMatches.length > 0) {
-    const rootParts: string[] = [source.slice(0, chapterMatches[0].start)];
-
-    chapterMatches.forEach((chapter, index) => {
-      const end = chapterMatches[index + 1]?.start ?? source.length;
-      const chapterTitle = latexTitleToPlainText(chapter.rawTitle);
-      const ref = mintDivisionRef(
-        chapter.labelId,
-        chapterTitle,
-        refs,
-        `ch-${padIndex(index + 1, chapterMatches.length)}`,
-        "chapter",
-        index + 1,
-        warnings,
-      );
-
-      let chapterInner = source.slice(chapter.contentStart, end);
-      if (splitSections) {
-        chapterInner = splitLatexSections(
-          chapterInner,
-          ref,
-          refs,
-          divisions,
-          warnings,
-        );
-      }
-
-      divisions.push({
-        xmlId: ref,
-        type: "chapter",
-        title: chapterTitle,
-        sourceFormat: "latex",
-        content: `\\chapter{${chapter.rawTitle}}\\label{${ref}}\n${chapterInner.trim()}`,
-        isRoot: false,
-      });
-      rootParts.push(`\\plus{chapter}{${ref}}`);
-    });
-
-    rootContent = rootParts.join("\n\n").trim();
-  }
+  const rootContent = splitDivisions(source, roots, 0, source.length, 1, {
+    maxDepth: splitLevel,
+    refs,
+    divisions,
+    warnings,
+    parentRef: rootRef,
+  });
 
   // The root division opens with its own header macro (`\book`/`\article`),
   // mirroring how each chapter opens with `\chapter{…}\label{…}`.
@@ -301,45 +168,75 @@ function buildLatexDivisionPool(
   };
 }
 
-/**
- * Split a chapter's LaTeX body at top-level `\section`s, pushing a division per
- * section and returning the chapter body with each section replaced by a
- * `\plus{section}{ref}` placeholder.
- */
-function splitLatexSections(
-  chapterInner: string,
-  chapterRef: string,
-  refs: RefPool,
-  divisions: ImportedDivision[],
-  warnings: CleaningWarning[],
-): string {
-  const sectionMatches = findTopLevelLatexDivisions(chapterInner, "section");
-  if (sectionMatches.length === 0) return chapterInner;
+interface LatexSplitContext {
+  /** Deepest level to extract; 0 extracts nothing. */
+  maxDepth: number;
+  refs: RefPool;
+  divisions: ImportedDivision[];
+  warnings: CleaningWarning[];
+  parentRef: string;
+}
 
-  const parts: string[] = [chapterInner.slice(0, sectionMatches[0].start)];
-  sectionMatches.forEach((section, index) => {
-    const end = sectionMatches[index + 1]?.start ?? chapterInner.length;
-    const sectionTitle = latexTitleToPlainText(section.rawTitle);
+/**
+ * Return `source[from, to)` with each division in `nodes` lifted into the pool
+ * and replaced by a `\plus{type}{ref}` placeholder, recursing until
+ * `maxDepth`.
+ *
+ * This is the LaTeX twin of `splitChildDivisions` in `division-pool.ts`: one
+ * depth parameter, any level of the document's own hierarchy, rather than the
+ * chapter-then-section special case that came before.
+ */
+function splitDivisions(
+  source: string,
+  nodes: LatexDivision[],
+  from: number,
+  to: number,
+  depth: number,
+  context: LatexSplitContext,
+): string {
+  if (depth > context.maxDepth || nodes.length === 0) {
+    return source.slice(from, to).trim();
+  }
+
+  const parts: string[] = [source.slice(from, nodes[0].start)];
+
+  nodes.forEach((node, index) => {
+    const prefix = filePrefixForDivision(node.command);
+    // Top-level fallbacks read as `ch-01`; deeper ones are scoped by their
+    // parent (`methods-sec-02`) so ids stay unique and self-describing.
+    const numbered = `${prefix}-${padIndex(index + 1, nodes.length)}`;
+    const fallback =
+      depth === 1 ? numbered : `${context.parentRef}-${numbered}`;
     const ref = mintDivisionRef(
-      section.labelId,
-      sectionTitle,
-      refs,
-      `${chapterRef}-sec-${padIndex(index + 1, sectionMatches.length)}`,
-      "section",
+      node.labelId,
+      node.title,
+      context.refs,
+      fallback,
+      node.command,
       index + 1,
-      warnings,
+      context.warnings,
     );
-    const sectionInner = chapterInner.slice(section.contentStart, end).trim();
-    divisions.push({
+
+    const inner = splitDivisions(
+      source,
+      node.children,
+      node.contentStart,
+      node.end,
+      depth + 1,
+      { ...context, parentRef: ref },
+    );
+
+    context.divisions.push({
       xmlId: ref,
-      type: "section",
-      title: sectionTitle,
+      type: node.command as ImportedDivision["type"],
+      title: node.title,
       sourceFormat: "latex",
-      content: `\\section{${section.rawTitle}}\\label{${ref}}\n${sectionInner}`,
+      content: `\\${node.command}{${node.rawTitle}}\\label{${ref}}\n${inner}`,
       isRoot: false,
     });
-    parts.push(`\\plus{section}{${ref}}`);
+    parts.push(`\\plus{${node.command}}{${ref}}`);
   });
+
   return parts.join("\n\n").trim();
 }
 

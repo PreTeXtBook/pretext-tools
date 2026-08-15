@@ -1,4 +1,9 @@
-import type { CompletionItem, Diagnostic } from "vscode-languageserver-types";
+import type {
+  CodeAction,
+  CompletionItem,
+  Diagnostic,
+  Range,
+} from "vscode-languageserver-types";
 
 /**
  * How an environment's body is shaped when converted to PreTeXt. Drives
@@ -65,6 +70,48 @@ export interface PretextFlavorLanguage {
   languageId: string;
   getCompletions(params: GetCompletionsParams): CompletionItem[];
   getDiagnostics(text: string): Promise<Diagnostic[]>;
+  /**
+   * Source-cleanup findings: legacy markup that should not survive into
+   * PreTeXt. Optional, because it is a LaTeX-specific notion — a flavor with no
+   * legacy dialect behind it simply omits it, and hosts fall back to an empty
+   * list. Kept separate from `getDiagnostics` so a host can mute cleanup
+   * squiggles without losing conversion errors.
+   */
+  getCleanFixes?(text: string, options?: CleanFixOptions): CleanFix[];
+  /**
+   * Quick fixes for the cleanup findings in `range`, plus a whole-file
+   * "clean up" action. Paired with `getCleanFixes`: a flavor implements both or
+   * neither, so a host can offer cleanup without knowing which flavor it has.
+   */
+  getCleanCodeActions?(
+    text: string,
+    range: Range,
+    uri: string,
+    options?: CleanFixOptions,
+  ): CodeAction[];
+}
+
+/** Structural mirror of `clean/`'s `FindFixesOptions`, to keep this file dependency-free. */
+export interface CleanFixOptions {
+  scope?: "document" | "preamble" | "body" | "auto";
+  disable?: string[];
+  only?: string[];
+}
+
+/** Structural mirror of `clean/`'s `LatexFix`. */
+export interface CleanFix {
+  ruleId: string;
+  action: "delete" | "replace" | "flag";
+  severity: "info" | "warning" | "error";
+  kind: string;
+  category: string;
+  macro: string;
+  start: number;
+  end: number;
+  matched: string;
+  replacement?: string;
+  message?: string;
+  reportMatch?: boolean;
 }
 
 export interface GetCompletionsParams {
