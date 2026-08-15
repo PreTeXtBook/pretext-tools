@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.12.0
+
+### Minor Changes
+
+- 40dd00b: Improve cleaning of suspect latex
+
 ## 0.11.0
 
 ### Minor Changes
