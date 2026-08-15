@@ -32,6 +32,16 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
     documentation: "Unordered list. Converts to `<ul>`.",
   },
   {
+    name: "description",
+    aliases: [],
+    requiresStatement: false,
+    titleArg: false,
+    kind: "list",
+    snippet: "\n\t\\item[${1:term}] $0\n",
+    documentation:
+      "Description list. Converts to `<dl>`; each `\\item[term]` becomes a `<li>` with a `<title>`.",
+  },
+  {
     name: "tabular",
     aliases: [],
     requiresStatement: false,
@@ -125,7 +135,7 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
     name: "webwork",
     aliases: [],
     requiresStatement: false,
-    titleArg: false,
+    titleArg: true,
     kind: "structural",
     documentation: "WeBWorK problem container.",
   },
@@ -169,7 +179,7 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
     name: "gi",
     aliases: [],
     requiresStatement: false,
-    titleArg: false,
+    titleArg: true,
     kind: "structural",
   },
   // Division-level blocks
@@ -278,14 +288,14 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
     name: "sbsgroup",
     aliases: [],
     requiresStatement: false,
-    titleArg: false,
+    titleArg: true,
     kind: "structural",
   },
   {
     name: "stack",
     aliases: [],
     requiresStatement: false,
-    titleArg: false,
+    titleArg: true,
     kind: "structural",
   },
   // Exam document-class list environments (mirrors `examEnvironments`).

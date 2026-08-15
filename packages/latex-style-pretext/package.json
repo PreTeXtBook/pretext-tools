@@ -25,19 +25,22 @@
     }
   },
   "files": [
-    "src/**/*",
-    "README.md"
+    "README.md",
+    "scripts/**/*",
+    "src/**/*"
   ],
   "scripts": {
     "build": "tsc --build tsconfig.lib.json",
     "typecheck": "tsc --build --emitDeclarationOnly",
-    "test": "vitest run"
+    "test": "vitest run",
+    "refresh-converter-support": "node ./scripts/refresh-converter-support.mjs"
   },
   "dependencies": {
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
-    "@pretextbook/latex-pretext": "*"
+    "@pretextbook/latex-pretext": "*",
+    "@pretextbook/unified-latex-to-pretext": "^0.0.8"
   },
   "publishConfig": {
     "access": "public"

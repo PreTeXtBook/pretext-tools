@@ -17,7 +17,7 @@ import {
   type FindFixesOptions,
   type LatexFix,
 } from "./find-fixes";
-import { ALTERNATIVES, KIND_DESCRIPTIONS } from "./rules";
+import { KIND_DESCRIPTIONS, type MacroAlternative } from "./rules";
 
 /**
  * Diagnostic source for cleaning findings. Deliberately distinct from `lint/`'s
@@ -47,10 +47,9 @@ export function describeFix(fix: LatexFix): string {
       ? `${subject}: ${gloss}.`
       : `${subject} does not convert to PreTeXt.`;
   }
-  const alts = ALTERNATIVES[fix.macro];
-  if (alts) {
-    const list = alts
-      .map(([tag, meaning]) => `<${tag}> (${meaning})`)
+  if (fix.alternatives?.length) {
+    const list = fix.alternatives
+      .map((alt) => `\\${alt.macro} (${alt.meaning})`)
       .join(", ");
     return `${subject} marks appearance, not meaning. Consider ${list} instead.`;
   }
@@ -135,18 +134,23 @@ export function latexFixesToCodeActions(
   const actions: CodeAction[] = [];
 
   for (const fix of fixes) {
-    if (fix.replacement === undefined) continue;
     if (!fixTouchesRange(text, fix, range)) continue;
-    const edit: TextEdit = {
-      range: rangeFromOffsets(text, fix.start, fix.end),
-      newText: fix.replacement,
-    };
-    actions.push({
-      title: titleForFix(fix),
-      kind: CodeActionKind.QuickFix,
-      diagnostics: latexFixesToDiagnostics(text, [fix]),
-      edit: { changes: { [uri]: [edit] } },
-    });
+
+    if (fix.replacement !== undefined) {
+      const edit: TextEdit = {
+        range: rangeFromOffsets(text, fix.start, fix.end),
+        newText: fix.replacement,
+      };
+      actions.push({
+        title: titleForFix(fix),
+        kind: CodeActionKind.QuickFix,
+        diagnostics: latexFixesToDiagnostics(text, [fix]),
+        edit: { changes: { [uri]: [edit] } },
+      });
+      continue;
+    }
+
+    actions.push(...alternativeActions(text, fixes, fix, uri));
   }
 
   if (includeCleanAll) {
@@ -171,6 +175,65 @@ export function latexFixesToCodeActions(
                 newText: outcome.output,
               },
             ],
+          },
+        },
+      });
+    }
+  }
+
+  return actions;
+}
+
+/**
+ * Quick fixes for a flagged macro: one per semantic alternative, and — when the
+ * same macro is flagged more than once — a "replace all" twin, the way a spell
+ * checker offers both "Change" and "Change All".
+ *
+ * Nothing here is ever applied automatically. `cleanLatexText` only applies
+ * fixes that carry a `replacement`, and an alternative deliberately does not:
+ * choosing between `\alert`, `\term` and `\emph` is a decision about meaning,
+ * not a defect to repair, so it stays with the author.
+ */
+function alternativeActions(
+  text: string,
+  allFixes: LatexFix[],
+  fix: LatexFix,
+  uri: string,
+): CodeAction[] {
+  if (!fix.alternatives?.length) return [];
+
+  const diagnostics = latexFixesToDiagnostics(text, [fix]);
+  // "All" means every occurrence of the *same* macro. Sweeping up `\textit`
+  // alongside `\textbf` would answer a question the author was not asked.
+  const siblings = allFixes.filter((other) => other.ruleId === fix.ruleId);
+
+  const actions: CodeAction[] = [];
+  for (const alt of fix.alternatives) {
+    const newText = `\\${alt.macro}`;
+    actions.push({
+      title: `Replace \\${fix.macro} with \\${alt.macro} — ${alt.meaning}`,
+      kind: CodeActionKind.QuickFix,
+      diagnostics,
+      edit: {
+        changes: {
+          [uri]: [
+            { range: rangeFromOffsets(text, fix.start, fix.end), newText },
+          ],
+        },
+      },
+    });
+
+    if (siblings.length > 1) {
+      actions.push({
+        title: `Replace all ${siblings.length} \\${fix.macro} with \\${alt.macro}`,
+        kind: CodeActionKind.QuickFix,
+        diagnostics,
+        edit: {
+          changes: {
+            [uri]: siblings.map((sibling) => ({
+              range: rangeFromOffsets(text, sibling.start, sibling.end),
+              newText,
+            })),
           },
         },
       });

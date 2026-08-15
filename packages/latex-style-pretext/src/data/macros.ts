@@ -111,7 +111,6 @@ const ONE_ARG = group(
     "acro",
     "init",
     "foreign",
-    "foreignlanguage",
     "booktitle",
     "pubtitle",
     "articletitle",
@@ -167,6 +166,30 @@ const SPECIAL: MacroSpec[] = [
     documentation: "Image. Converts to `<image>` with a `source` attribute.",
   },
   {
+    name: "alert",
+    signature: "m",
+    mode: "text",
+    snippet: "alert{$1}",
+    documentation:
+      "Text that warns or demands attention. Converts to `<alert>`.",
+  },
+  {
+    name: "citep",
+    signature: "o m",
+    mode: "text",
+    snippet: "citep{${1:key}}",
+    documentation:
+      "Parenthetical citation (natbib). Converts to `<xref>`, the same as `\\cite`.",
+  },
+  {
+    name: "foreignlanguage",
+    signature: "m m",
+    mode: "text",
+    snippet: "foreignlanguage{${1:french}}{$2}",
+    documentation:
+      "Text in another language. `\\foreignlanguage{lang}{text}` → `<foreign>`.",
+  },
+  {
     name: "term",
     signature: "m",
     mode: "text",
@@ -200,6 +223,37 @@ const SPECIAL: MacroSpec[] = [
  * plus the document-root macros in `provides.ts`. Signature simplified to the
  * common `\section{title}` form for completion purposes.
  */
+/**
+ * PreTeXt's own division macros, the `\section`-shaped spelling of the
+ * divisions that also exist as environments. Declared in the converter's
+ * exported `macros` record — so unlike the `DIVISION` group below, their
+ * signatures are checked mechanically against it by `converter-drift.spec.ts`.
+ *
+ * `s o m` is starred form, optional short/ToC title, mandatory title:
+ * `\worksheet*[Short]{The Full Title}`.
+ */
+const PRETEXT_DIVISION = group(
+  [
+    "preface",
+    "biography",
+    "dedication",
+    "glossary",
+    "handout",
+    "exercises",
+    "solutions",
+    "worksheet",
+    "paragraphs",
+    "readingquestions",
+  ],
+  "s o m",
+).map((macro) => ({
+  ...macro,
+  snippet: `${macro.name}{$1}`,
+  documentation: `PreTeXt division. \\${macro.name}{title} opens a <${
+    macro.name === "readingquestions" ? "reading-questions" : macro.name
+  }> that runs to the next division of the same or higher level.`,
+}));
+
 const DIVISION = group(
   [
     "book",
@@ -221,8 +275,13 @@ const DIVISION = group(
 /**
  * Standard LaTeX document macros unified-latex parses natively. Listed so lint
  * does not flag them; the converter consumes them for metadata/structure.
+ *
+ * `subjclass`, `email` and `keywords` convert to nothing visible on purpose —
+ * they are document metadata the converter folds into `<docinfo>`.
  */
 const DOCUMENT = [
+  ...group(["email", "keywords"], "m"),
+  ...group(["subjclass"], "o m"),
   ...group(["title", "author", "date", "input", "include", "subtitle"], "m"),
   ...group(["documentclass", "usepackage"], "o m"),
   ...group(["newcommand", "renewcommand", "providecommand"], "m m"),
@@ -282,7 +341,15 @@ const OVERRIDDEN = new Set(SPECIAL.map((m) => m.name));
 
 export const MACROS: MacroSpec[] = [
   ...SPECIAL,
-  ...[...NO_ARG, ...ONE_ARG, ...DIVISION, ...DOCUMENT, ...STREAMING, ...EXAM]
+  ...[
+    ...NO_ARG,
+    ...ONE_ARG,
+    ...PRETEXT_DIVISION,
+    ...DIVISION,
+    ...DOCUMENT,
+    ...STREAMING,
+    ...EXAM,
+  ]
     .filter((m) => !OVERRIDDEN.has(m.name))
     // De-duplicate names that appear in more than one group (e.g. `part`).
     .filter((m, i, all) => all.findIndex((o) => o.name === m.name) === i),

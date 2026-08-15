@@ -11,6 +11,7 @@ import {
 import {
   CLEAN_RULES,
   type CleanAction,
+  type MacroAlternative,
   type CleanRule,
   type CleanRuleKind,
   type CleanSeverity,
@@ -39,6 +40,11 @@ export interface LatexFix {
   reportMatch?: boolean;
   /** Readable description of the replacement, when the raw text reads badly. */
   replacementLabel?: string;
+  /**
+   * Semantic macros to offer instead of this one (`flag` fixes only). The
+   * editor turns these into quick fixes; nothing applies them automatically.
+   */
+  alternatives?: MacroAlternative[];
 }
 
 /** Which part of a document the text handed to `findLatexFixes` represents. */
@@ -267,6 +273,7 @@ export function findLatexFixes(
         message: rule.message,
         reportMatch: rule.reportMatch,
         replacementLabel: rule.replacementLabel,
+        alternatives: rule.alternatives,
         priority,
       });
     }

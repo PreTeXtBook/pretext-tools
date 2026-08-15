@@ -29,6 +29,9 @@ jobs:
       - name: Check schema generated artifacts
         run: npm run check:schema-generated
 
+      - name: Check LaTeX converter support snapshot
+        run: npm run check:latex-support
+
       - name: Build utility packages
         run: npm run build:utils
 
