@@ -294,7 +294,15 @@ function getHtmlForWebview(
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} data:;">
+          <!--
+            worker-src is required: the built-in converter runs the import
+            pipeline in a Web Worker so the panel stays responsive during a
+            multi-second conversion. Without it the directive falls back
+            through child-src to default-src 'none' and the worker is blocked.
+            blob: covers the case where Vite inlines a small worker chunk
+            rather than emitting it as a separate file.
+          -->
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src 'nonce-${nonce}' ${webview.cspSource} blob:; worker-src ${webview.cspSource} blob:; img-src ${webview.cspSource} data:;">
           <title>Import to PreTeXt</title>
           <link href="${styleUri}" rel="stylesheet" />
           <style>

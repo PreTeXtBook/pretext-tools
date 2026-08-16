@@ -26,6 +26,13 @@ export default defineConfig(() => ({
       entry: {
         index: path.resolve(import.meta.dirname, "src/index.ts"),
         react: path.resolve(import.meta.dirname, "src/react/index.ts"),
+        // Bundler entry for hosts, not an importable module: they pull
+        // it in with Vite's `?worker` suffix so their own build resolves
+        // our externalized deps into a self-contained worker chunk.
+        "convert-worker": path.resolve(
+          import.meta.dirname,
+          "src/worker/convert-worker.ts",
+        ),
       },
       name: "import",
       fileName: (format, entryName) =>
