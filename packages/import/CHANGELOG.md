@@ -1,5 +1,11 @@
 # @pretextbook/import
 
+## 0.7.0
+
+### Minor Changes
+
+- 4dbef28: Improve visual feedback when importing
+
 ## 0.6.0
 
 ### Minor Changes
