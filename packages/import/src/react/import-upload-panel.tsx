@@ -135,8 +135,15 @@ export function ImportUploadPanel({
           type="button"
           disabled={isDisabled}
           onClick={() => fileInputRef.current?.click()}
+          className="inline-flex items-center gap-2"
         >
-          {busy ? "Processing..." : text.selectButton}
+          {busy ? (
+            <span
+              className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
+              aria-hidden="true"
+            />
+          ) : null}
+          {busy ? "Processing…" : text.selectButton}
         </button>
         <input
           ref={fileInputRef}
@@ -153,6 +160,12 @@ export function ImportUploadPanel({
           }}
         />
       </div>
+
+      {busy ? (
+        <p role="status" aria-live="polite">
+          Converting your file — this can take a while for a long document.
+        </p>
+      ) : null}
 
       {statusMessages.length > 0 ? (
         <ul aria-live="polite">

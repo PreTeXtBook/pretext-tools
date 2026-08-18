@@ -171,3 +171,18 @@ export type {
   ImportedProjectSuccess,
   ImportedProjectError,
 } from "./lib/types";
+export {
+  createWorkerEngine,
+  runConversionInWorker,
+  ConversionCancelledError,
+  type ConversionWorker,
+  type WorkerEngineOptions,
+  type RunningConversion,
+} from "./worker/worker-engine";
+export type {
+  WorkerRequest,
+  WorkerResponse,
+  ConvertRequest,
+  ResultResponse,
+  ErrorResponse,
+} from "./worker/protocol";

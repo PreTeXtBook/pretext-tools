@@ -13,6 +13,7 @@ import {
 import { MAX_SUGGESTED_SPLIT_LEVEL } from "../lib/latex-split";
 import type { DiffHunk } from "../lib/diff";
 import { filesForImportMode, type ImportMode } from "../lib/import-mode";
+import { ProcessingPanel } from "./processing-panel";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import {
   analyzeImportSources,
@@ -80,11 +81,24 @@ export interface ImportEngine {
   ) => Promise<ImportedProjectResult>;
   /** Unpack and survey an upload without converting it. */
   prepare?: (file: File) => Promise<PreparedUpload>;
-  /** Convert an already-prepared upload with the user's source choices. */
+  /**
+   * Convert an already-prepared upload with the user's source choices.
+   *
+   * May return synchronously (the built-in engine does) or a promise (the
+   * worker engine does). The wizard always awaits, which is what lets the
+   * processing screen paint and its timer tick before the work starts.
+   */
   convertPrepared?: (
     prepared: PreparedUpload,
     options: ImportProjectOptions,
-  ) => ImportedProjectResult;
+  ) => ImportedProjectResult | Promise<ImportedProjectResult>;
+  /**
+   * Stop an in-flight conversion. Engines that run the pipeline in-process
+   * cannot honour this — the pipeline has no yield points — so only the worker
+   * engine supplies it, and the processing screen shows Cancel only when it is
+   * present.
+   */
+  cancel?: () => void;
 }
 
 /** The default engine: the in-browser pure-TS pipeline, no external tools. */
@@ -111,9 +125,40 @@ const BUILTIN_ENGINE: ImportEngine = {
     }),
 };
 
+/**
+ * Resolve after the browser has painted.
+ *
+ * Needed because an engine may convert synchronously (the built-in one does),
+ * and `await` on a non-promise only queues a microtask — which drains *before*
+ * paint, while React schedules its render as a macrotask. Without a real frame
+ * boundary the processing screen would never reach the screen before a sync
+ * engine seized the thread. `requestAnimationFrame` runs before the paint, so a
+ * timeout scheduled from inside it resumes after it.
+ *
+ * Costs one frame (~16ms) against a multi-second conversion. Falls back to a
+ * bare timeout where there is no rAF (tests, SSR).
+ */
+function nextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      setTimeout(resolve, 0);
+      return;
+    }
+    requestAnimationFrame(() => setTimeout(resolve, 0));
+  });
+}
+
 export interface ImportWizardProps {
-  /** Called when the user confirms the import. */
-  onConfirm: (result: ImportedProjectSuccess, mode: ImportMode) => void;
+  /**
+   * Called when the user confirms the import. May return a promise — writing
+   * the file map out is the host's slow step (VS Code writes to disk,
+   * pretext-plus uploads), so the wizard awaits it and holds the button in a
+   * pending state until it settles rather than appearing to do nothing.
+   */
+  onConfirm: (
+    result: ImportedProjectSuccess,
+    mode: ImportMode,
+  ) => void | Promise<void>;
   /** Called when the user cancels at the review step. */
   onCancel?: () => void;
   /** Pass fixed options to skip the document-kind / split-sections controls. */
@@ -209,6 +254,10 @@ export function ImportWizard({
   );
   const [mainFileChoice, setMainFileChoice] = useState<string | null>(null);
   const [attachChoices, setAttachChoices] = useState<AttachChoices>({});
+  const [confirming, setConfirming] = useState(false);
+  // Set when the user cancels, so the conversion's own rejection (a terminated
+  // worker) is swallowed instead of surfacing as an import failure.
+  const cancelledRef = useRef(false);
 
   const selectedEngine =
     engineList.find((engine) => engine.id === selectedEngineId) ??
@@ -253,8 +302,23 @@ export function ImportWizard({
       mainFile: mainFileChoice ?? undefined,
     });
 
-  const runImport = (upload: PreparedUpload) => {
+  /**
+   * Abandon the conversion in flight and go back where the user came from.
+   * Only offered when the engine can actually stop (the worker engine); an
+   * in-process engine has no yield point at which to notice.
+   */
+  const cancelProcessing = (upload: PreparedUpload | null) => {
+    cancelledRef.current = true;
+    selectedEngine.cancel?.();
+    setStep(
+      upload ? { name: "sources", prepared: upload } : { name: "upload" },
+    );
+  };
+
+  const runImport = async (upload: PreparedUpload) => {
+    cancelledRef.current = false;
     setStep({ name: "processing" });
+    await nextPaint();
     try {
       const analysis = currentAnalysis(upload);
       const attachRoots: RootAttachment[] = analysis.extraRoots.map((root) => ({
@@ -262,7 +326,10 @@ export function ImportWizard({
         include: attachChoices[root.path]?.include ?? true,
         level: attachChoices[root.path]?.level,
       }));
-      const result = selectedEngine.convertPrepared!(upload, {
+      // Awaited even when the engine is synchronous: the await yields to the
+      // event loop, which is what lets React commit the processing step and
+      // the browser paint it before a sync engine seizes the thread.
+      const result = await selectedEngine.convertPrepared!(upload, {
         ...baseOptions(),
         sourceFormat: formatChoice === "auto" ? undefined : formatChoice,
         mainFile: mainFileChoice ?? undefined,
@@ -274,6 +341,9 @@ export function ImportWizard({
         setStep({ name: "review", result });
       }
     } catch (err) {
+      if (cancelledRef.current) {
+        return;
+      }
       setStep({
         name: "error",
         message:
@@ -283,7 +353,9 @@ export function ImportWizard({
   };
 
   const processFile = async (file: File) => {
+    cancelledRef.current = false;
     setStep({ name: "processing" });
+    await nextPaint();
     try {
       // Two-phase engines unpack first, so the user can settle which file is
       // the document before anything is converted. Single-shot engines (a
@@ -298,7 +370,11 @@ export function ImportWizard({
           setStep({ name: "sources", prepared: upload });
           return;
         }
-        const result = selectedEngine.convertPrepared(upload, baseOptions());
+        await nextPaint();
+        const result = await selectedEngine.convertPrepared(
+          upload,
+          baseOptions(),
+        );
         setStep(
           "pretextError" in result
             ? { name: "error", message: result.pretextError }
@@ -314,6 +390,9 @@ export function ImportWizard({
         setStep({ name: "review", result });
       }
     } catch (err) {
+      if (cancelledRef.current) {
+        return;
+      }
       setStep({
         name: "error",
         message:
@@ -361,10 +440,11 @@ export function ImportWizard({
 
   if (step.name === "processing") {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-slate-600">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-700 border-t-transparent" />
-        <p className="text-sm">Processing your file…</p>
-      </div>
+      <ProcessingPanel
+        onCancel={
+          selectedEngine.cancel ? () => cancelProcessing(prepared) : undefined
+        }
+      />
     );
   }
 
@@ -851,10 +931,25 @@ export function ImportWizard({
             </button>
             <button
               type="button"
-              onClick={() => onConfirm(result, mode)}
-              className="rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600"
+              disabled={confirming}
+              onClick={async () => {
+                setConfirming(true);
+                try {
+                  // The host writes the whole file map here — to disk in VS
+                  // Code, over the network in pretext-plus — so this is a
+                  // second stretch of dead time the user would otherwise see
+                  // no feedback for.
+                  await onConfirm(result, mode);
+                } finally {
+                  setConfirming(false);
+                }
+              }}
+              className="flex items-center gap-2 rounded bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 disabled:opacity-60"
             >
-              Confirm Import
+              {confirming ? (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              ) : null}
+              {confirming ? "Importing…" : "Confirm Import"}
             </button>
           </div>
         </div>

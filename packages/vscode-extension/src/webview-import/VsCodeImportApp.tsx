@@ -4,14 +4,12 @@ import {
   type ImportMode,
 } from "@pretextbook/import/react";
 import "@pretextbook/import/react.css";
+import ConvertWorker from "@pretextbook/import/worker?worker";
 import {
-  analyzeImportSources,
   assetsForImportMode,
-  extractUpload,
+  createWorkerEngine,
   filesForImportMode,
   formatWarningLine,
-  handleImportUploadFile,
-  importProjectFromFiles,
   type ImportedProjectResult,
   type ImportedProjectSuccess,
   type ImportProjectOptions,
@@ -73,8 +71,18 @@ function encodeAssets(
 // Import engines
 // ---------------------------------------------------------------------------
 
-/** The built-in pure-TS pipeline that runs entirely in the webview. */
-const builtinEngine: ImportEngine = {
+/**
+ * The built-in pure-TS pipeline. It runs in a worker rather than on the
+ * webview's UI thread: the conversion is a single synchronous grind (~15ms per
+ * KB of LaTeX, so ten seconds or more for a full textbook) with no yield
+ * points, and on the UI thread it would freeze the panel solid — no spinner,
+ * no elapsed timer, no working Cancel.
+ *
+ * `?worker` is Vite's worker import: the webview's own build resolves this
+ * package's externalized dependencies and emits a self-contained chunk. The
+ * panel's CSP must allow `worker-src` for it to load (see importWizardPanel.ts).
+ */
+const builtinEngine: ImportEngine = createWorkerEngine({
   id: "builtin",
   label: "Built-in converter",
   description:
@@ -90,25 +98,8 @@ const builtinEngine: ImportEngine = {
     ".tar.gz",
     ".tgz",
   ],
-  convertFile: handleImportUploadFile,
-  // Two-phase support: unpack and survey the upload so the wizard can offer
-  // the source-selection step (format, main file, extra roots) before
-  // anything is converted.
-  prepare: async (file) => {
-    const { files, assets } = await extractUpload(file);
-    return {
-      fileName: file.name,
-      files,
-      assets,
-      analysis: analyzeImportSources(files),
-    };
-  },
-  convertPrepared: (prepared, options) =>
-    importProjectFromFiles(prepared.files, {
-      ...options,
-      assets: prepared.assets,
-    }),
-};
+  createWorker: () => new ConvertWorker(),
+});
 
 // Pandoc runs in the extension host, so the pandoc engine round-trips the file
 // bytes there and awaits the converted result, correlated by requestId.

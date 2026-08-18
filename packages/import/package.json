@@ -30,7 +30,12 @@
       "require": "./dist/react.cjs",
       "default": "./dist/react.js"
     },
-    "./react.css": "./dist/import.css"
+    "./react.css": "./dist/import.css",
+    "./worker": {
+      "types": "./dist/worker/convert-worker.d.ts",
+      "import": "./dist/convert-worker.js",
+      "default": "./dist/convert-worker.js"
+    }
   },
   "sideEffects": [
     "*.css",

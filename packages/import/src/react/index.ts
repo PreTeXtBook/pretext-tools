@@ -8,6 +8,9 @@ export type {
   PreparedUpload,
 } from "./import-wizard";
 
+export { ProcessingPanel } from "./processing-panel";
+export type { ProcessingPanelProps } from "./processing-panel";
+
 export { ImportSourceForm } from "./import-source-form";
 export { ImportUploadPanel } from "./import-upload-panel";
 export type {

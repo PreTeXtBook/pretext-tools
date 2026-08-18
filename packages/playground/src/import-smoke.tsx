@@ -7,6 +7,7 @@ import {
 import "react-json-view-lite/dist/index.css";
 import { createRoot } from "react-dom/client";
 import { ImportUploadPanel, ImportWizard } from "@pretextbook/import/react";
+import ConvertWorker from "@pretextbook/import/worker?worker";
 import "@pretextbook/import/react.css";
 import {
   assetsForImportMode,
@@ -14,6 +15,7 @@ import {
   filesForImportMode,
   formatWarningLine,
   projectForImportMode,
+  createWorkerEngine,
   serializeProjectToPlusPayload,
 } from "@pretextbook/import";
 import type {
@@ -185,6 +187,12 @@ function buildVsCodeMessage(result: ImportedProjectSuccess, mode: ImportMode) {
   };
 }
 
+// Mirrors the VS Code host: the conversion runs in a worker so the wizard's
+// spinner, elapsed timer, and Cancel all stay live during a multi-second import.
+const workerEngine = createWorkerEngine({
+  createWorker: () => new ConvertWorker(),
+});
+
 function WizardDemo() {
   const [confirmed, setConfirmed] = useState<{
     result: ImportedProjectSuccess;
@@ -221,6 +229,7 @@ function WizardDemo() {
       <div className="wizard-frame">
         <ImportWizard
           key={wizardKey}
+          engines={[workerEngine]}
           onConfirm={(result, mode) => setConfirmed({ result, mode })}
           onCancel={() => {
             setConfirmed(null);
