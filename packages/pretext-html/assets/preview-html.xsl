@@ -229,7 +229,10 @@
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->
 <!-- and a host that resolves that query against its own URL sends the reader -->
-<!-- somewhere unrelated. See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.      -->
+<!-- somewhere unrelated. The button carries data-printout* attributes all    -->
+<!-- the same, which is how the embedder finds the page's printouts and       -->
+<!-- offers the same layout from its own UI (src/printout.ts).                -->
+<!-- See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.                           -->
 <xsl:template match="*" mode="standalone-printout-links">
     <div class="print-links">
         <a class="print-link" style="opacity:0.45;cursor:default;pointer-events:none" aria-disabled="true" title="Print preview: select this printout from the live preview's own controls">
