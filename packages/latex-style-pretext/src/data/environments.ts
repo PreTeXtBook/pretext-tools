@@ -139,6 +139,17 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
     kind: "structural",
     documentation: "WeBWorK problem container.",
   },
+  {
+    name: "slide",
+    aliases: ["frame"],
+    requiresStatement: false,
+    titleArg: false,
+    kind: "structural",
+    snippet: "{${1:Title}}{${2:Subtitle}}\n\t$0\n",
+    documentation:
+      "Beamer-style slide (`slide` or `frame`). Converts to `<slide>`; title/subtitle come from " +
+      "the two braced arguments (or `\\frametitle{}`/`\\framesubtitle{}` inside the body).",
+  },
   // Frontmatter / structural containers
   {
     name: "preface",

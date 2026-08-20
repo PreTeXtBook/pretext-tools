@@ -44,6 +44,8 @@ const OPTIONAL_ARG_IS_NOT_A_TITLE: Record<string, string> = {
     "the optional argument carries layout attributes (width, margins)",
   listing: "the converter currently drops the optional argument",
   list: "the converter currently mishandles the optional argument",
+  slide:
+    "the two optional arguments are beamer overlay specs; title/subtitle come from the two mandatory braced arguments instead",
 };
 
 describe("every environment the converter supports is curated", () => {
