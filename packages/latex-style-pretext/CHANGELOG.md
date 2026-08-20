@@ -1,5 +1,11 @@
 # @pretextbook/latex-style-pretext
 
+## 0.4.0
+
+### Minor Changes
+
+- 7749353: Improve latex support
+
 ## 0.3.0
 
 ### Minor Changes
