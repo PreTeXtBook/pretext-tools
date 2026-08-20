@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.13.0
+
+### Minor Changes
+
+- 7749353: Improve latex support
+
 ## 0.12.0
 
 ### Minor Changes
