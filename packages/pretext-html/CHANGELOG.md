@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.14.0
+
+### Minor Changes
+
+- 9543e76: Many minor improvements to conversion and import
+
 ## 0.13.0
 
 ### Minor Changes
