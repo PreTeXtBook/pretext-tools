@@ -31,6 +31,7 @@ import type {
   Strong,
   Emphasis,
   InlineCode,
+  Link,
   List,
   ListItem,
   Blockquote as MdastBlockquote,
@@ -646,6 +647,11 @@ function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
   return convertDisplayMath(node, ctx);
 }
 
+/** Convert a markdown link (`[text](url)`) to a PreTeXt `<url href="...">text</url>`. */
+function convertLink(node: Link, ctx: VisitContext): Element {
+  return el("url", convertInlineNodes(node.children, ctx), { href: node.url });
+}
+
 // ---------------------------------------------------------------------------
 // Leaf directive converters
 // ---------------------------------------------------------------------------
@@ -806,6 +812,7 @@ const inlineHandlers: Record<
     el("alert", convertInlineNodes((node as Strong).children, ctx)),
   inlineCode: (node, ctx) => valueEl("c", (node as InlineCode).value),
   math: (node, ctx) => convertMathNode(node as unknown as CustomMath, ctx),
+  link: (node, ctx) => convertLink(node as Link, ctx),
 };
 
 function convertInlineNodes(

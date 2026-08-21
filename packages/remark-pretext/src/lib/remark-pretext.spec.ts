@@ -149,6 +149,26 @@ describe("inline element conversion", () => {
     expect(elName(m)).toBe("m");
     expect(getPtxTextContent(m)).toBe("x^2 + 1");
   });
+
+  it("link  url", () => {
+    const tree = parse("See [PreTeXt](https://pretextbook.org) for details.");
+    const p = tree.children[0] as Element;
+    const url = p.children.find((n) => elName(n) === "url") as Element;
+    expect(elName(url)).toBe("url");
+    expect(url.attributes?.href).toBe("https://pretextbook.org");
+    expect(getPtxTextContent(url)).toBe("PreTeXt");
+  });
+
+  it("link with formatted text  url with em/alert children", () => {
+    const tree = parse("[**bold** link](https://example.com)");
+    const p = tree.children[0] as Element;
+    const url = p.children[0] as Element;
+    expect(elName(url)).toBe("url");
+    expect(url.attributes?.href).toBe("https://example.com");
+    const alert = url.children[0] as Element;
+    expect(elName(alert)).toBe("alert");
+    expect(textValue(alert.children[0])).toBe("bold");
+  });
 });
 
 describe("display math", () => {

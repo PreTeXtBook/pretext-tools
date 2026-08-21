@@ -113,6 +113,7 @@
     "@vscode/vsce-sign@2.0.9": true,
     "@parcel/watcher@2.5.6": true,
     "core-js-pure@3.49.0": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "keytar@7.9.0": true
   }
 }
