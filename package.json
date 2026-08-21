@@ -34,7 +34,9 @@
     "pretest": "npm run build",
     "format": "npx prettier --write --ignore-unknown \"packages/**\"",
     "refresh:xsl": "npm run refresh-xsl -w @pretextbook/pretext-html",
-    "refresh:runestone": "npm run refresh-runestone -w @pretextbook/pretext-html"
+    "refresh:runestone": "npm run refresh-runestone -w @pretextbook/pretext-html",
+    "refresh:all": "npm run refresh:schemas && npm run refresh:xsl && npm run refresh:latex-support",
+    "prepare-release": "npm run refresh:all && npm run build -w @pretextbook/latex-style-pretext && npm test && node ./scripts/changes-since-release.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
