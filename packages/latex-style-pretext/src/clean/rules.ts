@@ -240,6 +240,20 @@ export const REWRITE_RULES: CleanRule[] = [
     message: "Vertical fill is presentational; PreTeXt handles page layout.",
   },
   {
+    id: "underline-blank",
+    label: "\\underline{}",
+    replacementLabel: "\\fillin",
+    kind: "presentation",
+    category: "blanks",
+    scope: "anywhere",
+    match: { type: "regex", pattern: /\\underline\{\s*\}/ },
+    action: "replace",
+    replacement: "\\fillin",
+    severity: "info",
+    message:
+      "An empty \\underline{} is a common hack for a fill-in-the-blank; \\fillin is the semantic PreTeXt equivalent.",
+  },
+  {
     id: "vskip",
     label: "vskip",
     replacementLabel: "\\vspace{...}",

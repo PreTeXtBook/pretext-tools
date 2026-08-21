@@ -73,7 +73,7 @@ describe("extractMacros", () => {
   it("collects \\newcommand lines", () => {
     const preamble =
       "\\usepackage{amsmath}\n\\newcommand{\\R}{\\mathbb{R}}\n\\newcommand{\\ZZ}{\\mathbb{Z}}";
-    const macros = extractMacros(preamble);
+    const { macros } = extractMacros(preamble);
     expect(macros).toContain("\\newcommand{\\R}{\\mathbb{R}}");
     expect(macros).toContain("\\newcommand{\\ZZ}{\\mathbb{Z}}");
     expect(macros).not.toContain("\\usepackage");
@@ -81,24 +81,58 @@ describe("extractMacros", () => {
 
   it("collects \\renewcommand", () => {
     const preamble = "\\renewcommand{\\vec}[1]{\\mathbf{#1}}";
-    expect(extractMacros(preamble)).toContain("\\renewcommand");
+    expect(extractMacros(preamble).macros).toContain("\\renewcommand");
   });
 
   it("collects \\DeclareMathOperator", () => {
     const preamble = "\\DeclareMathOperator{\\Hom}{Hom}";
-    expect(extractMacros(preamble)).toContain("\\DeclareMathOperator");
+    expect(extractMacros(preamble).macros).toContain("\\DeclareMathOperator");
   });
 
   it("collects multi-line \\newcommand", () => {
     const preamble = "\\newcommand{\\myfrac}[2]{\n  \\frac{#1}{#2}\n}";
-    const macros = extractMacros(preamble);
+    const { macros } = extractMacros(preamble);
     expect(macros).toContain("\\newcommand{\\myfrac}");
     expect(macros).toContain("\\frac{#1}{#2}");
   });
 
   it("returns empty string when no macros present", () => {
     const preamble = "\\documentclass{article}\n\\usepackage{amsmath}";
-    expect(extractMacros(preamble)).toBe("");
+    expect(extractMacros(preamble).macros).toBe("");
+  });
+
+  it("collects \\def but warns that it won't convert downstream", () => {
+    const preamble = "\\def\\R{\\mathbb{R}}";
+    const { macros, warnings } = extractMacros(preamble);
+    expect(macros).toContain("\\def\\R{\\mathbb{R}}");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({
+      action: "anomaly",
+      severity: "warning",
+      macro: "def",
+      occurrences: 1,
+    });
+    expect(warnings[0].examples).toEqual(["\\def\\R{\\mathbb{R}}"]);
+  });
+
+  it("collects multi-line \\def", () => {
+    const preamble = "\\def\\myfrac#1#2{\n  \\frac{#1}{#2}\n}";
+    const { macros, warnings } = extractMacros(preamble);
+    expect(macros).toContain("\\def\\myfrac#1#2{");
+    expect(macros).toContain("\\frac{#1}{#2}");
+    expect(warnings).toHaveLength(1);
+  });
+
+  it("rolls up multiple \\def occurrences into one warning", () => {
+    const preamble = "\\def\\R{\\mathbb{R}}\n\\def\\ZZ{\\mathbb{Z}}";
+    const { warnings } = extractMacros(preamble);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].occurrences).toBe(2);
+  });
+
+  it("does not warn for \\newcommand", () => {
+    const preamble = "\\newcommand{\\R}{\\mathbb{R}}";
+    expect(extractMacros(preamble).warnings).toEqual([]);
   });
 });
 
@@ -111,7 +145,7 @@ describe("extractPreambleInfo", () => {
       "\\newcommand{\\R}{\\mathbb{R}}",
     ].join("\n");
 
-    const info = extractPreambleInfo(preamble);
+    const { info } = extractPreambleInfo(preamble);
     expect(info.title).toBe("My Book");
     expect(info.author).toBe("Oscar Levin");
     expect(info.macros).toContain("\\newcommand{\\R}");
@@ -119,13 +153,20 @@ describe("extractPreambleInfo", () => {
 
   it("ignores commented-out commands", () => {
     const preamble = "% \\title{Fake}\n\\title{Real}";
-    expect(extractPreambleInfo(preamble).title).toBe("Real");
+    expect(extractPreambleInfo(preamble).info.title).toBe("Real");
   });
 
   it("returns empty strings when nothing found", () => {
-    const info = extractPreambleInfo("\\documentclass{article}");
+    const { info } = extractPreambleInfo("\\documentclass{article}");
     expect(info.title).toBe("");
     expect(info.author).toBe("");
     expect(info.macros).toBe("");
+  });
+
+  it("surfaces \\def warnings from the preamble", () => {
+    const preamble = "\\def\\R{\\mathbb{R}}";
+    const { warnings } = extractPreambleInfo(preamble);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0].macro).toBe("def");
   });
 });
