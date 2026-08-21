@@ -1,5 +1,18 @@
 # @pretextbook/import
 
+## 0.8.0
+
+### Minor Changes
+
+- 9543e76: Many minor improvements to conversion and import
+
+### Patch Changes
+
+- Updated dependencies [9543e76]
+  - @pretextbook/latex-style-pretext@0.5.0
+  - @pretextbook/remark-pretext@0.1.0
+  - @pretextbook/latex-pretext@0.3.0
+
 ## 0.7.0
 
 ### Minor Changes

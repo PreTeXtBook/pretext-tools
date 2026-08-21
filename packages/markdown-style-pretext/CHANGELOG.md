@@ -1,5 +1,12 @@
 # @pretextbook/markdown-style-pretext
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [9543e76]
+  - @pretextbook/latex-style-pretext@0.5.0
+
 ## 0.1.3
 
 ### Patch Changes

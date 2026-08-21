@@ -1,5 +1,11 @@
 # @pretextbook/latex-style-pretext
 
+## 0.5.0
+
+### Minor Changes
+
+- 9543e76: Many minor improvements to conversion and import
+
 ## 0.4.0
 
 ### Minor Changes
