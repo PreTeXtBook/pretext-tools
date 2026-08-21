@@ -34,7 +34,9 @@
     "pretest": "npm run build",
     "format": "npx prettier --write --ignore-unknown \"packages/**\"",
     "refresh:xsl": "npm run refresh-xsl -w @pretextbook/pretext-html",
-    "refresh:runestone": "npm run refresh-runestone -w @pretextbook/pretext-html"
+    "refresh:runestone": "npm run refresh-runestone -w @pretextbook/pretext-html",
+    "refresh:all": "npm run refresh:schemas && npm run refresh:xsl && npm run refresh:latex-support",
+    "prepare-release": "npm run refresh:all && npm run build -w @pretextbook/latex-style-pretext && npm test && node ./scripts/changes-since-release.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
@@ -113,6 +115,7 @@
     "@vscode/vsce-sign@2.0.9": true,
     "@parcel/watcher@2.5.6": true,
     "core-js-pure@3.49.0": true,
-    "esbuild@0.28.1": true
+    "esbuild@0.28.1": true,
+    "keytar@7.9.0": true
   }
 }

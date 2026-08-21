@@ -154,10 +154,11 @@ export function attachLatexRoots(
     };
 
     const split = splitLatexAtDocument(contents);
-    const macros = extractMacros(split.preamble);
+    const { macros, warnings: macroWarnings } = extractMacros(split.preamble);
     if (macros) {
       hoistedMacros.push(macros);
     }
+    warnings.push(...macroWarnings);
 
     const attachedBody = split.body.trim();
     if (!attachedBody) {

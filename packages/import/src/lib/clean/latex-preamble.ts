@@ -1,4 +1,5 @@
 import { firstBracketedString } from "./latex-utils";
+import type { CleaningWarning } from "./warnings";
 
 export interface PreambleInfo {
   /** Argument of \documentclass{...}, e.g. "book" or "article". Defaults to "article". */
@@ -7,7 +8,7 @@ export interface PreambleInfo {
   title: string;
   /** Inner content of \author{...}, or empty string. */
   author: string;
-  /** Collected \newcommand / \renewcommand / \DeclareMathOperator definitions. */
+  /** Collected \newcommand / \renewcommand / \DeclareMathOperator / \def definitions. */
   macros: string;
 }
 
@@ -65,7 +66,10 @@ export function extractLatexField(source: string, cmdName: string): string {
 // ---------------------------------------------------------------------------
 
 const MACRO_START_RE =
-  /^[ \t]*(\\(?:new|renew|provide)command\*?|\\DeclareMathOperator\*?|\\newenvironment\*?)\b/;
+  /^[ \t]*(\\(?:new|renew|provide)command\*?|\\DeclareMathOperator\*?|\\newenvironment\*?|\\def)\b/;
+
+/** Matches a collected block that was introduced by plain-TeX `\def`. */
+const DEF_RE = /^[ \t]*\\def\b/;
 
 /**
  * Counts net unescaped brace depth change in a single line.
@@ -84,14 +88,28 @@ function lineBraceDepth(line: string): number {
   return depth;
 }
 
+export interface ExtractMacrosResult {
+  /** Collected macro definitions, joined with newlines. */
+  macros: string;
+  /** One warning summarizing any `\def` blocks found (empty if none). */
+  warnings: CleaningWarning[];
+}
+
 /**
  * Collects LaTeX macro definition lines from `preamble`, including multi-line
  * definitions (tracks brace depth to know when a definition is complete).
- * Returns the collected definitions joined with newlines.
+ *
+ * `\def` is kept verbatim alongside `\newcommand` et al. — rewriting its
+ * syntax isn't safe in general (delimited parameter text, `\global`/`\edef`
+ * semantics, and no way to tell here whether it's redefining an existing
+ * command, which would make a mechanical `\newcommand` rewrite fail to
+ * build) — but it's reported as a warning, since PreTeXt tooling downstream
+ * (e.g. WeBWorK/PG macro extraction) only recognises `\newcommand`.
  */
-export function extractMacros(preamble: string): string {
+export function extractMacros(preamble: string): ExtractMacrosResult {
   const lines = preamble.split("\n");
   const collected: string[] = [];
+  const defBlocks: string[] = [];
   let i = 0;
 
   while (i < lines.length) {
@@ -111,10 +129,31 @@ export function extractMacros(preamble: string): string {
       i++;
     }
 
-    collected.push(block.trim());
+    const trimmedBlock = block.trim();
+    collected.push(trimmedBlock);
+    if (DEF_RE.test(trimmedBlock)) {
+      defBlocks.push(trimmedBlock);
+    }
   }
 
-  return collected.join("\n");
+  const warnings: CleaningWarning[] =
+    defBlocks.length > 0
+      ? [
+          {
+            action: "anomaly",
+            severity: "warning",
+            kind: "archaic",
+            category: "use_newcommand_only",
+            macro: "def",
+            occurrences: defBlocks.length,
+            message:
+              "\\def defines a macro the way plain TeX does; PreTeXt tooling such as WeBWorK/PG macro extraction only recognizes \\newcommand. The definition is kept as-is so the document still builds — consider rewriting it as \\newcommand by hand.",
+            examples: defBlocks.slice(0, 5),
+          },
+        ]
+      : [];
+
+  return { macros: collected.join("\n"), warnings };
 }
 
 // ---------------------------------------------------------------------------
@@ -126,13 +165,24 @@ function extractDocumentClassArg(preamble: string): string {
   return m ? m[1].trim() : "article";
 }
 
-export function extractPreambleInfo(preamble: string): PreambleInfo {
+export interface ExtractPreambleInfoResult {
+  info: PreambleInfo;
+  warnings: CleaningWarning[];
+}
+
+export function extractPreambleInfo(
+  preamble: string,
+): ExtractPreambleInfoResult {
   // Strip LaTeX comments before field extraction so `% \title{fake}` isn't found
   const noComments = preamble.replace(/(^|[^\\])%[^\n]*/gm, "$1");
+  const { macros, warnings } = extractMacros(noComments);
   return {
-    documentClass: extractDocumentClassArg(noComments),
-    title: extractLatexField(noComments, "title"),
-    author: extractLatexField(noComments, "author"),
-    macros: extractMacros(noComments),
+    info: {
+      documentClass: extractDocumentClassArg(noComments),
+      title: extractLatexField(noComments, "title"),
+      author: extractLatexField(noComments, "author"),
+      macros,
+    },
+    warnings,
   };
 }

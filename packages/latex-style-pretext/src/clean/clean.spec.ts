@@ -70,6 +70,18 @@ describe("special rewrites", () => {
     expect(clean("see (\\ref{eq:foo})")).toBe("see \\eqref{eq:foo}");
   });
 
+  it("rewrites an empty \\underline{} to \\fillin", () => {
+    expect(clean("Name: \\underline{}")).toBe("Name: \\fillin");
+  });
+
+  it("rewrites \\underline{} with whitespace inside to \\fillin", () => {
+    expect(clean("\\underline{   }")).toBe("\\fillin");
+  });
+
+  it("leaves a non-empty \\underline{...} alone", () => {
+    expect(clean("\\underline{keep me}")).toBe("\\underline{keep me}");
+  });
+
   it("collapses \\vfill / \\vfil chains into one \\vspace{1in}", () => {
     expect(clean("\\vfill\n\\vfil\\vfil")).toBe("\\vspace{1in}");
   });

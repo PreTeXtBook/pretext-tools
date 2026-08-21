@@ -67,7 +67,7 @@ function buildDocinfo(info: PreambleInfo): string {
   const parts: string[] = [];
 
   if (info.macros) {
-    const indented = info.macros
+    const indented = xmlEscape(info.macros)
       .split("\n")
       .map((l) => `    ${l}`)
       .join("\n");
@@ -148,7 +148,8 @@ export function convertLatexToPretext(
   // Extract preamble metadata from the raw source before any cleaning so
   // that comment deletion and macro substitution don't interfere.
   const { preamble, body } = splitLatexAtDocument(trimmedLatex);
-  const preambleInfo = extractPreambleInfo(preamble);
+  const { info: preambleInfo, warnings: preambleWarnings } =
+    extractPreambleInfo(preamble);
 
   // Build a minimal source for unified-latex: \documentclass is required for
   // it to recognise the preamble/body boundary. Only macro definitions go in
@@ -168,9 +169,10 @@ export function convertLatexToPretext(
 
   const {
     output: cleanedLatex,
-    warnings,
+    warnings: chunkWarnings,
     chunks: cleanChunks,
   } = cleanLatexInChunks(conversionSource);
+  const warnings = [...preambleWarnings, ...chunkWarnings];
   if (!cleanedLatex.trim()) {
     return { pretext: "", cleanedLatex, warnings, cleanChunks };
   }
