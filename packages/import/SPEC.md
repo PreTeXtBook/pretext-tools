@@ -304,6 +304,13 @@ mode" choice on the review step, for authors who want their project hosted
 but aren't ready to convert. What the host app does with a native-mode
 project (build story, editing experience) is an open question — see §8.
 
+Which of the two the review step _starts_ on is the host's call, not the
+wizard's: `defaultImportMode` (§4, §5) takes `"converted"` (the default) or
+`"native"`, and `lockImportMode` hides the chooser for a host that supports
+only one. The choice is offered for every result that carries a native
+projection — Markdown as well as LaTeX — and hidden for PreTeXt input, which
+has nothing to keep.
+
 ### 3.11 Diagnostics
 
 Two channels, both returned on every result:
@@ -622,6 +629,15 @@ playground demo all call the same functions:
 and `formatWarningLine(warning)` (plain-text warning rendering for logs /
 the VS Code output channel).
 
+The same module owns the mode _policy_ each host configures against:
+`DEFAULT_IMPORT_MODE` (`"converted"`), `hasNativeImportMode(result)` (does
+this result carry a native alternative at all?), and
+`resolveImportMode(result, preferred)`, which collapses a preferred
+`"native"` to `"converted"` when there is no native projection. Hosts should
+resolve before reporting or storing a mode: the `*ForImportMode` helpers fall
+back silently, so an unresolved preference can name a style whose files were
+never written.
+
 ## 5. UI components (`@pretextbook/import/react`)
 
 Three components, increasing in completeness:
@@ -644,8 +660,9 @@ Three components, increasing in completeness:
      layout will be kept.
   4. **Review** — import summary (source, detected format, kind, file
      count, whether an existing project's layout was preserved, what was
-     attached); collapsible warnings list; for LaTeX input, a "Convert to
-     PreTeXt" vs "Keep as LaTeX" mode choice; expandable per-file preview
+     attached); collapsible warnings list; for LaTeX and Markdown input, a
+     "Convert to PreTeXt" vs "Keep as LaTeX/Markdown" mode choice starting on
+     the host's `defaultImportMode`; expandable per-file preview
      of the output tree; Cancel / **Change Sources** / Confirm buttons
   5. Terminal — `onConfirm(result, mode)` fires; host writes the files
      (upload to pretext-plus storage, or write to disk in VS Code)

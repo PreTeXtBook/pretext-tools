@@ -199,6 +199,9 @@ function WizardDemo() {
     mode: ImportMode;
   } | null>(null);
   const [cancelCount, setCancelCount] = useState(0);
+  // Which style the wizard opens on — the knob each host chooses for itself
+  // (a VS Code setting, a pretext-plus account preference).
+  const [defaultMode, setDefaultMode] = useState<ImportMode>("converted");
   // Force-remount the wizard on cancel, mirroring the VS Code host (which
   // disposes the whole panel on import-cancel).
   const [wizardKey, setWizardKey] = useState(0);
@@ -226,10 +229,25 @@ function WizardDemo() {
         <code>onConfirm</code> and <code>onCancel</code> wired. Confirming shows
         exactly what each host receives.
       </p>
+      <label className="pool-meta">
+        Default import style:{" "}
+        <select
+          value={defaultMode}
+          onChange={(e) => {
+            setDefaultMode(e.target.value as ImportMode);
+            setConfirmed(null);
+            setWizardKey((k) => k + 1);
+          }}
+        >
+          <option value="converted">Convert to PreTeXt</option>
+          <option value="native">Keep as LaTeX/Markdown</option>
+        </select>
+      </label>
       <div className="wizard-frame">
         <ImportWizard
           key={wizardKey}
           engines={[workerEngine]}
+          defaultImportMode={defaultMode}
           onConfirm={(result, mode) => setConfirmed({ result, mode })}
           onCancel={() => {
             setConfirmed(null);

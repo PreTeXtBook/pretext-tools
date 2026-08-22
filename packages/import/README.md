@@ -187,3 +187,40 @@ and use a fixed configuration.
 confirm). Its source-selection step — format dropdown, main-document picker,
 and per-file attach controls — appears whenever the upload leaves a real choice
 open, and is always reachable from the review step.
+
+### Choosing the default import style
+
+A LaTeX or Markdown upload can be imported two ways: `"converted"` (the
+generated PreTeXt) or `"native"` (the cleaned original source, unconverted).
+Each host picks which one the review step starts on — the VS Code extension
+reads the `pretext-tools.import.defaultMode` setting; another host might read
+an account preference:
+
+```tsx
+<ImportWizard
+  defaultImportMode="native" // starts on "Keep as LaTeX"; user can still switch
+  onImportModeChange={(mode) => remember(mode)}
+  onConfirm={handleConfirm}
+/>
+```
+
+Pass `lockImportMode` alongside it to hide the chooser entirely and import in
+that one style — for hosts that only support one.
+
+A PreTeXt upload has no native alternative, so the chooser is hidden and the
+mode handed to `onConfirm` is always `"converted"`, whatever the default said.
+Outside the wizard the same rules are available directly:
+
+```ts
+import {
+  DEFAULT_IMPORT_MODE, // "converted"
+  hasNativeImportMode, // does this result carry a native alternative?
+  resolveImportMode, // preference + result → the mode that really applies
+  filesForImportMode,
+  assetsForImportMode,
+  projectForImportMode,
+} from "@pretextbook/import";
+
+const mode = resolveImportMode(result, preferredMode);
+const files = filesForImportMode(result, mode);
+```

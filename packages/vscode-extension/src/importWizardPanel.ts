@@ -48,6 +48,7 @@ export function cmdImportProject(context: vscode.ExtensionContext) {
     panel.webview,
     context.extensionUri,
     pandocInstalled(),
+    defaultImportMode(),
   );
 
   panel.webview.onDidReceiveMessage(
@@ -263,10 +264,23 @@ async function writeImportedProject(
   return true;
 }
 
+/**
+ * Which import style the wizard opens on, from settings. The user can still
+ * switch on the review step; this only picks the starting point.
+ */
+function defaultImportMode(): "converted" | "native" {
+  return vscode.workspace
+    .getConfiguration("pretext-tools")
+    .get<string>("import.defaultMode") === "native"
+    ? "native"
+    : "converted";
+}
+
 function getHtmlForWebview(
   webview: vscode.Webview,
   extensionUri: vscode.Uri,
   pandocAvailable: boolean,
+  importMode: "converted" | "native",
 ): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "out", "media", "importWizard.js"),
@@ -378,7 +392,7 @@ function getHtmlForWebview(
             }
           </style>
           <script nonce="${nonce}">
-            window.__ptxImport = { pandocAvailable: ${pandocAvailable ? "true" : "false"} };
+            window.__ptxImport = { pandocAvailable: ${pandocAvailable ? "true" : "false"}, defaultImportMode: "${importMode}" };
           </script>
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </head>

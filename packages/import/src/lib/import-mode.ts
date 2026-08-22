@@ -10,6 +10,40 @@ import type { ImportedProject, ImportedProjectSuccess } from "./types";
 export type ImportMode = "converted" | "native";
 
 /**
+ * The mode a host gets when it expresses no preference: convert to PreTeXt.
+ * Exported so consumers that surface their own default (a VS Code setting, a
+ * pretext-plus account preference) can name this one rather than re-spelling
+ * the string literal.
+ */
+export const DEFAULT_IMPORT_MODE: ImportMode = "converted";
+
+/**
+ * Does this result actually carry a native alternative? Only LaTeX and
+ * Markdown imports produce one — a PreTeXt upload has nothing to keep — so a
+ * host or UI that offers the choice should ask this first rather than keying
+ * off the detected format.
+ */
+export function hasNativeImportMode(result: ImportedProjectSuccess): boolean {
+  return result.nativeOutputFiles !== undefined;
+}
+
+/**
+ * The mode that will really be applied to this result, given a preference.
+ * A preferred `"native"` collapses to `"converted"` when the result has no
+ * native projection, which keeps the mode a host reports (and stores) in step
+ * with the files it actually writes — the `*ForImportMode` helpers fall back
+ * silently on their own.
+ */
+export function resolveImportMode(
+  result: ImportedProjectSuccess,
+  preferred: ImportMode = DEFAULT_IMPORT_MODE,
+): ImportMode {
+  return preferred === "native" && !hasNativeImportMode(result)
+    ? "converted"
+    : preferred;
+}
+
+/**
  * The division pool the pretext-plus host should serialize for the chosen
  * mode: the native (LaTeX/Markdown) pool when the user keeps the source
  * format, otherwise the converted PreTeXt pool. Falls back to the converted

@@ -12,7 +12,13 @@ import {
 } from "../lib/file-changes";
 import { MAX_SUGGESTED_SPLIT_LEVEL } from "../lib/latex-split";
 import type { DiffHunk } from "../lib/diff";
-import { filesForImportMode, type ImportMode } from "../lib/import-mode";
+import {
+  DEFAULT_IMPORT_MODE,
+  filesForImportMode,
+  hasNativeImportMode,
+  resolveImportMode,
+  type ImportMode,
+} from "../lib/import-mode";
 import { ProcessingPanel } from "./processing-panel";
 import type { DocumentKind } from "../lib/layout/document-kind";
 import {
@@ -165,6 +171,21 @@ export interface ImportWizardProps {
   importOptions?: ImportProjectOptions;
   defaultDocumentKind?: DocumentKind | "auto";
   /**
+   * Which import style the review step starts on: `"converted"` (the PreTeXt
+   * output) or `"native"` (the cleaned LaTeX/Markdown source, unconverted).
+   * The user can still switch, unless `lockImportMode` is set. Ignored for
+   * results with no native alternative — a PreTeXt upload always reviews as
+   * converted.
+   */
+  defaultImportMode?: ImportMode;
+  /**
+   * Hide the import-mode chooser and import in `defaultImportMode` only. For
+   * hosts that support just one style, or that already asked elsewhere.
+   */
+  lockImportMode?: boolean;
+  /** Called when the user picks a different import mode on the review step. */
+  onImportModeChange?: (mode: ImportMode) => void;
+  /**
    * Converters offered to the user. When more than one is supplied, an engine
    * selector is shown on the upload step. Defaults to a single built-in engine.
    */
@@ -230,6 +251,9 @@ export function ImportWizard({
   onCancel,
   importOptions,
   defaultDocumentKind = "auto",
+  defaultImportMode = DEFAULT_IMPORT_MODE,
+  lockImportMode = false,
+  onImportModeChange,
   engines,
 }: ImportWizardProps) {
   const engineList = engines && engines.length > 0 ? engines : [BUILTIN_ENGINE];
@@ -245,7 +269,7 @@ export function ImportWizard({
   const [splitLevel, setSplitLevel] = useState<number | null>(null);
   const [showDiff, setShowDiff] = useState<Set<string>>(new Set());
   const [selectedEngineId, setSelectedEngineId] = useState(engineList[0].id);
-  const [mode, setMode] = useState<ImportMode>("converted");
+  const [mode, setMode] = useState<ImportMode>(defaultImportMode);
   const [showPreview, setShowPreview] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
   const [prepared, setPrepared] = useState<PreparedUpload | null>(null);
@@ -403,7 +427,7 @@ export function ImportWizard({
 
   const restart = () => {
     setStep({ name: "upload" });
-    setMode("converted");
+    setMode(defaultImportMode);
     setShowPreview(false);
     setExpandedFiles(new Set());
     setShowDiff(new Set());
@@ -656,13 +680,19 @@ export function ImportWizard({
   if (step.name === "review") {
     const result = displayedResult ?? step.result;
     const currentLevel = result.splitLevel;
-    const isLatex = result.detectedSourceFormat === "latex";
+    // The mode that will actually be applied: a preferred "native" collapses
+    // to "converted" when this result has no native alternative (PreTeXt
+    // input), so the preview, the confirm payload, and the radios all agree.
+    const nativeAvailable = hasNativeImportMode(result);
+    const effectiveMode = resolveImportMode(result, mode);
+    const nativeFormatLabel =
+      result.detectedSourceFormat === "markdown" ? "Markdown" : "LaTeX";
     const warningCount = result.warnings.length;
     const fileCount = Object.keys(result.outputFiles).length;
 
-    const currentPreviewFiles = filesForImportMode(result, mode);
+    const currentPreviewFiles = filesForImportMode(result, effectiveMode);
     const mainPath =
-      mode === "converted"
+      effectiveMode === "converted"
         ? result.projectLayout.mainSourcePath
         : result.sourcePath;
     const sortedPreviewPaths = sortPaths(
@@ -672,6 +702,7 @@ export function ImportWizard({
 
     function handleModeChange(newMode: ImportMode) {
       setMode(newMode);
+      onImportModeChange?.(newMode);
       if (showPreview) openFirstFile(result, newMode);
     }
 
@@ -749,7 +780,7 @@ export function ImportWizard({
           <p className="text-sm text-green-700">No conversion warnings.</p>
         )}
 
-        {isLatex ? (
+        {nativeAvailable && !lockImportMode ? (
           <fieldset className="rounded-lg border border-slate-200 p-4">
             <legend className="px-1 text-sm font-semibold text-slate-700">
               Import mode
@@ -760,7 +791,7 @@ export function ImportWizard({
                   type="radio"
                   name="import-mode"
                   value="converted"
-                  checked={mode === "converted"}
+                  checked={effectiveMode === "converted"}
                   onChange={() => handleModeChange("converted")}
                   className="mt-0.5"
                 />
@@ -779,17 +810,17 @@ export function ImportWizard({
                   type="radio"
                   name="import-mode"
                   value="native"
-                  checked={mode === "native"}
+                  checked={effectiveMode === "native"}
                   onChange={() => handleModeChange("native")}
                   className="mt-0.5"
                 />
                 <span>
                   <span className="font-medium text-slate-900">
-                    Keep as LaTeX
+                    Keep as {nativeFormatLabel}
                   </span>
                   <span className="block text-slate-500">
-                    Preserve the original LaTeX source. The conversion will not
-                    be applied.
+                    Preserve the original {nativeFormatLabel} source. The
+                    conversion will not be applied.
                   </span>
                 </span>
               </label>
@@ -922,7 +953,7 @@ export function ImportWizard({
             <button
               type="button"
               onClick={() => {
-                if (!showPreview) openFirstFile(result, mode);
+                if (!showPreview) openFirstFile(result, effectiveMode);
                 setShowPreview((v) => !v);
               }}
               className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -939,7 +970,7 @@ export function ImportWizard({
                   // Code, over the network in pretext-plus — so this is a
                   // second stretch of dead time the user would otherwise see
                   // no feedback for.
-                  await onConfirm(result, mode);
+                  await onConfirm(result, effectiveMode);
                 } finally {
                   setConfirming(false);
                 }

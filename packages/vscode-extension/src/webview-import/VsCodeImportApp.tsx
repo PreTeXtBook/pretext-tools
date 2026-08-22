@@ -8,6 +8,7 @@ import ConvertWorker from "@pretextbook/import/worker?worker";
 import {
   assetsForImportMode,
   createWorkerEngine,
+  DEFAULT_IMPORT_MODE,
   filesForImportMode,
   formatWarningLine,
   type ImportedProjectResult,
@@ -26,7 +27,7 @@ declare global {
   interface Window {
     __vscodeApi?: VscodeApi;
     /** Host-injected config (see importWizardPanel.ts getHtmlForWebview). */
-    __ptxImport?: { pandocAvailable?: boolean };
+    __ptxImport?: { pandocAvailable?: boolean; defaultImportMode?: ImportMode };
   }
 }
 
@@ -183,6 +184,11 @@ const pandocEngine: ImportEngine = {
 
 const pandocAvailable =
   typeof window !== "undefined" && Boolean(window.__ptxImport?.pandocAvailable);
+// Which style the review step starts on, from `pretext-tools.import.defaultMode`.
+const defaultImportMode: ImportMode =
+  (typeof window !== "undefined"
+    ? window.__ptxImport?.defaultImportMode
+    : undefined) ?? DEFAULT_IMPORT_MODE;
 const engines: ImportEngine[] = pandocAvailable
   ? [builtinEngine, pandocEngine]
   : [builtinEngine];
@@ -214,6 +220,7 @@ function VsCodeImportApp() {
   return (
     <ImportWizard
       engines={engines}
+      defaultImportMode={defaultImportMode}
       onConfirm={handleConfirm}
       onCancel={handleCancel}
     />

@@ -746,6 +746,20 @@
             ],
             "markdownDescription": "Choose how strictly to validate against the PreTeXt schema.  **Relaxed** suppresses a small set of common, harmless violations that the stable schema does not yet allow; **Strict** reports everything."
           },
+          "pretext-tools.import.defaultMode": {
+            "order": 4,
+            "type": "string",
+            "default": "converted",
+            "enum": [
+              "converted",
+              "native"
+            ],
+            "markdownEnumDescriptions": [
+              "Import the converted PreTeXt output (default).",
+              "Keep the original LaTeX or Markdown source, cleaned but unconverted."
+            ],
+            "markdownDescription": "Which import style the Import to PreTeXt wizard starts on. You can still switch styles on the review step before confirming."
+          },
           "pretext-tools.pythonPath": {
             "order": 20,
             "type": "string",

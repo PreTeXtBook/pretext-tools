@@ -91,9 +91,12 @@ export {
   type PretextRootTag,
 } from "./lib/pretext-divisions";
 export {
+  DEFAULT_IMPORT_MODE,
   filesForImportMode,
   assetsForImportMode,
+  hasNativeImportMode,
   projectForImportMode,
+  resolveImportMode,
   formatWarningLine,
   type ImportMode,
 } from "./lib/import-mode";
