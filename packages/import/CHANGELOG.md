@@ -1,5 +1,11 @@
 # @pretextbook/import
 
+## 0.9.0
+
+### Minor Changes
+
+- f365fe0: Expose import type
+
 ## 0.8.0
 
 ### Minor Changes
