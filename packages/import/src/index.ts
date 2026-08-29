@@ -189,3 +189,19 @@ export type {
   ResultResponse,
   ErrorResponse,
 } from "./worker/protocol";
+export {
+  PANDOC_ACCEPT_EXTENSIONS,
+  PANDOC_BINARY_FORMATS,
+  PANDOC_EXTENSION_FORMATS,
+  fileExtension,
+  pandocFormatForFileName,
+  createPandocEngine,
+  createRemotePandocEngine,
+  describeRemotePandocFailure,
+  extractPandocErrorDetail,
+  DEFAULT_REMOTE_PANDOC_TIMEOUT_MS,
+  type PandocInputFormat,
+  type PandocBridge,
+  type PandocEngineOptions,
+  type RemotePandocEngineOptions,
+} from "./lib/pandoc";
