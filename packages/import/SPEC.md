@@ -817,7 +817,198 @@ comments in `upload.ts`):
 11. **Versioning/publish plan** — is `@pretextbook/import` versioned with
     the monorepo's semantic-release, and does pretext-plus pin or float?
 
-## 9. Test coverage
+## 9. Importing into an existing project
+
+Everything above assumes the import creates a _new_ project. In practice the
+more common need is the opposite: an author already has a PreTeXt document open
+and wants to bring outside material into it. Three stories drive the design.
+
+1. **Inline.** Writing in PreTeXt, wanting to add an exercise that exists as
+   LaTeX. Copy-paste followed by a conversion step is two moves; the wanted
+   thing is one — the converted markup arrives where it was pasted. Works for
+   LaTeX and Markdown, which are text; not for Word, which is not.
+2. **One division.** A homework set in a LaTeX file that should become a
+   `<subsection>` of the current document, `xi:include`d (or referenced by
+   `<plus:subsection>` on pretext-plus) rather than inlined. Opening the file
+   to select the right text by hand is the friction; "insert the contents of
+   this file" is the operation.
+3. **Many divisions.** The same, but pulling a collection of quizzes out of a
+   larger project — a batch insert yielding one file per section, or per
+   whatever division the author asks for.
+
+All three are expected to outrank new-project import by frequency. New-project
+import remains important in its own right, particularly as pretext-plus's
+document provisioner.
+
+### 9.1 Two mechanisms
+
+The stories collapse into two, not three. Story 1 is a _text_ operation whose
+unit is content — an exercise, some paragraphs — with no files, no includes and
+no division structure. Stories 2 and 3 are one mechanism at two settings of a
+dial that already exists: the review-step `splitLevel` and `relayoutImport`
+(§3.8) already turn one upload into "one file per division at depth N". Story 2
+is that dial at its coarsest.
+
+|          | Story 1                  | Stories 2–3                     |
+| -------- | ------------------------ | ------------------------------- |
+| Input    | clipboard text           | file or archive                 |
+| Formats  | LaTeX, Markdown          | anything, incl. Word via pandoc |
+| Unit     | inline content           | divisions                       |
+| Output   | markup at the cursor     | new files + one include         |
+| Pipeline | none — direct conversion | the full pipeline (§3)          |
+
+### 9.2 Destination: unifying new-project and insertion
+
+Both existing call sites — `importProjectFromFiles` and `relayoutImport` — run
+the same seam:
+
+```ts
+buildDivisionPool(pretextSource, { documentKind, splitLevel, assets })
+  → serializeProjectToFiles(pool.project, { …paths, includeScaffold })
+```
+
+Everything _before_ that seam is shared by both destinations and does not move:
+multi-file uploads, root selection (§3.3), attachment (§3.12), cleaning (§3.5),
+split-depth resolution (§3.8). Only serialization diverges, so the seam is where
+the destination enters:
+
+```ts
+export type ImportDestination =
+  | { kind: "project"; layout: ProjectLayout }
+  | {
+      kind: "insert";
+      /** Division level the imported root becomes (`subsection`, …). */
+      targetTag: PretextDivisionTag;
+      /** Every xml:id already live in the host project. */
+      takenIds: ReadonlySet<string>;
+      /** Directory of the file receiving the include; new files land beside it. */
+      hrefBase: string;
+    };
+```
+
+`serializeForDestination(project, destination)` returns
+`{ files, include?, renamed, warnings }`. The `project` branch is the current
+behaviour unchanged — scaffold on, `project.ptx` and a publication file emitted
+(§4.2). The `insert` branch retargets divisions (§9.3), renames colliding
+`xml:id`s, passes `includeScaffold: false`, and returns the single
+`<xi:include>` element the host splices into the parent file.
+
+`ImportProjectOptions` gains an optional `destination`, defaulting to `project`,
+so existing callers are unaffected.
+
+> **`relayoutImport` must carry the destination too.** It is what the wizard's
+> split dial calls. A version that does not know the destination would silently
+> regenerate scaffold files the moment an author changed the split level during
+> an insertion.
+
+Insertion is therefore not a second pipeline. New-project import becomes the
+case where the destination is `project`; it is _not_ merely "the imported root
+is the document root", because that branch is also what emits the manifest and
+publication file and what absorbs a multi-file upload.
+
+### 9.3 Retargeting and collisions
+
+A converted fragment's top-level element reflects its _source_, not its
+destination: `\section` yields `<section>`, a Markdown `#` yields `<chapter>`.
+Attaching at a chosen level therefore means shifting every division tag.
+
+```
+DIVISION_LADDER = [part, chapter, section, subsection, subsubsection]
+```
+
+`retargetFragment` computes `delta = depth(targetTag) − depth(topTag)` and
+shifts each ladder tag. Two rules:
+
+- Tags off the ladder (`<exercises>`, `<appendix>`, `<worksheet>`) pass through
+  untouched — they are not depth-indexed.
+- Anything pushed past `<subsubsection>` becomes `<paragraphs>`. This is not a
+  warning case, just the rule; `<paragraphs>` is deliberately absent from
+  `PRETEXT_DIVISION_TAGS` (§4.1), so overflow content stays inline and can never
+  be split into a file of its own. The overflow rule and the splitter agree
+  without either referring to the other.
+
+`dedupeXmlIds` renames any id already live in the host project, reusing
+`sanitizeRef` (§4.1) and reporting the renames so the host can surface them.
+In VS Code the taken set comes from the LSP server's `getReferences()`, which
+already walks the project from its main source through every `xi:include`.
+
+### 9.4 Host wiring
+
+**VS Code.** Insertion point comes from `parseOutline` over the active document:
+the innermost division containing the cursor, whose child level is the target.
+Files are written as siblings of the including file — an author who wants them
+elsewhere can move them. The write and the include splice go into one
+`WorkspaceEdit` so the insertion is a single undo. When the workspace holds no
+project, the mode switch is skipped and `project` is the only destination.
+
+**pretext-plus.** `hrefBase` is unused: the pool is flat, so insertion appends
+division rows and writes a `<plus:subsection ref="…"/>` placeholder into the
+parent division's source. `serializeProjectToPlusPayload` (§4.3) already emits
+placeholders unchanged, so no new projection is needed.
+
+### 9.5 Story 1: paste and convert
+
+Independent of everything above. The extension's `cmdConvertText` already
+converts a _selection_ in place, with
+schema validation (`collectPtxSchemaViolations`) and context-aware
+reindentation. What is missing is the paste half:
+
+- the clipboard as a source, rather than only the selection;
+- a `registerDocumentPasteEditProvider` entry, so pasting LaTeX into a `.ptx`
+  file offers "Paste as PreTeXt" in the paste widget;
+- a _positional_ validity check — pasted LaTeX containing `\subsection` yields a
+  `<subsection>`, which is illegal mid-paragraph. The schema check should ask
+  what is legal at the cursor, not in the abstract.
+
+That API is stable only from VS Code **1.97**, so `engines.vscode` moves from
+`^1.89.0`. Later, this path could adopt `convertSourceToPretext` to gain the
+cleaning pass and warnings (§6.4).
+
+**Detection is the hard part, and it is not `detectSourceFormat`.** That
+function answers "is this _file_ a LaTeX document?", keying on document
+furniture — `\documentclass`, `\begin{document}`, `\section` — none of which
+survives into a fragment copied from the middle of one. Measured against
+realistic clipboard contents it reported `pretext` for `Let $G$ be a
+\emph{group}`, for `\[ \int_0^1 x^2\,dx \]`, and for a Markdown bullet list, so
+every such paste went through unconverted.
+
+`detectSnippetFormat` (`lib/detect-snippet-format.ts`) answers the snippet
+question instead: it scores the grain of the markup — math delimiters, backslash
+commands, bullets, emphasis runs, fences — and returns a format only when the
+winner clears a floor, so a single weak hint is not enough. Guessing wrong
+mangles text an author meant to keep verbatim, while declining is free because
+the caller simply pastes plainly. Inline math is guarded against currency
+(`costs $5 and $7` is not math), and ties go to LaTeX, the two languages
+overlapping mainly on `*` and `_`.
+
+### 9.6 Sequencing
+
+| #   | Work                                                                            | Story |
+| --- | ------------------------------------------------------------------------------- | ----- |
+| 1   | Paste-and-convert: clipboard, paste provider, engine bump                       | 1     |
+| 2   | `retargetFragment` / `dedupeXmlIds` (pure)                                      | 2, 3  |
+| 3   | `ImportDestination` + `serializeForDestination`; thread through both seam sites | 2, 3  |
+| 4   | VS Code insert path + new-project/insert mode switch                            | 2, 3  |
+| 5   | Wizard attach-point step; destination-aware `relayoutImport`                    | 2, 3  |
+| 6   | Division cherry-picking — importing a _subset_ of a larger project              | 3     |
+| 7   | pretext-plus parity                                                             | 2, 3  |
+| 8   | Images                                                                          | all   |
+
+Step 1 blocks on nothing and is the most frequent story, so it goes first.
+Steps 1–5 deliver all three stories; step 6 is the only genuinely new
+capability, since the pipeline currently takes a document whole.
+
+### 9.7 Known gaps
+
+- **Images.** Local pandoc can extract media with `--extract-media`; the remote
+  `/pandoc/` endpoint cannot, since it answers `text/plain`. Carrying media back
+  needs a zip response mode on the server, as its build endpoint already grew.
+- **Cherry-picking** (step 6) is unimplemented: `attachRoots` (§3.12) selects
+  among _roots_, not among divisions within one document.
+- **Story 1 and Word.** Binary formats cannot be pasted as text; that case is
+  story 2 by construction.
+
+## 10. Test coverage
 
 Vitest specs live alongside sources:
 

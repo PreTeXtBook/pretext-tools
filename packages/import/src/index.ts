@@ -4,6 +4,12 @@ export {
   MARKDOWN_FORMAT_MARKERS,
 } from "./lib/detect-source-format";
 export {
+  detectSnippetFormat,
+  scoreSnippetFormats,
+  type SnippetFormat,
+  type SnippetFormatScores,
+} from "./lib/detect-snippet-format";
+export {
   convertLatexToPretext,
   convertMarkdownToPretext,
   normalizePretextSource,

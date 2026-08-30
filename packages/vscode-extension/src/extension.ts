@@ -1,4 +1,10 @@
-import { ExtensionContext, workspace, commands, window } from "vscode";
+import {
+  ExtensionContext,
+  workspace,
+  commands,
+  languages,
+  window,
+} from "vscode";
 import * as utils from "./utils";
 
 import {
@@ -40,6 +46,12 @@ import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
 //import { ptxExperiment } from "./commands/experiment";
 import { cmdExperimentConvert, cmdConvertText } from "./commands/convert";
+import {
+  cmdPasteAndConvert,
+  pretextPasteEditProvider,
+  pretextPasteProviderMetadata,
+  PRETEXT_LANGUAGE_ID,
+} from "./paste-convert";
 import {
   buildTarget,
   cmdBuildAny,
@@ -180,6 +192,16 @@ export async function activate(context: ExtensionContext) {
       }
     }),
     commands.registerCommand("pretext-tools.convertText", cmdConvertText),
+    commands.registerCommand(
+      "pretext-tools.pasteAndConvert",
+      cmdPasteAndConvert,
+    ),
+    // Pasting LaTeX/Markdown into a PreTeXt file arrives converted (SPEC §9.5).
+    languages.registerDocumentPasteEditProvider(
+      { language: PRETEXT_LANGUAGE_ID },
+      pretextPasteEditProvider,
+      pretextPasteProviderMetadata,
+    ),
     commands.registerCommand("pretext-tools.spellCheck", utils.cmdSpellCheck),
     commands.registerCommand("pretext-tools.showLog", showLog),
     commands.registerCommand("pretext-tools.refreshTargets", async () => {
