@@ -9,7 +9,7 @@
   "publisher": "oscarlevin",
   "repository": "https://github.com/PreTeXtBook/pretext-tools",
   "engines": {
-    "vscode": "^1.89.0"
+    "vscode": "^1.97.0"
   },
   "categories": [
     "Programming Languages",
@@ -17,7 +17,8 @@
     "Formatters"
   ],
   "activationEvents": [
-    "workspaceContains:project.ptx"
+    "workspaceContains:project.ptx",
+    "onLanguage:pretext"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -170,6 +171,12 @@
         "key": "ctrl+alt+j",
         "mac": "cmd+alt+j",
         "when": "editorTextFocus && editorLangId == 'pretext'"
+      },
+      {
+        "command": "editor.action.pasteAsText",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorTextFocus && !editorReadonly && editorLangId == 'pretext' && config.pretext-tools.paste.autoConvert"
       }
     ],
     "commands": [
@@ -241,9 +248,15 @@
       },
       {
         "command": "pretext-tools.importProject",
-        "title": "Import Project from LaTeX/Markdown/PreTeXt",
+        "title": "Import from LaTeX/Markdown/PreTeXt/Word",
         "category": "PreTeXt",
         "description": "Convert an existing LaTeX, Markdown, or PreTeXt file or archive into a new PreTeXt project."
+      },
+      {
+        "command": "pretext-tools.insertFileAsDivision",
+        "title": "Insert file as a division of this document",
+        "category": "PreTeXt",
+        "description": "Convert an existing LaTeX, Markdown, Word, or PreTeXt file into a division of the open document, included at the cursor."
       },
       {
         "command": "pretext-tools.view",
@@ -359,6 +372,11 @@
         "title": "Convert to PreTeXt",
         "category": "PreTeXt",
         "description": "Convert and replace contents of open file or a selection of text to PreTeXT.  You will be asked to specify the format of the input."
+      },
+      {
+        "command": "pretext-tools.pasteAndConvert",
+        "title": "Paste and Convert to PreTeXt",
+        "category": "PreTeXt"
       },
       {
         "command": "pretext-tools.gettingStarted",
@@ -771,6 +789,11 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "Enable experimental features.  Test out the latest features of PreTeXt Tools.  These may not be stable and may change in future releases."
+          },
+          "pretext-tools.paste.autoConvert": {
+            "type": "boolean",
+            "default": true,
+            "description": "Convert LaTeX or Markdown to PreTeXt when pasting into a PreTeXt file. Press Ctrl+Shift+V (Cmd+Shift+V on macOS) to paste without converting, or use the paste control that appears after pasting. Turn this off to paste plainly by default and convert with the \"PreTeXt: Paste and Convert to PreTeXt\" command instead."
           }
         }
       }

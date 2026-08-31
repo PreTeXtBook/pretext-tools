@@ -3,9 +3,18 @@ import {
   extractUpload,
   handleImportUploadFile,
   importProjectFromFiles,
-  relayoutImport,
+  rebuildImport,
   type ImportProjectOptions,
 } from "../lib/upload";
+import {
+  DIVISION_LADDER,
+  type PretextDivisionTag,
+} from "../lib/pretext-divisions";
+import {
+  outlineDivisions,
+  type DivisionOutlineItem,
+  type DivisionPath,
+} from "../lib/select/divisions";
 import {
   fileChangesForImport,
   type FileChangeRecord,
@@ -190,6 +199,35 @@ export interface ImportWizardProps {
    * selector is shown on the upload step. Defaults to a single built-in engine.
    */
   engines?: ImportEngine[];
+  /**
+   * Import into a document that already exists rather than creating a project
+   * (SPEC §9). Only the host knows where the cursor is and what the project
+   * already contains, so it supplies both; the wizard adds the control that
+   * lets the author move the attach level and see the result before confirming.
+   */
+  insertTarget?: InsertTargetOffer;
+}
+
+/** What the host knows about the document an import is being inserted into. */
+export interface InsertTargetOffer {
+  /** How to name that document to the author, e.g. `ch-intro.ptx`. */
+  documentLabel: string;
+  /** The level derived from the cursor; the control starts here. */
+  defaultTargetTag: PretextDivisionTag;
+  /** Levels on offer, outermost first. Defaults to the whole division ladder. */
+  targetTags?: PretextDivisionTag[];
+  /**
+   * Every `xml:id` live in the host project. An array rather than a `Set`
+   * because this crosses a webview `postMessage` boundary.
+   */
+  takenIds: string[];
+  /** Directory of the file receiving the include, with a trailing slash. */
+  hrefBase: string;
+  /**
+   * The host project's `<directories external="…"/>`, so imported images land
+   * where that project keeps its own rather than in this package's default.
+   */
+  externalDir?: string;
 }
 
 type Step =
@@ -255,6 +293,7 @@ export function ImportWizard({
   lockImportMode = false,
   onImportModeChange,
   engines,
+  insertTarget,
 }: ImportWizardProps) {
   const engineList = engines && engines.length > 0 ? engines : [BUILTIN_ENGINE];
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -267,6 +306,13 @@ export function ImportWizard({
   // already-converted result rather than re-running the import, so the file
   // tree can update as the user drags it.
   const [splitLevel, setSplitLevel] = useState<number | null>(null);
+  // The attach level is a review-step control for the same reason the split
+  // depth is: changing it rebuilds the already-converted result rather than
+  // re-running the import, so the file tree updates as the author tries levels.
+  const [targetTag, setTargetTag] = useState<PretextDivisionTag | null>(null);
+  // Which divisions to import (SPEC §9, step 6). Empty means the whole
+  // document, which is both the default and what "Select all" restores.
+  const [selection, setSelection] = useState<DivisionPath[]>([]);
   const [showDiff, setShowDiff] = useState<Set<string>>(new Set());
   const [selectedEngineId, setSelectedEngineId] = useState(engineList[0].id);
   const [mode, setMode] = useState<ImportMode>(defaultImportMode);
@@ -297,10 +343,23 @@ export function ImportWizard({
   const reviewResult = step.name === "review" ? step.result : null;
   const displayedResult = useMemo(
     () =>
-      reviewResult && splitLevel !== null
-        ? relayoutImport(reviewResult, splitLevel)
+      reviewResult &&
+      (splitLevel !== null || targetTag !== null || selection.length > 0)
+        ? rebuildImport(reviewResult, {
+            splitLevel: splitLevel ?? undefined,
+            targetTag: targetTag ?? undefined,
+            selection,
+          })
         : reviewResult,
-    [reviewResult, splitLevel],
+    [reviewResult, splitLevel, targetTag, selection],
+  );
+
+  // The picker is built from the raw conversion, so the divisions an author
+  // deselected are still there to select back — a picker that only listed what
+  // survived the last prune would be a one-way door.
+  const divisionOutline = useMemo(
+    () => (reviewResult ? outlineDivisions(reviewResult.pretextSource) : []),
+    [reviewResult],
   );
   const changesByPath = useMemo(
     () =>
@@ -312,12 +371,34 @@ export function ImportWizard({
     [displayedResult],
   );
 
+  /**
+   * Where the import is going. Built once per render from the host's offer, so
+   * the conversion and every rebuild agree on the same `takenIds`.
+   */
+  const destination = useMemo(
+    (): ImportProjectOptions["destination"] =>
+      insertTarget
+        ? {
+            kind: "insert",
+            targetTag: targetTag ?? insertTarget.defaultTargetTag,
+            takenIds: new Set(insertTarget.takenIds),
+            hrefBase: insertTarget.hrefBase,
+          }
+        : undefined,
+    [insertTarget, targetTag],
+  );
+
   /** The options every conversion starts from: the upload step's controls. */
-  const baseOptions = (): ImportProjectOptions =>
-    importOptions ?? {
+  const baseOptions = (): ImportProjectOptions => ({
+    ...(importOptions ?? {
       documentKind:
         documentKindChoice === "auto" ? undefined : documentKindChoice,
-    };
+    }),
+    ...(destination ? { destination } : {}),
+    ...(insertTarget?.externalDir
+      ? { externalDir: insertTarget.externalDir }
+      : {}),
+  });
 
   /** Re-survey the upload under the user's current format/main-file choices. */
   const currentAnalysis = (upload: PreparedUpload): UploadAnalysis =>
@@ -432,6 +513,8 @@ export function ImportWizard({
     setExpandedFiles(new Set());
     setShowDiff(new Set());
     setSplitLevel(null);
+    setTargetTag(null);
+    setSelection([]);
     setPrepared(null);
   };
 
@@ -683,12 +766,25 @@ export function ImportWizard({
     // The mode that will actually be applied: a preferred "native" collapses
     // to "converted" when this result has no native alternative (PreTeXt
     // input), so the preview, the confirm payload, and the radios all agree.
-    const nativeAvailable = hasNativeImportMode(result);
-    const effectiveMode = resolveImportMode(result, mode);
+    // Cherry-picking prunes the *converted* document; the native projection is
+    // built from the cleaned LaTeX or Markdown, which the prune never saw. So a
+    // selection and native mode cannot both be honoured, and the selection —
+    // which the author expressed explicitly — wins.
+    const selectionActive = selection.length > 0;
+    const nativeAvailable = hasNativeImportMode(result) && !selectionActive;
+    const effectiveMode = nativeAvailable
+      ? resolveImportMode(result, mode)
+      : "converted";
     const nativeFormatLabel =
       result.detectedSourceFormat === "markdown" ? "Markdown" : "LaTeX";
     const warningCount = result.warnings.length;
     const fileCount = Object.keys(result.outputFiles).length;
+    const insertRecord = result.insert;
+    const currentTargetTag =
+      result.destination.kind === "insert"
+        ? result.destination.targetTag
+        : undefined;
+    const offeredTargetTags = insertTarget?.targetTags ?? [...DIVISION_LADDER];
 
     const currentPreviewFiles = filesForImportMode(result, effectiveMode);
     const mainPath =
@@ -734,6 +830,14 @@ export function ImportWizard({
             </dd>
             <dt className="text-slate-500">Output files</dt>
             <dd className="font-medium text-slate-900">{fileCount}</dd>
+            {insertTarget ? (
+              <>
+                <dt className="text-slate-500">Destination</dt>
+                <dd className="font-medium text-slate-900">
+                  Inserted into {insertTarget.documentLabel}
+                </dd>
+              </>
+            ) : null}
             {result.projectLayout.preserved ? (
               <>
                 <dt className="text-slate-500">Existing project</dt>
@@ -825,6 +929,96 @@ export function ImportWizard({
                 </span>
               </label>
             </div>
+          </fieldset>
+        ) : null}
+
+        {divisionOutline.length > 1 ? (
+          <fieldset className="rounded-lg border border-slate-200 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Divisions to import
+            </legend>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <button
+                type="button"
+                onClick={() => setSelection([])}
+                className="rounded border border-slate-300 px-3 py-1 text-slate-700 hover:bg-slate-50"
+              >
+                Everything
+              </button>
+              <span className="text-slate-500">
+                {selection.length === 0
+                  ? "The whole document"
+                  : `${selection.length} of ${countDivisions(divisionOutline)} divisions`}
+              </span>
+            </div>
+            <div className="mt-3 max-h-56 overflow-auto">
+              <DivisionPicker
+                items={divisionOutline}
+                selection={selection}
+                onToggle={(path) =>
+                  setSelection((prev) =>
+                    prev.includes(path)
+                      ? prev.filter((p) => p !== path)
+                      : [...prev, path].sort(comparePaths),
+                  )
+                }
+              />
+            </div>
+            {selection.length > 0 ? (
+              <p className="mt-2 text-sm text-slate-500">
+                A selected division is imported whole, with everything inside
+                it. Divisions above one you selected are kept as structure.
+                {hasNativeImportMode(step.result)
+                  ? " Selecting divisions imports the converted PreTeXt; keeping the original source imports the document whole."
+                  : ""}
+              </p>
+            ) : null}
+          </fieldset>
+        ) : null}
+
+        {insertRecord && insertTarget ? (
+          <fieldset className="rounded-lg border border-slate-200 p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-700">
+              Attach to {insertTarget.documentLabel}
+            </legend>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {offeredTargetTags.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => setTargetTag(tag)}
+                  aria-pressed={currentTargetTag === tag}
+                  className={
+                    currentTargetTag === tag
+                      ? "rounded bg-blue-700 px-3 py-1 text-sm font-medium text-white"
+                      : "rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
+                  }
+                >
+                  &lt;{tag}&gt;
+                </button>
+              ))}
+            </div>
+            <p className="mt-3 text-sm text-slate-600">
+              {insertRecord.includes.length === 1
+                ? `One <${currentTargetTag}> is added to ${insertTarget.documentLabel}, `
+                : `${insertRecord.includes.length} <${currentTargetTag}> divisions are added to ${insertTarget.documentLabel}, `}
+              {insertRecord.includes.length === 1
+                ? "included from a new file beside it."
+                : "each included from a new file beside it."}
+            </p>
+            {insertRecord.renamed.length > 0 ? (
+              <p className="mt-2 text-sm text-amber-700">
+                {insertRecord.renamed.length} id
+                {insertRecord.renamed.length === 1 ? "" : "s"} already used in
+                this project{" "}
+                {insertRecord.renamed.length === 1 ? "was" : "were"} renamed:{" "}
+                <span className="font-mono text-xs">
+                  {insertRecord.renamed
+                    .map((rename) => `${rename.from} → ${rename.to}`)
+                    .join(", ")}
+                </span>
+              </p>
+            ) : null}
           </fieldset>
         ) : null}
 
@@ -980,7 +1174,13 @@ export function ImportWizard({
               {confirming ? (
                 <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
               ) : null}
-              {confirming ? "Importing…" : "Confirm Import"}
+              {confirming
+                ? insertTarget
+                  ? "Inserting…"
+                  : "Importing…"
+                : insertTarget
+                  ? "Confirm Insert"
+                  : "Confirm Import"}
             </button>
           </div>
         </div>
@@ -1105,6 +1305,86 @@ export function ImportWizard({
  * Hunks, not whole files: a cleaning pass touches a handful of scattered lines,
  * so the untouched runs between them are elided rather than scrolled past.
  */
+/** Total divisions in an outline tree, for the "n of m" count. */
+function countDivisions(items: DivisionOutlineItem[]): number {
+  return items.reduce(
+    (total, item) => total + 1 + countDivisions(item.children),
+    0,
+  );
+}
+
+/**
+ * Order two `DivisionPath`s the way the document does. Segment by segment and
+ * numerically, so division 10 follows division 9 rather than division 1.
+ */
+function comparePaths(a: DivisionPath, b: DivisionPath): number {
+  const left = a.split(".").map(Number);
+  const right = b.split(".").map(Number);
+  for (let i = 0; i < Math.max(left.length, right.length); i++) {
+    const diff = (left[i] ?? -1) - (right[i] ?? -1);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  return 0;
+}
+
+/**
+ * The division tree, one checkbox per division.
+ *
+ * Checking a parent does not check its children, because it does not have to:
+ * a selected division is imported whole. Showing its children as checked would
+ * claim they are individually selected, which changes what deselecting one of
+ * them would mean.
+ */
+function DivisionPicker({
+  items,
+  selection,
+  onToggle,
+}: {
+  items: DivisionOutlineItem[];
+  selection: DivisionPath[];
+  onToggle: (path: DivisionPath) => void;
+}) {
+  return (
+    <ul className="space-y-0.5 text-sm">
+      {items.map((item) => {
+        const checked = selection.includes(item.path);
+        const inherited = selection.some((pick) =>
+          item.path.startsWith(`${pick}.`),
+        );
+        return (
+          <li key={item.path}>
+            <label className="flex items-baseline gap-2">
+              <input
+                type="checkbox"
+                checked={checked || inherited}
+                disabled={inherited}
+                onChange={() => onToggle(item.path)}
+              />
+              <span className={inherited ? "text-slate-400" : "text-slate-700"}>
+                {item.title || <em>Untitled</em>}
+                <span className="ml-2 font-mono text-xs text-slate-400">
+                  &lt;{item.tag}&gt;
+                </span>
+              </span>
+            </label>
+            {item.children.length > 0 ? (
+              <div className="ml-5 border-l border-slate-200 pl-3">
+                <DivisionPicker
+                  items={item.children}
+                  selection={selection}
+                  onToggle={onToggle}
+                />
+              </div>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function DiffView({ hunks }: { hunks: DiffHunk[] }) {
   if (hunks.length === 0) {
     return (

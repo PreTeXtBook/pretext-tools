@@ -74,6 +74,13 @@ export interface OutlineItem {
   xmlId: string;
   line: number;
   character: number;
+  /**
+   * Position of the item's closing tag, when the parse found one. Absent for a
+   * leaf (`xi:include`) and for an element left unclosed at end of file, which
+   * callers should read as "extends to the end of the document".
+   */
+  endLine?: number;
+  endCharacter?: number;
   children: OutlineItem[];
   /** For `xi:include` items only: the `href` of the referenced file. */
   href?: string;
@@ -148,6 +155,13 @@ export function parseOutline(
         // mid-edit), leave the stack alone rather than emptying it.
         for (let i = stack.length - 1; i >= 0; i--) {
           if (stack[i].tag === tag) {
+            // Everything above the match is implicitly closed here too, so it
+            // ends at the same place: a division whose own close tag is
+            // missing still has to stop somewhere.
+            for (let j = i; j < stack.length; j++) {
+              stack[j].node.endLine = lineNum;
+              stack[j].node.endCharacter = m.index;
+            }
             stack.length = i;
             break;
           }

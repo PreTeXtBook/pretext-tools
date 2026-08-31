@@ -97,7 +97,7 @@ describe("importProjectFromFiles", () => {
     ).toBe(true);
   });
 
-  it("routes image assets to source/assets and .bib files to source/", () => {
+  it("routes images to the external directory and .bib files to source/", () => {
     const files = {
       "main.tex":
         "\\documentclass{article}\n\\begin{document}\nHi.\n\\end{document}",
@@ -108,7 +108,11 @@ describe("importProjectFromFiles", () => {
     if ("pretextError" in result) {
       throw new Error(`unexpected error: ${result.pretextError}`);
     }
-    expect(result.outputAssets["source/assets/diagram.png"]).toEqual(bytes(32));
+    // `external` is what the generated publication file declares, and what
+    // PreTeXt resolves `<image source="…"/>` against.
+    expect(result.outputAssets["source/external/diagram.png"]).toEqual(
+      bytes(32),
+    );
     expect(result.outputFiles["source/refs.bib"]).toContain("@article");
   });
 

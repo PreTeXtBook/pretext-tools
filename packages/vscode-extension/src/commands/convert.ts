@@ -13,6 +13,10 @@ import { markdownToPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
 import type { Element } from "xast";
+import {
+  reindentForContext,
+  type ConvertibleSnippetFormat,
+} from "../paste-convert-core";
 
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
@@ -87,24 +91,6 @@ export async function cmdConvertText() {
     });
 }
 
-/**
- * Prepend baseIndent to every non-empty line of text.
- * When skipFirst is true (selection starts mid-line), the first line is left
- * as-is because the editor places it after the existing content on that line.
- */
-function reindentForContext(
-  text: string,
-  baseIndent: string,
-  skipFirst: boolean,
-): string {
-  return text
-    .split("\n")
-    .map((line, i) =>
-      i === 0 && skipFirst ? line : line ? baseIndent + line : line,
-    )
-    .join("\n");
-}
-
 async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   let newText = convertWithUnified(initialText);
 
@@ -119,6 +105,31 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
 
   // Split consecutive tags with a space if present before formatting.
   return formatConvertedPretext(newText);
+}
+
+const SNIPPET_LABELS: Record<ConvertibleSnippetFormat, string> = {
+  latex: "LaTeX-style PreTeXt",
+  markdown: "Markdown-style PreTeXt",
+};
+
+/**
+ * Convert a snippet of LaTeX or Markdown into formatted PreTeXt markup.
+ *
+ * The conversion half of `cmdConvertText`, lifted out so the paste path shares
+ * it: same converters, same schema validation, same formatter, so pasted and
+ * selected text can never drift apart. Placement — indentation, stripping a
+ * wrapper `<p>` — is the caller's business, since it depends on where the
+ * markup is going.
+ */
+export async function convertSnippetToPretext(
+  text: string,
+  format: ConvertibleSnippetFormat,
+): Promise<string> {
+  const converted =
+    format === "latex"
+      ? convertWithUnified(text)
+      : String(markdownToPretext(text));
+  return validateAndFormatConvertedPretext(SNIPPET_LABELS[format], converted);
 }
 
 function convertWithUnified(text: string) {

@@ -58,9 +58,20 @@ export function serializeXast(tree: Root, options?: FormatOptions): string {
   ) {
     tree = { ...tree, children: tree.children[0].children };
   }
-  for (const child of tree.children) {
-    appendNode(child, lines, 0, ctx);
-  }
+  // Route top-level content through the same mixed-content logic as a <p> body
+  // rather than dispatching each sibling independently. This matters for
+  // fragments that aren't wrapped in a block element — e.g. a paste-and-convert
+  // selection like `text <m>x^2</m> more text` — where loose text and inline
+  // elements (<m>, <c>, etc.) are logically one flowing run, not standalone
+  // top-level nodes. Without this, each inline element fell through to
+  // appendBlock and got expanded onto its own lines like a block environment.
+  // Uses isTopLevelBlock (not the narrower isBlockChild used inside a real <p>)
+  // so genuine structural elements like a bare top-level <title> still get
+  // their normal dispatch instead of being flattened as an inline token.
+  const children = tree.children.filter(
+    (c) => !(c.type === "text" && c.value.trim() === ""),
+  );
+  appendMixedContent(children, lines, 0, ctx, isTopLevelBlock);
   const result = applyBlankLines(lines, ctx);
   while (result.length > 0 && result[result.length - 1] === "") result.pop();
   return result.join("\n");
@@ -309,29 +320,31 @@ function appendPar(
   out.push(`${ind}</${node.name}>`);
 }
 
-// ─── Mixed paragraph (has block children like <md>, <ul>) ────────────────────
+// ─── Mixed content (inline runs alternating with block children) ────────────
 
-function appendMixedPar(
-  node: Element,
+/**
+ * Serializes a sequence of children that alternates between flowing inline
+ * content (text + inline elements like <m>) and structural block children
+ * (display math, lists, etc.). Each inline run is collected and reflowed as a
+ * unit at `depth`; each block child is recursively serialized at `depth`.
+ *
+ * Used both for the body of a mixed <p> and for the top-level content of a
+ * fragment that isn't wrapped in a block element (e.g. a paste-and-convert
+ * selection formatted on its own) — in both cases loose text and inline
+ * elements are logically one flowing run and must reflow together rather than
+ * each becoming an isolated top-level node.
+ */
+function appendMixedContent(
+  children: (RootContent | ElementContent)[],
   out: string[],
   depth: number,
   ctx: Ctx,
+  isBlock: (child: RootContent | ElementContent) => boolean,
 ): void {
-  // A mixed <p> alternates between inline runs (text + inline elements) and
-  // structural block children (display math, lists, etc.). Each inline run is
-  // collected and reflowed as a unit; each block child is recursively serialized.
   const ind = ctx.ind.repeat(depth);
-  const childInd = ctx.ind.repeat(depth + 1);
-  if (isEmptyElement(node)) {
-    out.push(`${ind}${selfClose(node)}`);
-    return;
-  }
-  out.push(`${ind}${openTag(node)}`);
-
-  const children = meaningfulChildren(node);
   let i = 0;
   while (i < children.length) {
-    if (isBlockChild(children[i])) {
+    if (isBlock(children[i])) {
       const child = children[i] as Element;
       i++;
 
@@ -352,7 +365,7 @@ function appendMixedPar(
       }
 
       const blockLines: string[] = [];
-      appendElement(child, blockLines, depth + 1, ctx);
+      appendElement(child, blockLines, depth, ctx);
       if (punctuation && blockLines.length > 0) {
         blockLines[blockLines.length - 1] += punctuation;
       }
@@ -360,8 +373,8 @@ function appendMixedPar(
     } else {
       // Collect contiguous inline children (text nodes + inline elements) into one
       // run, then reflow the whole run at printWidth.
-      const run: ElementContent[] = [];
-      while (i < children.length && !isBlockChild(children[i])) {
+      const run: (RootContent | ElementContent)[] = [];
+      while (i < children.length && !isBlock(children[i])) {
         run.push(children[i]);
         i++;
       }
@@ -370,15 +383,35 @@ function appendMixedPar(
         for (const line of reflowTokens(
           tokens,
           ctx.printWidth,
-          childInd.length,
+          ind.length,
           ctx.breakSentences,
         )) {
-          out.push(`${childInd}${line}`);
+          out.push(`${ind}${line}`);
         }
       }
     }
   }
+}
 
+function appendMixedPar(
+  node: Element,
+  out: string[],
+  depth: number,
+  ctx: Ctx,
+): void {
+  const ind = ctx.ind.repeat(depth);
+  if (isEmptyElement(node)) {
+    out.push(`${ind}${selfClose(node)}`);
+    return;
+  }
+  out.push(`${ind}${openTag(node)}`);
+  appendMixedContent(
+    meaningfulChildren(node),
+    out,
+    depth + 1,
+    ctx,
+    isBlockChild,
+  );
   out.push(`${ind}</${node.name}>`);
 }
 
@@ -495,7 +528,7 @@ function inlineEl(node: Element): string {
 
 // ─── Token collection and reflow ──────────────────────────────────────────────
 
-function collectTokens(children: ElementContent[]): string[] {
+function collectTokens(children: (RootContent | ElementContent)[]): string[] {
   // Produces a flat list of reflow tokens: words from text nodes, and serialized
   // inline elements treated as opaque single tokens.
   const tokens: string[] = [];
@@ -629,7 +662,7 @@ function meaningfulChildren(node: Element): ElementContent[] {
   );
 }
 
-function isBlockChild(child: ElementContent): boolean {
+function isBlockChild(child: RootContent | ElementContent): boolean {
   if (child.type !== "element") return false;
   const name = child.name;
   // <c> and <pf> are in verbatimTags (inline code) but are always rendered inline,
@@ -648,6 +681,27 @@ function isBlockChild(child: ElementContent): boolean {
   return (
     (blockTags.includes(name) || verbatimTags.includes(name)) &&
     !lineEndTags.includes(name)
+  );
+}
+
+// Like isBlockChild, but for content at the top level of a fragment rather
+// than inside a real <p>. isBlockChild is deliberately narrow: tags like
+// <title>, <caption>, or <fn> are never legitimate children of a <p>, so it
+// doesn't need to recognize them and safely treats them as opaque inline
+// tokens if they ever show up there. But those same tags commonly *are* the
+// top-level content of a fragment (e.g. a copied `<title>...</title>`), where
+// flattening them into a single raw token would skip their normal whitespace
+// reflow (see appendSmartPar) instead of just rendering them inline. So at
+// the top level, any tag recognized by name in another category — not just
+// blockTags/verbatimTags — is dispatched normally rather than flattened.
+function isTopLevelBlock(child: RootContent | ElementContent): boolean {
+  if (isBlockChild(child)) return true;
+  if (child.type !== "element") return false;
+  const name = child.name;
+  return (
+    smartParTags.includes(name) ||
+    lineEndTags.includes(name) ||
+    parTags.includes(name)
   );
 }
 

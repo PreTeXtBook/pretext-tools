@@ -212,3 +212,55 @@ describe("verbatim content preservation", () => {
     expect(result).toBe(input);
   });
 });
+
+describe("unwrapped fragment formatting", () => {
+  // A selection formatted on its own (e.g. paste-and-convert) is often prose
+  // that will be re-inserted into an existing <p>, so loose top-level text and
+  // inline elements like <m> should reflow together exactly as they would
+  // inside a <p>, rather than each inline element being expanded like a block.
+  it("reflows loose text and <m> together instead of breaking <m> onto its own lines", () => {
+    const input = `We know that <m>x^2 + y^2 = z^2</m> is the Pythagorean theorem.`;
+    const result = formatPretext(input);
+    expect(result).not.toMatch(/<m>\n/);
+    expect(result).toBe(
+      "We know that <m>x^2 + y^2 = z^2</m> is the Pythagorean theorem.",
+    );
+  });
+
+  it("wraps a long run of loose text and <m> at printWidth, same as inside a <p>", () => {
+    const input = `We know that <m>x^2 + y^2 = z^2</m> is the Pythagorean theorem, and also <m>a^2</m> is a square.`;
+    const result = formatPretext(input);
+    const wrappedInsideP = formatPretext(`<p>${input}</p>`)
+      .split("\n")
+      .slice(1, -1)
+      .map((line) => line.replace(/^ {2}/, ""))
+      .join("\n");
+    expect(result).toBe(wrappedInsideP);
+  });
+
+  it("keeps a short inline fragment on one line", () => {
+    const input = `See <m>x^2</m> above.`;
+    const result = formatPretext(input);
+    expect(result).toBe("See <m>x^2</m> above.");
+  });
+
+  it("still formats multiple top-level block elements independently", () => {
+    const input = `<p>First.</p><p>Second.</p>`;
+    const result = formatPretext(input);
+    expect(result).toBe("<p>\n  First.\n</p>\n\n<p>\n  Second.\n</p>");
+  });
+
+  it("still normalizes whitespace in a bare top-level <title>", () => {
+    const input = `<title>This\n    is my title</title>`;
+    const result = formatPretext(input);
+    expect(result).toBe("<title>This is my title</title>");
+  });
+
+  it("alternates inline runs and a top-level block child", () => {
+    const input = `Before text.<md><mrow>x</mrow></md>After text.`;
+    const result = formatPretext(input);
+    expect(result).toBe(
+      "Before text.\n<md>\n  <mrow>x</mrow>\n</md>\nAfter text.",
+    );
+  });
+});

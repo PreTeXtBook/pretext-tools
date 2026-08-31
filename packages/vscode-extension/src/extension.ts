@@ -1,4 +1,10 @@
-import { ExtensionContext, workspace, commands, window } from "vscode";
+import {
+  ExtensionContext,
+  workspace,
+  commands,
+  languages,
+  window,
+} from "vscode";
 import * as utils from "./utils";
 
 import {
@@ -41,6 +47,12 @@ import { cmdUpdate } from "./commands/update";
 //import { ptxExperiment } from "./commands/experiment";
 import { cmdExperimentConvert, cmdConvertText } from "./commands/convert";
 import {
+  cmdPasteAndConvert,
+  pretextPasteEditProvider,
+  pretextPasteProviderMetadata,
+  PRETEXT_LANGUAGE_ID,
+} from "./paste-convert";
+import {
   buildTarget,
   cmdBuildAny,
   cmdBuildFile,
@@ -59,7 +71,8 @@ import { projects, resetProjectList } from "./project";
 import { registerFlavorTakeover } from "./flavor-takeover";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
-import { cmdImportProject } from "./importWizardPanel";
+import { cmdImport } from "./importWizardPanel";
+import { cmdInsertFileAsDivision } from "./insert-import";
 
 // this method is called when your extension is activated
 export async function activate(context: ExtensionContext) {
@@ -167,7 +180,11 @@ export async function activate(context: ExtensionContext) {
     ),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.importProject", () =>
-      cmdImportProject(context),
+      cmdImport(context),
+    ),
+    commands.registerCommand(
+      "pretext-tools.insertFileAsDivision",
+      cmdInsertFileAsDivision,
     ),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
@@ -180,6 +197,16 @@ export async function activate(context: ExtensionContext) {
       }
     }),
     commands.registerCommand("pretext-tools.convertText", cmdConvertText),
+    commands.registerCommand(
+      "pretext-tools.pasteAndConvert",
+      cmdPasteAndConvert,
+    ),
+    // Pasting LaTeX/Markdown into a PreTeXt file arrives converted (SPEC §9.5).
+    languages.registerDocumentPasteEditProvider(
+      { language: PRETEXT_LANGUAGE_ID },
+      pretextPasteEditProvider,
+      pretextPasteProviderMetadata,
+    ),
     commands.registerCommand("pretext-tools.spellCheck", utils.cmdSpellCheck),
     commands.registerCommand("pretext-tools.showLog", showLog),
     commands.registerCommand("pretext-tools.refreshTargets", async () => {

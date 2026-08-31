@@ -111,7 +111,7 @@ connection.onInitialize((params: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll],
       },
       executeCommandProvider: {
-        commands: ["formatDocument", "formatText"],
+        commands: ["formatDocument", "formatText", "projectXmlIds"],
       },
       documentFormattingProvider: true,
       documentRangeFormattingProvider: true,
@@ -433,6 +433,13 @@ connection.onCodeAction((params) => {
 });
 connection.onExecuteCommand(async (params) => {
   // Handle commands sent from the client
+  if (params.command === "projectXmlIds") {
+    // Every xml:id live in the project, for an import that has to avoid
+    // colliding with them (see packages/import/SPEC.md §9.3). Re-walked rather
+    // than read from the cached `references`, since an import writes into the
+    // project and a stale answer produces a duplicate id.
+    return [...new Set(getReferences().map(([id]) => id))];
+  }
   if (params.command === "formatText") {
     if (
       params.arguments &&

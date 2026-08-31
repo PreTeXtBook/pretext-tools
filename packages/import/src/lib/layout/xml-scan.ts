@@ -247,3 +247,52 @@ export function findAnyElement(
   }
   return null;
 }
+
+/**
+ * One tag occurrence — an open, close, or self-closing tag — rather than a
+ * whole element. The element finders above pair tags up; a rewriter that
+ * renames elements or edits attributes wants them unpaired, at every depth,
+ * with the source span each occupies.
+ */
+export interface XmlTagOccurrence {
+  name: string;
+  kind: "open" | "close" | "selfclose";
+  /** Index of the tag's opening `<`. */
+  start: number;
+  /** Index just past the tag's `>`. */
+  end: number;
+  /** Parsed attributes; always empty for a closing tag. */
+  attributes: Record<string, string>;
+}
+
+/**
+ * Every tag in `source`, in document order, at any nesting depth. Comments,
+ * CDATA, processing instructions and declarations are skipped, so a `<section>`
+ * mentioned inside a comment is not reported (and so cannot be rewritten).
+ */
+export function findTagOccurrences(source: string): XmlTagOccurrence[] {
+  return tokenize(source).map((tok) => ({
+    name: tok.name,
+    kind: tok.kind,
+    start: tok.pos,
+    end: tok.end,
+    attributes:
+      tok.kind === "close"
+        ? {}
+        : parseAttributes((tok as { attrs: string }).attrs),
+  }));
+}
+
+/**
+ * The text of an element's own `<title>`, with nested markup stripped, or `""`
+ * when it has none. Top-level only, so a division does not pick up the title of
+ * a theorem inside it.
+ */
+export function elementTitleText(inner: string): string {
+  const titleSpan = findFirstElement(inner, "title");
+  if (!titleSpan) return "";
+  return titleSpan.inner
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}

@@ -42,6 +42,37 @@ export async function lspFormatText(text: string): Promise<string> {
   }
 }
 
+/**
+ * Every `xml:id` the project currently uses, walked from its main source
+ * through every `xi:include`. An import inserting into the project needs these
+ * so it can rename anything that would collide (packages/import/SPEC.md §9.3).
+ *
+ * Returns an empty list when the server is not running or answers with
+ * something unexpected: a missing id list makes the import rename nothing,
+ * which is the same risk the author already runs when pasting by hand.
+ */
+export async function lspProjectXmlIds(): Promise<string[]> {
+  if (!client) {
+    return [];
+  }
+  try {
+    const result = await client.sendRequest("workspace/executeCommand", {
+      command: "projectXmlIds",
+      arguments: [],
+    });
+    return Array.isArray(result)
+      ? result.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch (error) {
+    pretextOutputChannel.appendLine(
+      `Could not read project xml:ids from the language server: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+    return [];
+  }
+}
+
 export function activate(context: ExtensionContext) {
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(

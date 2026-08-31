@@ -5,6 +5,7 @@ export type {
   ImportWizardProps,
   ImportMode,
   ImportEngine,
+  InsertTargetOffer,
   PreparedUpload,
 } from "./import-wizard";
 

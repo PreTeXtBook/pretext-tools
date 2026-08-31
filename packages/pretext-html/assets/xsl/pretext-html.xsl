@@ -228,6 +228,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="b-has-sage"         select="boolean($document-root//sage)"/>
 <xsl:variable name="b-has-sfrac"        select="boolean($document-root//m[contains(text(),'sfrac')] or $document-root//mrow[contains(text(),'sfrac')])" />
 <xsl:variable name="b-has-geogebra"     select="boolean($document-root//interactive[@platform='geogebra'])"/>
+<xsl:variable name="b-has-doenetml"     select="boolean($document-root//interactive[@platform='doenetml'])"/>
 <xsl:variable name="b-has-mermaid"      select="boolean($document-root//image[mermaid]|/image[mermaid])"/>
 <!-- 2018-04-06:  jsxgraph deprecated -->
 <xsl:variable name="b-has-jsxgraph"     select="boolean($document-root//jsxgraph)"/>
@@ -244,6 +245,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="ol-markers">
     <ol-markers>
         <xsl:apply-templates select="$document-root//ol[@marker and count(. | key('marker-key', @marker)[1]) = 1]" mode="ol-markers"/>
+        <!-- A legacy exercise-parts list letters as "(a)" with no     -->
+        <!-- authored @marker; it joins the index as a reserved entry, -->
+        <!-- so one mechanism serves it, unless an authored "(a)" is   -->
+        <!-- already present to share.  The parenthesized letters are  -->
+        <!-- LaTeX's custom for second-level lists, which PreTeXt      -->
+        <!-- matches in every output (assembly stamps the adornments). -->
+        <xsl:if test="$document-root//ol[not(@marker) and @pi:format-code = 'a' and @pi:ordered-list-level = '1'] and not($document-root//ol[@marker = '(a)'])">
+            <ol-marker pi:format-code="a" marker="(a)" pi:marker-prefix="(" pi:marker-suffix=")" name="ptx-marker-0"/>
+        </xsl:if>
     </ol-markers>
 </xsl:variable>
 <!-- Following should be more efficient than 'select="boolean($document-root//ol[@marker])"' -->
@@ -349,12 +359,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- portable html does not get xref knowls either. -->
     <xsl:if test="not($b-subsetting) and not($b-portable-html)">
         <xsl:apply-templates select="." mode="make-xref-knowls"/>
-    </xsl:if>
-    <!-- custom ol marker css production -->
-    <!-- A CDN cannot host these styles, since they are derived from the -->
-    <!-- source.  CDN builds get them inline instead, see "css-common".  -->
-    <xsl:if test="not($b-subsetting) and not($b-cdn-resources)">
-        <xsl:call-template name="ol-marker-styles"/>
     </xsl:if>
 </xsl:template>
 
@@ -2074,6 +2078,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <!-- this message, locate the apply-templates chain    -->
                 <!-- that omitted the parameter and add it.            -->
                 <xsl:message>PTX:BUG:     "hN" template reached without a $heading-level parameter on element &lt;<xsl:value-of select="local-name(.)"/>&gt; at <xsl:for-each select="ancestor::*"><xsl:value-of select="local-name(.)"/><xsl:text>/</xsl:text></xsl:for-each><xsl:value-of select="local-name(.)"/>; defaulting to h1</xsl:message>
+                <xsl:apply-templates select="." mode="location-report"/>
                 <xsl:text>1</xsl:text>
             </xsl:otherwise>
         </xsl:choose>
@@ -6209,13 +6214,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:element name="{local-name(.)}">
         <xsl:attribute name="class">
             <xsl:apply-templates select="." mode="html-list-class" />
-            <xsl:variable name="ol-marker-class">
-                <xsl:apply-templates select="." mode="ol-marker-class" />
-            </xsl:variable>
-            <xsl:if test="not($ol-marker-class = '')">
-                <xsl:text> </xsl:text>
-                <xsl:value-of select="$ol-marker-class"/>
-            </xsl:if>
             <xsl:variable name="cols-class-name">
                 <!-- HTML-specific, but in pretext-common.xsl -->
                 <xsl:apply-templates select="." mode="number-cols-CSS-class"/>
@@ -6225,6 +6223,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:value-of select="$cols-class-name"/>
             </xsl:if>
         </xsl:attribute>
+        <!-- a custom marker is a named "@counter-style" rule, inlined -->
+        <!-- with the page's CSS, referenced from right here           -->
+        <xsl:variable name="ol-marker-name">
+            <xsl:apply-templates select="." mode="ol-marker-name"/>
+        </xsl:variable>
+        <xsl:if test="not($ol-marker-name = '')">
+            <xsl:attribute name="style">
+                <xsl:text>list-style: </xsl:text>
+                <xsl:value-of select="$ol-marker-name"/>
+                <xsl:text>;</xsl:text>
+            </xsl:attribute>
+        </xsl:if>
         <xsl:attribute name="id">
             <xsl:apply-templates select="." mode="html-id" />
         </xsl:attribute>
@@ -6240,20 +6250,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:element>
 </xsl:template>
 
-<xsl:template match="ol[@marker]" mode="ol-marker-class">
+<xsl:template match="ol[@marker]" mode="ol-marker-name">
     <xsl:variable name="marker-value" select="./@marker" />
     <xsl:for-each select="exsl:node-set($ol-markers)">
         <!-- Should be only one match since ol marker -->
         <!-- index node set contains no duplicates    -->
-        <xsl:value-of select="key('marker-key', $marker-value)[1]/@classname"/>
+        <xsl:value-of select="key('marker-key', $marker-value)[1]/@name"/>
     </xsl:for-each >
 </xsl:template>
 
-<xsl:template match="ol[not(@marker) and @pi:format-code = 'a' and @pi:ordered-list-level = '1']" mode="ol-marker-class">
-    <xsl:text>lower-alpha-level-1</xsl:text>
+<!-- the reserved "(a)" entry, or an authored twin, by the same lookup -->
+<xsl:template match="ol[not(@marker) and @pi:format-code = 'a' and @pi:ordered-list-level = '1']" mode="ol-marker-name">
+    <xsl:for-each select="exsl:node-set($ol-markers)">
+        <xsl:value-of select="key('marker-key', '(a)')[1]/@name"/>
+    </xsl:for-each>
 </xsl:template>
 
-<xsl:template match="ol|ul" mode="ol-marker-class"/>
+<xsl:template match="ol|ul" mode="ol-marker-name"/>
 
 <xsl:template match="ol[@marker]" mode="ol-markers">
     <xsl:element name="ol-marker">
@@ -6261,38 +6274,39 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:copy-of select="@marker"/>
         <xsl:copy-of select="@pi:marker-prefix"/>
         <xsl:copy-of select="@pi:marker-suffix"/>
-        <xsl:attribute name="classname">
-            <xsl:text>ol-marker-</xsl:text>
+        <xsl:attribute name="name">
+            <xsl:text>ptx-marker-</xsl:text>
             <xsl:value-of select="position()" />
         </xsl:attribute>
     </xsl:element>
 </xsl:template>
 
-<!-- Creates custom formatting for each unique ol/@marker -->
+<!-- One "@counter-style" rule per distinct marker.  The author's     -->
+<!-- prefix and suffix become CSS strings, escaped; the suffix gains  -->
+<!-- the trailing space that separates a marker from its item.  Each  -->
+<!-- list references its rule by name from a "style" attribute, so    -->
+<!-- these rules are the only shared CSS a custom marker needs.       -->
+<!-- They cannot be per-list: an at-rule only lives in a stylesheet.  -->
+<!-- Should WebKit ever support "content" on "::marker" (WebKit bug   -->
+<!-- 204163), one static theme rule reading custom properties could   -->
+<!-- replace all of this, and markers would be entirely per-list      -->
+<!-- inline, with no shared rules and no marker index at all.         -->
 <xsl:template match="ol-marker" mode="ol-marker-style">
-    <!-- format child li elements according to marker prefix/code/suffix -->
-    <xsl:text>ol.</xsl:text>
-    <xsl:value-of select="./@classname"/>
-    <xsl:text> &gt; li::marker { content: &quot;</xsl:text>
-    <xsl:value-of select="./@pi:marker-prefix" />
-    <xsl:text>&quot;counter(list-item,</xsl:text>
+    <xsl:text>@counter-style </xsl:text>
+    <xsl:value-of select="./@name"/>
+    <xsl:text> { system: extends </xsl:text>
     <xsl:apply-templates select="." mode="html-list-class" />
-    <xsl:text>)&quot;</xsl:text>
-    <xsl:value-of select="./@pi:marker-suffix" />
-    <xsl:text> &quot;; }&#xa;</xsl:text>
+    <xsl:text>; prefix: '</xsl:text>
+    <xsl:call-template name="css-string-escape">
+        <xsl:with-param name="text" select="./@pi:marker-prefix"/>
+    </xsl:call-template>
+    <xsl:text>'; suffix: '</xsl:text>
+    <xsl:call-template name="css-string-escape">
+        <xsl:with-param name="text" select="./@pi:marker-suffix"/>
+    </xsl:call-template>
+    <xsl:text> '; }&#xa;</xsl:text>
 </xsl:template>
 
-<!-- CSS file for custom ol markers -->
-<xsl:template name="ol-marker-styles">
-    <!-- We don't produce a file if it will be empty. This would  -->
-    <!-- "naturally" be the case, but we have a boolean anyway.   -->
-    <xsl:if test="$b-needs-custom-marker-css">
-        <xsl:variable name="ol-marker-nodes" select="exsl:node-set($ol-markers)" />
-        <exsl:document href="{$html.css.dir}/ol-markers.css" method="text">
-            <xsl:apply-templates select="$ol-marker-nodes//ol-marker" mode="ol-marker-style" />
-        </exsl:document>
-    </xsl:if>
-</xsl:template>
 
 <!-- We let CSS react to narrow titles for dl -->
 <!-- But no support for multiple columns      -->
@@ -10199,6 +10213,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:attribute name="src">
             <xsl:apply-templates select="." mode="iframe-filename" />
         </xsl:attribute>
+        <!-- how the coordinator script recognizes an activity it manages -->
+        <xsl:if test="(@platform = 'doenetml') and $b-doenetml-coordinator">
+            <xsl:attribute name="data-doenet-coordinate">true</xsl:attribute>
+        </xsl:if>
         <xsl:apply-templates select="." mode="iframe-accessibility-attributes"/>
     </iframe>
     <!-- possibly give a long description -->
@@ -10359,6 +10377,20 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <script src="{$d3-library-url}"></script>
 </xsl:template>
 
+<!-- The version of DoenetML a document asks for, absent any request from -->
+<!-- an individual "interactive".  Also the version of the coordinator    -->
+<!-- script a page carrying DoenetML activities loads.                    -->
+<xsl:variable name="doenetml-document-version">
+    <xsl:choose>
+        <xsl:when test="$docinfo/doenetml/@version">
+            <xsl:value-of select="$docinfo/doenetml/@version"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>latest</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>
+
 <!-- DoenetML header libraries -->
 <xsl:template match="interactive[@platform = 'doenetml']" mode="header-libraries">
     <xsl:variable name="doenet-version">
@@ -10366,11 +10398,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:when test="@version">
                 <xsl:value-of select="@version"/>
             </xsl:when>
-            <xsl:when test="$docinfo/doenetml/@version">
-                <xsl:value-of select="$docinfo/doenetml/@version"/>
-            </xsl:when>
             <xsl:otherwise>
-                <xsl:text>latest</xsl:text>
+                <xsl:value-of select="$doenetml-document-version"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
@@ -10687,6 +10716,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:choose>
             <xsl:text>,&#xa;</xsl:text>
         </xsl:if>
+        <!-- Unlike the parameters above, this one is the publisher's rather than  -->
+        <!-- the author's.  GeoGebra renders a preview image and a play button in  -->
+        <!-- place of the applet, and only starts the applet when a reader presses -->
+        <!-- it, so a page carrying several applets need not start them all at     -->
+        <!-- once.  GeoGebra's own default is no button, which is also ours, so    -->
+        <!-- nothing is emitted unless a publisher asks for it.                    -->
+        <xsl:if test="$b-geogebra-play-button">
+            <xsl:text>playButton: true,&#xa;</xsl:text>
+        </xsl:if>
         <xsl:text>width:</xsl:text><xsl:value-of select="$material-width" />
         <xsl:text>,&#xa;</xsl:text>
         <xsl:text>height:</xsl:text><xsl:value-of select="$material-height" />
@@ -10703,6 +10741,24 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:text> = new GGBApplet(</xsl:text>
             <xsl:value-of select="$applet-parameters" />
         <xsl:text>, true);&#xa;</xsl:text>
+
+        <!-- GeoGebra draws its play button in front of a preview image, and it  -->
+        <!-- has one to offer only for an applet it hosts itself.  An applet     -->
+        <!-- built from a file, or written from scratch, gets an empty box.  A   -->
+        <!-- screenshot of every interactive is made for static output, so we    -->
+        <!-- hand GeoGebra that one, and then every applet alike shows what a    -->
+        <!-- reader is being invited to start.  The second and third arguments   -->
+        <!-- would be a loading indicator and the button's own image; GeoGebra   -->
+        <!-- supplies the button, and no indicator is wanted in front of a       -->
+        <!-- picture of the applet itself.                                       -->
+        <xsl:if test="$b-geogebra-play-button">
+            <xsl:value-of select="$applet-name"/>
+            <xsl:text>.setPreviewImage('</xsl:text>
+            <xsl:value-of select="$generated-directory"/>
+            <xsl:text>preview/</xsl:text>
+            <xsl:apply-templates select="ancestor::interactive" mode="unique-id"/>
+            <xsl:text>-preview.png', null, null);&#xa;</xsl:text>
+        </xsl:if>
 
       <xsl:text>resolve(</xsl:text><xsl:value-of select="$applet-name" /><xsl:text>);})&#xa;</xsl:text>
       <xsl:text>.then((</xsl:text><xsl:value-of select="$applet-name" /><xsl:text>) => {&#xa;</xsl:text>
@@ -11526,6 +11582,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="scorm-js"/>
     <xsl:call-template name="diagcess-header"/>
     <xsl:call-template name="lti-iframe-resizer"/>
+    <!-- NB: deliberately not in the iframe head cache above - the      -->
+    <!-- coordinator belongs on the page that *holds* the activities,   -->
+    <!-- and a standalone page holds the one it was extracted for.      -->
+    <xsl:call-template name="doenetml-coordinator" />
 </xsl:variable>
 
 <!-- Content used by simple-file-wrap -->
@@ -14603,6 +14663,51 @@ TODO:
     </xsl:if>
 </xsl:template>
 
+<!-- DoenetML coordinator -->
+<!-- A "coordinator" script, served alongside the DoenetML bundle that   -->
+<!-- the activities already load, takes charge of a page's activity      -->
+<!-- "iframe"s so that a page carrying many of them need not run them    -->
+<!-- all at once.  See publisher-variables.xsl for what it does and for  -->
+<!-- the publisher's control over it.  The activity pages need no        -->
+<!-- cooperation - the coordinator marks each activity's URL and the     -->
+<!-- bundle recognizes the mark - so this one script tag is all of it.   -->
+<xsl:template name="doenetml-coordinator">
+    <xsl:if test="$b-has-doenetml and $b-doenetml-coordinator">
+        <xsl:variable name="doenet-coordinator-url">
+            <xsl:text>https://cdn.jsdelivr.net/npm/@doenet/standalone@</xsl:text>
+            <xsl:value-of select="$doenetml-document-version"/>
+            <xsl:text>/coordinator.js</xsl:text>
+        </xsl:variable>
+        <!-- A document pinned to a DoenetML version from 0.7.21 through    -->
+        <!-- 0.7.24 gets a coordinator that restores a parked activity's    -->
+        <!-- work itself, racing a host that restores saved work of its     -->
+        <!-- own - and the older copy can win, replacing work a reader      -->
+        <!-- just did.  The publisher may not have read the paragraph in    -->
+        <!-- the Guide that says so, and both facts are visible here, so    -->
+        <!-- warn.  A partial pin like "0.7" floats to the newest release   -->
+        <!-- and is safe; its patch part is empty, and fails the numeric    -->
+        <!-- comparisons below.                                             -->
+        <xsl:if test="$b-host-runestone or $b-host-scorm">
+            <xsl:variable name="doenetml-pin-patch" select="substring-after(substring-after($doenetml-document-version, '.'), '.')"/>
+            <xsl:if test="(substring-before($doenetml-document-version, '.') = '0') and (substring-before(substring-after($doenetml-document-version, '.'), '.') = '7') and (number($doenetml-pin-patch) &gt;= 21) and (number($doenetml-pin-patch) &lt;= 24)">
+                <xsl:message>PTX:WARNING: this document pins DoenetML version <xsl:value-of select="$doenetml-document-version"/>, whose activity coordinator can replace a reader's saved work with an older copy when the book is hosted on Runestone or as SCORM.  Pin version 0.7.25 or later, or set the "coordinator" attribute of the "doenetml" element of the publication file to "no"</xsl:message>
+            </xsl:if>
+        </xsl:if>
+        <!-- The selector confines the script to DoenetML activities (see   -->
+        <!-- the "data-doenet-coordinate" attribute placed on their         -->
+        <!-- "iframe"s); the script's own default would also sweep up every -->
+        <!-- "-if.html" iframe, which for PreTeXt means every other         -->
+        <!-- platform's interactive too.                                    -->
+        <!-- Two notes on the tag itself: it is a classic script, so        -->
+        <!-- "document.currentScript" still supplies its options under      -->
+        <!-- "defer", which keeps a CDN fetch from blocking every page of   -->
+        <!-- the book; and the script reads the shared-core-workers value   -->
+        <!-- as anything but the string "false", so the publisher's "no"    -->
+        <!-- must be stringified as "false" rather than passed through.     -->
+        <script defer="defer" src="{$doenet-coordinator-url}" data-iframe-selector="iframe[data-doenet-coordinate]" data-max-live-viewers="{$doenetml-max-live-viewers}" data-max-concurrent-boots="{$doenetml-max-concurrent-boots}" data-shared-core-workers="{$b-doenetml-shared-core-workers}"></script>
+    </xsl:if>
+</xsl:template>
+
 <!-- JSXGraph -->
 <xsl:template name="jsxgraph">
     <xsl:if test="$b-has-jsxgraph">
@@ -14647,22 +14752,16 @@ TODO:
 
 <!-- CSS header -->
 <xsl:template name="css-common">
-    <!-- Temporary until css handling overhaul by ascholer complete -->
+    <!-- Custom list markers are "@counter-style" rules derived from the -->
+    <!-- source, one per distinct marker, referenced by name from each   -->
+    <!-- list's "style" attribute.  Inlined unconditionally: they are    -->
+    <!-- tiny, they cannot live on a CDN, and portable HTML has no place -->
+    <!-- to link out to anyway.                                          -->
     <xsl:if test="$b-needs-custom-marker-css">
-        <xsl:choose>
-            <!-- These styles are derived from the source, so they are not on  -->
-            <!-- the CDN and "$html.css.dir" does not point at them.  Inline   -->
-            <!-- them: there is one short rule per unique author-supplied      -->
-            <!-- marker, and portable HTML has no place to link out to anyway. -->
-            <xsl:when test="$b-cdn-resources">
-                <style>
-                    <xsl:apply-templates select="exsl:node-set($ol-markers)//ol-marker" mode="ol-marker-style"/>
-                </style>
-            </xsl:when>
-            <xsl:otherwise>
-                <link href="{$html.css.dir}/ol-markers.css" rel="stylesheet" type="text/css"/>
-            </xsl:otherwise>
-        </xsl:choose>
+        <style>
+            <xsl:text>&#xa;</xsl:text>
+            <xsl:apply-templates select="exsl:node-set($ol-markers)//ol-marker" mode="ol-marker-style"/>
+        </style>
     </xsl:if>
     <!-- If extra CSS is specified, then unpack multiple CSS files -->
     <xsl:if test="not($html.css.extra = '')">

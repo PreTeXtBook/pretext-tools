@@ -3611,6 +3611,25 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:if>
 </xsl:template>
 
+<!-- A list ("ol", "ul", "dl") may stand bare at the top level   -->
+<!-- of a "slide" or "subslide", an authoring convenience        -->
+<!-- particular to the slideshow genre.  Internally we keep the  -->
+<!-- main grammar's single shape - a list lives within a         -->
+<!-- paragraph - so every later consumer of the tree meets only  -->
+<!-- one form.  The manufactured paragraph does not survive to   -->
+<!-- output as an HTML "p": the Reveal.js conversion explodes    -->
+<!-- any paragraph containing displays, and for a paragraph that -->
+<!-- is exactly one list the explosion is precisely the bare     -->
+<!-- list again.  A @pause stays on the list itself, where the   -->
+<!-- list item templates consult it.                             -->
+<xsl:template match="slide/ol|slide/ul|slide/dl|subslide/ol|subslide/ul|subslide/dl" mode="repair">
+    <p>
+        <xsl:copy>
+            <xsl:apply-templates select="node()|@*" mode="repair"/>
+        </xsl:copy>
+    </p>
+</xsl:template>
+
 
 <!-- ############################## -->
 <!-- Killed, in Chronological Order -->
@@ -4915,13 +4934,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- we want the stylesheet to be independent, and the template is    -->
 <!-- also applied here.                                               -->
 
-<!-- Every element carrying an "@pi:assembly-id" stamp reports it  -->
-<!-- through this single template.  The match list is deliberately -->
-<!-- explicit — media and images, data files, STACK problems, and  -->
-<!-- the fill-in dynamic-substitution owners (the exercise-like    -->
-<!-- elements, or a "task" they contain, whichever holds "setup")  -->
-<!-- — so the BUG fallback below can catch an unexpected           -->
-<!-- application.                                                  -->
+<!-- Every element carrying an "@pi:assembly-id" stamp reports it    -->
+<!-- through this single template.  The match list is deliberately   -->
+<!-- explicit — media and images, data files, STACK problems, and    -->
+<!-- the fill-in dynamic-substitution owners (the exercise-like      -->
+<!-- elements, or a "task" they contain, whichever holds "setup")    -->
+<!-- — so the BUG fallback below can catch an unexpected             -->
+<!-- application.                                                    -->
+<!--                                                                 -->
+<!-- The stamp belongs to the assembly, laid down partway through    -->
+<!-- the phases so that the later ones can coordinate on it.  It is  -->
+<!-- read here, and in the extraction stylesheets that feed those    -->
+<!-- phases, and nowhere else.  A conversion wants the "unique-id"   -->
+<!-- template instead: the two agree for most elements but not for   -->
+<!-- all, so a conversion reading this value can form a name that    -->
+<!-- nothing else in the build uses.                                 -->
 <xsl:template match="audio|video|interactive|image
                    | datafile
                    | exercise/stack

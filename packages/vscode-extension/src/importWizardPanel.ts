@@ -4,6 +4,15 @@ import * as path from "path";
 import * as fs from "fs";
 import { importProjectFromFiles } from "@pretextbook/import";
 import { getNonce } from "./utils";
+import { isSafeRelativePath } from "./pure-utils";
+import {
+  applyInsertToDocument,
+  insertContextForActiveEditor,
+  insertOfferForContext,
+  reportInsert,
+  type InsertContext,
+  type InsertTargetOffer,
+} from "./insert-import";
 import { pretextOutputChannel } from "./ui";
 import { pandocInstalled, pandocToPretext } from "./pandoc";
 
@@ -20,6 +29,16 @@ interface ImportConfirmMessage {
   sourceName: string;
   documentKind: string;
   warnings: string[];
+  /**
+   * Present when the panel was opened against a document to insert into: what
+   * the webview's attach-level control settled on, and the includes it built.
+   * The document and the position stay on the host, captured when the panel
+   * opened (see `InsertContext`).
+   */
+  insert?: {
+    includes: string[];
+    renamed: Array<{ from: string; to: string }>;
+  };
 }
 
 // The pandoc engine runs in the extension host (pandoc is a native binary, so
@@ -34,22 +53,36 @@ interface PandocConvertMessage {
   options: { documentKind?: "article" | "book"; splitSections?: boolean };
 }
 
-export function cmdImportProject(context: vscode.ExtensionContext) {
+export function cmdImportProject(
+  context: vscode.ExtensionContext,
+  insertInto?: InsertContext,
+) {
   const panel = vscode.window.createWebviewPanel(
     "pretext.importWizard",
-    "Import to PreTeXt",
+    insertInto
+      ? `Insert into ${path.basename(insertInto.document.fileName)}`
+      : "Import to PreTeXt",
     vscode.ViewColumn.One,
     {
       enableScripts: true,
       retainContextWhenHidden: true,
     },
   );
-  panel.webview.html = getHtmlForWebview(
-    panel.webview,
-    context.extensionUri,
-    pandocInstalled(),
-    defaultImportMode(),
-  );
+
+  // The offer needs the project's live xml:ids, which come from the language
+  // server, so the HTML is set once that answer arrives. Until then the panel
+  // is blank, which is a beat rather than a wait.
+  void (
+    insertInto ? insertOfferForContext(insertInto) : Promise.resolve(undefined)
+  ).then((insertTarget) => {
+    panel.webview.html = getHtmlForWebview(
+      panel.webview,
+      context.extensionUri,
+      pandocInstalled(),
+      defaultImportMode(),
+      insertTarget,
+    );
+  });
 
   panel.webview.onDidReceiveMessage(
     async (message: { type?: string }) => {
@@ -63,9 +96,10 @@ export function cmdImportProject(context: vscode.ExtensionContext) {
       }
       if (message?.type === "import-confirm") {
         try {
-          const written = await writeImportedProject(
-            message as ImportConfirmMessage,
-          );
+          const confirm = message as ImportConfirmMessage;
+          const written = insertInto
+            ? await insertConfirmedImport(insertInto, confirm)
+            : await writeImportedProject(confirm);
           if (written) {
             panel.dispose();
           }
@@ -129,15 +163,51 @@ async function handlePandocConvert(
   }
 }
 
-/** Reject absolute paths and any path containing a ".." segment. Native mode
- * can carry raw archive paths, so guard against zip-slip style entries. */
-function isSafeRelativePath(relPath: string): boolean {
-  if (/^([a-zA-Z]:)?[\\/]/.test(relPath)) {
+/**
+ * Apply an import the webview confirmed into the document the panel was opened
+ * against. The heavy lifting — the single `WorkspaceEdit`, the namespace, the
+ * overwrite check — is the same code the one-file command uses.
+ */
+async function insertConfirmedImport(
+  insertInto: InsertContext,
+  message: ImportConfirmMessage,
+): Promise<boolean> {
+  const written = await applyInsertToDocument(
+    insertInto.document,
+    {
+      sourceName: message.sourceName,
+      files: message.files,
+      assets: Object.fromEntries(
+        Object.entries(message.assetsBase64).map(([relPath, base64]) => [
+          relPath,
+          new Uint8Array(Buffer.from(base64, "base64")),
+        ]),
+      ),
+      includes: message.insert?.includes ?? [],
+      renamed: message.insert?.renamed ?? [],
+      warnings: message.warnings,
+    },
+    insertInto.attachment,
+  );
+  if (!written) {
+    vscode.window.showErrorMessage(
+      `Could not insert ${message.sourceName}; nothing was written.`,
+    );
     return false;
   }
-  return !relPath
-    .split(/[\\/]/)
-    .some((segment) => segment === ".." || segment === "");
+  reportInsert(
+    {
+      sourceName: message.sourceName,
+      files: message.files,
+      assets: {},
+      includes: message.insert?.includes ?? [],
+      renamed: message.insert?.renamed ?? [],
+      warnings: message.warnings,
+    },
+    insertInto.attachment,
+    written,
+  );
+  return true;
 }
 
 async function writeImportedProject(
@@ -281,6 +351,7 @@ function getHtmlForWebview(
   extensionUri: vscode.Uri,
   pandocAvailable: boolean,
   importMode: "converted" | "native",
+  insertTarget?: InsertTargetOffer,
 ): string {
   const scriptUri = webview.asWebviewUri(
     vscode.Uri.joinPath(extensionUri, "out", "media", "importWizard.js"),
@@ -392,7 +463,7 @@ function getHtmlForWebview(
             }
           </style>
           <script nonce="${nonce}">
-            window.__ptxImport = { pandocAvailable: ${pandocAvailable ? "true" : "false"}, defaultImportMode: "${importMode}" };
+            window.__ptxImport = { pandocAvailable: ${pandocAvailable ? "true" : "false"}, defaultImportMode: "${importMode}", insertTarget: ${insertTarget ? JSON.stringify(insertTarget) : "undefined"} };
           </script>
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </head>
@@ -400,4 +471,71 @@ function getHtmlForWebview(
           <div id="root"></div>
         </body>
       </html>`;
+}
+
+/**
+ * A PreTeXt document open in the workspace is what makes "insert into this
+ * document" meaningful; without one there is nothing to insert into, so the
+ * question is not worth asking.
+ */
+function hasInsertTarget(): boolean {
+  const document = vscode.window.activeTextEditor?.document;
+  if (!document || document.languageId !== "pretext") {
+    return false;
+  }
+  return vscode.workspace.getWorkspaceFolder(document.uri) !== undefined;
+}
+
+/**
+ * The entry point for "Import…": scaffold a new project, or bring the material
+ * into the document already open (packages/import/SPEC.md §9.2). The choice is
+ * only offered when both are possible; the same wizard serves either, differing
+ * only in the destination it is given.
+ */
+export async function cmdImport(
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  if (!hasInsertTarget()) {
+    cmdImportProject(context);
+    return;
+  }
+
+  const fileName = path.basename(
+    vscode.window.activeTextEditor!.document.fileName,
+  );
+  const choice = await vscode.window.showQuickPick(
+    [
+      {
+        label: `$(insert) Insert into ${fileName}`,
+        detail:
+          "Add the material as a division of the document you are editing, included at the cursor.",
+        mode: "insert" as const,
+      },
+      {
+        label: "$(new-folder) Create a new project",
+        detail:
+          "Convert the file (or archive) into a PreTeXt project of its own, in a folder you choose.",
+        mode: "project" as const,
+      },
+    ],
+    {
+      title: "Import to PreTeXt",
+      placeHolder: "Where should the imported material go?",
+    },
+  );
+  if (!choice) {
+    return;
+  }
+
+  if (choice.mode === "project") {
+    cmdImportProject(context);
+    return;
+  }
+
+  // Read where it goes *before* the panel opens, while the cursor still means
+  // what the author meant by it.
+  const insertInto = insertContextForActiveEditor();
+  if (insertInto) {
+    cmdImportProject(context, insertInto);
+  }
 }
