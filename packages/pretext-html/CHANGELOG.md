@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.15.0
+
+### Minor Changes
+
+- e2b6d96: Improved import features
+
 ## 0.14.0
 
 ### Minor Changes

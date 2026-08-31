@@ -1,5 +1,16 @@
 # @pretextbook/import
 
+## 0.10.0
+
+### Minor Changes
+
+- e2b6d96: Improved import features
+
+### Patch Changes
+
+- Updated dependencies [e2b6d96]
+  - @pretextbook/format@0.5.0
+
 ## 0.9.0
 
 ### Minor Changes

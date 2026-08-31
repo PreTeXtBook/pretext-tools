@@ -1,5 +1,11 @@
 # @pretextbook/schema
 
+## 0.7.0
+
+### Minor Changes
+
+- e2b6d96: Improved import features
+
 ## 0.6.1
 
 ### Patch Changes
