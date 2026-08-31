@@ -105,3 +105,17 @@ export function upsertPretextLanguageSettings(
   }
   return next;
 }
+
+/**
+ * Reject absolute paths and any path containing a ".." segment. Imports can
+ * carry raw archive paths, so guard against zip-slip style entries before
+ * anything is written.
+ */
+export function isSafeRelativePath(relPath: string): boolean {
+  if (/^([a-zA-Z]:)?[\\/]/.test(relPath)) {
+    return false;
+  }
+  return !relPath
+    .split(/[\\/]/)
+    .some((segment) => segment === ".." || segment === "");
+}

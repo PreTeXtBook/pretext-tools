@@ -71,7 +71,8 @@ import { projects, resetProjectList } from "./project";
 import { registerFlavorTakeover } from "./flavor-takeover";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
-import { cmdImportProject } from "./importWizardPanel";
+import { cmdImport } from "./importWizardPanel";
+import { cmdInsertFileAsDivision } from "./insert-import";
 
 // this method is called when your extension is activated
 export async function activate(context: ExtensionContext) {
@@ -179,7 +180,11 @@ export async function activate(context: ExtensionContext) {
     ),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.importProject", () =>
-      cmdImportProject(context),
+      cmdImport(context),
+    ),
+    commands.registerCommand(
+      "pretext-tools.insertFileAsDivision",
+      cmdInsertFileAsDivision,
     ),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),

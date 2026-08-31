@@ -25,9 +25,13 @@ export {
   handleImportUploadFile,
   extractUpload,
   relayoutImport,
+  rebuildImport,
+  retargetImport,
+  reselectImport,
   resolveImportSplitLevel,
   type ExtractedUpload,
   type ImportProjectOptions,
+  type RebuildImportOptions,
   type SplitLevelContext,
 } from "./lib/upload";
 export {
@@ -89,13 +93,41 @@ export {
   type CarryOverResult,
 } from "./lib/project/existing-project";
 export {
+  DIVISION_LADDER,
+  LADDER_OVERFLOW_TAG,
   PRETEXT_DIVISION_TAGS,
   PRETEXT_ROOT_TAGS,
   filePrefixForDivision,
   isDivisionTag,
+  ladderDepth,
+  shiftLadderTag,
+  type LadderTag,
   type PretextDivisionTag,
   type PretextRootTag,
 } from "./lib/pretext-divisions";
+export {
+  outlineDivisions,
+  pruneDivisions,
+  type DivisionOutlineItem,
+  type DivisionPath,
+  type PruneDivisionsResult,
+} from "./lib/select/divisions";
+export {
+  retargetFragment,
+  retargetFragmentToDepth,
+  dedupeXmlIds,
+  prepareInsertSource,
+  PROJECT_DESTINATION,
+  type ImportDestination,
+  type ProjectDestination,
+  type InsertDestination,
+  type PreparedInsertSource,
+  type RetargetFragmentResult,
+  type DedupeXmlIdsOptions,
+  type DedupeXmlIdsResult,
+  type IdRenameContext,
+  type XmlIdRename,
+} from "./lib/insert";
 export {
   DEFAULT_IMPORT_MODE,
   filesForImportMode,
@@ -150,7 +182,12 @@ export {
   buildNativeDivisionPool,
   sanitizeRef,
   serializeProjectToFiles,
+  serializeProjectToRecords,
+  serializeInsertToRecords,
   serializeProjectToPlusPayload,
+  recordsToPlusPayload,
+  serializeInsertFiles,
+  serializeForDestination,
   divisionChildRefs,
 } from "./lib/pool";
 export type {
@@ -159,6 +196,11 @@ export type {
   BuildNativeDivisionPoolOptions,
   SerializeProjectFilesOptions,
   SerializedProjectFiles,
+  SerializeInsertOptions,
+  SerializedInsert,
+  SerializedInsertRecords,
+  SerializeForDestinationOptions,
+  SerializedForDestination,
 } from "./lib/pool";
 export type {
   SourceFormat,
@@ -172,6 +214,9 @@ export type {
   ImportedDivision,
   ImportedDivisionType,
   ImportedAsset,
+  ProjectRecords,
+  DivisionRecord,
+  AssetRecord,
   PlusProjectPayload,
   PlusDivisionAttributes,
   PlusAssetAttributes,
@@ -179,6 +224,7 @@ export type {
   ImportedProjectResult,
   ImportedProjectSuccess,
   ImportedProjectError,
+  InsertRecord,
 } from "./lib/types";
 export {
   createWorkerEngine,

@@ -25,7 +25,18 @@ export function sanitizeRef(raw: string): string {
 
 /** Hands out refs, deduplicating with `-2`, `-3`, … suffixes. */
 export class RefPool {
-  private used = new Set<string>();
+  private used: Set<string>;
+
+  /**
+   * `taken` seeds the pool with names it must not hand out. An import into an
+   * existing project passes the host's live ids, so a *generated* fallback
+   * (`sec-01`) cannot collide with one either — the ids already written into
+   * the source are settled earlier, by `dedupeXmlIds`, but these are minted
+   * here and would otherwise never be checked against the host.
+   */
+  constructor(taken?: Iterable<string>) {
+    this.used = new Set(taken ?? []);
+  }
 
   claim(preferred: string): string {
     let candidate = preferred;

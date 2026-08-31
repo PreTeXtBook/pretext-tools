@@ -8,6 +8,7 @@ import type { CleaningWarning } from "../clean/warnings";
 import { detectDocumentKind, type DocumentKind } from "../layout/document-kind";
 import { padIndex, spliceReplacements } from "../layout/shared";
 import {
+  elementTitleText,
   findAnyElement,
   findFirstElement,
   findTopLevelElementsMatching,
@@ -44,6 +45,11 @@ export interface BuildDivisionPoolOptions {
   splitSections?: boolean;
   /** Binary assets keyed by their original (input) path. */
   assets?: Record<string, Uint8Array>;
+  /**
+   * Refs the pool must not mint, because something outside it already owns
+   * them — the live `xml:id`s of a host project being inserted into (§9.3).
+   */
+  takenIds?: ReadonlySet<string>;
 }
 
 /**
@@ -96,16 +102,6 @@ function withXmlId(
   return (
     openTag.replace(/^<([a-zA-Z_:][\w:.-]*)/, `<$1 xml:id="${xmlId}"`) + rest
   );
-}
-
-/** Extract an element's `<title>` as plain text (nested markup stripped). */
-function extractTitleText(inner: string): string {
-  const titleSpan = findFirstElement(inner, "title");
-  if (!titleSpan) return "";
-  return titleSpan.inner
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 /**
@@ -181,7 +177,7 @@ function splitChildDivisions(
     context.divisions.push({
       xmlId: claim.ref,
       type: span.name as PretextDivisionTag,
-      title: extractTitleText(span.inner),
+      title: elementTitleText(span.inner),
       sourceFormat: "pretext",
       content: withXmlId(
         rebuildOuter(span, childInner),
@@ -263,7 +259,7 @@ export function buildDivisionPool(
     });
   }
 
-  const refs = new RefPool();
+  const refs = new RefPool(options.takenIds);
   const divisions: ImportedDivision[] = [];
 
   const rootClaim = claimRef(rootSpan, refs, "document");
@@ -273,7 +269,7 @@ export function buildDivisionPool(
   if (rootClaim.renamedFrom !== undefined) {
     pushRefWarnings(warnings, rootClaim, rootSpan.name, 1);
   }
-  const title = extractTitleText(rootSpan.inner);
+  const title = elementTitleText(rootSpan.inner);
 
   const rootInner = splitChildDivisions(rootSpan.inner, rootClaim.ref, 1, {
     refs,

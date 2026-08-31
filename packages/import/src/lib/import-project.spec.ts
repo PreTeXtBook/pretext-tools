@@ -134,7 +134,7 @@ describe("importing an existing PreTeXt project", () => {
     expect(result.outputFiles["requirements.txt"]).toBe("pretext==2.9\n");
     // Assets keep the path the document already references.
     expect(result.outputAssets["assets/diagram.png"]).toEqual(bytes(8));
-    expect(result.outputAssets["source/assets/diagram.png"]).toBeUndefined();
+    expect(result.outputAssets["source/external/diagram.png"]).toBeUndefined();
   });
 
   it("drops stale build output and the consumed source files", () => {
@@ -206,7 +206,9 @@ describe("importing an existing PreTeXt project", () => {
     expect(result.outputFiles["publication/publication.ptx"]).not.toBe(
       PUBLICATION,
     );
-    expect(result.outputAssets["source/assets/diagram.png"]).toEqual(bytes(8));
+    expect(result.outputAssets["source/external/diagram.png"]).toEqual(
+      bytes(8),
+    );
   });
 
   it("follows a named target's source when the user picks one", () => {

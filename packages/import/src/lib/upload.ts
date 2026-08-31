@@ -9,8 +9,14 @@ import { renderPublicationPtx } from "./layout/templates";
 import {
   buildDivisionPool,
   buildNativeDivisionPool,
+  serializeForDestination,
   serializeProjectToFiles,
 } from "./pool";
+import {
+  PROJECT_DESTINATION,
+  type ImportDestination,
+} from "./insert/destination";
+import { minimumInsertSplitLevel, prepareInsertSource } from "./insert/prepare";
 import {
   analyzeImportSources,
   type RootCandidate,
@@ -27,6 +33,19 @@ import {
   renderProjectPtxFromManifest,
 } from "./project/existing-project";
 import type { ManifestTarget, ProjectManifest } from "./project/manifest";
+import type { PretextDivisionTag } from "./pretext-divisions";
+import {
+  DEFAULT_EXTERNAL_DIR,
+  rewriteImageSources,
+  routeImageAssets,
+  type RewriteImageSourcesResult,
+  type RoutedImages,
+} from "./assets/images";
+import {
+  pruneDivisions,
+  type DivisionPath,
+  type PruneDivisionsResult,
+} from "./select/divisions";
 import { basename, extension, normalizePath } from "./project/paths";
 import type { CleaningWarning } from "./clean/warnings";
 import type { DocumentKind } from "./layout/document-kind";
@@ -70,6 +89,26 @@ export interface ImportProjectOptions extends BuildProjectFilesOptions {
    * loose source into this package's standard layout instead.
    */
   preserveProjectLayout?: boolean;
+  /**
+   * Where the import is going (SPEC §9.2). Defaults to a project of its own;
+   * an `insert` destination retargets the document onto a chosen division
+   * level in a project that already exists and emits `<xi:include>` elements
+   * instead of a scaffold.
+   */
+  destination?: ImportDestination;
+  /**
+   * Import only these divisions of the document, by `DivisionPath` (SPEC §9,
+   * step 6). Absent — or empty — imports the whole document.
+   */
+  selection?: DivisionPath[];
+  /**
+   * The publication file's `<directories external="…"/>` — where author-supplied
+   * images go, relative to the main source file (SPEC §3.9). Defaults to
+   * `external`, which is what this package's generated publication file
+   * declares; a host inserting into a project it already has should pass that
+   * project's own.
+   */
+  externalDir?: string;
 }
 
 const SUPPORTED_UPLOAD_PATTERN =
@@ -130,13 +169,9 @@ function isBinaryExtension(ext: string): boolean {
  * Where a binary lands in a freshly scaffolded project. Existing projects skip
  * this entirely — their assets keep the paths their source already references.
  */
-function routeAssetPath(originalPath: string): string | null {
-  const base = basename(originalPath);
-  const ext = extension(base);
-  if (IMAGE_EXTENSIONS.has(ext)) {
-    return `source/assets/${base}`;
-  }
-  return null;
+/** Is this upload entry an author-supplied image PreTeXt would reference? */
+function isImageAsset(originalPath: string): boolean {
+  return IMAGE_EXTENSIONS.has(extension(basename(originalPath)));
 }
 
 function routeTextAuxiliaryPath(originalPath: string): string | null {
@@ -411,6 +446,9 @@ export function importProjectFromFiles(
   options: ImportProjectOptions = {},
 ): ImportedProjectResult {
   const statusMessages: UploadStatusMessage[] = [];
+  const destination: ImportDestination =
+    options.destination ?? PROJECT_DESTINATION;
+  let insertIncludes: string[] = [];
   try {
     const normalizedFiles = Object.fromEntries(
       Object.entries(files).map(([pathName, content]) => [
@@ -626,6 +664,10 @@ export function importProjectFromFiles(
     const outputAssets: Record<string, Uint8Array> = {};
     const importableAssets: Record<string, Uint8Array> = {};
     const outputFiles: Record<string, string> = {};
+    // An existing project keeps its own image paths (§3.13), so only a new
+    // project routes and rewrites.
+    const externalDir = options.externalDir ?? DEFAULT_EXTERNAL_DIR;
+    let routedImages: RoutedImages | undefined;
 
     if (preserveProject && manifest && manifestTarget) {
       const carried = carryOverProjectFiles({
@@ -657,14 +699,19 @@ export function importProjectFromFiles(
         });
       }
     } else {
-      // Route binary assets to source/assets/<filename>; the same set feeds
-      // the division pool's ref-keyed asset list.
-      for (const [originalPath, bytes] of Object.entries(rawAssets)) {
-        const routed = routeAssetPath(originalPath);
-        if (routed) {
-          outputAssets[routed] = bytes;
-          importableAssets[originalPath] = bytes;
-        }
+      // Route images into the directory the publication file declares as
+      // `external`, since that is where PreTeXt resolves `@source` — the same
+      // set feeds the division pool's ref-keyed asset list.
+      routedImages = routeImageAssets(
+        Object.keys(rawAssets).filter(isImageAsset),
+        sourceDirOf(projectLayout.mainSourcePath),
+        externalDir,
+      );
+      for (const [originalPath, routed] of Object.entries(
+        routedImages.pathByOriginal,
+      )) {
+        outputAssets[routed] = rawAssets[originalPath];
+        importableAssets[originalPath] = rawAssets[originalPath];
       }
     }
 
@@ -680,33 +727,74 @@ export function importProjectFromFiles(
     // settled before the depth can be.
     const resolvedKind =
       layoutOptions.documentKind ?? detectDocumentKind(result.pretextSource);
+    // The destination enters here, at the pool seam (SPEC §9.2). An insert
+    // needs a pass *before* the pool as well as a different serializer after
+    // it: ids have to be de-collided while the whole document is still one
+    // string, and levels have to be shifted before the splitter decides what
+    // becomes a file.
+    // Point `<image source="…"/>` at where the images actually landed, before
+    // anything splits the document — every division file has to carry the same
+    // answer, and after the split there is no one string left to fix.
+    const imageRewrite = routedImages
+      ? rewriteImageSources(result.pretextSource, routedImages.sourceByBaseName)
+      : undefined;
+    const referencedSource = imageRewrite?.source ?? result.pretextSource;
+
+    // Cherry-picking comes next: everything after it should see the document
+    // that is actually being imported, so the retarget measures the levels the
+    // author kept and the splitter never lays out a division they dropped.
+    const pruned = pruneDivisions(referencedSource, options.selection);
+    const insertPrep =
+      destination.kind === "insert"
+        ? prepareInsertSource(pruned.source, destination, {
+            hasSelection: (options.selection?.length ?? 0) > 0,
+          })
+        : undefined;
+    const poolSource = insertPrep?.source ?? pruned.source;
+    const rebuiltWarnings = [
+      ...pruneWarnings(pruned),
+      ...(insertPrep?.warnings ?? []),
+    ];
+
     const splitLevel = buildLayout
-      ? resolveImportSplitLevel(layoutOptions, {
-          format: result.sourceFormat,
-          latexSource: result.cleanedNativeSource,
-          documentKind: resolvedKind,
-        })
+      ? Math.max(
+          resolveImportSplitLevel(layoutOptions, {
+            format: result.sourceFormat,
+            latexSource: result.cleanedNativeSource,
+            documentKind: resolvedKind,
+          }),
+          minimumInsertSplitLevel(insertPrep?.unwrapRoot ?? false),
+        )
       : 0;
 
-    const pool = buildDivisionPool(result.pretextSource, {
+    const pool = buildDivisionPool(poolSource, {
       documentKind: resolvedKind,
       splitLevel,
       assets: importableAssets,
+      takenIds:
+        destination.kind === "insert" ? destination.takenIds : undefined,
     });
 
     if (buildLayout) {
-      Object.assign(
-        outputFiles,
-        serializeProjectToFiles(pool.project, {
+      const serialized = serializeForDestination(pool.project, destination, {
+        layout: {
           mainSourcePath: projectLayout.mainSourcePath,
           publicationPath: projectLayout.publicationPath,
           projectFilePath: projectLayout.projectFilePath,
           // A preserved project brings its own publication file; only the
           // manifest is regenerated, from the original targets.
           includeScaffold: !preserveProject,
-        }).files,
-      );
-      if (preserveProject && manifest && manifestTarget) {
+        },
+        unwrapRoot: insertPrep?.unwrapRoot,
+      });
+      insertIncludes = serialized.includes;
+      Object.assign(outputFiles, serialized.files);
+      if (
+        destination.kind === "project" &&
+        preserveProject &&
+        manifest &&
+        manifestTarget
+      ) {
         outputFiles[projectLayout.projectFilePath] =
           renderProjectPtxFromManifest(manifest, manifestTarget, {
             mainSource: projectLayout.mainSourcePath,
@@ -733,6 +821,8 @@ export function importProjectFromFiles(
       ...result.warnings,
       ...attachWarnings,
       ...pretextIncludeWarnings,
+      ...imageWarnings(imageRewrite),
+      ...rebuiltWarnings,
       ...pool.warnings,
     ];
 
@@ -777,7 +867,23 @@ export function importProjectFromFiles(
 
     return {
       ...result,
+      // The rewritten references are part of the converted document from here
+      // on: every rebuild starts from this string, and re-deriving the rewrite
+      // on each one would be work with no result that could differ.
+      pretextSource: referencedSource,
       warnings: combinedWarnings,
+      destination,
+      selection: options.selection,
+      rebuiltWarnings,
+      insert: insertPrep
+        ? {
+            unwrapRoot: insertPrep.unwrapRoot,
+            includes: insertIncludes,
+            renamed: insertPrep.renamed,
+            retargetDelta: insertPrep.retarget.delta,
+            preparedSource: poolSource,
+          }
+        : undefined,
       sourcePath,
       sourceName: basename(sourcePath),
       sourceType,
@@ -896,48 +1002,150 @@ export function resolveImportSplitLevel(
   return context.documentKind === "book" ? 1 : 0;
 }
 
+/** The directory part of a path, with its trailing slash (`""` at the root). */
+function sourceDirOf(mainSourcePath: string): string {
+  const slash = mainSourcePath.lastIndexOf("/");
+  return slash < 0 ? "" : mainSourcePath.slice(0, slash + 1);
+}
+
+/** What to tell the author about images the document names but the upload lacks. */
+function imageWarnings(
+  rewrite: RewriteImageSourcesResult | undefined,
+): CleaningWarning[] {
+  if (!rewrite || rewrite.unresolved.length === 0) {
+    return [];
+  }
+  const missing = [...new Set(rewrite.unresolved)];
+  return [
+    {
+      action: "anomaly",
+      severity: "warning",
+      kind: "structure",
+      category: "missing_image",
+      macro: "image",
+      occurrences: missing.length,
+      message: `The document refers to ${missing.length} image${
+        missing.length === 1 ? "" : "s"
+      } the upload did not include (${missing
+        .slice(0, 5)
+        .join(", ")}${missing.length > 5 ? ", …" : ""}); ${
+        missing.length === 1 ? "its reference was" : "their references were"
+      } left as written, so add the file${missing.length === 1 ? "" : "s"} to the project's external directory.`,
+    },
+  ];
+}
+
+/** The prune's own warning, when it actually dropped something. */
+function pruneWarnings(pruned: PruneDivisionsResult): CleaningWarning[] {
+  if (pruned.removed.length === 0) {
+    return [];
+  }
+  return [
+    {
+      action: "delete",
+      severity: "info",
+      kind: "structure",
+      category: "unselected_divisions",
+      macro: "division",
+      occurrences: pruned.removed.length,
+      message: `${pruned.removed.length} division${
+        pruned.removed.length === 1 ? " was" : "s were"
+      } left out of this import; only the divisions you selected were converted.`,
+    },
+  ];
+}
+
+export interface RebuildImportOptions {
+  /** New split depth; defaults to the one the result was laid out at. */
+  splitLevel?: number;
+  /**
+   * New attach level for an `insert` destination. Ignored for a new-project
+   * import, which has no attach level.
+   */
+  targetTag?: PretextDivisionTag;
+  /**
+   * New division selection (SPEC §9, step 6). Pass `[]` to go back to importing
+   * the whole document.
+   */
+  selection?: DivisionPath[];
+}
+
 /**
- * Re-derive an import's file layout at a different split depth.
+ * Re-derive an import's file layout without re-importing.
  *
  * Everything expensive — extraction, include expansion, cleaning, and the
  * unified-latex conversion — already happened and is carried on `result`. This
- * only rebuilds the division pool and re-serializes it, so a host can offer a
- * live split-depth control without re-importing. Pure: same input, same output,
- * no closures, safe to call across a webview boundary.
+ * redoes only what the two live controls affect: the split depth, and (for an
+ * insert) the attach level. Both restart from `result.pretextSource`, the raw
+ * conversion, so changing the attach level re-prepares from scratch rather than
+ * shifting an already-shifted document a second time. Pure: same input, same
+ * output, no closures, safe to call across a webview boundary.
  */
-export function relayoutImport(
+export function rebuildImport(
   result: ImportedProjectSuccess,
-  splitLevel: number,
+  options: RebuildImportOptions = {},
 ): ImportedProjectSuccess {
-  const depth = Math.max(0, splitLevel);
-  if (depth === result.splitLevel) {
+  const destination: ImportDestination =
+    options.targetTag !== undefined && result.destination.kind === "insert"
+      ? { ...result.destination, targetTag: options.targetTag }
+      : result.destination;
+
+  const selection = options.selection ?? result.selection;
+  const pruned = pruneDivisions(result.pretextSource, selection);
+  const insertPrep =
+    destination.kind === "insert"
+      ? prepareInsertSource(pruned.source, destination, {
+          hasSelection: (selection?.length ?? 0) > 0,
+        })
+      : undefined;
+
+  const depth = Math.max(
+    minimumInsertSplitLevel(insertPrep?.unwrapRoot ?? false),
+    options.splitLevel ?? result.splitLevel,
+  );
+
+  const targetUnchanged =
+    result.destination.kind !== "insert" ||
+    destination.kind !== "insert" ||
+    destination.targetTag === result.destination.targetTag;
+  const selectionUnchanged =
+    (selection ?? []).join(" ") === (result.selection ?? []).join(" ");
+  if (depth === result.splitLevel && targetUnchanged && selectionUnchanged) {
     return result;
   }
 
-  const pool = buildDivisionPool(result.pretextSource, {
+  const pool = buildDivisionPool(insertPrep?.source ?? pruned.source, {
     documentKind: result.documentKind,
     splitLevel: depth,
     assets: result.assets,
+    takenIds: destination.kind === "insert" ? destination.takenIds : undefined,
   });
 
   const outputFiles: Record<string, string> = {};
   // Non-source files (publication, manifest, .bib, and anything an existing
   // project carried over) are independent of split depth, so they are kept as
-  // they were rather than regenerated.
-  for (const [path, content] of Object.entries<string>(result.outputFiles)) {
-    if (!isSplitDerivedPath(path, result.projectLayout.mainSourcePath)) {
-      outputFiles[path] = content;
+  // they were rather than regenerated. An insert wrote no such files: every
+  // file it produced is split-derived, so none survive the rebuild.
+  if (destination.kind === "project") {
+    for (const [path, content] of Object.entries<string>(result.outputFiles)) {
+      if (!isSplitDerivedPath(path, result.projectLayout.mainSourcePath)) {
+        outputFiles[path] = content;
+      }
     }
   }
-  Object.assign(
-    outputFiles,
-    serializeProjectToFiles(pool.project, {
+  // The destination has to travel with the rebuild: without it, moving the
+  // split dial during an insertion would regenerate a project scaffold on top
+  // of someone else's project (SPEC §9.2).
+  const serialized = serializeForDestination(pool.project, destination, {
+    layout: {
       mainSourcePath: result.projectLayout.mainSourcePath,
       publicationPath: result.projectLayout.publicationPath,
       projectFilePath: result.projectLayout.projectFilePath,
       includeScaffold: !result.projectLayout.preserved,
-    }).files,
-  );
+    },
+    unwrapRoot: result.insert?.unwrapRoot,
+  });
+  Object.assign(outputFiles, serialized.files);
 
   let nativeProject = result.nativeProject;
   if (
@@ -957,13 +1165,71 @@ export function relayoutImport(
     ).project;
   }
 
+  // The warnings from the stages this rebuild redid are replaced rather than
+  // added to, so changing the attach level twice does not leave two overflow
+  // notices behind.
+  const rebuiltWarnings = [
+    ...pruneWarnings(pruned),
+    ...(insertPrep?.warnings ?? []),
+  ];
+  const superseded = new Set(result.rebuiltWarnings);
+  const warnings = [
+    ...result.warnings.filter((warning) => !superseded.has(warning)),
+    ...rebuiltWarnings,
+  ];
+
   return {
     ...result,
     splitLevel: depth,
     project: pool.project,
     nativeProject,
     outputFiles,
+    destination,
+    selection,
+    warnings,
+    rebuiltWarnings,
+    insert:
+      insertPrep && result.insert
+        ? {
+            unwrapRoot: insertPrep.unwrapRoot,
+            includes: serialized.includes,
+            renamed: insertPrep.renamed,
+            retargetDelta: insertPrep.retarget.delta,
+            preparedSource: insertPrep.source,
+          }
+        : result.insert,
   };
+}
+
+/**
+ * Re-derive an import keeping only the named divisions — the wizard's
+ * cherry-picking control (SPEC §9, step 6). An empty selection restores the
+ * whole document.
+ */
+export function reselectImport(
+  result: ImportedProjectSuccess,
+  selection: DivisionPath[],
+): ImportedProjectSuccess {
+  return rebuildImport(result, { selection });
+}
+
+/** Re-derive an import's file layout at a different split depth. */
+export function relayoutImport(
+  result: ImportedProjectSuccess,
+  splitLevel: number,
+): ImportedProjectSuccess {
+  return rebuildImport(result, { splitLevel });
+}
+
+/**
+ * Re-derive an insert at a different attach level — the wizard's attach-point
+ * control (SPEC §9.4). A no-op for a new-project import.
+ */
+export function retargetImport(
+  result: ImportedProjectSuccess,
+  targetTag: PretextDivisionTag,
+): ImportedProjectSuccess {
+  return rebuildImport(result, { targetTag });
 }
 
 /** True for a file the division serializer owns and will regenerate. */

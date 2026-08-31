@@ -86,3 +86,47 @@ const SINGLETON_DIVISIONS: ReadonlySet<string> = new Set([
 export function isSingletonDivision(type: string): boolean {
   return SINGLETON_DIVISIONS.has(type);
 }
+
+/**
+ * The depth-indexed divisions, outermost first (SPEC §9.3). Retargeting an
+ * imported fragment onto a chosen level shifts tags along this ladder. Every
+ * other division tag names a *role* rather than a depth — an `<exercises>` is
+ * an exercises wherever it sits — so retargeting leaves them alone.
+ *
+ * Matches `LATEX_DIVISION_COMMANDS` (latex-split.ts) rung for rung, since the
+ * LaTeX sectioning commands are where most imported hierarchies come from.
+ */
+export const DIVISION_LADDER = [
+  "part",
+  "chapter",
+  "section",
+  "subsection",
+  "subsubsection",
+] as const;
+
+export type LadderTag = (typeof DIVISION_LADDER)[number];
+
+/**
+ * Where content pushed past the bottom of the ladder lands. `<paragraphs>` is
+ * deliberately absent from `PRETEXT_DIVISION_TAGS`, so overflow stays inline
+ * and can never be split into a file of its own — the overflow rule and the
+ * splitter agree without either referring to the other (SPEC §9.3).
+ */
+export const LADDER_OVERFLOW_TAG = "paragraphs";
+
+/** Rung index of a tag on the ladder, or `-1` when it is off the ladder. */
+export function ladderDepth(name: string): number {
+  return (DIVISION_LADDER as readonly string[]).indexOf(name);
+}
+
+/**
+ * Shift a tag `delta` rungs down the ladder. Off-ladder tags pass through
+ * untouched; anything pushed past the last rung becomes `<paragraphs>`.
+ */
+export function shiftLadderTag(name: string, delta: number): string {
+  const depth = ladderDepth(name);
+  if (depth < 0) return name;
+  const shifted = depth + delta;
+  if (shifted >= DIVISION_LADDER.length) return LADDER_OVERFLOW_TAG;
+  return DIVISION_LADDER[Math.max(0, shifted)];
+}

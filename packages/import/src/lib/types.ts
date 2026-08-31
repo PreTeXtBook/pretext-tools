@@ -1,4 +1,7 @@
 import type { CleanedChunk } from "./clean/clean-chunks";
+import type { ImportDestination } from "./insert/destination";
+import type { XmlIdRename } from "./insert/dedupe-ids";
+import type { DivisionPath } from "./select/divisions";
 import type { CleaningWarning } from "./clean/warnings";
 import type { DocumentKind } from "./layout/document-kind";
 import type { PretextDivisionTag, PretextRootTag } from "./pretext-divisions";
@@ -83,8 +86,9 @@ export interface ImportedAsset {
 
 /**
  * The host-independent intermediate model of an imported project
- * (SPEC §4.1). Serialize with `serializeProjectToFiles` (VS Code file tree)
- * or `serializeProjectToPlusPayload` (pretext-plus).
+ * (SPEC §4.1). Serialize with `serializeProjectToFiles` (a file tree) or
+ * `serializeProjectToRecords` (a flat, ref-addressed projection for a host that
+ * stores divisions rather than files).
  */
 export interface ImportedProject {
   title: string;
@@ -94,6 +98,43 @@ export interface ImportedProject {
   /** Exactly one division has `isRoot: true`. */
   divisions: ImportedDivision[];
   assets: ImportedAsset[];
+}
+
+/**
+ * One division of the flat, ref-addressed projection (SPEC §4.3) — the shape a
+ * host that stores divisions in a database wants, as against the file tree
+ * `serializeProjectToFiles` produces. Hierarchy lives in the `<plus:TYPE
+ * ref="…"/>` placeholders inside `source`, not in the record.
+ */
+export interface DivisionRecord {
+  /** The division's `xml:id`. */
+  ref: string;
+  source: string;
+  sourceFormat: SourceFormat;
+  isRoot: boolean;
+}
+
+/** One asset of the record projection, its bytes base64-encoded. */
+export interface AssetRecord {
+  ref: string;
+  fileName: string;
+  contentType: string;
+  /** Base64-encoded bytes, so the projection travels as JSON. */
+  data: string;
+}
+
+/**
+ * The record projection of an imported project (SPEC §4.3). Consumer-neutral:
+ * `recordsToPlusPayload` renames these fields for pretext-plus's endpoint, and
+ * another hosted consumer would write its own adapter rather than inherit
+ * someone else's field names.
+ */
+export interface ProjectRecords {
+  title: string;
+  docinfo: string;
+  documentKind: DocumentKind;
+  divisions: DivisionRecord[];
+  assets: AssetRecord[];
 }
 
 /**
@@ -159,6 +200,28 @@ export interface ProjectLayout {
   preserved: boolean;
 }
 
+/**
+ * What an `insert` destination did to the document on its way into the host
+ * project (SPEC §9.2). Absent for a new-project import.
+ */
+export interface InsertRecord {
+  /** True when the document wrapper was dropped in favour of its children. */
+  unwrapRoot: boolean;
+  /** `<xi:include>` elements for the host to splice in at the cursor. */
+  includes: string[];
+  /** `xml:id`s renamed because the host project already used them. */
+  renamed: XmlIdRename[];
+  /** Rungs the document's divisions were shifted down the ladder. */
+  retargetDelta: number;
+  /**
+   * `pretextSource` after retargeting and de-colliding — what was actually
+   * split and written. `pretextSource` itself stays the raw conversion, so the
+   * attach level can be changed later without re-converting (and without
+   * shifting an already-shifted document a second time).
+   */
+  preparedSource: string;
+}
+
 export interface ImportedProjectSuccess extends ConversionContext {
   pretextSource: string;
   /** Cleaned but unconverted source, when the input was LaTeX or Markdown. */
@@ -202,6 +265,27 @@ export interface ImportedProjectSuccess extends ConversionContext {
   cleanChunks: CleanedChunk[];
   /** The split depth this result was laid out at. */
   splitLevel: number;
+  /**
+   * Which divisions this import kept, by `DivisionPath` (SPEC §9, step 6).
+   * Absent when the whole document was imported.
+   */
+  selection?: DivisionPath[];
+  /**
+   * Warnings from the stages a rebuild redoes — the selection prune and the
+   * insert preparation. Also present in `warnings`; held separately so
+   * `rebuildImport` can replace exactly these rather than accumulate a set per
+   * attempt, since an author trying three attach levels should be left with one
+   * overflow notice, not three.
+   */
+  rebuiltWarnings: CleaningWarning[];
+  /**
+   * Where this import went. Carried on the result so `relayoutImport` cannot
+   * silently regenerate a project scaffold the moment an author changes the
+   * split level during an insertion (SPEC §9.2).
+   */
+  destination: ImportDestination;
+  /** Present only for an `insert` destination. */
+  insert?: InsertRecord;
   statusMessages: UploadStatusMessage[];
   warnings: CleaningWarning[];
 }

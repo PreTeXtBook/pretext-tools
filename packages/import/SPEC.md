@@ -284,9 +284,18 @@ pretext-cli template. Names only have to be unique within their own directory.
 
 For a **new** project (LaTeX/Markdown/loose PreTeXt input):
 
-- Image-like binaries (`png jpg … pdf eps ps`) → `source/assets/<basename>`
-  (path flattened). TODO: Note this needs to be changed from current location,
-  and image references in the converted document are still not rewritten (§7).
+- Image-like binaries (`png jpg … pdf eps ps`) → `<sourceDir>/<external>/<basename>`,
+  where `<external>` is the publication file's `<directories external="…"/>`
+  (`external` by default, matching the publication file this package generates;
+  `externalDir` overrides it for a host inserting into a project of its own).
+  PreTeXt resolves `<image source="…"/>` against that directory, not against the
+  source file, so the files and the references have to agree: paths are
+  flattened to basenames, collisions deduplicated (`plot-2.png`), and every
+  `@source` on `<image>`/`<video>`/`<audio>` is rewritten to match
+  (`lib/assets/images.ts`). Matching is by basename — the document says
+  `figures/plot.png`, the archive held it at `chapters/figures/plot.png`, and
+  the basename is the part they agree on. A reference the upload cannot satisfy
+  is left as written and warned about.
 - `.bib` files → `source/<basename>`.
 - Everything else (`.sty`, `.bbl`, `.txt`, …) is counted in the status log
   but not copied into the output project.
@@ -509,7 +518,7 @@ Serialization from §4.1: each division → one file; placeholders →
 `main.ptx` under `<pretext>`; orphan divisions → files not referenced by any
 xi:include (written but reachable only by hand).
 
-### 4.3 pretext-plus shape: project payload
+### 4.3 Record shape: a flat, ref-addressed projection
 
 pretext-plus has a dedicated import endpoint,
 `POST /projects/import` → `ProjectsController#create_from_import`, verified
@@ -869,12 +878,11 @@ buildDivisionPool(pretextSource, { documentKind, splitLevel, assets })
 
 Everything _before_ that seam is shared by both destinations and does not move:
 multi-file uploads, root selection (§3.3), attachment (§3.12), cleaning (§3.5),
-split-depth resolution (§3.8). Only serialization diverges, so the seam is where
-the destination enters:
+split-depth resolution (§3.8). The seam is where the destination enters:
 
 ```ts
 export type ImportDestination =
-  | { kind: "project"; layout: ProjectLayout }
+  | { kind: "project" }
   | {
       kind: "insert";
       /** Division level the imported root becomes (`subsection`, …). */
@@ -886,20 +894,82 @@ export type ImportDestination =
     };
 ```
 
-`serializeForDestination(project, destination)` returns
-`{ files, include?, renamed, warnings }`. The `project` branch is the current
-behaviour unchanged — scaffold on, `project.ptx` and a publication file emitted
-(§4.2). The `insert` branch retargets divisions (§9.3), renames colliding
-`xml:id`s, passes `includeScaffold: false`, and returns the single
-`<xi:include>` element the host splices into the parent file.
+It enters on **both** sides of the seam, not just the serializer, because the
+two transforms of §9.3 have to run while the document is still one string:
+
+```ts
+prepareInsertSource(pretextSource, destination) // insert only
+  → buildDivisionPool(source, { …, takenIds })
+  → serializeForDestination(pool.project, destination, { layout, unwrapRoot })
+```
+
+`serializeForDestination` returns `{ files, includes, pathByRef }`. The
+`project` branch is the current behaviour unchanged — scaffold on, `project.ptx`
+and a publication file emitted (§4.2), `includes` empty because a new project
+writes its own includes into its main file. The `insert` branch writes only
+source files, beside the file receiving the include, and returns the
+`<xi:include>` elements the host splices in.
+
+`includes` is a list rather than the single element this section first
+specified: a titleless document that is nothing but divisions contributes one
+per division (see the unwrap rule below). Nor does the `project` branch carry a
+`layout` — the result already has `projectLayout`, and duplicating it invites
+the two to disagree; the paths are passed as serializer options instead.
+
+**The wrapper: dropped or kept.** A converted document always has a
+`<book>`/`<article>` wrapper, but whether that wrapper _means_ anything depends
+on the source. A LaTeX file that is one `\section{Homework 3}` converts to a
+wrapper around a single titled division; the wrapper is an artifact of
+conversion, and keeping it inserts an empty, untitled level above the homework.
+A file with `\title{Homework 3}` and prose beneath converts to a wrapper that
+carries the title itself, and dropping it throws that title away. The `<title>`
+is what separates the two, so it is what `shouldUnwrapRoot` keys on: a wrapper
+with a title of its own survives as the inserted division; a titleless wrapper
+whose children are all divisions is scaffolding and is dropped. (A titleless
+wrapper holding loose prose is neither — there is nothing to unwrap _to_ — so it
+survives, with a warning that the division it became needs a title.)
+
+Dropping the wrapper makes its children the units being inserted, and a unit
+with no file of its own never arrives, so unwrapping forces a split floor of 1
+(`minimumInsertSplitLevel`) however the split dial is set.
+
+**Ids the pool mints.** `dedupeXmlIds` settles the ids a document already
+carries, but the pool mints more — `sec-01` for a division that had none — and
+those are created after it has run. `buildDivisionPool` therefore takes
+`takenIds` too and seeds its `RefPool` with them, so a generated fallback cannot
+collide with the host either. For the inserted units themselves the fallback is
+not merely unique but wrong: `subsec-01.ptx` reads fine in a project the import
+created and says nothing in a project that already exists. `prepareInsertSource`
+names those units after their titles instead (`subsec-homework-3.ptx`), leaving
+deeper divisions to the pool, whose fallbacks are already scoped by their parent.
 
 `ImportProjectOptions` gains an optional `destination`, defaulting to `project`,
-so existing callers are unaffected.
+so existing callers are unaffected. The result carries `destination` back, plus
+an `insert` record (`unwrapRoot`, `includes`, `renamed`, `retargetDelta`,
+`preparedSource`, `warnings`) for hosts to surface.
+
+`result.pretextSource` stays the raw conversion for both destinations; the
+prepared source lives on the insert record. The attach level is a control the
+author can move _after_ converting (§9.4), and re-preparing an already-prepared
+source would shift an already-shifted document a second time — the second move
+would land nowhere near what was asked for. Both live controls therefore restart
+from the conversion:
+
+```ts
+rebuildImport(result, { splitLevel?, targetTag? });
+relayoutImport(result, splitLevel); // = rebuildImport(result, { splitLevel })
+retargetImport(result, targetTag); //  = rebuildImport(result, { targetTag })
+```
+
+A rebuild _replaces_ the warnings from the stages it redid rather than adding to
+them, which is what `result.rebuiltWarnings` is for: trying three attach levels
+should leave one overflow notice, not three.
 
 > **`relayoutImport` must carry the destination too.** It is what the wizard's
 > split dial calls. A version that does not know the destination would silently
 > regenerate scaffold files the moment an author changed the split level during
-> an insertion.
+> an insertion. It reads the destination off the result rather than taking it as
+> an argument, so a caller cannot forget it.
 
 Insertion is therefore not a second pipeline. New-project import becomes the
 case where the destination is `project`; it is _not_ merely "the imported root
@@ -916,8 +986,13 @@ Attaching at a chosen level therefore means shifting every division tag.
 DIVISION_LADDER = [part, chapter, section, subsection, subsubsection]
 ```
 
-`retargetFragment` computes `delta = depth(targetTag) − depth(topTag)` and
-shifts each ladder tag. Two rules:
+`retargetFragment` (`lib/insert/retarget.ts`) computes
+`delta = depth(targetTag) − depth(topTag)` and shifts each ladder tag. `topTag`
+is the _shallowest_ ladder tag anywhere in the fragment, not whichever comes
+first, which buys an invariant: every other tag is at least as deep, so nothing
+is ever promoted above `targetTag`. Inserted content can only nest inside its
+attachment point — it can never climb out and restructure the host document.
+Two rules:
 
 - Tags off the ladder (`<exercises>`, `<appendix>`, `<worksheet>`) pass through
   untouched — they are not depth-indexed.
@@ -927,8 +1002,19 @@ shifts each ladder tag. Two rules:
   be split into a file of its own. The overflow rule and the splitter agree
   without either referring to the other.
 
-`dedupeXmlIds` renames any id already live in the host project, reusing
-`sanitizeRef` (§4.1) and reporting the renames so the host can surface them.
+`dedupeXmlIds` (`lib/insert/dedupe-ids.ts`) renames any id already live in the
+host project — or invalid as a ref — reusing `sanitizeRef` (§4.1) and reporting
+the renames so the host can surface them. It also rewrites the fragment's own
+`ref`/`first`/`last` attributes, so an `<xref>` follows its target rather than
+dangling: fixing one document must not break the fragment inside it.
+
+Both transforms are whole-fragment and pre-split — they run on the converted
+source _before_ `buildDivisionPool`, not on a built pool. Two reasons. A
+reference can only follow a rename while the `xml:id` declaring it is in the
+same string, and once the pool has split the document a parent holding
+`<plus:subsection ref="…"/>` can no longer see what it names. And retargeting
+first is what makes the overflow rule and the splitter agree: `<paragraphs>` is
+already in place by the time the splitter looks for divisions to lift out.
 In VS Code the taken set comes from the LSP server's `getReferences()`, which
 already walks the project from its main source through every `xi:include`.
 
@@ -941,7 +1027,28 @@ elsewhere can move them. The write and the include splice go into one
 `WorkspaceEdit` so the insertion is a single undo. When the workspace holds no
 project, the mode switch is skipped and `project` is the only destination.
 
-**pretext-plus.** `hrefBase` is unused: the pool is flat, so insertion appends
+**The wizard.** `ImportWizard` takes an `insertTarget` prop — the host's offer:
+the document's label, the level derived from the cursor, the levels on offer,
+the project's live `xml:id`s, and the `hrefBase`. Only the host knows any of
+that. Given it, the wizard adds an attach-level control beside the split dial on
+the review step, working the same way: it rebuilds the converted result rather
+than re-importing, so the file tree and the rename list update as the author
+tries levels. The levels offered run from the cursor's own level downwards —
+never shallower, since a division shallower than its container cannot nest
+inside it. Import mode is locked to "converted" for an insert: native mode
+writes the cleaned LaTeX or Markdown source, which a PreTeXt document cannot
+include.
+
+VS Code reaches it through the same panel: `cmdImport` asks where the material
+goes, and an insert opens the wizard with an `insertTarget` instead of the
+folder-writing flow. The receiving document and the attachment point are
+captured _before_ the panel opens and held for the life of it — the author may
+look at other files while reviewing, and a confirmed import must land where they
+said rather than wherever the cursor has since wandered. Both paths converge on
+one `applyInsertToDocument`, so the single `WorkspaceEdit`, the namespace, and
+the overwrite check are written once.
+
+**A hosted consumer.** `hrefBase` is unused: the pool is flat, so insertion appends
 division rows and writes a `<plus:subsection ref="…"/>` placeholder into the
 parent division's source. `serializeProjectToPlusPayload` (§4.3) already emits
 placeholders unchanged, so no new projection is needed.
@@ -981,18 +1088,91 @@ the caller simply pastes plainly. Inline math is guarded against currency
 (`costs $5 and $7` is not math), and ties go to LaTeX, the two languages
 overlapping mainly on `*` and `_`.
 
+### 9.5b Cherry-picking divisions
+
+The pipeline took a document whole until now; `attachRoots` (§3.12) selects
+among _roots_, not among the divisions inside one. Pulling three quizzes out of
+a semester's worth of them is what step 6 adds.
+
+**A selection is a prune of the converted source**, run before anything else
+looks at it — before the retarget, before the pool:
+
+```ts
+outlineDivisions(pretextSource) → DivisionOutlineItem[]   // what a picker renders
+pruneDivisions(pretextSource, selection) → { source, removed }
+```
+
+Pruning the division _pool_ instead would tie what an author may select to
+`splitLevel` — you could only pick divisions the splitter happened to lift into
+files — and would leave the retarget measuring a document that is no longer the
+one being imported.
+
+Divisions are addressed by **`DivisionPath`**: the index among siblings, joined
+by dots (`"2"`, `"2.0"`). Positional rather than by `xml:id` because most
+converted documents have no ids yet — the pool mints them downstream — and an
+address that only worked for well-labelled documents would be no use on exactly
+the imports that need it.
+
+What a selection keeps: the picked divisions whole, subdivisions included; the
+divisions containing them, as the structure they hang from; and any content
+belonging to a kept division but to none of its subdivisions, which is the
+parent's own and was never deselected. An absent or empty selection expresses no
+narrowing and prunes nothing — a host that wants "import nothing" should not run
+an import.
+
+**A selection forces the insert unwrap (§9.2).** Normally a titled `<article>`
+wrapper _is_ the document and becomes the inserted division. Once the author has
+picked three of its sections, the wrapper is instead the container they picked
+_from_, and keeping it would insert a level nobody asked for; three picks should
+yield three sibling divisions, which is story 3. The wrapper's own title and any
+loose text are dropped with it, and that is warned about rather than done
+quietly.
+
+**A selection also forces converted mode.** The prune operates on the converted
+PreTeXt; the native projection (§3.10) is built from the cleaned LaTeX or
+Markdown, which the prune never saw. The two cannot both be honoured, so the
+selection — expressed explicitly by the author — wins, and the native option is
+withdrawn while one is active.
+
+`reselectImport(result, selection)` is the third live control, alongside the
+split dial and the attach level, and restarts from `result.pretextSource` for
+the same reason they do: a picker built from the last prune's output could only
+ever narrow, never widen — a one-way door.
+
+### 9.5c Naming: records, not "plus"
+
+The flat, ref-addressed projection is not specific to pretext-plus — it is what
+any host that stores divisions in a database wants, as against the file tree a
+filesystem host wants. So it is named for what it is:
+
+| Layer                                          | What it is                                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `serializeProjectToRecords` → `ProjectRecords` | The projection. camelCase, consumer-neutral.                       |
+| `serializeInsertToRecords`                     | The same for an insert: new rows plus placeholders (§9.4).         |
+| `recordsToPlusPayload` → `PlusProjectPayload`  | A thin adapter renaming fields for one endpoint's `import_params`. |
+
+`serializeProjectToPlusPayload` remains as the composition of the two, so the
+existing call sites are unaffected. The Rails-shaped names stay on the adapter
+because they describe a specific endpoint; a second hosted consumer writes its
+own adapter beside it rather than inheriting field names it has no use for.
+
+**The `<plus:TYPE ref="…"/>` placeholder syntax is deliberately left alone.** It
+is not an internal detail this package is free to rename: pretext-plus stores it
+verbatim, so it is an interchange format with a system this repository cannot
+see. Renaming it is a coordinated change, not a tidy-up.
+
 ### 9.6 Sequencing
 
-| #   | Work                                                                            | Story |
-| --- | ------------------------------------------------------------------------------- | ----- |
-| 1   | Paste-and-convert: clipboard, paste provider, engine bump                       | 1     |
-| 2   | `retargetFragment` / `dedupeXmlIds` (pure)                                      | 2, 3  |
-| 3   | `ImportDestination` + `serializeForDestination`; thread through both seam sites | 2, 3  |
-| 4   | VS Code insert path + new-project/insert mode switch                            | 2, 3  |
-| 5   | Wizard attach-point step; destination-aware `relayoutImport`                    | 2, 3  |
-| 6   | Division cherry-picking — importing a _subset_ of a larger project              | 3     |
-| 7   | pretext-plus parity                                                             | 2, 3  |
-| 8   | Images                                                                          | all   |
+| #   | Work                                                                                 | Story |
+| --- | ------------------------------------------------------------------------------------ | ----- |
+| 1   | ✅ Paste-and-convert: clipboard, paste provider, engine bump                         | 1     |
+| 2   | ✅ `retargetFragment` / `dedupeXmlIds` (pure)                                        | 2, 3  |
+| 3   | ✅ `ImportDestination` + `serializeForDestination`; threaded through both seam sites | 2, 3  |
+| 4   | ✅ VS Code insert path + new-project/insert mode switch                              | 2, 3  |
+| 5   | ✅ Wizard attach-point step; destination-aware `relayoutImport`                      | 2, 3  |
+| 6   | ✅ Division cherry-picking — importing a _subset_ of a larger project                | 3     |
+| 7   | ✅ Hosted-consumer parity (records projection for inserts)                           | 2, 3  |
+| 8   | ✅ Images                                                                            | all   |
 
 Step 1 blocks on nothing and is the most frequent story, so it goes first.
 Steps 1–5 deliver all three stories; step 6 is the only genuinely new
@@ -1000,11 +1180,17 @@ capability, since the pipeline currently takes a document whole.
 
 ### 9.7 Known gaps
 
-- **Images.** Local pandoc can extract media with `--extract-media`; the remote
-  `/pandoc/` endpoint cannot, since it answers `text/plain`. Carrying media back
-  needs a zip response mode on the server, as its build endpoint already grew.
-- **Cherry-picking** (step 6) is unimplemented: `attachRoots` (§3.12) selects
-  among _roots_, not among divisions within one document.
+- **Images from the remote pandoc endpoint.** The local binary extracts a
+  document's own figures with `--extract-media` (`pandocToPretextWithMedia` in
+  the extension), so a Word import in VS Code carries its images. The remote
+  `/pandoc/` endpoint cannot: it answers `text/plain` and has nowhere to put
+  them. Carrying media back needs a zip response mode on the server, as its
+  build endpoint already grew. Until then a remote pandoc import converts the
+  text and warns about every figure it could not find.
+- **Cherry-picking and native mode** are mutually exclusive (§9.5b): the prune
+  runs on the converted PreTeXt, so keeping the original LaTeX or Markdown
+  imports the document whole. Pruning the native source would need division
+  addressing in each source language.
 - **Story 1 and Word.** Binary formats cannot be pasted as text; that case is
   story 2 by construction.
 
@@ -1022,9 +1208,15 @@ Vitest specs live alongside sources:
 | Layout + diff     | `relayout`, `file-changes`, `diff`                                                                       |
 | Manifests         | `project/manifest`                                                                                       |
 | Pipeline          | `upload`, `import-project` (existing projects, §3.13), `import-multi-root` (§3.12)                       |
+| Insertion         | `insert/retarget`, `insert/dedupe-ids` (§9.3), `insert/insert-destination` (§9.2, end-to-end)            |
+| Cherry-picking    | `select/divisions`, `select/select-import` (§9.5b, end-to-end)                                           |
+| Images            | `assets/images` (§3.9, unit + end-to-end)                                                                |
+| Record projection | `pool/serialize-insert-records` (§4.3, §9.4)                                                             |
 
 The React components have no automated tests yet — the playground smoke page
-(`packages/playground/import-smoke.html`) is the manual harness.
+(`packages/playground/import-smoke.html`) is the manual harness. That gap now
+covers the wizard's attach-level control (§9.4); the rebuild it drives
+(`retargetImport`) is unit-tested, but the control itself is not.
 
 The monorepo root `npm test` runs this package's suite as part of
 `test:libraries`; `npm run test -w @pretextbook/import` runs it alone.

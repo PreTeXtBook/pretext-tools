@@ -1,4 +1,5 @@
 import { execFile, execSync } from "child_process";
+import * as os from "os";
 import { homedir } from "os";
 import * as path from "path";
 import * as fs from "fs";
@@ -141,4 +142,66 @@ export async function pandocToPretext(inputPath: string): Promise<string> {
     { maxBuffer: 64 * 1024 * 1024 },
   );
   return stdout;
+}
+
+export interface PandocConversion {
+  pretext: string;
+  /** Extracted media, keyed by a path relative to the extraction directory. */
+  media: Record<string, Uint8Array>;
+}
+
+/** Every file under `dir`, keyed by its path relative to `dir`. */
+async function readTree(
+  dir: string,
+  prefix = "",
+): Promise<Record<string, Uint8Array>> {
+  const out: Record<string, Uint8Array> = {};
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      Object.assign(out, await readTree(full, rel));
+    } else if (entry.isFile()) {
+      out[rel] = new Uint8Array(await fs.promises.readFile(full));
+    }
+  }
+  return out;
+}
+
+/**
+ * Convert with pandoc and carry the document's own figures out with it.
+ *
+ * A Word or EPUB file holds its images inside the container, so a conversion
+ * that only takes the text silently drops every figure. `--extract-media`
+ * unpacks them beside the output, which only the local binary can do — the
+ * remote `/pandoc/` endpoint answers `text/plain` and has nowhere to put them
+ * (packages/import/SPEC.md §9.7).
+ *
+ * Extraction failing is not worth failing the conversion over: the text is the
+ * greater part of it, and the import warns about images it cannot find.
+ */
+export async function pandocToPretextWithMedia(
+  inputPath: string,
+): Promise<PandocConversion> {
+  const writer = await ensurePretextLua();
+  const mediaDir = path.join(os.tmpdir(), `ptx-media-${Date.now()}`);
+  try {
+    const { stdout } = await execFileAsync(
+      "pandoc",
+      [inputPath, "-t", writer, "-s", `--extract-media=${mediaDir}`],
+      { maxBuffer: 64 * 1024 * 1024 },
+    );
+    let media: Record<string, Uint8Array> = {};
+    try {
+      media = await readTree(mediaDir);
+    } catch {
+      // No media directory: the document had no embedded figures.
+    }
+    return { pretext: stdout, media };
+  } finally {
+    await fs.promises
+      .rm(mediaDir, { recursive: true, force: true })
+      .catch(() => undefined);
+  }
 }

@@ -248,9 +248,15 @@
       },
       {
         "command": "pretext-tools.importProject",
-        "title": "Import Project from LaTeX/Markdown/PreTeXt",
+        "title": "Import from LaTeX/Markdown/PreTeXt/Word",
         "category": "PreTeXt",
         "description": "Convert an existing LaTeX, Markdown, or PreTeXt file or archive into a new PreTeXt project."
+      },
+      {
+        "command": "pretext-tools.insertFileAsDivision",
+        "title": "Insert file as a division of this document",
+        "category": "PreTeXt",
+        "description": "Convert an existing LaTeX, Markdown, Word, or PreTeXt file into a division of the open document, included at the cursor."
       },
       {
         "command": "pretext-tools.view",

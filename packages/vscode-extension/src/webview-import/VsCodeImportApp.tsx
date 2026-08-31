@@ -2,6 +2,7 @@ import {
   ImportWizard,
   type ImportEngine,
   type ImportMode,
+  type InsertTargetOffer,
 } from "@pretextbook/import/react";
 import "@pretextbook/import/react.css";
 import ConvertWorker from "@pretextbook/import/worker?worker";
@@ -27,7 +28,12 @@ declare global {
   interface Window {
     __vscodeApi?: VscodeApi;
     /** Host-injected config (see importWizardPanel.ts getHtmlForWebview). */
-    __ptxImport?: { pandocAvailable?: boolean; defaultImportMode?: ImportMode };
+    __ptxImport?: {
+      pandocAvailable?: boolean;
+      defaultImportMode?: ImportMode;
+      /** Set when the panel was opened against a document to insert into. */
+      insertTarget?: InsertTargetOffer;
+    };
   }
 }
 
@@ -49,6 +55,11 @@ export interface ImportConfirmMessage {
   sourceName: string;
   documentKind: string;
   warnings: string[];
+  /** What the attach-level control settled on, for an insert. */
+  insert?: {
+    includes: string[];
+    renamed: Array<{ from: string; to: string }>;
+  };
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -192,6 +203,8 @@ const defaultImportMode: ImportMode =
 const engines: ImportEngine[] = pandocAvailable
   ? [builtinEngine, pandocEngine]
   : [builtinEngine];
+const insertTarget =
+  typeof window !== "undefined" ? window.__ptxImport?.insertTarget : undefined;
 
 /**
  * VS Code-specific wrapper for the ImportWizard component. The built-in engine
@@ -209,6 +222,12 @@ function VsCodeImportApp() {
       sourceName: result.sourceName,
       documentKind: result.documentKind,
       warnings: result.warnings.map(formatWarningLine),
+      insert: result.insert
+        ? {
+            includes: result.insert.includes,
+            renamed: result.insert.renamed,
+          }
+        : undefined,
     };
     vscode?.postMessage(message);
   };
@@ -220,7 +239,12 @@ function VsCodeImportApp() {
   return (
     <ImportWizard
       engines={engines}
-      defaultImportMode={defaultImportMode}
+      defaultImportMode={insertTarget ? "converted" : defaultImportMode}
+      // Native mode writes the cleaned LaTeX or Markdown source, which is not
+      // something a PreTeXt document can include. An insert is converted or it
+      // is nothing.
+      lockImportMode={insertTarget !== undefined}
+      insertTarget={insertTarget}
       onConfirm={handleConfirm}
       onCancel={handleCancel}
     />
