@@ -1,5 +1,11 @@
 # @pretextbook/format
 
+## 0.5.0
+
+### Minor Changes
+
+- e2b6d96: Improved import features
+
 ## 0.4.0
 
 ### Minor Changes
