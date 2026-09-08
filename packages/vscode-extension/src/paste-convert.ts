@@ -23,16 +23,16 @@ import {
   type DocumentPasteEditProvider,
   type TextDocument,
 } from "vscode";
-import { pretextOutputChannel } from "./ui";
-import { convertSnippetToPretext } from "./commands/convert";
 import {
-  describeDetection,
-  detectConvertibleFormat,
+  detectSnippetFormat,
   isInlineContext,
   placeConvertedMarkup,
-  type ConvertibleSnippetFormat,
   type PlacementContext,
-} from "./paste-convert-core";
+  type SnippetFormat,
+} from "@pretextbook/import";
+import { pretextOutputChannel } from "./ui";
+import { convertSnippetToPretext } from "./commands/convert";
+import { describeDetection } from "./paste-convert-core";
 
 /** Language id of PreTeXt XML documents (not the LaTeX/Markdown flavours). */
 export const PRETEXT_LANGUAGE_ID = "pretext";
@@ -41,7 +41,7 @@ export const PRETEXT_LANGUAGE_ID = "pretext";
 export const PRETEXT_PASTE_KIND =
   DocumentDropOrPasteEditKind.Text.append("pretext");
 
-const FORMAT_LABELS: Record<ConvertibleSnippetFormat, string> = {
+const FORMAT_LABELS: Record<SnippetFormat, string> = {
   latex: "LaTeX",
   markdown: "Markdown",
 };
@@ -62,7 +62,7 @@ export function placementContextAt(
 /** Convert clipboard text and fit it to the insertion point. */
 async function convertForPaste(
   text: string,
-  format: ConvertibleSnippetFormat,
+  format: SnippetFormat,
   document: TextDocument,
   position: Position,
 ): Promise<string> {
@@ -113,7 +113,7 @@ export const pretextPasteEditProvider: DocumentPasteEditProvider = {
       return undefined;
     }
 
-    const format = detectConvertibleFormat(text);
+    const format = detectSnippetFormat(text);
     // Logged either way. A paste that quietly stays plain is otherwise
     // indistinguishable from the provider never running at all, and the scores
     // say which snippet fell short and by how much.
@@ -180,7 +180,7 @@ export async function cmdPasteAndConvert(): Promise<void> {
 
   // Fall back to LaTeX when detection is unsure: it is the format authors
   // reach for here, and its converter passes plain prose through unharmed.
-  const format = detectConvertibleFormat(text) ?? "latex";
+  const format = detectSnippetFormat(text) ?? "latex";
   const target = editor.selection;
 
   try {

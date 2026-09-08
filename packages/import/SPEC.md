@@ -1088,6 +1088,20 @@ the caller simply pastes plainly. Inline math is guarded against currency
 (`costs $5 and $7` is not math), and ties go to LaTeX, the two languages
 overlapping mainly on `*` and `_`.
 
+**Placement is shared; the host binding is not.** Conversion answers what the
+snippet becomes; `lib/paste/place-markup.ts` answers what has to change for it
+to sit at the cursor — unwrapping the converter's own `<p>` when the insertion
+point is already inside one, reindenting to the surrounding line, and reporting
+a division that lands mid-paragraph, which cannot be repaired here and so is
+inserted with a warning rather than silently mangled. That is pure string work,
+so it lives in this package: VS Code's `DocumentPasteEditProvider` and
+pretext-plus's Monaco paste handler each read the placement context out of their
+own editor and then call the same `placeConvertedMarkup`. `isInlineContext`
+serves the insert path too (§9.2), which needs the same "is the cursor inside a
+paragraph?" answer before placing an `xi:include`. What stays host-side is the
+binding and the log line — the extension's `describeDetection` only means
+something where there is an output channel to write it to.
+
 ### 9.5b Cherry-picking divisions
 
 The pipeline took a document whole until now; `attachRoots` (§3.12) selects
@@ -1210,6 +1224,7 @@ Vitest specs live alongside sources:
 | Pipeline          | `upload`, `import-project` (existing projects, §3.13), `import-multi-root` (§3.12)                       |
 | Insertion         | `insert/retarget`, `insert/dedupe-ids` (§9.3), `insert/insert-destination` (§9.2, end-to-end)            |
 | Cherry-picking    | `select/divisions`, `select/select-import` (§9.5b, end-to-end)                                           |
+| Paste placement   | `paste/place-markup` (§9.5)                                                                              |
 | Images            | `assets/images` (§3.9, unit + end-to-end)                                                                |
 | Record projection | `pool/serialize-insert-records` (§4.3, §9.4)                                                             |
 
