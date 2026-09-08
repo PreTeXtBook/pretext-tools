@@ -106,6 +106,14 @@ export {
   type PretextRootTag,
 } from "./lib/pretext-divisions";
 export {
+  firstDivisionTag,
+  isInlineContext,
+  placeConvertedMarkup,
+  reindentForContext,
+  type PlacedMarkup,
+  type PlacementContext,
+} from "./lib/paste/place-markup";
+export {
   outlineDivisions,
   pruneDivisions,
   type DivisionOutlineItem,

@@ -13,10 +13,7 @@ import { markdownToPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
 import type { Element } from "xast";
-import {
-  reindentForContext,
-  type ConvertibleSnippetFormat,
-} from "../paste-convert-core";
+import { reindentForContext, type SnippetFormat } from "@pretextbook/import";
 
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
@@ -107,7 +104,7 @@ async function cmdLatexToPretext(initialText: string, selectionRange: Range) {
   return formatConvertedPretext(newText);
 }
 
-const SNIPPET_LABELS: Record<ConvertibleSnippetFormat, string> = {
+const SNIPPET_LABELS: Record<SnippetFormat, string> = {
   latex: "LaTeX-style PreTeXt",
   markdown: "Markdown-style PreTeXt",
 };
@@ -123,7 +120,7 @@ const SNIPPET_LABELS: Record<ConvertibleSnippetFormat, string> = {
  */
 export async function convertSnippetToPretext(
   text: string,
-  format: ConvertibleSnippetFormat,
+  format: SnippetFormat,
 ): Promise<string> {
   const converted =
     format === "latex"

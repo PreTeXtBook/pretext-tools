@@ -8,10 +8,10 @@
 import {
   DIVISION_LADDER,
   isDivisionTag,
+  isInlineContext,
   ladderDepth,
   type PretextDivisionTag,
 } from "@pretextbook/import";
-import { isInlineContext } from "./paste-convert-core";
 import { parseOutline, type OutlineItem } from "./outline-parser";
 
 /**
