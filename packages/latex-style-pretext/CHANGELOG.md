@@ -1,5 +1,11 @@
 # @pretextbook/latex-style-pretext
 
+## 0.5.1
+
+### Patch Changes
+
+- bccaf34: Move some code around to make integrating in pretext-plus easier
+
 ## 0.5.0
 
 ### Minor Changes
