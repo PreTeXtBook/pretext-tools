@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/latex-style-pretext",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Editor intelligence (completions + validation) for LaTeX-style PreTeXt documents",
   "author": "Oscar Levin",
   "license": "MIT",
@@ -39,7 +39,7 @@
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
-    "@pretextbook/latex-pretext": "^0.3.0",
+    "@pretextbook/latex-pretext": "^0.3.1",
     "@pretextbook/unified-latex-to-pretext": "^0.0.13",
     "@unified-latex/unified-latex": "^1.8.4"
   },

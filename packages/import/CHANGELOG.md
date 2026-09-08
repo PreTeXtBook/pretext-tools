@@ -1,5 +1,19 @@
 # @pretextbook/import
 
+## 0.11.0
+
+### Minor Changes
+
+- bccaf34: Export the paste placement helpers (`placeConvertedMarkup`, `isInlineContext`, `reindentForContext`, `firstDivisionTag`), moved here from the VS Code extension so every host fits converted markup to the cursor the same way.
+
+### Patch Changes
+
+- bccaf34: Move some code around to make integrating in pretext-plus easier
+- bccaf34: Pin the internal `@pretextbook/*` dependencies to real ranges instead of `*`. Changesets deliberately leaves a `*` range alone, so published versions of this package never asked npm for a newer `format`, `latex-pretext`, `latex-style-pretext` or `remark-pretext` — any copy already in a consumer's tree satisfied the range and stayed there.
+- Updated dependencies [bccaf34]
+  - @pretextbook/latex-style-pretext@0.5.1
+  - @pretextbook/latex-pretext@0.3.1
+
 ## 0.10.0
 
 ### Minor Changes
