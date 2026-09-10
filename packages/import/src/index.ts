@@ -110,6 +110,7 @@ export {
   isInlineContext,
   placeConvertedMarkup,
   reindentForContext,
+  wrapLooseParagraphs,
   type PlacedMarkup,
   type PlacementContext,
 } from "./lib/paste/place-markup";

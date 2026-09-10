@@ -66,11 +66,13 @@ async function convertForPaste(
   document: TextDocument,
   position: Position,
 ): Promise<string> {
-  const converted = await convertSnippetToPretext(text, format);
-  const { markup, warning } = placeConvertedMarkup(
-    converted,
-    placementContextAt(document, position),
-  );
+  const context = placementContextAt(document, position);
+  // Wrapped before the formatter sees it, so a pasted paragraph is reflowed
+  // like any other `<p>` rather than landing as a single long line.
+  const converted = await convertSnippetToPretext(text, format, {
+    wrapParagraphs: !context.inline,
+  });
+  const { markup, warning } = placeConvertedMarkup(converted, context);
   if (warning) {
     pretextOutputChannel.appendLine(warning);
   }

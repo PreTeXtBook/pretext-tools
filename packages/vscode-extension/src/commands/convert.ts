@@ -13,7 +13,11 @@ import { markdownToPretext } from "@pretextbook/remark-pretext";
 import { collectPtxSchemaViolations } from "@pretextbook/ptxast";
 import type { PtxRoot } from "@pretextbook/ptxast";
 import type { Element } from "xast";
-import { reindentForContext, type SnippetFormat } from "@pretextbook/import";
+import {
+  reindentForContext,
+  wrapLooseParagraphs,
+  type SnippetFormat,
+} from "@pretextbook/import";
 
 export async function cmdConvertText() {
   const editor = window.activeTextEditor;
@@ -117,16 +121,27 @@ const SNIPPET_LABELS: Record<SnippetFormat, string> = {
  * selected text can never drift apart. Placement — indentation, stripping a
  * wrapper `<p>` — is the caller's business, since it depends on where the
  * markup is going.
+ *
+ * `wrapParagraphs` is the one piece of placement that has to happen here rather
+ * than afterwards: the LaTeX converter leaves a single paragraph unwrapped, and
+ * the `<p>` it needs must exist before the formatter runs, or the paragraph
+ * arrives as one unbroken line. `placeConvertedMarkup` does it too and the
+ * operation is idempotent, so a host with no formatter to order around can
+ * simply leave this off.
  */
 export async function convertSnippetToPretext(
   text: string,
   format: SnippetFormat,
+  { wrapParagraphs = false }: { wrapParagraphs?: boolean } = {},
 ): Promise<string> {
   const converted =
     format === "latex"
       ? convertWithUnified(text)
       : String(markdownToPretext(text));
-  return validateAndFormatConvertedPretext(SNIPPET_LABELS[format], converted);
+  return validateAndFormatConvertedPretext(
+    SNIPPET_LABELS[format],
+    wrapParagraphs ? wrapLooseParagraphs(converted) : converted,
+  );
 }
 
 function convertWithUnified(text: string) {
