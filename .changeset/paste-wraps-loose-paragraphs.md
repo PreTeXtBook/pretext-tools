@@ -1,6 +1,5 @@
 ---
 "@pretextbook/import": minor
-"pretext-tools": patch
 ---
 
 Wrap pasted text in `<p>` when it lands outside a paragraph.
