@@ -1091,16 +1091,34 @@ overlapping mainly on `*` and `_`.
 **Placement is shared; the host binding is not.** Conversion answers what the
 snippet becomes; `lib/paste/place-markup.ts` answers what has to change for it
 to sit at the cursor — unwrapping the converter's own `<p>` when the insertion
-point is already inside one, reindenting to the surrounding line, and reporting
-a division that lands mid-paragraph, which cannot be repaired here and so is
-inserted with a warning rather than silently mangled. That is pure string work,
-so it lives in this package: VS Code's `DocumentPasteEditProvider` and
-pretext-plus's Monaco paste handler each read the placement context out of their
-own editor and then call the same `placeConvertedMarkup`. `isInlineContext`
-serves the insert path too (§9.2), which needs the same "is the cursor inside a
-paragraph?" answer before placing an `xi:include`. What stays host-side is the
-binding and the log line — the extension's `describeDetection` only means
-something where there is an output channel to write it to.
+point is already inside one, supplying the `<p>` when it is not, reindenting to
+the surrounding line, and reporting block content that lands mid-paragraph,
+which cannot be repaired here and so is inserted with a warning rather than
+silently mangled. That is pure string work, so it lives in this package: VS
+Code's `DocumentPasteEditProvider` and pretext-plus's Monaco paste handler each
+read the placement context out of their own editor and then call the same
+`placeConvertedMarkup`. `isInlineContext` serves the insert path too (§9.2),
+which needs the same "is the cursor inside a paragraph?" answer before placing
+an `xi:include`. What stays host-side is the binding and the log line — the
+extension's `describeDetection` only means something where there is an output
+channel to write it to.
+
+**Wrapping cannot be left to the converter.** `unified-latex` wraps paragraphs
+only when the source has more than one of them, so the commonest paste there is
+— one paragraph of prose — converts to bare text with no `<p>` at all, and
+`Intro \begin{theorem}…\end{theorem} outro` converts to text on either side of a
+block with no paragraph around either. Both are invalid anywhere the cursor is
+not already inside a `<p>`. `wrapLooseParagraphs` supplies the missing ones by
+the schema's own rule: a top-level element the `<p>` content model admits joins
+the paragraph being accumulated (`<m>`, `<em>`, and equally `<md>` and `<ol>`,
+which are `TextParagraphItem`s and belong *inside* a paragraph), and one it does
+not — `<theorem>`, `<pre>`, a division — ends the run and passes through
+untouched. The element list is lifted from the generated
+`default-dev-schema.ts`, and `place-markup.spec.ts` fails if a schema refresh
+moves it. Markup that arrives correctly wrapped is unchanged by the pass, which
+is what lets it run unconditionally on the block-context path — and lets the
+extension run it *before* the formatter, so a pasted paragraph is reflowed like
+any other rather than landing as one long line.
 
 ### 9.5b Cherry-picking divisions
 
