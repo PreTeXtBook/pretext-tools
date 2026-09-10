@@ -94,22 +94,24 @@ function encodeAssets(
  * package's externalized dependencies and emits a self-contained chunk. The
  * panel's CSP must allow `worker-src` for it to load (see importWizardPanel.ts).
  */
+const BUILTIN_EXTENSIONS = [
+  ".tex",
+  ".md",
+  ".markdown",
+  ".ptx",
+  ".xml",
+  ".zip",
+  ".gz",
+  ".tar.gz",
+  ".tgz",
+];
+
 const builtinEngine: ImportEngine = createWorkerEngine({
   id: "builtin",
   label: "Built-in converter",
   description:
     "Convert LaTeX, Markdown, or PreTeXt — no external tools needed.",
-  acceptExtensions: [
-    ".tex",
-    ".md",
-    ".markdown",
-    ".ptx",
-    ".xml",
-    ".zip",
-    ".gz",
-    ".tar.gz",
-    ".tgz",
-  ],
+  acceptExtensions: BUILTIN_EXTENSIONS,
   createWorker: () => new ConvertWorker(),
 });
 
@@ -152,24 +154,26 @@ async function fileToBase64(file: File): Promise<string> {
   return toBase64(new Uint8Array(await file.arrayBuffer()));
 }
 
+const PANDOC_EXTENSIONS = [
+  ".docx",
+  ".odt",
+  ".rtf",
+  ".epub",
+  ".html",
+  ".htm",
+  ".rst",
+  ".org",
+  ".tex",
+  ".md",
+  ".markdown",
+];
+
 const pandocEngine: ImportEngine = {
   id: "pandoc",
   label: "Pandoc",
   description:
-    "Convert Word, OpenOffice, RST, EPUB, HTML, and more (requires a local pandoc install).",
-  acceptExtensions: [
-    ".docx",
-    ".odt",
-    ".rtf",
-    ".epub",
-    ".html",
-    ".htm",
-    ".rst",
-    ".org",
-    ".tex",
-    ".md",
-    ".markdown",
-  ],
+    "Pandoc reads this format too, and sometimes handles tables and unusual markup better.",
+  acceptExtensions: PANDOC_EXTENSIONS,
   convertFile: async (file: File, options: ImportProjectOptions) => {
     if (!vscode) {
       throw new Error("The pandoc converter is only available in VS Code.");
@@ -200,9 +204,36 @@ const defaultImportMode: ImportMode =
   (typeof window !== "undefined"
     ? window.__ptxImport?.defaultImportMode
     : undefined) ?? DEFAULT_IMPORT_MODE;
-const engines: ImportEngine[] = pandocAvailable
-  ? [builtinEngine, pandocEngine]
-  : [builtinEngine];
+/**
+ * The pandoc engine as it looks with no pandoc installed.
+ *
+ * It stays in the list rather than being dropped, and keeps exactly the
+ * formats the built-in converter cannot read. Dropping it would make a Word
+ * file an unrecognised file type, which tells an author nothing they can act
+ * on; keeping it means the same drop reaches a message that names pandoc and
+ * says where to get it. The overlapping formats are stripped so the review
+ * step never offers to re-run a conversion through a converter that isn't
+ * there.
+ */
+const missingPandocEngine: ImportEngine = {
+  id: "pandoc",
+  label: "Pandoc",
+  acceptExtensions: PANDOC_EXTENSIONS.filter(
+    (extension) => !BUILTIN_EXTENSIONS.includes(extension),
+  ),
+  convertFile: async (file: File) => {
+    throw new Error(
+      `Importing ${file.name} needs Pandoc, which was not found on your PATH. Install it from https://pandoc.org/installing.html, then reload VS Code and try again.`,
+    );
+  },
+};
+
+// The author never picks a converter: the wizard routes each file by its
+// extension, and only offers a choice for the formats both engines read.
+const engines: ImportEngine[] = [
+  builtinEngine,
+  pandocAvailable ? pandocEngine : missingPandocEngine,
+];
 const insertTarget =
   typeof window !== "undefined" ? window.__ptxImport?.insertTarget : undefined;
 

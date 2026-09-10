@@ -42,20 +42,15 @@ import type {
   SourceFormat,
 } from "../lib/types";
 
-export type { ImportMode };
+import {
+  DEFAULT_ACCEPT_EXTENSIONS,
+  allAcceptExtensions,
+  alternateFor,
+  routeEngine,
+  unsupportedFileMessage,
+} from "../lib/engine-routing";
 
-/** File extensions accepted by the built-in converter. */
-const DEFAULT_ACCEPT_EXTENSIONS = [
-  ".tex",
-  ".md",
-  ".markdown",
-  ".ptx",
-  ".xml",
-  ".zip",
-  ".gz",
-  ".tar.gz",
-  ".tgz",
-];
+export type { ImportMode };
 
 /**
  * An upload that has been unpacked and surveyed but not yet converted. Holding
@@ -79,13 +74,19 @@ export interface PreparedUpload {
  * An engine that implements the optional `prepare`/`convertPrepared` pair also
  * gets the source-selection step; one that only implements `convertFile` keeps
  * the original single-shot flow.
+ *
+ * Engines are never chosen by hand: the wizard routes each upload by its
+ * extension, in list order, so list the engine that should own a shared format
+ * first (see `lib/engine-routing.ts`). `label` and `description` surface only
+ * in the opt-in checkbox for an engine that overlaps an earlier one, and in
+ * error messages — so word them for that, not as a menu entry.
  */
 export interface ImportEngine {
-  /** Stable identifier, used as the radio value. */
+  /** Stable identifier. */
   id: string;
-  /** Short name shown in the engine selector. */
+  /** Short name, used in the opt-in checkbox and in error messages. */
   label: string;
-  /** Optional one-line explanation shown under the label. */
+  /** Optional one-line explanation shown under the opt-in checkbox. */
   description?: string;
   /** Extensions this engine accepts (with leading dot). Defaults to the built-in set. */
   acceptExtensions?: string[];
@@ -120,8 +121,7 @@ export interface ImportEngine {
 const BUILTIN_ENGINE: ImportEngine = {
   id: "builtin",
   label: "Built-in converter",
-  description:
-    "Create a new project starting with LaTeX, Markdown, or PreTeXt files.",
+  description: "Converts LaTeX, Markdown, and PreTeXt without any other tools.",
   acceptExtensions: DEFAULT_ACCEPT_EXTENSIONS,
   convertFile: handleImportUploadFile,
   prepare: async (file) => {
@@ -314,7 +314,13 @@ export function ImportWizard({
   // document, which is both the default and what "Select all" restores.
   const [selection, setSelection] = useState<DivisionPath[]>([]);
   const [showDiff, setShowDiff] = useState<Set<string>>(new Set());
-  const [selectedEngineId, setSelectedEngineId] = useState(engineList[0].id);
+  // Which engine converted (or is converting) the current upload. Set by
+  // `processFile` from the file's own extension — never by the author — and
+  // kept so the sources step and the Cancel button address the right engine.
+  const [activeEngineId, setActiveEngineId] = useState(engineList[0].id);
+  // The file itself, kept so the review step can put it back through the other
+  // converter without making the author find and drop it a second time.
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [mode, setMode] = useState<ImportMode>(defaultImportMode);
   const [showPreview, setShowPreview] = useState(false);
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
@@ -329,11 +335,26 @@ export function ImportWizard({
   // worker) is swallowed instead of surfacing as an import failure.
   const cancelledRef = useRef(false);
 
-  const selectedEngine =
-    engineList.find((engine) => engine.id === selectedEngineId) ??
-    engineList[0];
-  const acceptExtensions =
-    selectedEngine.acceptExtensions ?? DEFAULT_ACCEPT_EXTENSIONS;
+  const activeEngine =
+    engineList.find((engine) => engine.id === activeEngineId) ?? engineList[0];
+  // One picker for every format the host can import; the extension decides
+  // which engine gets the file.
+  const acceptExtensions = allAcceptExtensions(engineList);
+
+  // The override, offered only once there is a file to describe it: the other
+  // converter that can read *this* upload, and whether it is the one that
+  // produced the result on screen. Both are undefined for a format only one
+  // converter reads, which is what keeps the choice off the upload step.
+  const alternate = sourceFile
+    ? alternateFor(engineList, sourceFile.name)
+    : undefined;
+  const usingAlternate = alternate ? activeEngine.id === alternate.id : false;
+  /** The converter the override would switch this upload to. */
+  const switchTarget = alternate
+    ? usingAlternate
+      ? (routeEngine(engineList, sourceFile!.name) ?? null)
+      : alternate
+    : null;
 
   // Re-laying out is cheap next to a conversion (pool + serialize only), but it
   // still walks the whole division pool — and `fileChangesForImport` serializes
@@ -414,7 +435,7 @@ export function ImportWizard({
    */
   const cancelProcessing = (upload: PreparedUpload | null) => {
     cancelledRef.current = true;
-    selectedEngine.cancel?.();
+    activeEngine.cancel?.();
     setStep(
       upload ? { name: "sources", prepared: upload } : { name: "upload" },
     );
@@ -434,7 +455,7 @@ export function ImportWizard({
       // Awaited even when the engine is synchronous: the await yields to the
       // event loop, which is what lets React commit the processing step and
       // the browser paint it before a sync engine seizes the thread.
-      const result = await selectedEngine.convertPrepared!(upload, {
+      const result = await activeEngine.convertPrepared!(upload, {
         ...baseOptions(),
         sourceFormat: formatChoice === "auto" ? undefined : formatChoice,
         mainFile: mainFileChoice ?? undefined,
@@ -457,7 +478,29 @@ export function ImportWizard({
     }
   };
 
-  const processFile = async (file: File) => {
+  /**
+   * Convert an upload.
+   *
+   * The file picks the converter by its own extension; `engineOverride` is the
+   * review step handing the same file to the other one. Either way this is a
+   * conversion from scratch, so whatever the last one accumulated — a split
+   * depth, a division selection — is dropped rather than re-applied to a
+   * document it was never chosen for.
+   */
+  const processFile = async (file: File, engineOverride?: ImportEngine) => {
+    const engine = engineOverride ?? routeEngine(engineList, file.name);
+    if (!engine) {
+      setSourceFile(file);
+      setStep({
+        name: "error",
+        message: unsupportedFileMessage(file.name, engineList),
+      });
+      return;
+    }
+    setSourceFile(file);
+    setActiveEngineId(engine.id);
+    resetReviewState();
+
     cancelledRef.current = false;
     setStep({ name: "processing" });
     await nextPaint();
@@ -465,8 +508,8 @@ export function ImportWizard({
       // Two-phase engines unpack first, so the user can settle which file is
       // the document before anything is converted. Single-shot engines (a
       // host-provided pandoc bridge, say) keep the original flow.
-      if (selectedEngine.prepare && selectedEngine.convertPrepared) {
-        const upload = await selectedEngine.prepare(file);
+      if (engine.prepare && engine.convertPrepared) {
+        const upload = await engine.prepare(file);
         setPrepared(upload);
         setFormatChoice("auto");
         setMainFileChoice(null);
@@ -476,10 +519,7 @@ export function ImportWizard({
           return;
         }
         await nextPaint();
-        const result = await selectedEngine.convertPrepared(
-          upload,
-          baseOptions(),
-        );
+        const result = await engine.convertPrepared(upload, baseOptions());
         setStep(
           "pretextError" in result
             ? { name: "error", message: result.pretextError }
@@ -488,7 +528,11 @@ export function ImportWizard({
         return;
       }
 
-      const result = await selectedEngine.convertFile(file, baseOptions());
+      // A single-shot engine unpacks nothing, so any survey left over from a
+      // two-phase conversion of this same file describes a run that no longer
+      // exists — and Cancel would return to its stale sources step.
+      setPrepared(null);
+      const result = await engine.convertFile(file, baseOptions());
       if ("pretextError" in result) {
         setStep({ name: "error", message: result.pretextError });
       } else {
@@ -506,8 +550,8 @@ export function ImportWizard({
     }
   };
 
-  const restart = () => {
-    setStep({ name: "upload" });
+  /** Drop everything the review step accumulated about one conversion. */
+  const resetReviewState = () => {
     setMode(defaultImportMode);
     setShowPreview(false);
     setExpandedFiles(new Set());
@@ -515,7 +559,20 @@ export function ImportWizard({
     setSplitLevel(null);
     setTargetTag(null);
     setSelection([]);
+  };
+
+  const restart = () => {
+    setStep({ name: "upload" });
+    resetReviewState();
     setPrepared(null);
+    setSourceFile(null);
+  };
+
+  /** Put the current upload through the other converter. */
+  const switchConverter = () => {
+    if (sourceFile && switchTarget) {
+      void processFile(sourceFile, switchTarget);
+    }
   };
 
   function sortPaths(paths: string[], mainPath: string): string[] {
@@ -549,7 +606,7 @@ export function ImportWizard({
     return (
       <ProcessingPanel
         onCancel={
-          selectedEngine.cancel ? () => cancelProcessing(prepared) : undefined
+          activeEngine.cancel ? () => cancelProcessing(prepared) : undefined
         }
       />
     );
@@ -562,7 +619,16 @@ export function ImportWizard({
           <p className="font-semibold">Import failed</p>
           <p className="mt-1">{step.message}</p>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          {switchTarget ? (
+            <button
+              type="button"
+              onClick={switchConverter}
+              className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Try {switchTarget.label} Instead
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={restart}
@@ -858,6 +924,34 @@ export function ImportWizard({
             ) : null}
           </dl>
         </div>
+
+        {/*
+          The converter override, and the only place it appears. Which
+          converter can read a file is a fact about the file, so the wizard
+          settles it silently; which converter did *better* is a judgement
+          about the output, which is exactly what this screen shows. Offered
+          only when this upload has a second converter that could read it —
+          for a Word file or a zipped project there is nothing to switch to.
+        */}
+        {alternate ? (
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-4 text-sm">
+            <input
+              type="checkbox"
+              checked={usingAlternate}
+              onChange={switchConverter}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium text-slate-900">
+                Convert with {alternate.label} instead
+              </span>
+              <span className="block text-slate-500">
+                {alternate.description ??
+                  `Runs ${result.sourceName} through ${alternate.label} and rebuilds this preview.`}
+              </span>
+            </span>
+          </label>
+        ) : null}
 
         {warningCount > 0 ? (
           <details className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
@@ -1191,41 +1285,6 @@ export function ImportWizard({
   // Upload step
   return (
     <div className="flex flex-col gap-4">
-      {engineList.length > 1 ? (
-        <fieldset className="rounded-lg border border-slate-200 p-4">
-          <legend className="px-1 text-sm font-semibold text-slate-700">
-            Converter
-          </legend>
-          <div className="mt-2 flex flex-col gap-3">
-            {engineList.map((engine) => (
-              <label
-                key={engine.id}
-                className="flex cursor-pointer items-start gap-3 text-sm"
-              >
-                <input
-                  type="radio"
-                  name="import-engine"
-                  value={engine.id}
-                  checked={selectedEngineId === engine.id}
-                  onChange={() => setSelectedEngineId(engine.id)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium text-slate-900">
-                    {engine.label}
-                  </span>
-                  {engine.description ? (
-                    <span className="block text-slate-500">
-                      {engine.description}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-      ) : null}
-
       {!importOptions ? (
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="flex items-center gap-2 text-slate-700">

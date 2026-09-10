@@ -265,3 +265,15 @@ export {
   type PandocEngineOptions,
   type RemotePandocEngineOptions,
 } from "./lib/pandoc";
+export {
+  DEFAULT_ACCEPT_EXTENSIONS,
+  allAcceptExtensions,
+  alternateEngine,
+  alternateFor,
+  engineAccepts,
+  engineExtensions,
+  matchesExtension,
+  routeEngine,
+  unsupportedFileMessage,
+  type RoutableEngine,
+} from "./lib/engine-routing";
