@@ -38,7 +38,7 @@
     "vscode-languageserver-types": "^3.17.5"
   },
   "devDependencies": {
-    "@pretextbook/remark-pretext": "^0.1.0"
+    "@pretextbook/remark-pretext": "^0.2.0"
   },
   "publishConfig": {
     "access": "public"
