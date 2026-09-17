@@ -1,5 +1,16 @@
 # @pretextbook/import
 
+## 0.14.0
+
+### Minor Changes
+
+- 82fd786: Add support for importing slides
+
+### Patch Changes
+
+- Updated dependencies [82fd786]
+  - @pretextbook/remark-pretext@0.2.0
+
 ## 0.13.0
 
 ### Minor Changes
