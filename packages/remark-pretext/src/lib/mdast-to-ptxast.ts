@@ -229,7 +229,13 @@ export function mdastToPtxastWithDiagnostics(
     // wrapped in an <introduction>, same as every other division-building
     // path.
     const { introduction, rest } = splitDivisionIntroduction(nodes, ctx);
-    const bodyChildren = nestSections(rest, ctx);
+    // A slideshow written with explicit `---` breaks is split on those instead
+    // of on heading depth; a deck without any keeps the heading hierarchy
+    // (`#` → section, `##` → slide). See `nestSlidesAtBreaks`.
+    const bodyChildren =
+      ctx.documentRoot === "slideshow" && hasThematicBreak(rest)
+        ? nestSlidesAtBreaks(rest, ctx)
+        : nestSections(rest, ctx);
     const children = [
       ...(titleEl ? [titleEl] : []),
       ...(introduction ? [introduction] : []),
@@ -304,6 +310,64 @@ export function mdastToPtxastWithDiagnostics(
 // ---------------------------------------------------------------------------
 // Section nesting
 // ---------------------------------------------------------------------------
+
+/**
+ * Does this node list contain an explicit `---` slide break?
+ *
+ * `thematicBreak` has no PreTeXt rendering of its own and is otherwise dropped
+ * by `convertBlockSequence`, so treating it as a slide separator inside a
+ * slideshow costs nothing elsewhere. A leading `---` cannot reach here: the
+ * frontmatter parser consumes that form before parsing.
+ */
+function hasThematicBreak(
+  nodes: Array<BlockContent | DefinitionContent>,
+): boolean {
+  return nodes.some((node) => node.type === "thematicBreak");
+}
+
+/**
+ * Split a slideshow body into `<slide>` elements at each `---`.
+ *
+ * This is the reveal.js / Marp / Pandoc deck dialect: the author marks slide
+ * boundaries explicitly, and heading depth carries no structural meaning — a
+ * deck where every slide opens with `#` would otherwise collapse into a single
+ * section full of empty `<slide>`s.
+ *
+ * TODO(contribution): implement the partition. The mechanical part is a fold
+ * over `nodes` that starts a new group at every `thematicBreak`; the decisions
+ * that need PreTeXt judgement are:
+ *
+ *   - **Title.** If a group opens with a `heading`, that heading is almost
+ *     certainly the slide's title — emit it as `<title>` (build it the way
+ *     `buildDivision` does: `el("title", convertInlineNodes(heading.children, ctx))`)
+ *     and convert the remaining nodes as the body. A group with no leading
+ *     heading has no title; `<slide>` permits that, so emitting a titleless
+ *     slide is legal.
+ *   - **Deeper headings inside a group.** Once `---` is doing the splitting,
+ *     a `##` inside a slide is emphasis, not structure. Converting the body
+ *     with `convertBlockSequence(rest, ctx, true)` keeps it flat; passing it
+ *     through `nestSections` would nest divisions inside a slide, which the
+ *     schema does not allow.
+ *   - **Content before the first `---`.** `splitDivisionIntroduction` has
+ *     already lifted the run before the first *division* into an
+ *     `<introduction>`, so what arrives here may still have a leading group.
+ *     Treating it as the first slide is the reading that matches how authors
+ *     write decks.
+ *   - **Empty groups.** Consecutive breaks, or a trailing `---`, produce
+ *     groups with no nodes. Dropping them avoids emitting an empty `<slide>`,
+ *     which the schema rejects.
+ *
+ * @param nodes The slideshow body, `---` separators included.
+ * @param ctx   The visit context; `ctx.documentRoot` is `"slideshow"` here.
+ * @returns One `<slide>` element per group, in document order.
+ */
+function nestSlidesAtBreaks(
+  nodes: Array<BlockContent | DefinitionContent>,
+  ctx: VisitContext,
+): Element[] {
+  // TODO: replace this fallback with the partition described above.
+  return nestSections(nodes, ctx);
+}
 
 /**
  * Partition a flat list of mdast nodes by headings at the minimum heading depth

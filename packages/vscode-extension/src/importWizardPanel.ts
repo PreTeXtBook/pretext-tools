@@ -50,7 +50,10 @@ interface PandocConvertMessage {
   requestId: string;
   fileName: string;
   dataBase64: string;
-  options: { documentKind?: "article" | "book"; splitSections?: boolean };
+  options: {
+    documentKind?: "article" | "book" | "slideshow";
+    splitSections?: boolean;
+  };
 }
 
 export function cmdImportProject(

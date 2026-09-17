@@ -608,7 +608,14 @@ export function importProjectFromFiles(
       });
     }
 
-    const result = convertSourceToPretext(sourceText, primary.format);
+    // `options.documentKind` is read here, ahead of the `layoutOptions`
+    // destructure below, because Markdown's heading hierarchy is decided during
+    // conversion rather than at layout time (see `convertSourceToPretext`).
+    const result = convertSourceToPretext(
+      sourceText,
+      primary.format,
+      options.documentKind,
+    );
     if ("pretextError" in result) {
       return {
         pretextError: result.pretextError,
@@ -979,6 +986,13 @@ export function resolveImportSplitLevel(
     return Math.max(0, options.splitLevel);
   }
   if (options.splitChapters === false) {
+    return 0;
+  }
+  // A slideshow is never chunked: its divisions are slides, which are a screen
+  // of content each, and a deck of one-paragraph files is not a project anyone
+  // would have authored. The explicit `splitLevel` above still wins, so a host
+  // that really wants one can ask.
+  if (context.documentKind === "slideshow") {
     return 0;
   }
   if (options.splitSections) {

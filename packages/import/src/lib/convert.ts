@@ -5,10 +5,13 @@ import { cleanLatexInChunks, type CleanedChunk } from "./clean/clean-chunks";
 import {
   splitLatexAtDocument,
   extractPreambleInfo,
+  isBeamerClass,
   type PreambleInfo,
 } from "./clean/latex-preamble";
 import type { CleaningWarning } from "./clean/warnings";
 import { detectSourceFormat } from "./detect-source-format";
+import type { DocumentKind } from "./layout/document-kind";
+import type { PretextRootTag } from "./pretext-divisions";
 import type { ConvertedPretextResult, SourceFormat } from "./types";
 
 function asConvertedString(converted: unknown): string {
@@ -90,6 +93,21 @@ function buildDocinfo(info: PreambleInfo): string {
 }
 
 /**
+ * The PreTeXt root a converted LaTeX document belongs in.
+ *
+ * `unified-latex-to-pretext` already turns `\begin{frame}` into `<slide>`, and
+ * `<slide>` is legal only inside `<slideshow>` — so a document that produced
+ * one has told us what it is, whatever its `\documentclass` claimed. The class
+ * is consulted second, for a beamer file whose frames all came out empty.
+ */
+function latexRootTag(content: string, info: PreambleInfo): PretextRootTag {
+  if (/<slide[\s/>]/.test(content) || isBeamerClass(info.documentClass)) {
+    return "slideshow";
+  }
+  return /<chapter[\s>]/.test(content) ? "book" : "article";
+}
+
+/**
  * Wraps the raw PreTeXt fragment produced by unified-latex into a properly
  * structured document: `<pretext><docinfo>…</docinfo><article|book>…</article|book></pretext>`.
  *
@@ -104,8 +122,7 @@ function assemblePretextDocument(fragment: string, info: PreambleInfo): string {
 
   if (!content) return "";
 
-  const isBook = /<chapter[\s>]/.test(content);
-  const docTag = isBook ? "book" : "article";
+  const docTag = latexRootTag(content, info);
 
   const docinfo = buildDocinfo(info);
   const titleEl = info.title
@@ -200,15 +217,31 @@ export interface MarkdownConversionResult {
   cleanedMarkdown: string;
 }
 
+/**
+ * Convert Markdown to PreTeXt.
+ *
+ * `documentRoot` names the root to wrap the document in, which for Markdown is
+ * not cosmetic: it selects the heading hierarchy. Under `slideshow`, `#` is a
+ * `<section>` and `##` a `<slide>` (`SLIDESHOW_HIERARCHY` in `@pretextbook/ptxast`),
+ * not the `section`/`subsection` chain. Left undefined, the markdown's own
+ * `division:` frontmatter decides — so an author who wrote `division: slideshow`
+ * gets a deck without touching the wizard.
+ */
 export function convertMarkdownToPretext(
   markdownSource: string,
+  documentRoot?: PretextRootTag,
 ): MarkdownConversionResult {
   const trimmedMarkdown = markdownSource.trim();
   if (!trimmedMarkdown) {
     return { pretext: "", cleanedMarkdown: "" };
   }
 
-  const converted = String(markdownToPretext(trimmedMarkdown)).trim();
+  const converted = String(
+    markdownToPretext(
+      trimmedMarkdown,
+      documentRoot ? { documentRoot } : undefined,
+    ),
+  ).trim();
   const pretext = converted ? normalizePretextSource(converted) : "";
   return { pretext, cleanedMarkdown: trimmedMarkdown };
 }
@@ -220,9 +253,17 @@ export function getConversionErrorMessage(error: unknown): string {
   return "Could not convert source content to PreTeXt.";
 }
 
+/**
+ * `documentKind` is the user's explicit choice from the wizard, or `undefined`
+ * for "auto detect". It reaches conversion — rather than only the layout stage,
+ * where the rest of the pipeline resolves it — because Markdown's heading
+ * hierarchy depends on the root: by the time layout runs, `##` has already
+ * become a `<subsection>` and there is no slide left to recover.
+ */
 export function convertSourceToPretext(
   source: string,
   sourceFormat?: SourceFormat,
+  documentKind?: DocumentKind,
 ): ConvertedPretextResult {
   const detectedSourceFormat = detectSourceFormat(source);
   const finalSourceFormat = sourceFormat ?? detectedSourceFormat;
@@ -238,7 +279,10 @@ export function convertSourceToPretext(
     }
 
     if (finalSourceFormat === "markdown") {
-      const { pretext, cleanedMarkdown } = convertMarkdownToPretext(source);
+      const { pretext, cleanedMarkdown } = convertMarkdownToPretext(
+        source,
+        documentKind,
+      );
       return {
         sourceFormat: finalSourceFormat,
         detectedSourceFormat,
