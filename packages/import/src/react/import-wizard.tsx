@@ -1301,6 +1301,7 @@ export function ImportWizard({
               <option value="auto">Auto detect</option>
               <option value="article">Article</option>
               <option value="book">Book</option>
+              <option value="slideshow">Slides</option>
             </select>
           </label>
         </div>

@@ -165,6 +165,23 @@ function extractDocumentClassArg(preamble: string): string {
   return m ? m[1].trim() : "article";
 }
 
+/**
+ * Does this `\documentclass` argument name a slide class?
+ *
+ * `beamerarticle` is deliberately excluded: it is the package that typesets a
+ * beamer source *as an article*, so a document using it wants article output.
+ */
+export function isBeamerClass(documentClass: string): boolean {
+  return SLIDE_DOCUMENT_CLASSES.has(documentClass.trim().toLowerCase());
+}
+
+const SLIDE_DOCUMENT_CLASSES: ReadonlySet<string> = new Set([
+  "beamer",
+  "powerdot",
+  "seminar",
+  "slides",
+]);
+
 export interface ExtractPreambleInfoResult {
   info: PreambleInfo;
   warnings: CleaningWarning[];

@@ -8,7 +8,7 @@
 // written.
 
 /** Root elements of a PreTeXt document. */
-export const PRETEXT_ROOT_TAGS = ["book", "article"] as const;
+export const PRETEXT_ROOT_TAGS = ["book", "article", "slideshow"] as const;
 
 /** Divisions that may be split into their own file, in rough outline order. */
 export const PRETEXT_DIVISION_TAGS = [
