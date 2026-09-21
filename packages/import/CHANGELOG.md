@@ -1,5 +1,39 @@
 # @pretextbook/import
 
+## 0.14.1
+
+### Patch Changes
+
+- 2185a9a: Report a source that is not a single-rooted PreTeXt document instead of
+  guessing its root.
+
+  `findRootElement` locates the root at depth 0 inside `<pretext>`, while
+  `detectDocumentKind` scans at any depth and answers `slideshow` first. The two
+  disagreed on a document carrying more than one root: an `<article>` with a
+  `<slideshow>` nested inside it imported as a project marked `slideshow` whose
+  source said `<article>`, and two roots side by side silently resolved to
+  whichever came first in `PRETEXT_ROOT_TAGS` rather than in the document.
+
+  `pretext.rng` admits exactly one root — the `<pretext>` content model is a bare
+  `<choice>` — and references a root element from no content model at all, so
+  neither shape can be read as a document. `findRootElement` now throws for both,
+  which `importProjectFromFiles` already surfaces as a `pretextError` with an
+  `error` status message. Roots quoted inside comments or CDATA are unaffected: a
+  document _about_ PreTeXt still imports.
+
+- 2185a9a: Keep a slideshow's root element through the import.
+
+  `detectDocumentKind` recognised a deck, but every stage that had to locate a
+  root element looked for `<book>` or `<article>` only. A `<slideshow>` matched
+  neither, so the pool builder wrapped it in an `<article xml:id="document">`
+  that survived into `outputFiles` and into the division pool, and the LaTeX
+  projection opened with `\article{}` — losing the deck's title and `xml:id`
+  along with its root.
+
+  The root tags now come from `PRETEXT_ROOT_TAGS` via a shared `findRootElement`,
+  which the pool builder, the division outline/prune and the insert preparation
+  all share rather than each spelling out the tags.
+
 ## 0.14.0
 
 ### Minor Changes
