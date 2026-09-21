@@ -13,6 +13,7 @@
 import {
   elementTitleText,
   findFirstElement,
+  findRootElement,
   findTopLevelElementsMatching,
 } from "../layout/xml-scan";
 import { spliceReplacements } from "../layout/shared";
@@ -45,8 +46,7 @@ export interface DivisionOutlineItem {
 function rootInner(pretextSource: string): string {
   const pretextSpan = findFirstElement(pretextSource, "pretext");
   const scope = pretextSpan ? pretextSpan.inner : pretextSource;
-  const root =
-    findFirstElement(scope, "book") ?? findFirstElement(scope, "article");
+  const root = findRootElement(scope);
   return root ? root.inner : scope;
 }
 
@@ -158,8 +158,7 @@ export function pruneDivisions(
   const pretextSpan = findFirstElement(pretextSource, "pretext");
   const scope = pretextSpan ? pretextSpan.inner : pretextSource;
   const scopeOffset = pretextSpan ? pretextSpan.startTagEnd : 0;
-  const root =
-    findFirstElement(scope, "book") ?? findFirstElement(scope, "article");
+  const root = findRootElement(scope);
   const innerOffset = scopeOffset + (root ? root.startTagEnd : 0);
   const inner = root ? root.inner : scope;
 

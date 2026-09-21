@@ -263,3 +263,104 @@ describe("importing an existing PreTeXt project", () => {
     expect(result.projectLayout.preserved).toBe(false);
   });
 });
+
+describe("importing a slideshow", () => {
+  const BEAMER = String.raw`\documentclass{beamer}
+\title{Limits}
+\begin{document}
+\section{Intro}
+\begin{frame}{One}
+Hello.
+\end{frame}
+\end{document}`;
+
+  it("writes a <slideshow> root to the project files", () => {
+    const result = importProjectFromFiles({ "main.tex": BEAMER });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.documentKind).toBe("slideshow");
+    const main = result.outputFiles["source/main.ptx"];
+    expect(main).not.toContain("<article");
+    expect(main).toContain("<slideshow");
+  });
+
+  it("carries the deck through to the division pool and its title", () => {
+    const result = importProjectFromFiles({ "main.tex": BEAMER });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    const root = result.project.divisions.find((d) => d.isRoot);
+    expect(root?.type).toBe("slideshow");
+    expect(root?.title).toBe("Limits");
+    expect(result.project.title).toBe("Limits");
+
+    const nativeRoot = result.nativeProject?.divisions.find((d) => d.isRoot);
+    expect(nativeRoot?.type).toBe("slideshow");
+    expect(nativeRoot?.content).toMatch(/^\\slideshow\{Limits\}/);
+  });
+
+  it("detects a deck from Markdown frontmatter", () => {
+    const result = importProjectFromFiles({
+      "main.md":
+        "---\ntitle: Deck\ndivision: slideshow\n---\n\n# Intro\n\n## One\n\nHi.\n",
+    });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.documentKind).toBe("slideshow");
+    expect(result.project.divisions.find((d) => d.isRoot)?.type).toBe(
+      "slideshow",
+    );
+    expect(result.outputFiles["source/main.ptx"]).not.toContain("<article");
+  });
+});
+
+describe("a source that is not a single-rooted PreTeXt document", () => {
+  // pretext.rng admits exactly one root and references a root element from no
+  // content model, so these are unreadable rather than merely unusual. The
+  // import reports them instead of picking a winner: `detectDocumentKind`
+  // scans at any depth and would call the first of these a slideshow, leaving
+  // a project marked `slideshow` whose source says `<article>`.
+  const wrap = (body: string) =>
+    `<?xml version="1.0" encoding="UTF-8"?>\n<pretext>\n${body}\n</pretext>\n`;
+
+  it("reports a root element nested inside the root", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>A</title><section><title>S</title><slideshow><slide/></slideshow></section></article>`,
+      ),
+    });
+
+    expect("pretextError" in result).toBe(true);
+    if (!("pretextError" in result)) return;
+    expect(result.pretextError).toMatch(
+      /<slideshow> is a PreTeXt root element/,
+    );
+    expect(result.statusMessages).toContainEqual(
+      expect.objectContaining({ type: "error" }),
+    );
+  });
+
+  it("reports two root elements side by side", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>A</title></article>\n<slideshow xml:id="s"><title>S</title></slideshow>`,
+      ),
+    });
+
+    expect("pretextError" in result).toBe(true);
+    if (!("pretextError" in result)) return;
+    expect(result.pretextError).toMatch(/has 2 side by side/);
+  });
+
+  it("still imports a document that only mentions <slideshow> in a listing", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>Writing PreTeXt</title><section><title>Decks</title><pre><![CDATA[<slideshow/>]]></pre></section></article>`,
+      ),
+    });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.project.divisions.find((d) => d.isRoot)?.type).toBe(
+      "article",
+    );
+  });
+});

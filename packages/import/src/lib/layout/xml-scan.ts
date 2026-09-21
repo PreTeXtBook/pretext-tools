@@ -3,6 +3,8 @@
 // children of whatever wraps the input substring. Skips XML comments, CDATA,
 // processing instructions, and declarations.
 
+import { rootTagOf, type PretextRootTag } from "../pretext-divisions";
+
 export interface XmlElementSpan {
   name: string;
   start: number; // index of the opening '<'
@@ -193,6 +195,61 @@ export function findFirstElement(
 ): XmlElementSpan | null {
   const all = findTopLevelElements(source, name);
   return all[0] ?? null;
+}
+
+/** The first root element at any depth in `inner`, or `null`. */
+function nestedRootTag(inner: string): PretextRootTag | null {
+  for (const tok of tokenize(inner)) {
+    if (tok.kind === "close") continue;
+    const tag = rootTagOf(tok.name);
+    if (tag) return tag;
+  }
+  return null;
+}
+
+/**
+ * The document's root element — `<book>`, `<article>` or `<slideshow>` — or
+ * `null` when `source` carries none (a bare fragment).
+ *
+ * Every stage that has to locate a root goes through here rather than spelling
+ * the tags out, so a root the vocabulary gains cannot be understood by one
+ * stage and silently dropped by the next: a `<slideshow>` used to reach the
+ * pool builder, match neither `<book>` nor `<article>`, and get wrapped in an
+ * `<article>` that outlived the import.
+ *
+ * `source` is the content of `<pretext>`, whose content model in `pretext.rng`
+ * is a bare `<choice>` of the root elements — exactly one — and no content
+ * model in the grammar references a root element at all. So both a second root
+ * alongside the first and a root nested inside one are unreadable as a
+ * document rather than merely unusual, and throw. Picking a winner instead
+ * would hand the caller a project whose `documentKind` and whose source
+ * disagree, which is the failure this lookup exists to prevent; `detectDocumentKind`
+ * scans at any depth and would answer `<slideshow>` where the root says
+ * `<article>`.
+ */
+export function findRootElement(source: string): XmlElementSpan | null {
+  const roots = findTopLevelElementsMatching(
+    source,
+    (name) => rootTagOf(name) !== undefined,
+  );
+  if (roots.length > 1) {
+    const found = roots.map((span) => `<${span.name}>`).join(", ");
+    throw new Error(
+      `A PreTeXt document has one root element, but this source has ${roots.length} ` +
+        `side by side: ${found}. Keep one and move the rest into their own documents.`,
+    );
+  }
+  const root = roots[0];
+  if (!root) return null;
+  const nested = nestedRootTag(root.inner);
+  if (nested) {
+    throw new Error(
+      `<${nested}> is a PreTeXt root element, so it cannot appear inside the ` +
+        `document's <${root.name}> root. Split it into its own document, or ` +
+        `replace it with a division such as <section>.`,
+    );
+  }
+  return root;
 }
 
 // Find the first <name> element anywhere in the document, regardless of nesting depth.

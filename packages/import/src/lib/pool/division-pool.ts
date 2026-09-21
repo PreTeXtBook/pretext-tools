@@ -11,13 +11,16 @@ import {
   elementTitleText,
   findAnyElement,
   findFirstElement,
+  findRootElement,
   findTopLevelElementsMatching,
   type XmlElementSpan,
 } from "../layout/xml-scan";
 import {
   filePrefixForDivision,
   isDivisionTag,
+  rootTagOf,
   type PretextDivisionTag,
+  type PretextRootTag,
 } from "../pretext-divisions";
 import type { ImportedDivision, ImportedProject } from "../types";
 import {
@@ -225,12 +228,13 @@ export function buildDivisionPool(
   const docinfoSpan = findFirstElement(scope, "docinfo");
   const docinfo = docinfoSpan?.outer.trim() ?? "";
 
-  let rootSpan =
-    findFirstElement(scope, "book") ?? findFirstElement(scope, "article");
+  let rootSpan = findRootElement(scope);
   if (!rootSpan) {
     // No explicit root element (e.g. a bare fragment): wrap the content —
     // minus any top-level docinfo — in a root chosen from the document kind.
-    const wrapperTag = documentKind === "book" ? "book" : "article";
+    // DocumentKind and PretextRootTag are the same three names, so the kind is
+    // the tag.
+    const wrapperTag: PretextRootTag = documentKind;
     const body = (
       docinfoSpan
         ? scope.slice(0, docinfoSpan.start) + scope.slice(docinfoSpan.end)
@@ -280,7 +284,9 @@ export function buildDivisionPool(
 
   const rootDivision: ImportedDivision = {
     xmlId: rootClaim.ref,
-    type: rootSpan.name === "book" ? "book" : "article",
+    // The root element the document actually has. Collapsing this to a
+    // book/article binary is what used to turn a <slideshow> into an <article>.
+    type: rootTagOf(rootSpan.name) ?? "article",
     title,
     sourceFormat: "pretext",
     content: withXmlId(

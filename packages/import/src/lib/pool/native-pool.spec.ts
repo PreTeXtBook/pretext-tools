@@ -197,3 +197,52 @@ describe("serializeProjectToPlusPayload (native pools)", () => {
     expect(root?.source).toContain('::chapter{ref="introduction"}');
   });
 });
+
+describe("buildNativeDivisionPool with a slideshow", () => {
+  const BEAMER = String.raw`\section{Intro}
+\begin{frame}{One}
+Hello.
+\end{frame}`;
+
+  it("opens a LaTeX deck with \\slideshow rather than \\article", () => {
+    const { project } = buildNativeDivisionPool(BEAMER, "latex", {
+      documentKind: "slideshow",
+      title: "My Deck",
+    });
+    const root = project.divisions.find((d) => d.isRoot);
+
+    expect(root?.type).toBe("slideshow");
+    expect(root?.content).toMatch(/^\\slideshow\{My Deck\}\\label\{document\}/);
+    expect(root?.content).not.toContain("\\article");
+  });
+
+  it("marks a Markdown deck's root division a slideshow", () => {
+    const { project } = buildNativeDivisionPool(
+      "# Intro\n\n## One\n\nHello.\n",
+      "markdown",
+      { documentKind: "slideshow", title: "My Deck" },
+    );
+    const root = project.divisions.find((d) => d.isRoot);
+
+    expect(root?.type).toBe("slideshow");
+    expect(root?.content).toMatch(/^---\ndivision: slideshow\n/);
+  });
+
+  it("still opens a book with \\book and an article with \\article", () => {
+    const book = buildNativeDivisionPool(BEAMER, "latex", {
+      documentKind: "book",
+      title: "B",
+    }).project;
+    expect(book.divisions.find((d) => d.isRoot)?.content).toMatch(
+      /^\\book\{B\}/,
+    );
+
+    const article = buildNativeDivisionPool(BEAMER, "latex", {
+      documentKind: "article",
+      title: "A",
+    }).project;
+    expect(article.divisions.find((d) => d.isRoot)?.content).toMatch(
+      /^\\article\{A\}/,
+    );
+  });
+});
