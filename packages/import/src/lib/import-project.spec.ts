@@ -263,3 +263,52 @@ describe("importing an existing PreTeXt project", () => {
     expect(result.projectLayout.preserved).toBe(false);
   });
 });
+
+describe("importing a slideshow", () => {
+  const BEAMER = String.raw`\documentclass{beamer}
+\title{Limits}
+\begin{document}
+\section{Intro}
+\begin{frame}{One}
+Hello.
+\end{frame}
+\end{document}`;
+
+  it("writes a <slideshow> root to the project files", () => {
+    const result = importProjectFromFiles({ "main.tex": BEAMER });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.documentKind).toBe("slideshow");
+    const main = result.outputFiles["source/main.ptx"];
+    expect(main).not.toContain("<article");
+    expect(main).toContain("<slideshow");
+  });
+
+  it("carries the deck through to the division pool and its title", () => {
+    const result = importProjectFromFiles({ "main.tex": BEAMER });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    const root = result.project.divisions.find((d) => d.isRoot);
+    expect(root?.type).toBe("slideshow");
+    expect(root?.title).toBe("Limits");
+    expect(result.project.title).toBe("Limits");
+
+    const nativeRoot = result.nativeProject?.divisions.find((d) => d.isRoot);
+    expect(nativeRoot?.type).toBe("slideshow");
+    expect(nativeRoot?.content).toMatch(/^\\slideshow\{Limits\}/);
+  });
+
+  it("detects a deck from Markdown frontmatter", () => {
+    const result = importProjectFromFiles({
+      "main.md":
+        "---\ntitle: Deck\ndivision: slideshow\n---\n\n# Intro\n\n## One\n\nHi.\n",
+    });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.documentKind).toBe("slideshow");
+    expect(result.project.divisions.find((d) => d.isRoot)?.type).toBe(
+      "slideshow",
+    );
+    expect(result.outputFiles["source/main.ptx"]).not.toContain("<article");
+  });
+});

@@ -130,3 +130,25 @@ describe("pruneDivisions: round trip with the outline", () => {
     expect(kept[0].children.map((item) => item.title)).toEqual(["Part A"]);
   });
 });
+
+describe("a slideshow root", () => {
+  const DECK = `<pretext><slideshow xml:id="deck"><title>Deck</title>
+<section xml:id="intro"><title>Intro</title><slide><title>One</title></slide></section>
+<section xml:id="more"><title>More</title><slide><title>Two</title></slide></section>
+</slideshow></pretext>`;
+
+  it("outlines the divisions inside a deck", () => {
+    // The outline reads the root's children; a <slideshow> the root finder did
+    // not recognise left the scope sitting outside it, and the picker empty.
+    const outline = outlineDivisions(DECK);
+    expect(outline.map((d) => d.title)).toEqual(["Intro", "More"]);
+    expect(outline.map((d) => d.xmlId)).toEqual(["intro", "more"]);
+  });
+
+  it("prunes a deck's divisions by path", () => {
+    const { source } = pruneDivisions(DECK, ["0"]);
+    expect(source).toContain("<title>Intro</title>");
+    expect(source).not.toContain("<title>More</title>");
+    expect(source).toContain("<slideshow");
+  });
+});

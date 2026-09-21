@@ -6,7 +6,8 @@
 //
 //   latex:    parent has `\plus{chapter}{ref}`; a division opens with its
 //             header macro, e.g. `\chapter{Title}\label{ref}` (the root uses
-//             `\book{Title}\label{ref}` / `\article{…}`).
+//             its own, e.g. `\book{Title}\label{ref}` / `\article{…}` /
+//             `\slideshow{…}`).
 //   markdown: parent has `::chapter{ref="ref"}`; a division is YAML
 //             frontmatter (`division:`/`id:`/`title:`) + a `# heading` body
 //             (the root carries only the frontmatter + placeholders).
@@ -19,7 +20,10 @@ import type { CleaningWarning } from "../clean/warnings";
 import { splitLatexAtDocument } from "../clean/latex-preamble";
 import type { DocumentKind } from "../layout/document-kind";
 import { padIndex, slugify } from "../layout/shared";
-import { filePrefixForDivision } from "../pretext-divisions";
+import {
+  filePrefixForDivision,
+  type PretextRootTag,
+} from "../pretext-divisions";
 import { resolveSplitLevel } from "./division-pool";
 import {
   latexDivisionHierarchy,
@@ -142,9 +146,11 @@ function buildLatexDivisionPool(
     parentRef: rootRef,
   });
 
-  // The root division opens with its own header macro (`\book`/`\article`),
-  // mirroring how each chapter opens with `\chapter{…}\label{…}`.
-  const rootType = documentKind === "book" ? "book" : "article";
+  // The root division opens with its own header macro
+  // (`\book`/`\article`/`\slideshow`), mirroring how each chapter opens with
+  // `\chapter{…}\label{…}`. DocumentKind and PretextRootTag are the same three
+  // names, so the kind is the macro.
+  const rootType: PretextRootTag = documentKind;
   const rootTitle = options.title ?? "";
   const rootHeader = `\\${rootType}{${rootTitle}}\\label{${rootRef}}`;
   divisions.unshift({
@@ -322,7 +328,7 @@ function buildMarkdownDivisionPool(
   if (!(splitChapters && documentKind === "book")) {
     divisions.push({
       xmlId: rootRef,
-      type: documentKind === "book" ? "book" : "article",
+      type: documentKind,
       title: options.title ?? "",
       sourceFormat: "markdown",
       content: `${markdownFrontmatter({

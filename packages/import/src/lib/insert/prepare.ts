@@ -13,6 +13,7 @@ import type { CleaningWarning } from "../clean/warnings";
 import { slugify, spliceReplacements } from "../layout/shared";
 import {
   findFirstElement,
+  findRootElement,
   findTopLevelElementsMatching,
   type XmlElementSpan,
 } from "../layout/xml-scan";
@@ -96,8 +97,7 @@ function findRoot(pretextSource: string): XmlElementSpan | null {
   const pretextSpan = findFirstElement(pretextSource, "pretext");
   const scope = pretextSpan ? pretextSpan.inner : pretextSource;
   const offset = pretextSpan ? pretextSpan.startTagEnd : 0;
-  const root =
-    findFirstElement(scope, "book") ?? findFirstElement(scope, "article");
+  const root = findRootElement(scope);
   if (!root) return null;
   return {
     ...root,

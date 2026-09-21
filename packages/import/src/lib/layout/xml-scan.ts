@@ -3,6 +3,8 @@
 // children of whatever wraps the input substring. Skips XML comments, CDATA,
 // processing instructions, and declarations.
 
+import { PRETEXT_ROOT_TAGS } from "../pretext-divisions";
+
 export interface XmlElementSpan {
   name: string;
   start: number; // index of the opening '<'
@@ -193,6 +195,27 @@ export function findFirstElement(
 ): XmlElementSpan | null {
   const all = findTopLevelElements(source, name);
   return all[0] ?? null;
+}
+
+/**
+ * The document's root element — `<book>`, `<article>` or `<slideshow>` — or
+ * `null` when `source` carries none (a bare fragment).
+ *
+ * Every stage that has to locate a root goes through here rather than spelling
+ * the tags out, so a root the vocabulary gains cannot be understood by one
+ * stage and silently dropped by the next: a `<slideshow>` used to reach the
+ * pool builder, match neither `<book>` nor `<article>`, and get wrapped in an
+ * `<article>` that outlived the import.
+ *
+ * Tags are tried in `PRETEXT_ROOT_TAGS` order rather than by position, which is
+ * what the hand-written `book ?? article` chains this replaces did.
+ */
+export function findRootElement(source: string): XmlElementSpan | null {
+  for (const tag of PRETEXT_ROOT_TAGS) {
+    const span = findFirstElement(source, tag);
+    if (span) return span;
+  }
+  return null;
 }
 
 // Find the first <name> element anywhere in the document, regardless of nesting depth.

@@ -41,6 +41,13 @@ export const PRETEXT_DIVISION_TAGS = [
 export type PretextRootTag = (typeof PRETEXT_ROOT_TAGS)[number];
 export type PretextDivisionTag = (typeof PRETEXT_DIVISION_TAGS)[number];
 
+/** `name` as a root tag, or `undefined` when it does not name one. */
+export function rootTagOf(name: string): PretextRootTag | undefined {
+  return (PRETEXT_ROOT_TAGS as readonly string[]).includes(name)
+    ? (name as PretextRootTag)
+    : undefined;
+}
+
 const DIVISION_TAG_SET: ReadonlySet<string> = new Set(PRETEXT_DIVISION_TAGS);
 
 export function isDivisionTag(name: string): name is PretextDivisionTag {

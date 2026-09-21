@@ -231,3 +231,73 @@ describe("buildDivisionPool", () => {
     expect(project.assets[0].data).toEqual(new Uint8Array([1]));
   });
 });
+
+const SLIDESHOW_SOURCE = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+<docinfo>
+  <macros>\\newcommand{\\N}{\\mathbb N}</macros>
+</docinfo>
+<slideshow xml:id="deck">
+<title>My Deck</title>
+<section>
+<title>Intro</title>
+<slide><title>One</title><p>Hello.</p></slide>
+</section>
+<slide><title>Two</title><p>World.</p></slide>
+</slideshow>
+</pretext>
+`;
+
+describe("buildDivisionPool with a slideshow root", () => {
+  it("keeps the <slideshow> root rather than wrapping it in an <article>", () => {
+    const { project } = buildDivisionPool(SLIDESHOW_SOURCE);
+    const root = project.divisions.find((d) => d.isRoot);
+
+    expect(project.documentKind).toBe("slideshow");
+    expect(root?.type).toBe("slideshow");
+    expect(root?.content).not.toContain("<article");
+    expect(root?.content.trimStart()).toMatch(/^<slideshow[\s>]/);
+  });
+
+  it("reads the deck's own xml:id and title", () => {
+    const { project } = buildDivisionPool(SLIDESHOW_SOURCE);
+    const root = project.divisions.find((d) => d.isRoot);
+
+    expect(root?.xmlId).toBe("deck");
+    expect(root?.title).toBe("My Deck");
+    expect(project.title).toBe("My Deck");
+  });
+
+  it("keeps the deck's slides and sections inside the root", () => {
+    const { project } = buildDivisionPool(SLIDESHOW_SOURCE);
+    const root = project.divisions.find((d) => d.isRoot);
+
+    expect(root?.content).toContain("<slide><title>One</title>");
+    expect(root?.content).toContain("<slide><title>Two</title>");
+  });
+
+  it("wraps a rootless fragment in the kind's own root element", () => {
+    const { project } = buildDivisionPool(
+      "<pretext><slide><title>One</title><p>Hi.</p></slide></pretext>",
+    );
+    const root = project.divisions.find((d) => d.isRoot);
+
+    // <slide> with no root at all: detected as a deck, so the wrapper the pool
+    // adds must be a <slideshow>, not the article it used to fall back to.
+    expect(project.documentKind).toBe("slideshow");
+    expect(root?.type).toBe("slideshow");
+    expect(root?.content).toMatch(/^<slideshow[\s>]/);
+  });
+
+  it("leaves book and article roots alone", () => {
+    const book = buildDivisionPool(BOOK_SOURCE).project;
+    expect(book.documentKind).toBe("book");
+    expect(book.divisions.find((d) => d.isRoot)?.type).toBe("book");
+
+    const article = buildDivisionPool(
+      "<pretext><article><title>A</title><section><title>S</title><p>x</p></section></article></pretext>",
+    ).project;
+    expect(article.documentKind).toBe("article");
+    expect(article.divisions.find((d) => d.isRoot)?.type).toBe("article");
+  });
+});
