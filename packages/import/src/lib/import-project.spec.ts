@@ -312,3 +312,55 @@ Hello.
     expect(result.outputFiles["source/main.ptx"]).not.toContain("<article");
   });
 });
+
+describe("a source that is not a single-rooted PreTeXt document", () => {
+  // pretext.rng admits exactly one root and references a root element from no
+  // content model, so these are unreadable rather than merely unusual. The
+  // import reports them instead of picking a winner: `detectDocumentKind`
+  // scans at any depth and would call the first of these a slideshow, leaving
+  // a project marked `slideshow` whose source says `<article>`.
+  const wrap = (body: string) =>
+    `<?xml version="1.0" encoding="UTF-8"?>\n<pretext>\n${body}\n</pretext>\n`;
+
+  it("reports a root element nested inside the root", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>A</title><section><title>S</title><slideshow><slide/></slideshow></section></article>`,
+      ),
+    });
+
+    expect("pretextError" in result).toBe(true);
+    if (!("pretextError" in result)) return;
+    expect(result.pretextError).toMatch(
+      /<slideshow> is a PreTeXt root element/,
+    );
+    expect(result.statusMessages).toContainEqual(
+      expect.objectContaining({ type: "error" }),
+    );
+  });
+
+  it("reports two root elements side by side", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>A</title></article>\n<slideshow xml:id="s"><title>S</title></slideshow>`,
+      ),
+    });
+
+    expect("pretextError" in result).toBe(true);
+    if (!("pretextError" in result)) return;
+    expect(result.pretextError).toMatch(/has 2 side by side/);
+  });
+
+  it("still imports a document that only mentions <slideshow> in a listing", () => {
+    const result = importProjectFromFiles({
+      "main.ptx": wrap(
+        `<article xml:id="a"><title>Writing PreTeXt</title><section><title>Decks</title><pre><![CDATA[<slideshow/>]]></pre></section></article>`,
+      ),
+    });
+    if ("pretextError" in result) throw new Error(result.pretextError);
+
+    expect(result.project.divisions.find((d) => d.isRoot)?.type).toBe(
+      "article",
+    );
+  });
+});
