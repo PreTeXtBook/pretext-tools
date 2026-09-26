@@ -29,6 +29,9 @@
       ],
       "printout": [
         "./dist/printout.d.ts"
+      ],
+      "live-patch": [
+        "./dist/live-patch.d.ts"
       ]
     }
   },
@@ -64,6 +67,11 @@
       "types": "./dist/printout.d.ts",
       "import": "./dist/printout.js",
       "default": "./dist/printout.js"
+    },
+    "./live-patch": {
+      "types": "./dist/live-patch.d.ts",
+      "import": "./dist/live-patch.js",
+      "default": "./dist/live-patch.js"
     },
     "./cli": "./dist/cli.js"
   },

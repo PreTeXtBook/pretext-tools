@@ -71,6 +71,15 @@ import {
   injectPrintPreview,
   type PrintoutInfo,
 } from "@pretextbook/pretext-html/printout";
+// And one more: the in-place patcher every live page carries, so a re-render
+// replaces only the blocks that changed instead of reloading the page.
+import { livePatchScript } from "@pretextbook/pretext-html/live-patch";
+import {
+  TOOLBAR_HEIGHT_PX,
+  TOOLBAR_SCRIPT_LINES,
+  TOOLBAR_STATUS_BRANCH,
+  liveBootstrapScript,
+} from "./preview-bootstrap";
 import {
   ensureCliServer,
   runCliBuild,
@@ -83,8 +92,31 @@ import * as utils from "./utils";
 
 let currentPanel: WebviewPanel | undefined;
 let panelHasContent = false;
+/**
+ * The page the panel was last handed, exactly as delivered. The webview keeps
+ * its own copy of each page it receives by message, to diff the next one
+ * against, but a page loaded through webview.html arrives without one — so the
+ * first update after such a load carries this along (see updatePanelContent).
+ */
+let deliveredHtml: string | undefined;
+/** Whether the webview holds a copy of the page it is showing. */
+let webviewHasPage = false;
+/**
+ * What the page on screen shows, when the next live render may be patched
+ * into it rather than written over it (see patchableKey); undefined when it
+ * may not be.
+ */
+let deliveredKey: string | undefined;
 let saveWatcher: Disposable | undefined;
 let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+let typingWatcher: Disposable | undefined;
+let typingTimer: ReturnType<typeof setTimeout> | undefined;
+/**
+ * The editor state the last render request was made from, when that was the
+ * open document for the rendered file. Saving a document that was already
+ * rendered as typed would only re-render the same text.
+ */
+let lastRenderedVersion: { file: string; version: number } | undefined;
 let currentSource: SourceInfo | undefined;
 
 // Source map of the last successful render (see @pretextbook/pretext-html's
@@ -114,6 +146,8 @@ let lastRender:
       printouts: PrintoutInfo[];
       /** The printout this document is *about*, when it is about one. */
       rootPrintout?: string;
+      /** The file rendered, which the preview may have moved on from since. */
+      renderPath: string;
     }
   | undefined;
 
@@ -142,8 +176,15 @@ let nextRequestId = 1;
 // render is in flight at a time; the worker serializes internally too.
 let pendingRequestId: number | undefined;
 let pendingStarted = 0;
+// The file the render in flight was asked for.
+let pendingRenderPath = "";
 // A newer render requested while one was in flight; collapses bursts of saves.
 let renderQueued = false;
+// Whether the render in flight, and every render collapsed into the queued
+// one, was started by typing. A typed document is often briefly invalid, so
+// such a render fails quietly (see handleRenderResponse).
+let pendingFromTyping = false;
+let queuedFromTyping = false;
 // Guards against a crash loop when the worker dies mid-render.
 let crashRetries = 0;
 let disposing = false;
@@ -175,10 +216,10 @@ let fullBuildTimer: ReturnType<typeof setTimeout> | undefined;
 let fullBuildPath: string | undefined;
 
 const DEBOUNCE_MS = 400;
+/** Pause in typing before the preview renders the unsaved document. */
+const TYPING_DEBOUNCE_MS = 300;
 const SYNC_DEBOUNCE_MS = 150;
 const MAX_CRASH_RETRIES = 2;
-/** Height of the injected mode toolbar; the theme offsets below match it. */
-const TOOLBAR_HEIGHT_PX = 32;
 /** Quiet period after a save before full-build mode runs `pretext build`. */
 const FULL_BUILD_DEBOUNCE_MS = 1000;
 /** Quiet period before following the editor to a newly focused file. */
@@ -494,6 +535,73 @@ function followActiveEditor(): boolean {
   );
 }
 
+/** Whether the live preview renders the unsaved document as you type. */
+function updateWhileTyping(): boolean {
+  return (
+    workspace
+      .getConfiguration("pretext-tools")
+      .get<boolean>("instantPreview.updateWhileTyping") ?? false
+  );
+}
+
+/** The toolbar's resting status text: what the live preview is rendering. */
+function liveStatusText(): string {
+  return previewScope() === "project"
+    ? "Whole project"
+    : path.basename(currentSource?.activePath ?? "");
+}
+
+/**
+ * Identifies what the last rendered page shows, for deciding whether the next
+ * render may be patched into the page on screen (see @pretextbook/pretext-html's
+ * live-patch). Only a re-render of the same file is a candidate — anything
+ * else is a different page, and a scroll position carried over from it would
+ * mean nothing. Undefined for pages that must always load from scratch: a
+ * slideshow (reveal.js lays out the deck once, at initialize) and the
+ * print-preview layout (which pretext-core.js builds destructively, once, on
+ * load).
+ */
+function patchableKey(): string | undefined {
+  if (!lastRender || lastRender.target !== "html" || currentPrintout()) {
+    return undefined;
+  }
+  return `${previewScope()}\n${fileKey(lastRender.renderPath)}`;
+}
+
+/**
+ * Re-render as the reader types, when that is turned on: after a short pause,
+ * from the unsaved document (see renderToPanel). Only edits to the file being
+ * rendered count — in whole-project scope that is the main file, since the
+ * worker reads included files from disk.
+ */
+function setupTypingWatcher(extensionPath: string): void {
+  typingWatcher?.dispose();
+  typingWatcher = workspace.onDidChangeTextDocument((event) => {
+    if (
+      !currentPanel ||
+      previewMode !== "live" ||
+      event.contentChanges.length === 0 ||
+      !updateWhileTyping()
+    ) {
+      return;
+    }
+    const renderPath = currentRenderPath();
+    if (
+      !renderPath ||
+      fileKey(event.document.fileName) !== fileKey(renderPath)
+    ) {
+      return;
+    }
+    if (typingTimer) {
+      clearTimeout(typingTimer);
+    }
+    typingTimer = setTimeout(() => {
+      typingTimer = undefined;
+      renderToPanel(extensionPath, { fromTyping: true });
+    }, TYPING_DEBOUNCE_MS);
+  });
+}
+
 /**
  * Track the last PreTeXt editor to hold focus — so the preview can still tell
  * what the reader is working on once focus moves into the panel itself — and,
@@ -613,8 +721,19 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
           path?: unknown;
           follow?: unknown;
           id?: unknown;
+          ok?: unknown;
+          reason?: unknown;
+          changed?: unknown;
         };
         switch (msg?.command) {
+          case "patchResult":
+            // How the page took the last render; see preview-bootstrap.ts.
+            pretextOutputChannel.appendLine(
+              msg.ok
+                ? `[Instant Preview] Updated in place (${Number(msg.changed)} new or changed block(s))`
+                : `[Instant Preview] Reloaded the page: ${String(msg.reason)}`,
+            );
+            return;
           case "revealSource":
             if (Array.isArray(msg.ids)) {
               void revealSource(msg.ids.filter((x) => typeof x === "string"));
@@ -676,6 +795,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
       },
     );
     setupSaveWatcher(extensionPath);
+    setupTypingWatcher(extensionPath);
     setupSelectionWatcher();
     setupThemeWatcher();
     setupEditorTracker(extensionPath);
@@ -807,6 +927,9 @@ function redeliverPreview({ fresh = false } = {}): void {
   if (fresh) {
     panelHasContent = false;
   }
+  // Never patched: every caller is changing how the page presents itself, and
+  // both the slideshow view and the print layout are set up only as a page
+  // loads. The page it leaves behind may be patched into again, though.
   updatePanelContent(
     prepareWebviewHtml(
       html,
@@ -815,6 +938,7 @@ function redeliverPreview({ fresh = false } = {}): void {
       lastRender.assetDirs,
     ),
   );
+  deliveredKey = patchableKey();
 }
 
 /**
@@ -1202,7 +1326,7 @@ function handleWorkerMessage(message: RenderResponse): void {
   handleRenderResponse(message);
   if (renderQueued && workerExtensionPath) {
     renderQueued = false;
-    renderToPanel(workerExtensionPath);
+    renderToPanel(workerExtensionPath, { fromTyping: queuedFromTyping });
   }
 }
 
@@ -1316,11 +1440,17 @@ function resolveNodeLaunch(): NodeLaunch {
  * remember to run once more when it finishes (collapsing a burst of saves into
  * a single rebuild).
  */
-function renderToPanel(extensionPath: string): void {
+function renderToPanel(
+  extensionPath: string,
+  { fromTyping = false }: { fromTyping?: boolean } = {},
+): void {
   if (!currentSource || !currentPanel || previewMode !== "live") {
     return;
   }
   if (pendingRequestId !== undefined) {
+    queuedFromTyping = renderQueued
+      ? queuedFromTyping && fromTyping
+      : fromTyping;
     renderQueued = true;
     return;
   }
@@ -1353,15 +1483,36 @@ function renderToPanel(extensionPath: string): void {
         : ""),
   );
 
+  // Rendering as you type means rendering what is in the editor, saved or
+  // not. Only the rendered file itself: the worker reads everything else it
+  // needs (included files, the main file's docinfo) from disk.
+  let sourceContent: string | undefined;
+  lastRenderedVersion = undefined;
+  if (updateWhileTyping()) {
+    const open = workspace.textDocuments.find(
+      (doc) => fileKey(doc.fileName) === fileKey(renderPath),
+    );
+    if (open) {
+      sourceContent = open.isDirty ? open.getText() : undefined;
+      lastRenderedVersion = {
+        file: fileKey(open.fileName),
+        version: open.version,
+      };
+    }
+  }
+
   const id = nextRequestId++;
   pendingRequestId = id;
   pendingStarted = Date.now();
+  pendingFromTyping = fromTyping;
+  pendingRenderPath = renderPath;
   // --fragment behaviour: a lone chapter/section renders as a wrapped preview
   // document; complete documents are unaffected.
   const request = {
     id,
     type: "render" as const,
     sourcePath: renderPath,
+    sourceContent,
     projectDir: currentSource.projectDir,
     publicationPath: currentSource.publicationPath,
     // Only used for projects that declare no theme themselves; see
@@ -1441,12 +1592,17 @@ function handleRenderResponse(message: RenderResponse): void {
       target: message.target === "slides" ? "slides" : "html",
       printouts: message.printouts ?? [],
       rootPrintout: message.rootPrintout,
+      renderPath: pendingRenderPath,
     };
     void commands.executeCommand(
       "setContext",
       "pretext-tools.previewIsSlideshow",
       message.target === "slides",
     );
+    // A re-render of the page already on screen is patched into it, which
+    // keeps the reader's place and only re-typesets what changed; the page
+    // itself falls back to rewriting when a patch cannot be applied.
+    const key = patchableKey();
     updatePanelContent(
       prepareWebviewHtml(
         html,
@@ -1454,7 +1610,12 @@ function handleRenderResponse(message: RenderResponse): void {
         currentSource?.projectDir ?? "",
         message.assetDirs,
       ),
+      { patch: key !== undefined && key === deliveredKey },
     );
+    deliveredKey = key;
+    // A patch leaves the toolbar as it was, so clear anything a failed render
+    // or mode switch left in the status text.
+    postStatus(liveStatusText());
     utils.updateStatusBarItem(ptxSBItem, "success");
     pretextOutputChannel.appendLine(
       `[Instant Preview] Rebuilt in ${message.elapsedMs ?? Date.now() - pendingStarted}ms`,
@@ -1465,6 +1626,15 @@ function handleRenderResponse(message: RenderResponse): void {
   utils.updateStatusBarItem(ptxSBItem, "ready");
   if (message.error) {
     pretextOutputChannel.appendLine(`[Instant Preview] ${message.error}`);
+  }
+  if (pendingFromTyping) {
+    // Mid-edit the document is often not well-formed yet; a popup for every
+    // pause in typing would be unbearable. Keep the last good page up and say
+    // so where the reader is already looking.
+    postStatus(
+      `${liveStatusText()} — source has errors; showing the last good preview`,
+    );
+    return;
   }
   window
     .showErrorMessage(
@@ -1481,28 +1651,45 @@ function handleRenderResponse(message: RenderResponse): void {
 /**
  * Deliver a freshly rendered page to the panel. The first page is set via
  * webview.html; after that, the new page is posted into the live webview,
- * whose bootstrap script rewrites the document in place
+ * whose bootstrap script either patches it into the page on screen (`patch`,
+ * see prepareWebviewHtml) or rewrites the document in place
  * (document.open/write/close). Replacing webview.html on every rebuild forces
  * a full webview reload, which VS Code sometimes never completes — the panel
  * just goes blank — and also refetches all CDN assets and loses scroll.
+ *
+ * A patch is computed against the previous page's HTML, which the webview
+ * keeps from each update message. A page loaded through webview.html has no
+ * such copy, so the first update after one sends the previous page along.
  */
-function updatePanelContent(preparedHtml: string): void {
+function updatePanelContent(
+  preparedHtml: string,
+  { patch = false }: { patch?: boolean } = {},
+): void {
   const panel = currentPanel;
   if (!panel) {
     return;
   }
+  const previous = deliveredHtml;
+  deliveredHtml = preparedHtml;
   if (!panelHasContent) {
     panel.webview.html = preparedHtml;
     panelHasContent = true;
+    webviewHasPage = false;
     return;
   }
-  Promise.resolve(
-    panel.webview.postMessage({ command: "update", html: preparedHtml }),
-  ).then((delivered) => {
+  const message = {
+    command: "update",
+    html: preparedHtml,
+    patch,
+    previous: patch && !webviewHasPage ? previous : undefined,
+  };
+  webviewHasPage = true;
+  Promise.resolve(panel.webview.postMessage(message)).then((delivered) => {
     if (!delivered && currentPanel === panel) {
       // Webview not live (should not happen with retainContextWhenHidden,
       // but don't drop the render on the floor).
       panel.webview.html = preparedHtml;
+      webviewHasPage = false;
     }
   });
 }
@@ -1563,6 +1750,7 @@ async function setPreviewMode(
     previewMode = "full";
     // As above: a real reload, not an in-place rewrite.
     panelHasContent = false;
+    deliveredKey = undefined;
     updatePanelContent(
       fullBuildWrapperHtml(currentPanel.webview, url, target.target),
     );
@@ -1885,7 +2073,8 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
     '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
     '    <button type="button" data-ptx-mode="live"',
     `      aria-pressed="${pressed("live")}"`,
-    '      title="Fast, partial render of current source file with two-way sync  (updates on save).">',
+    '      title="Fast, partial render of current source file with two-way sync' +
+      ` (updates ${updateWhileTyping() ? "as you type" : "on save"}).">`,
     "      Division preview</button>",
     '    <button type="button" data-ptx-mode="full"',
     `      aria-pressed="${pressed("full")}"`,
@@ -1937,78 +2126,6 @@ function escapeHtml(text: string): string {
 }
 
 /**
- * Toolbar wiring, spliced into each page's bootstrap IIFE (so it can use the
- * `api` handle already established there). Re-runs after every in-place
- * document rewrite, hence the per-element `__ptxWired` guard.
- */
-const TOOLBAR_SCRIPT_LINES: string[] = [
-  "  var bar = document.getElementById('ptx-tools-bar');",
-  "  if (bar && !bar.__ptxWired) {",
-  "    bar.__ptxWired = true;",
-  "    bar.addEventListener('click', function (event) {",
-  "      var el = event.target;",
-  "      var btn = el && el.closest ? el.closest('button') : null;",
-  "      if (!btn) { return; }",
-  "      var mode = btn.getAttribute('data-ptx-mode');",
-  "      if (mode) {",
-  "        api.postMessage({ command: 'setMode', mode: mode });",
-  "        return;",
-  "      }",
-  "      var action = btn.getAttribute('data-ptx-action');",
-  "      if (!action) { return; }",
-  // Flip the checkbox here rather than waiting for the extension to persist
-  // the setting and echo it back; the round trip is visible as lag on a
-  // control that should feel instant. The 'follow' message below reconciles
-  // if the setting is changed from anywhere else.
-  "      if (action === 'toggleFollow') {",
-  "        var on = btn.getAttribute('aria-pressed') !== 'true';",
-  "        btn.setAttribute('aria-pressed', on ? 'true' : 'false');",
-  "        api.postMessage({ command: 'setFollow', follow: on });",
-  "        return;",
-  "      }",
-  // Same reasoning as the follow toggle: the deck is about to be replaced
-  // wholesale, but until it is the pressed button should already look pressed.
-  "      if (action === 'slidesScroll' || action === 'slidesPresent') {",
-  "        var want = action === 'slidesScroll' ? 'scroll' : 'slides';",
-  "        bar.setAttribute('data-slides-view', want);",
-  "        var seg = btn.parentNode.querySelectorAll('button');",
-  "        for (var i = 0; i < seg.length; i++) {",
-  "          seg[i].setAttribute('aria-pressed', seg[i] === btn ? 'true' : 'false');",
-  "        }",
-  "      }",
-  "      api.postMessage({ command: action });",
-  "    });",
-  // The print-preview menu is a <select>, so it reports through 'change'
-  // rather than the click handler above. Nothing to update optimistically: the
-  // extension answers by delivering a whole new page, selection included.
-  "    bar.addEventListener('change', function (event) {",
-  "      var select = event.target;",
-  "      if (!select || select.id !== 'ptx-tools-printout-select') { return; }",
-  "      api.postMessage({ command: 'setPrintout', id: select.value });",
-  "    });",
-  "  }",
-];
-
-/** The `status` message branch, spliced into each page's message handler. */
-const TOOLBAR_STATUS_BRANCH: string[] = [
-  "    if (msg.command === 'status') {",
-  "      var statusEl = document.getElementById('ptx-tools-status');",
-  "      if (statusEl) { statusEl.textContent = msg.text || ''; }",
-  "      return;",
-  "    }",
-  // Keeps the checkbox honest when the setting is changed from the Settings
-  // UI or another window, rather than from this toolbar.
-  "    if (msg.command === 'follow') {",
-  "      var followEl = document.querySelector(",
-  "        '[data-ptx-action=\"toggleFollow\"]');",
-  "      if (followEl) {",
-  "        followEl.setAttribute('aria-pressed', msg.on ? 'true' : 'false');",
-  "      }",
-  "      return;",
-  "    }",
-];
-
-/**
  * Point the page's `external/` and `generated/` asset URLs at files on disk.
  *
  * A portable build inlines latex-image and prefigure SVGs, but author-supplied
@@ -2048,8 +2165,10 @@ function assetUriResolver(
  * real files, put it in the print-preview layout when that is what the reader
  * asked for, allow CDN assets through a CSP meta tag, and add a bootstrap
  * script that (a) preserves the scroll position across rebuilds and (b)
- * applies "update" messages from the extension by rewriting the document in
- * place (see updatePanelContent).
+ * applies "update" messages from the extension — by patching the changed
+ * blocks into the page on screen when the message allows it and the patcher
+ * can, and otherwise by rewriting the document in place (see
+ * updatePanelContent).
  *
  * The print-preview state is applied *here*, on the way to the panel, rather
  * than beside the toolbar action that changes it — because every delivery has
@@ -2069,164 +2188,25 @@ function prepareWebviewHtml(
     : html;
   const page = injectPrintPreview(retargeted, currentPrintout());
   const cspTag = cspMetaTag(webview);
-  // Runs once per document, including documents written by the update path
-  // below (the extension injects this same script into every rendered page).
-  // acquireVsCodeApi may only be called once per webview *session*, and
-  // document.write keeps the same Window, so the api handle is stashed on
-  // window. Likewise the old message listener survives the rewrite in some
-  // engines, so it is explicitly removed before re-adding.
-  const bootstrapScript = [
-    // Faint amber flash on the element the forward sync scrolls to; the
-    // animation fades to nothing so the page returns to normal on its own.
-    "<style>",
-    "@keyframes ptx-sync-flash {",
-    "  from { background-color: rgba(255, 193, 61, 0.18);",
-    "         box-shadow: 0 0 0 5px rgba(255, 193, 61, 0.18); }",
-    "  to   { background-color: transparent; box-shadow: none; }",
-    "}",
-    ".ptx-sync-flash { animation: ptx-sync-flash 1.6s ease-out;",
-    "  border-radius: 4px; }",
-    "</style>",
-    "<script>",
-    "(function () {",
-    "  var api = window.__ptxPreviewApi ||",
-    "    (window.__ptxPreviewApi = acquireVsCodeApi());",
-    "  var prior = api.getState();",
-    "  function restoreScroll() {",
-    "    if (prior && typeof prior.scrollY === 'number') {",
-    "      window.scrollTo(0, prior.scrollY);",
-    "    }",
-    "  }",
-    "  restoreScroll();",
-    "  window.addEventListener('load', restoreScroll);",
-    "  var ticking = false;",
-    "  window.addEventListener('scroll', function () {",
-    "    if (ticking) { return; }",
-    "    ticking = true;",
-    "    setTimeout(function () {",
-    "      api.setState({ scrollY: window.scrollY });",
-    "      ticking = false;",
-    "    }, 100);",
-    "  });",
-    "  if (window.__ptxUpdateHandler) {",
-    "    window.removeEventListener('message', window.__ptxUpdateHandler);",
-    "  }",
-    "  window.__ptxUpdateHandler = function (event) {",
-    "    var msg = event.data;",
-    "    if (!msg) { return; }",
-    ...TOOLBAR_STATUS_BRANCH,
-    "    if (msg.command === 'scrollTo' && msg.ids && msg.ids.length) {",
-    "      // Forward sync: try the id chain innermost-first; not every",
-    "      // element in the source map gets an HTML id.",
-    "      for (var k = 0; k < msg.ids.length; k++) {",
-    "        var target = document.getElementById(msg.ids[k]);",
-    "        if (target) {",
-    "          // Center small elements; for anything too tall to fit (a",
-    "          // subsection, a p with a long list) centering would push its",
-    "          // top — the part that was clicked — above the viewport, so",
-    "          // pin the top just below the window top instead.",
-    "          var rect = target.getBoundingClientRect();",
-    "          if (rect.height > window.innerHeight - 140) {",
-    "            window.scrollTo(0, rect.top + window.pageYOffset - 70);",
-    "          } else {",
-    "            target.scrollIntoView({ block: 'center' });",
-    "          }",
-    "          if (window.__ptxFlashEl && window.__ptxFlashEl.classList) {",
-    "            window.__ptxFlashEl.classList.remove('ptx-sync-flash');",
-    "          }",
-    "          void target.offsetWidth; // restart the fade animation",
-    "          target.classList.add('ptx-sync-flash');",
-    "          window.__ptxFlashEl = target;",
-    "          break;",
-    "        }",
-    "      }",
-    "      return;",
-    "    }",
-    "    if (msg.command !== 'update' || typeof msg.html !== 'string') {",
-    "      return;",
-    "    }",
-    "    api.setState({ scrollY: window.scrollY });",
-    "    document.open();",
-    "    document.write(msg.html);",
-    "    document.close();",
-    "  };",
-    "  window.addEventListener('message', window.__ptxUpdateHandler);",
-    "  // Reverse sync: report a double-clicked element's ancestor id chain",
-    "  // (innermost first); the extension resolves it against the source map.",
-    "  if (window.__ptxSyncClickHandler) {",
-    "    window.removeEventListener('dblclick', window.__ptxSyncClickHandler);",
-    "  }",
-    "  window.__ptxSyncClickHandler = function (event) {",
-    "    var ids = [];",
-    "    var el = event.target;",
-    "    while (el && el.getAttribute && ids.length < 8) {",
-    "      var id = el.getAttribute('id');",
-    "      if (id) { ids.push(id); }",
-    "      el = el.parentElement;",
-    "    }",
-    "    if (ids.length) {",
-    "      api.postMessage({ command: 'revealSource', ids: ids });",
-    "    }",
-    "  };",
-    "  window.addEventListener('dblclick', window.__ptxSyncClickHandler);",
-    ...TOOLBAR_SCRIPT_LINES,
-    // The navbar and ToC sidebar are pinned by the theme at offsets it
-    // computes itself, so there is no fixed value to override in CSS — and
-    // more importantly, whether they are pinned to the *top* at all depends on
-    // the viewport: PreTeXt's narrow-screen layout parks the navigation at the
-    // bottom. So measure what the theme actually decided and only add the
-    // toolbar's height to things it put at the top. Clearing our own value
-    // first makes this idempotent, which matters because it re-runs on resize
-    // when the layout flips between the wide and narrow arrangements.
-    `  var PTX_BAR_H = ${TOOLBAR_HEIGHT_PX};`,
-    "  function ptxOffsetPinned() {",
-    "    var ids = ['ptx-navbar', 'ptx-sidebar'];",
-    "    for (var i = 0; i < ids.length; i++) {",
-    "      var el = document.getElementById(ids[i]);",
-    "      if (!el) { continue; }",
-    "      el.style.removeProperty('top');",
-    "      var cs = window.getComputedStyle(el);",
-    "      if (cs.position !== 'sticky' && cs.position !== 'fixed') {",
-    "        continue;",
-    "      }",
-    "      if (cs.top === 'auto') { continue; }",
-    "      var base = parseFloat(cs.top);",
-    "      if (isNaN(base)) { continue; }",
-    "      // Bottom-anchored bars stay put even if they resolve a numeric top.",
-    "      var rect = el.getBoundingClientRect();",
-    "      if (rect.top > window.innerHeight / 2) { continue; }",
-    "      // 'important' because the theme sets these with it too.",
-    "      el.style.setProperty('top', (base + PTX_BAR_H) + 'px', 'important');",
-    "    }",
-    "  }",
-    "  ptxOffsetPinned();",
-    "  window.addEventListener('load', ptxOffsetPinned);",
-    "  if (window.__ptxResizeHandler) {",
-    "    window.removeEventListener('resize', window.__ptxResizeHandler);",
-    "  }",
-    "  window.__ptxResizeHandler = function () {",
-    "    if (window.__ptxResizeTimer) {",
-    "      clearTimeout(window.__ptxResizeTimer);",
-    "    }",
-    "    window.__ptxResizeTimer = setTimeout(ptxOffsetPinned, 100);",
-    "  };",
-    "  window.addEventListener('resize', window.__ptxResizeHandler);",
-    "})();",
-    "</script>",
-  ].join("\n");
+  const bootstrapScript = liveBootstrapScript();
 
-  const status =
-    previewScope() === "project"
-      ? "Whole project"
-      : path.basename(currentSource?.activePath ?? "");
-
+  // Replacer functions rather than strings: a replacement string gives `$&`,
+  // `$'` and friends special meaning, and the patcher is script source.
   return page
     .replace(
       /<head([^>]*)>/i,
-      `<head$1>\n${cspTag}\n${toolbarCss()}\n${toolbarLayoutCss()}`,
+      (_match, attrs: string) =>
+        `<head${attrs}>\n${cspTag}\n${toolbarCss()}\n${toolbarLayoutCss()}`,
     )
-    .replace(/<body([^>]*)>/i, `<body$1>\n${toolbarHtml("live", status)}`)
-    .replace(/<\/body>/i, `${bootstrapScript}\n</body>`);
+    .replace(
+      /<body([^>]*)>/i,
+      (_match, attrs: string) =>
+        `<body${attrs}>\n${toolbarHtml("live", liveStatusText())}`,
+    )
+    .replace(
+      /<\/body>/i,
+      () => `${livePatchScript()}\n${bootstrapScript}\n</body>`,
+    );
 }
 
 /**
@@ -2363,6 +2343,16 @@ function setupSaveWatcher(extensionPath: string): void {
         .getConfiguration("pretext-tools")
         .get("instantPreview.autoRefresh") ?? true;
     if (!autoRefresh) {
+      return;
+    }
+    // Rendering as you type usually got here first: either it already
+    // rendered exactly this text, or a render it is about to start will read
+    // the file just saved along with everything else.
+    if (
+      typingTimer !== undefined ||
+      (lastRenderedVersion?.file === fileKey(document.fileName) &&
+        lastRenderedVersion.version === document.version)
+    ) {
       return;
     }
     if (debounceTimer) {
@@ -2510,6 +2500,13 @@ async function revealSource(ids: string[]): Promise<void> {
 export function disposeInstantPreview(): void {
   saveWatcher?.dispose();
   saveWatcher = undefined;
+  typingWatcher?.dispose();
+  typingWatcher = undefined;
+  if (typingTimer) {
+    clearTimeout(typingTimer);
+    typingTimer = undefined;
+  }
+  lastRenderedVersion = undefined;
   selectionWatcher?.dispose();
   selectionWatcher = undefined;
   panelMessageWatcher?.dispose();
@@ -2575,9 +2572,14 @@ export function disposeInstantPreview(): void {
   }
   pendingRequestId = undefined;
   renderQueued = false;
+  pendingFromTyping = false;
+  queuedFromTyping = false;
   crashRetries = 0;
   currentSource = undefined;
   panelHasContent = false;
+  deliveredHtml = undefined;
+  webviewHasPage = false;
+  deliveredKey = undefined;
   workerExtensionPath = undefined;
   disposing = false;
 }
