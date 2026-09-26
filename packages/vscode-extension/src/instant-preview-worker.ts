@@ -36,6 +36,11 @@ interface RenderRequest {
   id: number;
   type: "render";
   sourcePath: string;
+  /**
+   * Unsaved editor text to render instead of reading `sourcePath` from disk
+   * (which still anchors its xi:includes); see RenderOptions.sourceContent.
+   */
+  sourceContent?: string;
   /** The project's main source file; anchors publication-relative asset dirs. */
   mainSourcePath?: string;
   projectDir?: string;
@@ -152,6 +157,7 @@ function serve(): void {
       const started = Date.now();
       const options: RenderOptions = {
         sourcePath: request.sourcePath,
+        sourceContent: request.sourceContent,
         mainSourcePath: request.mainSourcePath,
         projectDir: request.projectDir,
         publicationPath: request.publicationPath,

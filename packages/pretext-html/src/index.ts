@@ -87,6 +87,17 @@ export {
   rootPrintoutId,
 } from "./printout.js";
 export type { PrintoutInfo } from "./printout.js";
+// In-place updates of a preview already on screen, so a re-render replaces
+// only the blocks that changed instead of reloading the page (see
+// live-patch.ts). Also published as the dependency-free
+// "@pretextbook/pretext-html/live-patch" subpath.
+export {
+  LIVE_PATCH_GLOBAL,
+  livePatchScript,
+  patchDocument,
+  typesetPatch,
+} from "./live-patch.js";
+export type { LivePatchResult } from "./live-patch.js";
 // The CLI driver, re-exported so embedders that fork a bundled worker (the
 // VS Code extension) can reuse the argument parsing and stdout protocol.
 export { main as runCli } from "./cli.js";

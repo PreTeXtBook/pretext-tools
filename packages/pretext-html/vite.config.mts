@@ -90,6 +90,9 @@ export default defineConfig(({ mode }) => {
               // same reason again: entering and leaving it only re-injects a
               // bridge into HTML the renderer already produced.
               printout: "src/printout.ts",
+              // And for live patching, whose script the extension host injects
+              // into every page it delivers to the preview.
+              "live-patch": "src/live-patch.ts",
             },
         // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI
         // anyway, so there is no CommonJS audience for this package.

@@ -64,6 +64,13 @@ export {
   rootPrintoutId,
 } from "./printout.js";
 export type { PrintoutInfo } from "./printout.js";
+export {
+  LIVE_PATCH_GLOBAL,
+  livePatchScript,
+  patchDocument,
+  typesetPatch,
+} from "./live-patch.js";
+export type { LivePatchResult } from "./live-patch.js";
 // Where this package's assets/ directory is served from. Browser-only: under
 // Node the equivalent is the PRETEXT_HTML_ASSETS environment variable.
 export { setAssetsBase } from "./host.js";

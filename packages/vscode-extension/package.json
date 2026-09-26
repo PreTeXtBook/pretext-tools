@@ -502,6 +502,12 @@
             "default": true,
             "markdownDescription": "Automatically rebuild the live preview when a `.ptx` file is saved."
           },
+          "pretext-tools.instantPreview.updateWhileTyping": {
+            "order": 4,
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Update the live preview as you type, from the unsaved contents of the file being previewed, instead of waiting for a save. Only that file is read from the editor; included files and the main file's `<docinfo>` still come from disk. While the document is not well-formed the preview keeps showing the last good version."
+          },
           "pretext-tools.instantPreview.followActiveEditor": {
             "order": 4,
             "type": "boolean",
