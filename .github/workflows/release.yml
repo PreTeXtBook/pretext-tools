@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  # Sent by pretext-cli's deploy-stable workflow after a stable CLI release,
+  # with client_payload.version set to the released version (e.g. "2.54.0").
+  repository_dispatch:
+    types: [pretext-cli-release]
   workflow_dispatch:
     inputs:
       release_target:
@@ -14,6 +18,7 @@ on:
         options:
           - "packages"
           - "vscode-extension"
+          - "sync-cli-release"
       extension_level:
         description: "VS Code extension release level"
         required: true
@@ -23,6 +28,10 @@ on:
           - "patch"
           - "minor"
           - "major"
+      cli_version:
+        description: "sync-cli-release only: pretext-cli version to sync to (blank = latest on PyPI)"
+        required: false
+        type: string
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -37,6 +46,8 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,6 +63,7 @@ jobs:
         run: npm run build:packages
 
       - name: Create Release PR or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: npm run publish-packages
@@ -61,14 +73,192 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
 
+  # Brings the schemas and the vendored XSL (Instant Preview) in line with a
+  # pretext-cli release, so the preview renders with the same PreTeXt core the
+  # CLI builds with, then publishes the affected packages. When anything
+  # changed, release-vscode-extension below ships a patch release too.
+  sync-cli-release:
+    name: Sync to pretext-cli release
+    if: |
+      github.event_name == 'repository_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.release_target == 'sync-cli-release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: write
+      id-token: write
+    outputs:
+      changed: ${{ steps.changeset.outputs.changed }}
+      published: ${{ steps.publish.outputs.published }}
+      cli_version: ${{ steps.cli.outputs.version }}
+      core_commit: ${{ steps.cli.outputs.core_commit }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Resolve CLI release and its core commit
+        id: cli
+        env:
+          PAYLOAD_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_VERSION: ${{ github.event.inputs.cli_version }}
+        run: |
+          version="${PAYLOAD_VERSION:-$INPUT_VERSION}"
+          if [ -z "$version" ]; then
+            version=$(curl -fsSL https://pypi.org/pypi/pretext/json | jq -r .info.version)
+          fi
+          version="${version#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Not a stable pretext-cli version: '$version'"
+            exit 1
+          fi
+          core_commit=$(curl -fsSL "https://raw.githubusercontent.com/PreTeXtBook/pretext-cli/v$version/pretext/__init__.py" \
+            | sed -n 's/^CORE_COMMIT = "\([0-9a-f]\{40\}\)".*/\1/p')
+          if [ -z "$core_commit" ]; then
+            echo "::error::Could not read CORE_COMMIT from pretext-cli v$version"
+            exit 1
+          fi
+          echo "pretext-cli v$version builds with PreTeXt core $core_commit"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "core_commit=$core_commit" >> "$GITHUB_OUTPUT"
+          # Pins getSchemas.js here and in every later build step (the
+          # completions prebuild re-fetches pretext-dev.rng).
+          echo "PRETEXT_CLI_REF=v$version" >> "$GITHUB_ENV"
+          echo "PRETEXT_CORE_REF=$core_commit" >> "$GITHUB_ENV"
+
+      # The CLI release also triggers the html-static release of the same
+      # version, which the preview loads its CSS/JS and Runestone bundle from.
+      # It takes a while to build and reach jsDelivr, so wait for it.
+      - name: Wait for html-static v${{ steps.cli.outputs.version }}
+        env:
+          VERSION: ${{ steps.cli.outputs.version }}
+        run: |
+          url="https://cdn.jsdelivr.net/gh/PreTeXtBook/html-static@$VERSION/dist/_static/webpack_static_imports.xml"
+          for attempt in $(seq 1 45); do
+            if curl -fsS -o /dev/null "$url"; then
+              echo "html-static v$VERSION is available"
+              exit 0
+            fi
+            echo "Attempt $attempt: html-static v$VERSION not served yet; retrying in 2 minutes"
+            sleep 120
+          done
+          echo "::error::html-static v$VERSION never appeared at $url"
+          exit 1
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Refresh schemas
+        run: npm run refresh:schemas
+
+      - name: Refresh XSL and Runestone bundle
+        run: >-
+          npm run refresh-xsl -w @pretextbook/pretext-html --
+          --ref "${{ steps.cli.outputs.core_commit }}"
+          --html-static "${{ steps.cli.outputs.version }}"
+
+      - name: Write changeset
+        id: changeset
+        run: |
+          packages=$(node ./scripts/cli-sync-changeset.mjs "${{ steps.cli.outputs.version }}" "${{ steps.cli.outputs.core_commit }}")
+          if [ -z "$packages" ]; then
+            echo "Already in sync with pretext-cli v${{ steps.cli.outputs.version }}; nothing to release."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Packages to release:"
+            echo "$packages"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        if: steps.changeset.outputs.changed == 'true'
+        run: npm run build
+
+      - name: Test
+        if: steps.changeset.outputs.changed == 'true'
+        run: npm run test:libraries && npm run test:unit -w pretext-tools
+
+      - name: Commit, version, and push
+        if: steps.changeset.outputs.changed == 'true'
+        env:
+          VERSION: ${{ steps.cli.outputs.version }}
+          CORE_COMMIT: ${{ steps.cli.outputs.core_commit }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898208+github-actions[bot]@users.noreply.github.com"
+          # npm install sets the exec bit on package bins; don't commit that.
+          git config core.fileMode false
+          note="\\n### Changed\\n\\n- Instant Preview and schemas now match pretext-cli v$VERSION (PreTeXt core ${CORE_COMMIT:0:7})."
+          sed '/## \[UNRELEASED\]/a\'"$note" packages/vscode-extension/CHANGELOG.md > CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp packages/vscode-extension/CHANGELOG.md
+          git add -A
+          git commit -m "chore: sync schemas and XSL to pretext-cli v$VERSION"
+          npx changeset version
+          npm install --package-lock-only
+          git add -A
+          git commit -m "chore: version packages"
+          git push origin HEAD:main
+
+      - name: Publish packages
+        id: publish
+        if: steps.changeset.outputs.changed == 'true'
+        env:
+          NPM_CONFIG_PROVENANCE: "true"
+        run: |
+          npm run build:packages
+          npm run publish-packages
+          git push origin --tags
+          echo "published=true" >> "$GITHUB_OUTPUT"
+
+  # Lets PreTeXt-Plus pick up freshly published @pretextbook packages.
+  # Needs a token that can dispatch to PreTeXtPlus/PreTeXt-Plus
+  # (secrets.PRETEXT_PLUS_DISPATCH_TOKEN); skipped when it is not set.
+  notify-pretext-plus:
+    name: Notify PreTeXt-Plus
+    needs: [release, sync-cli-release]
+    if: |
+      always() &&
+      (needs.release.outputs.published == 'true' || needs.sync-cli-release.outputs.published == 'true')
+    runs-on: ubuntu-latest
+    env:
+      DISPATCH_TOKEN: ${{ secrets.PRETEXT_PLUS_DISPATCH_TOKEN }}
+    steps:
+      - name: Repository Dispatch
+        if: env.DISPATCH_TOKEN != ''
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ env.DISPATCH_TOKEN }}
+          repository: PreTeXtPlus/PreTeXt-Plus
+          event-type: pretext-tools-release
+          client-payload: >-
+            {"sha": "${{ github.sha }}",
+             "cli_version": "${{ needs.sync-cli-release.outputs.cli_version }}"}
+
   release-vscode-extension:
     name: Release VS Code Extension
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.release_target == 'vscode-extension'
+    needs: sync-cli-release
+    if: |
+      always() &&
+      ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_target == 'vscode-extension') ||
+       needs.sync-cli-release.outputs.changed == 'true')
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      # Set only after a CLI sync; keeps "Update schema" (and the completions
+      # prebuild) on the synced refs instead of upstream tips.
+      PRETEXT_CLI_REF: ${{ needs.sync-cli-release.outputs.cli_version && format('v{0}', needs.sync-cli-release.outputs.cli_version) || '' }}
+      PRETEXT_CORE_REF: ${{ needs.sync-cli-release.outputs.core_commit }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Includes the commits sync-cli-release just pushed.
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
@@ -91,7 +281,7 @@ jobs:
       - name: Bump extension version
         run: |
           cd packages/vscode-extension
-          npm version ${{ github.event.inputs.extension_level }} --no-git-tag-version
+          npm version ${{ github.event.inputs.extension_level || 'patch' }} --no-git-tag-version
 
       - name: Build dependency packages
         run: npm run build:packages
