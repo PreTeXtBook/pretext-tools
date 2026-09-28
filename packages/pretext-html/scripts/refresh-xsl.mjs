@@ -4,6 +4,7 @@
 // Usage:
 //   node scripts/refresh-xsl.mjs                 # fetch PreTeXtBook/pretext master
 //   node scripts/refresh-xsl.mjs --ref <ref>     # fetch a specific branch/tag/commit
+//   node scripts/refresh-xsl.mjs --html-static <version>  # pin the html-static release
 //   node scripts/refresh-xsl.mjs --local <dir>   # copy from a local pretext checkout
 //   node scripts/refresh-xsl.mjs --generate-only # regenerate wrappers, no fetch
 //
@@ -43,6 +44,7 @@ function getArg(flag) {
 
 const localDir = getArg("--local");
 const ref = getArg("--ref") ?? "master";
+const htmlStatic = getArg("--html-static");
 const generateOnly = process.argv.includes("--generate-only");
 
 /**
@@ -221,7 +223,7 @@ async function extractZip(archive, destDir, { strip = 0, wanted }) {
 }
 
 async function fetchUpstreamXsl() {
-  const url = `https://codeload.github.com/PreTeXtBook/pretext/zip/refs/heads/${ref}`;
+  const url = `https://codeload.github.com/PreTeXtBook/pretext/zip/${ref}`;
   console.log(`Downloading ${url} ...`);
   const response = await fetch(url);
   if (!response.ok) {
@@ -581,7 +583,7 @@ async function main() {
     // Not derived from the vendored stylesheets — it is read from the
     // html-static CDN — so it is skipped along with the rest of the network
     // work under --generate-only. See scripts/refresh-runestone.mjs.
-    await refreshRunestoneServices();
+    await refreshRunestoneServices({ htmlStatic });
     warnIfBundleStale();
   }
 }

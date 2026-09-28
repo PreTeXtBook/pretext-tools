@@ -2,6 +2,12 @@
 // Usage:
 //   node ./scripts/getSchemas.js
 //   node ./scripts/getSchemas.js --only-pretext-dev
+//
+// By default the schemas come from the tips of pretext-cli `main` and pretext
+// `master`. To pin them to what a particular CLI release builds with, set
+//   PRETEXT_CLI_REF   pretext-cli branch/tag/commit (e.g. v2.54.0)
+//   PRETEXT_CORE_REF  pretext branch/tag/commit (the CLI's CORE_COMMIT)
+// The release workflow does this when it syncs to a new CLI release.
 
 import fs from "fs";
 import path from "path";
@@ -12,16 +18,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const outputDir = path.join(__dirname, "..", "packages", "vscode-extension", "assets", "schema");
 
+const cliRef = process.env.PRETEXT_CLI_REF || "refs/heads/main";
+const coreRef = process.env.PRETEXT_CORE_REF || "refs/heads/master";
+const cliBase = `https://raw.githubusercontent.com/PreTeXtBook/pretext-cli/${cliRef}/schema`;
+const coreBase = `https://raw.githubusercontent.com/PreTeXtBook/pretext/${coreRef}/schema`;
+
 const schemaUrls = [
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext-cli/refs/heads/main/schema/project-ptx.rng",
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/publication-schema.rng",
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pretext.rng",
+  `${cliBase}/project-ptx.rng`,
+  `${coreBase}/publication-schema.rng`,
+  `${coreBase}/pretext.rng`,
   // pf-adapter.rng, pf-preamble-adapter.rng, and pf_schema.rng are required by pretext.rng
   // via <externalRef> and <include> elements for PreFigure diagram support.
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf-adapter.rng",
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf-preamble-adapter.rng",
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pf_schema.rng",
-  "https://raw.githubusercontent.com/PreTeXtBook/pretext/refs/heads/master/schema/pretext-dev.rng",
+  `${coreBase}/pf-adapter.rng`,
+  `${coreBase}/pf-preamble-adapter.rng`,
+  `${coreBase}/pf_schema.rng`,
+  `${coreBase}/pretext-dev.rng`,
 ];
 
 function shouldDownload(url) {
