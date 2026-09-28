@@ -49,9 +49,9 @@ jobs:
     outputs:
       published: ${{ steps.changesets.outputs.published }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
@@ -93,11 +93,11 @@ jobs:
       cli_version: ${{ steps.cli.outputs.version }}
       core_commit: ${{ steps.cli.outputs.core_commit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
@@ -230,7 +230,7 @@ jobs:
     steps:
       - name: Repository Dispatch
         if: env.DISPATCH_TOKEN != ''
-        uses: peter-evans/repository-dispatch@v3
+        uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ env.DISPATCH_TOKEN }}
           repository: PreTeXtPlus/PreTeXt-Plus
@@ -255,12 +255,12 @@ jobs:
       PRETEXT_CLI_REF: ${{ needs.sync-cli-release.outputs.cli_version && format('v{0}', needs.sync-cli-release.outputs.cli_version) || '' }}
       PRETEXT_CORE_REF: ${{ needs.sync-cli-release.outputs.core_commit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Includes the commits sync-cli-release just pushed.
           ref: main
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
 
