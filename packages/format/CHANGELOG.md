@@ -1,5 +1,11 @@
 # @pretextbook/format
 
+## 0.6.0
+
+### Minor Changes
+
+- 8ce5bb2: Add support for slideshow elements to formatter
+
 ## 0.5.0
 
 ### Minor Changes
