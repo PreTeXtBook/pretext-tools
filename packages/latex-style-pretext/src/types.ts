@@ -52,7 +52,8 @@ export interface MacroSpec {
   name: string;
   /**
    * unified-latex style argument signature: space-separated tokens where
-   * `m` is a mandatory `{}` argument and `o` an optional `[]` argument.
+   * `m` is a mandatory `{}` argument, `o` an optional `[]` argument, and
+   * `d<>` an optional `<>` argument (a beamer overlay spec).
    * Empty string means the macro takes no arguments.
    */
   signature: string;

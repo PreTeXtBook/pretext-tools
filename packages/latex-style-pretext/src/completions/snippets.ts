@@ -27,7 +27,10 @@ export function endInsertText(name: string): string {
  */
 export function macroInsertText(spec: MacroSpec): string {
   if (spec.snippet) return spec.snippet;
-  const tokens = spec.signature.split(" ").filter(Boolean);
+  // A `d<>` overlay spec is beamer-only and rarely wanted; leave it out.
+  const tokens = spec.signature
+    .split(" ")
+    .filter((tok) => tok && !tok.startsWith("d"));
   if (tokens.length === 0) return spec.name;
   let n = 0;
   const args = tokens

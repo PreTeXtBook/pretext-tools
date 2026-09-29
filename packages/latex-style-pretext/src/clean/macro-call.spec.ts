@@ -42,6 +42,15 @@ describe("readMacroCall", () => {
     expect(c.mandatoryArguments).toHaveLength(1);
   });
 
+  it("skips a beamer overlay spec, present or not", () => {
+    // `\alert` is `d<> m`: an optional `<...>` before the mandatory argument.
+    for (const text of ["\\alert<2->{hot} rest", "\\alert{hot} rest"]) {
+      const c = call(text);
+      expect(text.slice(c.end)).toBe(" rest");
+      expect(unwrapMacroText(text, c)).toBe("hot");
+    }
+  });
+
   it("reads both arguments of a two-argument macro", () => {
     const text = "\\href{https://x}{link text}";
     const c = call(text);

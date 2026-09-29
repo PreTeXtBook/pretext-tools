@@ -10,6 +10,12 @@ export interface PreambleInfo {
   author: string;
   /** Collected \newcommand / \renewcommand / \DeclareMathOperator / \def definitions. */
   macros: string;
+  /**
+   * The title-page calls (`\title`, `\subtitle`, `\author`, `\institute`,
+   * `\date`, `\titlegraphic`) verbatim, one per line. A slideshow hands these
+   * to the converter, which builds its `<frontmatter>` from them.
+   */
+  titlePageMacros: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,6 +65,43 @@ export function extractLatexField(source: string, cmdName: string): string {
 
   const [arg] = firstBracketedString(rest);
   return arg ? arg.slice(1, -1).trim() : "";
+}
+
+const TITLE_PAGE_MACROS = [
+  "title",
+  "subtitle",
+  "author",
+  "institute",
+  "date",
+  "titlegraphic",
+];
+
+/**
+ * Every call of the title-page macros in `source`, verbatim: the name, an
+ * optional `[short]` argument, and the braced argument, e.g.
+ * `\title[Short]{A Long Title}`.
+ */
+export function extractTitlePageMacros(source: string): string {
+  const re = new RegExp(
+    `\\\\(?:${TITLE_PAGE_MACROS.join("|")})(?![a-zA-Z])`,
+    "g",
+  );
+  const calls: string[] = [];
+  for (const match of source.matchAll(re)) {
+    let rest = source.slice(match.index + match[0].length);
+    let call = match[0];
+
+    const [opt, afterOpt] = firstBracketedString(rest, 0, "[", "]");
+    if (opt) {
+      call += opt;
+      rest = afterOpt;
+    }
+    const [arg] = firstBracketedString(rest);
+    if (arg) {
+      calls.push(call + arg);
+    }
+  }
+  return calls.join("\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +242,7 @@ export function extractPreambleInfo(
       title: extractLatexField(noComments, "title"),
       author: extractLatexField(noComments, "author"),
       macros,
+      titlePageMacros: extractTitlePageMacros(noComments),
     },
     warnings,
   };

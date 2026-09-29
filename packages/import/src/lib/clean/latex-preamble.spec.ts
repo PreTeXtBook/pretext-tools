@@ -156,6 +156,30 @@ describe("extractPreambleInfo", () => {
     expect(extractPreambleInfo(preamble).info.title).toBe("Real");
   });
 
+  it("collects the title-page macros verbatim for a slideshow", () => {
+    const preamble = [
+      "\\documentclass{beamer}",
+      "\\usetheme{Madrid}",
+      "\\title[Short]{A {Nested} Title}",
+      "\\subtitle{Sub}",
+      "\\author{A\\inst{1} \\and B\\inst{2}}",
+      "\\institute{\\inst{1}X \\and \\inst{2}Y}",
+      "\\date{\\today}",
+      "\\titlegraphic{\\includegraphics{logo.png}}",
+      "% \\subtitle{Commented}",
+    ].join("\n");
+    expect(extractPreambleInfo(preamble).info.titlePageMacros).toBe(
+      [
+        "\\title[Short]{A {Nested} Title}",
+        "\\subtitle{Sub}",
+        "\\author{A\\inst{1} \\and B\\inst{2}}",
+        "\\institute{\\inst{1}X \\and \\inst{2}Y}",
+        "\\date{\\today}",
+        "\\titlegraphic{\\includegraphics{logo.png}}",
+      ].join("\n"),
+    );
+  });
+
   it("returns empty strings when nothing found", () => {
     const { info } = extractPreambleInfo("\\documentclass{article}");
     expect(info.title).toBe("");

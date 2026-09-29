@@ -17,10 +17,30 @@ function goodLabel(match: string): string {
   });
 }
 
+/**
+ * A beamer overlay specification and what it attaches to: a command
+ * (`\item<2->`, `\only<3>`), an environment (`\begin{frame}<1-2>`), or an
+ * optional argument (`\begin{itemize}[<+->]`). The spec itself holds only
+ * slide numbers, ranges, and `action@` prefixes -- never a backslash or
+ * brace, which keeps inequalities in math (`\alpha<\beta`) out.
+ */
+const OVERLAY_SPEC_RE =
+  /(\\[a-zA-Z]+\*?|\\begin\{[^{}]*\}|\[)(<[\w+\-.,|@()*][\w+\-.,|@()* ]*>)/g;
+
 export function makeXMLSafe(input: string): string {
-  let output = input;
+  // Overlay specs are syntax the converter reads, not text: set them aside so
+  // the `<`/`>` rewrite below cannot turn `\item<2->` into `\item\lt 2-\gt`.
+  const overlays: string[] = [];
+  let output = input.replace(OVERLAY_SPEC_RE, (_match, lead, spec) => {
+    overlays.push(spec);
+    return `${lead}\u0000${overlays.length - 1}\u0000`;
+  });
   output = output.replace(/> */g, "\\gt ");
   output = output.replace(/< */g, "\\lt ");
+  output = output.replace(
+    /\u0000(\d+)\u0000/g,
+    (_match, i) => overlays[Number(i)],
+  );
   output = output.replace(
     /(\\(ref|eqref|cref|Cref|label)\{([^{}]+)\})/g,
     goodLabel,
