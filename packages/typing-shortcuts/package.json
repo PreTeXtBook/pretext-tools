@@ -1,8 +1,8 @@
 {
-  "name": "@pretextbook/completions",
-  "version": "0.3.0",
-  "description": "Reusable completion logic for PreTeXt documents",
-  "author": "PreTeXt Contributors",
+  "name": "@pretextbook/typing-shortcuts",
+  "version": "0.0.0",
+  "description": "Editor-agnostic typing shortcuts for PreTeXt source ($math$ to <m>, escaping, paragraph and environment shortcuts), with a Monaco adapter",
+  "author": "Oscar Levin",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/PreTeXtBook/pretext-tools/issues"
   },
-  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/completions",
+  "homepage": "https://github.com/PreTeXtBook/pretext-tools/tree/main/packages/typing-shortcuts",
   "private": false,
   "type": "module",
   "main": "./src/index.ts",
@@ -29,16 +29,12 @@
     "README.md"
   ],
   "scripts": {
-    "fetch:dev-schema": "node ../../scripts/getSchemas.js --only-pretext-dev",
-    "generate:schema": "node ./scripts/generate-default-schema.mjs",
-    "refresh-schema": "npm run fetch:dev-schema && npm run generate:schema",
-    "prebuild": "npm run refresh-schema",
     "build": "tsc --build tsconfig.lib.json",
     "typecheck": "tsc --build --emitDeclarationOnly",
     "test": "vitest run"
   },
   "dependencies": {
-    "vscode-languageserver-types": "^3.17.5"
+    "@pretextbook/completions": "^0.3.0"
   },
   "publishConfig": {
     "access": "public"

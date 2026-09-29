@@ -2,7 +2,7 @@ import {
   CompletionItem,
   CompletionItemKind,
   InsertTextFormat,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver-types";
 import {
   CompletionSchema,
   CompletionType,

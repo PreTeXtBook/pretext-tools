@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PreTeXt Typing Shortcuts — Demo</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      .demo-workspace {
+        display: flex;
+        height: calc(100vh - var(--toolbar-h));
+      }
+      .editor-pane {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #editor {
+        width: 100%;
+        height: 100%;
+      }
+      .help-pane {
+        flex: 0 0 320px;
+        background: var(--surface);
+        border-left: 1px solid var(--overlay);
+        padding: 16px 18px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .help-pane h2 {
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--accent);
+        margin: 18px 0 8px;
+      }
+      .help-pane h2:first-child {
+        margin-top: 0;
+      }
+      .help-pane ul {
+        padding-left: 18px;
+      }
+      .help-pane li {
+        margin-bottom: 6px;
+        color: var(--subtext);
+      }
+      .help-pane kbd {
+        background: var(--overlay);
+        border-radius: 4px;
+        padding: 1px 6px;
+        font-size: 12px;
+        color: var(--text);
+      }
+      .help-pane code {
+        color: var(--green);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="toolbar">
+      <span class="logo">⊕ PreTeXt Typing Shortcuts — Demo</span>
+      <div class="toolbar-right">
+        <a href="/index.html" class="page-link">← Playground</a>
+      </div>
+    </header>
+
+    <div class="demo-workspace">
+      <div class="editor-pane">
+        <div id="editor"></div>
+      </div>
+      <aside class="help-pane">
+        <h2>Math</h2>
+        <ul>
+          <li>
+            <code>$x^2$</code> becomes <code>&lt;m&gt;x^2&lt;/m&gt;</code>.
+          </li>
+          <li>
+            <code>$$\sum_i i$$</code> becomes
+            <code>&lt;md&gt;…&lt;/md&gt;</code>.
+          </li>
+        </ul>
+
+        <h2>Escaping</h2>
+        <ul>
+          <li>
+            <code>a &lt; b</code> becomes <code>a &amp;lt; b</code>; likewise
+            <code>&gt;</code> and <code>&amp;</code>.
+          </li>
+          <li>
+            Inside math, <code>a &lt; b</code> becomes <code>a \lt b</code>.
+          </li>
+        </ul>
+
+        <h2>Paragraphs</h2>
+        <ul>
+          <li>
+            Inside a <code>&lt;p&gt;</code>, press <kbd>Enter</kbd> twice, or
+            <kbd>Shift</kbd>+<kbd>Enter</kbd>, to start the next paragraph.
+          </li>
+          <li>
+            Elsewhere, <kbd>Shift</kbd>+<kbd>Enter</kbd> starts a new
+            <code>&lt;p&gt;</code>.
+          </li>
+        </ul>
+
+        <h2>Environments</h2>
+        <ul>
+          <li>
+            On a blank line outside a paragraph, type <code>theorem:</code> (or
+            <code>definition:</code>, <code>proof:</code>, …) and press
+            <kbd>Enter</kbd>.
+          </li>
+        </ul>
+
+        <h2>Notes</h2>
+        <ul>
+          <li>
+            Every shortcut is one undo step: <kbd>Ctrl</kbd>+<kbd>Z</kbd>
+            restores what you typed.
+          </li>
+          <li>
+            All logic comes from <code>@pretextbook/typing-shortcuts</code>;
+            this page only calls <code>registerMonacoTypingShortcuts</code>.
+          </li>
+        </ul>
+      </aside>
+    </div>
+
+    <script type="module" src="/src/typing-demo.ts"></script>
+  </body>
+</html>

@@ -69,6 +69,7 @@ import {
 } from "./lsp-client/main";
 import { projects, resetProjectList } from "./project";
 import { registerFlavorTakeover } from "./flavor-takeover";
+import { registerTypingShortcuts } from "./typing-shortcuts";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
 import { cmdImport } from "./importWizardPanel";
@@ -127,6 +128,9 @@ export async function activate(context: ExtensionContext) {
 
   // Opt-in takeover of .tex/.md files by the PreTeXt flavor languages.
   context.subscriptions.push(registerFlavorTakeover());
+
+  // $x$ → <m>x</m>, escaping, double Enter / Shift+Enter paragraphs, theorem:.
+  context.subscriptions.push(registerTypingShortcuts());
 
   ///////////////// Commands //////////////////////
 
