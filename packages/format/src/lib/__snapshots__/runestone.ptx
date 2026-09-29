@@ -3037,6 +3037,7 @@ TEST_CASE( "Test the add function" ) {
       </exercise>
     </subsection>
   </section>
+
   <exercises xml:id="true-false-exercises">
     <title>True/False Exercises</title>
 
@@ -3068,6 +3069,7 @@ TEST_CASE( "Test the add function" ) {
       </hint>
     </exercise>
   </exercises>
+
   <exercises xml:id="multiple-choice-exercises" groupwork="yes" groupsize="5" label="exercises-groupwork">
     <title>Multiple Choice Exercises</title>
 
@@ -3716,6 +3718,7 @@ TEST_CASE( "Test the add function" ) {
       </hint>
     </exercise>
   </exercises>
+
   <exercises xml:id="parsons-exercises">
     <title>Parsons Exercises</title>
 
@@ -4169,6 +4172,7 @@ TEST_CASE( "Test the add function" ) {
       </blocks>
     </exercise>
   </exercises>
+
   <exercises xml:id="horizontal-parsons-exercises">
     <title>Horizontal Parsons Exercises</title>
 
@@ -4417,6 +4421,7 @@ TEST_CASE( "Test the add function" ) {
       </blocks>
     </exercise>
   </exercises>
+
   <exercises xml:id="matching-exercises">
     <title>Matching Exercises</title>
 
@@ -4710,6 +4715,7 @@ TEST_CASE( "Test the add function" ) {
       </cardsort>
     </exercise>
   </exercises>
+
   <exercises xml:id="clickable-area-exercises">
     <title>Clickable Area Exercises</title>
 
@@ -4829,6 +4835,7 @@ TEST_CASE( "Test the add function" ) {
       </feedback>
     </exercise>
   </exercises>
+
   <exercises xml:id="select-exercises">
     <title>Select Exercises</title>
 
@@ -4865,6 +4872,7 @@ TEST_CASE( "Test the add function" ) {
       <select grade="any" questions="true-false-one multiple-choice-one"/>
     </exercise>
   </exercises>
+
   <exercises xml:id="short-answer-exercises">
     <title>Short Answer Exercises</title>
 
@@ -5073,6 +5081,7 @@ TEST_CASE( "Test the add function" ) {
       </slate>
     </interactive>
   </section>
+
   <exercises xml:id="fill-in-exercises-old">
     <title>Fill-In Exercises (Old Style)</title>
 
@@ -5235,6 +5244,7 @@ TEST_CASE( "Test the add function" ) {
       </setup>
     </exercise>
   </exercises>
+
   <exercises xml:id="fill-in-exercises">
     <title>Fill-In Exercises</title>
 
@@ -5824,6 +5834,7 @@ TEST_CASE( "Test the add function" ) {
       </evaluation>
     </exercise>
   </exercises>
+
   <exercises xml:id="runestone-hodgepodge">
     <title>Hodgepodge</title>
 
@@ -5947,6 +5958,7 @@ TEST_CASE( "Test the add function" ) {
       <tag>subsection</tag> as peers of the multiple <tag>exercises</tag> you
       desire.
     </p>
+
     <exercises xml:id="timing-exercises" label="timed-exercises" time-limit="10" pause="no">
       <title>Timed Exercises</title>
 
@@ -6985,6 +6997,7 @@ TEST_CASE( "Test the add function" ) {
       This is a section that is specifically for testing when exercises are
       migrated to a Runestone Assignment page.
     </p>
+
     <exercises>
       <exercise label="exercisegroup-exercise-zero">
         <statement>
@@ -7258,6 +7271,7 @@ TEST_CASE( "Test the add function" ) {
       </hint>
     </exercise>
   </worksheet>
+
   <exercises xml:id="groupwork-title" groupwork="yes" label="exercises-title-groupwork">
     <introduction>
       <p>
@@ -7668,6 +7682,7 @@ TEST_CASE( "Test the add function" ) {
       </interactive>
     </figure>
   </section>
+
   <exercises xml:id="chapter-exam" label="chapter-exam" time-limit="15" pause="yes">
     <title>Timed Chapter Exam</title>
 

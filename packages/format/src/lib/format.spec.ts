@@ -264,3 +264,54 @@ describe("unwrapped fragment formatting", () => {
     );
   });
 });
+
+// Every element the schema allows as a document root must be recognized as a
+// block; otherwise a bare root is treated as one inline token and left as-is.
+describe("schema root elements", () => {
+  it.each(["slideshow", "handout", "exercises", "subexercises", "glossary"])(
+    "formats a bare <%s> root",
+    (root) => {
+      const result = formatPretext(
+        `<${root}><title>T</title><p>Hi.</p></${root}>`,
+      );
+      expect(result).toBe(
+        `<${root}>\n  <title>T</title>\n\n  <p>\n    Hi.\n  </p>\n</${root}>`,
+      );
+    },
+  );
+
+  it("formats a slideshow with sections, slides, and subslides", () => {
+    const input = `<slideshow><title>Talk</title><section><title>Intro</title><slide><title>First</title><p>One.</p><subslide><p>Two.</p></subslide></slide><slide><p>Three.</p></slide></section></slideshow>`;
+    expect(formatPretext(input)).toBe(
+      [
+        "<slideshow>",
+        "  <title>Talk</title>",
+        "",
+        "  <section>",
+        "    <title>Intro</title>",
+        "",
+        "    <slide>",
+        "      <title>First</title>",
+        "",
+        "      <p>",
+        "        One.",
+        "      </p>",
+        "",
+        "      <subslide>",
+        "        <p>",
+        "          Two.",
+        "        </p>",
+        "      </subslide>",
+        "    </slide>",
+        "",
+        "    <slide>",
+        "      <p>",
+        "        Three.",
+        "      </p>",
+        "    </slide>",
+        "  </section>",
+        "</slideshow>",
+      ].join("\n"),
+    );
+  });
+});
