@@ -1,5 +1,11 @@
 # @pretextbook/completions
 
+## 0.4.0
+
+### Minor Changes
+
+- 1177f49: Export the element snippet table as `ELEMENTS`, and depend on the side-effect-free `vscode-languageserver-types` instead of `vscode-languageserver`, so the package no longer pulls language-server runtime code into browser or extension-host bundles.
+
 ## 0.3.0
 
 ### Minor Changes
