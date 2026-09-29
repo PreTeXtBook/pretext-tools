@@ -47,6 +47,8 @@ const CONTEXT_USAGE: Record<string, string> = {
   author: doc("\\author{A}", "x"),
   date: doc("\\date{D}", "x"),
   subtitle: doc("\\title{T}\\subtitle{S}", "x"),
+  // An `\inst` marker only means something inside `\author`.
+  inst: doc("\\author{A\\inst{1}}\\institute{\\inst{1}U}", "x"),
   newcommand: doc("\\newcommand{\\foo}{bar}", "x"),
   renewcommand: doc("\\renewcommand{\\emph}{bar}", "x"),
   providecommand: doc("\\providecommand{\\foo}{bar}", "x"),
@@ -96,6 +98,7 @@ function macroUsage(macro: MacroSpec): string {
   const args = macro.signature
     .split(/\s+/)
     .filter(Boolean)
+    .filter((part) => !part.startsWith("d")) // optional `<...>`: omit it
     .map((part) => (part === "o" ? "[x]" : "{x}"))
     .join("");
   return `\\${macro.name}${args} y`;

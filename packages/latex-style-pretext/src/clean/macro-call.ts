@@ -96,10 +96,13 @@ export function readMacroCall(text: string, start: number): MacroCall | null {
       continue;
     }
 
-    if (token === "o") {
+    // `o` is an optional `[...]`; `d<>` an optional argument with other
+    // delimiters, like beamer's overlay spec in `\alert<2>{...}`.
+    const optional = token === "o" ? "[]" : /^d(.)(.)$/.exec(token)?.slice(1);
+    if (optional) {
       // An optional argument that is not there is not an error — skip it and
       // keep looking for the mandatory ones behind it (`\worksheet*{Title}`).
-      const closed = readBalanced(text, cursor, "[", "]");
+      const closed = readBalanced(text, cursor, optional[0], optional[1]);
       if (closed !== null) end = closed;
       continue;
     }

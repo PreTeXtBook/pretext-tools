@@ -2,7 +2,8 @@
 //
 // Source of truth (mirror, not import):
 //   unified-latex/packages/unified-latex-to-pretext/libs/pre-conversion-subs/macro-subs.ts
-// Signatures use unified-latex notation: "m" = {} arg, "o" = [] arg.
+// Signatures use unified-latex notation: "m" = {} arg, "o" = [] arg,
+// "d<>" = optional <> arg (a beamer overlay spec).
 // Math-mode macros live in ./math (the KaTeX support list), not here.
 
 import type { MacroSpec } from "../types";
@@ -167,7 +168,8 @@ const SPECIAL: MacroSpec[] = [
   },
   {
     name: "alert",
-    signature: "m",
+    // Beamer's `\alert<2>{...}` takes an overlay spec, which the converter drops.
+    signature: "d<> m",
     mode: "text",
     snippet: "alert{$1}",
     documentation:
@@ -212,6 +214,67 @@ const SPECIAL: MacroSpec[] = [
       'PreTeXt Plus modular include. `\\plus{type}{ref}` → `<plus:type ref="ref"/>`, ' +
       "pulling in the division or asset stored under `ref`. An optional " +
       "`\\plus[width=50,margin=auto]{image}{ref}` argument becomes attributes on the element.",
+  },
+];
+
+/**
+ * Title-page and speaker-note macros, mostly beamer's. The converter builds a
+ * slideshow's `<frontmatter>` -- which PreTeXt renders as the title slide --
+ * from the title-page ones. Mirrors the converter's `provides.ts` and
+ * `beamer-subs.ts`.
+ */
+const TITLE_PAGE: MacroSpec[] = [
+  {
+    name: "subtitle",
+    signature: "o m",
+    mode: "text",
+    snippet: "subtitle{$1}",
+    documentation:
+      "The document's subtitle. Converts to `<subtitle>` after the `<title>`.",
+  },
+  {
+    name: "institute",
+    signature: "o m",
+    mode: "text",
+    snippet: "institute{$1}",
+    documentation:
+      "Beamer: the authors' institutions. Each `\\and`-separated part becomes " +
+      "an author's `<institution>`, matched by the `\\inst{n}` markers in `\\author`.",
+  },
+  {
+    name: "inst",
+    signature: "m",
+    mode: "text",
+    snippet: "inst{$1}",
+    documentation:
+      "Beamer: ties an author to an `\\institute` entry, as in " +
+      "`\\author{A\\inst{1} \\and B\\inst{2}}`.",
+  },
+  {
+    name: "titlegraphic",
+    signature: "m",
+    mode: "text",
+    snippet: "titlegraphic{$1}",
+    documentation:
+      "Beamer: a graphic for the title page. PreTeXt's title slide has no place " +
+      "for one, so it moves to the slide after the title slide.",
+  },
+  {
+    name: "titlepage",
+    signature: "",
+    mode: "text",
+    documentation:
+      "Beamer: the title page. The frame holding it becomes the slideshow's " +
+      "title slide, generated from `<frontmatter>`.",
+  },
+  {
+    name: "note",
+    signature: "d<> o m",
+    mode: "text",
+    snippet: "note{$1}",
+    documentation:
+      "Beamer: a speaker note. PreTeXt slides have no speaker notes, so it is " +
+      "kept as an XML comment.",
   },
 ];
 
@@ -282,7 +345,7 @@ const DIVISION = group(
 const DOCUMENT = [
   ...group(["email", "keywords"], "m"),
   ...group(["subjclass"], "o m"),
-  ...group(["title", "author", "date", "input", "include", "subtitle"], "m"),
+  ...group(["title", "author", "date", "input", "include"], "m"),
   ...group(["documentclass", "usepackage"], "o m"),
   ...group(["newcommand", "renewcommand", "providecommand"], "m m"),
   ...group(
@@ -336,11 +399,12 @@ const STREAMING = group(
  */
 const EXAM = group(["question", "subpart", "subsubpart"], "");
 
-/** Names carrying a bespoke entry in SPECIAL, to drop from the grouped lists. */
-const OVERRIDDEN = new Set(SPECIAL.map((m) => m.name));
+/** Names carrying a bespoke entry, to drop from the grouped lists. */
+const OVERRIDDEN = new Set([...SPECIAL, ...TITLE_PAGE].map((m) => m.name));
 
 export const MACROS: MacroSpec[] = [
   ...SPECIAL,
+  ...TITLE_PAGE,
   ...[
     ...NO_ARG,
     ...ONE_ARG,
