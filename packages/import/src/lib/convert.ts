@@ -66,7 +66,10 @@ function latexToPlainText(tex: string): string {
     .trim();
 }
 
-function buildDocinfo(info: PreambleInfo): string {
+function buildDocinfo(
+  info: PreambleInfo,
+  { includeAuthor = true }: { includeAuthor?: boolean } = {},
+): string {
   const parts: string[] = [];
 
   if (info.macros) {
@@ -77,7 +80,7 @@ function buildDocinfo(info: PreambleInfo): string {
     parts.push(`  <macros>\n${indented}\n  </macros>`);
   }
 
-  if (info.author) {
+  if (includeAuthor && info.author) {
     // Take only the first author (split on \and)
     const firstAuthor = info.author.split(/\s+\\and\s+/)[0].trim();
     const name = xmlEscape(latexToPlainText(firstAuthor));
@@ -134,6 +137,45 @@ function assemblePretextDocument(fragment: string, info: PreambleInfo): string {
   return `<pretext>\n${inner}\n</pretext>`;
 }
 
+/**
+ * Does this LaTeX document describe a slide deck? Decided from the source,
+ * before conversion, because a deck converts differently: the converter builds
+ * its whole document (see `convertLatexToPretext`).
+ */
+function isSlideshowLatex(info: PreambleInfo, body: string): boolean {
+  return (
+    isBeamerClass(info.documentClass) ||
+    /\\begin\s*\{(?:frame|slide)\}|\\frame\s*[{<[]/.test(body)
+  );
+}
+
+/**
+ * Cleaning rules a slideshow opts out of, because the converter reads what
+ * they would delete: a frame holding `\maketitle` is the title frame (it
+ * becomes the `<frontmatter>` title slide, which shows the `\date`), one
+ * holding only `\tableofcontents` is an outline that is dropped whole rather
+ * than left as an empty slide, and `\appendix` becomes an "Appendix" section.
+ */
+const SLIDESHOW_KEPT_MACROS = [
+  "maketitle",
+  "date",
+  "tableofcontents",
+  "appendix",
+];
+
+/**
+ * Add the `<docinfo>` to a whole document the converter built. Only the macros
+ * go in it: the converter already put the authors in the `<frontmatter>`.
+ */
+function addDocinfo(document: string, info: PreambleInfo): string {
+  const content = document.replace(/^<\?xml[^>]*\?>\s*/, "").trim();
+  if (!content) return "";
+  const docinfo = buildDocinfo(info, { includeAuthor: false });
+  return docinfo
+    ? content.replace(/^<pretext>/, `<pretext>\n${docinfo}\n`)
+    : content;
+}
+
 export function normalizePretextSource(pretextSource: string): string {
   const trimmedPretext = pretextSource.trim();
   if (!trimmedPretext) {
@@ -168,14 +210,22 @@ export function convertLatexToPretext(
   const { info: preambleInfo, warnings: preambleWarnings } =
     extractPreambleInfo(preamble);
 
+  // A slide deck is converted as a whole document: the converter makes the
+  // `<slideshow>` root and builds its `<frontmatter>` -- which PreTeXt turns
+  // into the title slide -- from the title-page macros, so those go in its
+  // preamble too. It is told the deck is beamer whatever the class claimed,
+  // so beamer's overlay syntax (`\item<2->`) is parsed as such.
+  const slideshow = Boolean(body) && isSlideshowLatex(preambleInfo, body);
+
   // Build a minimal source for unified-latex: \documentclass is required for
   // it to recognise the preamble/body boundary. Only macro definitions go in
   // the preamble (so they're registered without appearing in output). The raw
   // body follows inside \begin{document}...\end{document}.
   const conversionSource = body
     ? [
-        `\\documentclass{${preambleInfo.documentClass}}`,
+        `\\documentclass{${slideshow ? "beamer" : preambleInfo.documentClass}}`,
         preambleInfo.macros,
+        slideshow ? preambleInfo.titlePageMacros : "",
         "\\begin{document}",
         body,
         "\\end{document}",
@@ -188,7 +238,9 @@ export function convertLatexToPretext(
     output: cleanedLatex,
     warnings: chunkWarnings,
     chunks: cleanChunks,
-  } = cleanLatexInChunks(conversionSource);
+  } = cleanLatexInChunks(conversionSource, {
+    disable: slideshow ? SLIDESHOW_KEPT_MACROS : undefined,
+  });
   const warnings = [...preambleWarnings, ...chunkWarnings];
   if (!cleanedLatex.trim()) {
     return { pretext: "", cleanedLatex, warnings, cleanChunks };
@@ -201,13 +253,15 @@ export function convertLatexToPretext(
     : cleanedLatex;
 
   const rawFragment = asConvertedString(
-    latexToPretext(sourceForUnified),
+    latexToPretext(sourceForUnified, { fragment: !slideshow }),
   ).trim();
   if (!rawFragment) {
     return { pretext: "", cleanedLatex, warnings, cleanChunks };
   }
 
-  const assembled = assemblePretextDocument(rawFragment, preambleInfo);
+  const assembled = slideshow
+    ? addDocinfo(rawFragment, preambleInfo)
+    : assemblePretextDocument(rawFragment, preambleInfo);
   const pretext = assembled ? normalizePretextSource(assembled) : "";
   return { pretext, cleanedLatex, warnings, cleanChunks };
 }

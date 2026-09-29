@@ -40,11 +40,24 @@ type UnifiedProcessResult = ReturnType<
 //  },
 //};
 
-export function latexToPretext(latex: string): UnifiedProcessResult {
+export interface LatexToPretextOptions {
+  /**
+   * Return only the converted content (the default), or, when `false`, a whole
+   * `<pretext>` document whose root (`<article>`, `<book>`, `<slideshow>`),
+   * title, and `<frontmatter>` the converter builds from the preamble.
+   */
+  fragment?: boolean;
+}
+
+export function latexToPretext(
+  latex: string,
+  options: LatexToPretextOptions = {},
+): UnifiedProcessResult {
+  const { fragment = true } = options;
   const convert = (value: string) =>
     processLatexViaUnified()
       .use(unifiedLatexToPretext, {
-        producePretextFragment: true,
+        producePretextFragment: fragment,
         //macroReplacements: myMacroReplacements,
         //environmentReplacements: ptxExtraEnvironmentReplacements,
       })

@@ -57,7 +57,11 @@ export interface CleanLatexChunksResult {
  * (`mergeChunksAtLevel`), which lets the wizard change split depth without
  * re-cleaning or re-converting anything.
  */
-export function cleanLatexInChunks(source: string): CleanLatexChunksResult {
+export function cleanLatexInChunks(
+  source: string,
+  options: { disable?: string[] } = {},
+): CleanLatexChunksResult {
+  const { disable } = options;
   const text = trimJunk(source).replace(/(\n *){3,}/g, "\n\n");
   const regions = findDocumentRegions(text, "auto");
   const chunks: CleanedChunk[] = [];
@@ -74,12 +78,13 @@ export function cleanLatexInChunks(source: string): CleanLatexChunksResult {
           level: 0,
         },
         "preamble",
+        disable,
       ),
     );
   }
 
   const body = text.slice(regions.body.start, regions.body.end);
-  chunks.push(...cleanBodyChunks(body));
+  chunks.push(...cleanBodyChunks(body, disable));
 
   // The bibliography is hand-formatted data; no rule may touch it, so it is
   // carried through verbatim rather than cleaned as a chunk.
@@ -112,8 +117,9 @@ function cleanChunk(
   before: string,
   meta: Omit<CleanedChunk, "before" | "after" | "fixes">,
   scope: "preamble" | "body",
+  disable?: string[],
 ): CleanedChunk {
-  const { output, fixes } = cleanLatexText(before, { scope });
+  const { output, fixes } = cleanLatexText(before, { scope, disable });
   return { ...meta, before, after: output, fixes };
 }
 
@@ -124,7 +130,7 @@ function cleanChunk(
  * offsets, so concatenating every chunk's `before` reproduces the body byte for
  * byte, and concatenating every `after` gives the cleaned body.
  */
-function cleanBodyChunks(body: string): CleanedChunk[] {
+function cleanBodyChunks(body: string, disable?: string[]): CleanedChunk[] {
   const headers = findLatexHeaders(body);
   const hierarchy = latexDivisionHierarchy(body);
   const levelOf = new Map(hierarchy.map((cmd, index) => [cmd, index + 1]));
@@ -136,6 +142,7 @@ function cleanBodyChunks(body: string): CleanedChunk[] {
             body,
             { path: [], title: "", kind: "lead", level: 0 },
             "body",
+            disable,
           ),
         ]
       : [];
@@ -151,7 +158,12 @@ function cleanBodyChunks(body: string): CleanedChunk[] {
   let carry = "";
   if (lead.trim()) {
     chunks.push(
-      cleanChunk(lead, { path: [], title: "", kind: "lead", level: 0 }, "body"),
+      cleanChunk(
+        lead,
+        { path: [], title: "", kind: "lead", level: 0 },
+        "body",
+        disable,
+      ),
     );
   } else {
     carry = lead;
@@ -177,6 +189,7 @@ function cleanBodyChunks(body: string): CleanedChunk[] {
           level,
         },
         "body",
+        disable,
       ),
     );
   });

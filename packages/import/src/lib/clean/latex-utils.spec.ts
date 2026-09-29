@@ -32,6 +32,25 @@ describe("makeXMLSafe", () => {
   it("normalizes refs to match the label rewrite", () => {
     expect(makeXMLSafe("see \\ref{my section}")).toBe("see \\ref{my_section}");
   });
+
+  it("leaves beamer overlay specifications for the converter", () => {
+    for (const source of [
+      "\\item<2-> Later",
+      "\\only<3>{x}",
+      "\\alert<1-| alert@2>{x}",
+      "\\begin{frame}<1-2>{T}",
+      "\\begin{itemize}[<+->]",
+    ]) {
+      expect(makeXMLSafe(source)).toBe(source);
+    }
+  });
+
+  it("still rewrites inequalities that follow a command", () => {
+    expect(makeXMLSafe("$\\alpha < \\beta$")).toBe("$\\alpha \\lt \\beta$");
+    expect(makeXMLSafe("$\\alpha<\\beta>0$")).toBe(
+      "$\\alpha\\lt \\beta\\gt 0$",
+    );
+  });
 });
 
 describe("trimJunk", () => {

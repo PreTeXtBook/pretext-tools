@@ -74,6 +74,98 @@ describe("slideshow imports", () => {
     expect(detectDocumentKind(result.pretextSource)).toBe("slideshow");
   });
 
+  it("builds the title slide's <frontmatter> from the preamble", () => {
+    const deck = [
+      "\\documentclass{beamer}",
+      "\\title[Short]{My Talk}",
+      "\\subtitle{A first look}",
+      "\\author{Ada\\inst{1} \\and Alan\\inst{2}}",
+      "\\institute{\\inst{1}Univ One \\and \\inst{2}Univ Two}",
+      "\\date{May 2026}",
+      "\\newcommand{\\R}{\\mathbb{R}}",
+      "\\begin{document}",
+      "\\begin{frame}",
+      "\\titlepage",
+      "\\end{frame}",
+      "\\begin{frame}{First}",
+      "Hello.",
+      "\\end{frame}",
+      "\\end{document}",
+    ].join("\n");
+    const result = convertSourceToPretext(deck);
+    if ("pretextError" in result) throw new Error(result.pretextError);
+    const source = result.pretextSource.replace(/\s+/g, " ");
+    expect(source).toContain(
+      "<title>My Talk</title> <subtitle>A first look</subtitle> <shorttitle>Short</shorttitle> <frontmatter> <bibinfo>",
+    );
+    expect(source).toContain(
+      "<author> <personname>Ada</personname> <institution>Univ One</institution> </author>",
+    );
+    expect(source).toContain(
+      "<author> <personname>Alan</personname> <institution>Univ Two</institution> </author>",
+    );
+    expect(source).toContain("<date>May 2026</date>");
+    expect(source).toContain("<titlepage> <titlepage-items/> </titlepage>");
+    // The title frame is the generated title slide, not a slide of its own.
+    expect(source).not.toContain("titlepage}");
+    expect(source).toContain("</frontmatter> <slide> <title>First</title>");
+    // The authors live in the frontmatter; the docinfo keeps the macros.
+    expect(source).toMatch(/<docinfo> <macros>[^<]*\\R/);
+    expect(source).not.toMatch(/<docinfo>.*<author>.*<\/docinfo>/);
+  });
+
+  it("carries beamer's reveals over as pauses", () => {
+    const deck = [
+      "\\documentclass{beamer}",
+      "\\begin{document}",
+      "\\begin{frame}{Reveals}",
+      "First. \\pause Second.",
+      "",
+      "\\begin{itemize}[<+->]",
+      "\\item A",
+      "\\item B",
+      "\\end{itemize}",
+      "",
+      "\\begin{enumerate}",
+      "\\item<1-> One",
+      "\\item<2-> Two",
+      "\\end{enumerate}",
+      "\\end{frame}",
+      "\\end{document}",
+    ].join("\n");
+    const result = convertSourceToPretext(deck);
+    if ("pretextError" in result) throw new Error(result.pretextError);
+    const source = result.pretextSource;
+    // Everything after the `\pause` is one step: the rest of the paragraph
+    // and both lists, which then reveal their own items one at a time.
+    expect(source).toMatch(
+      /<p>\s*First\.\s*<\/p>\s*<subslide>\s*<p>\s*Second\./,
+    );
+    expect(source).toContain('<ul pause="yes">');
+    expect(source).toContain('<ol pause="yes">');
+    // Overlay specs reach the converter intact, not as `\lt ... \gt`.
+    expect(source).not.toContain("\\lt");
+    expect(source).not.toContain("TODO");
+  });
+
+  it("drops an outline frame instead of leaving an empty slide", () => {
+    const deck = [
+      "\\documentclass{beamer}",
+      "\\begin{document}",
+      "\\begin{frame}{Outline}",
+      "\\tableofcontents",
+      "\\end{frame}",
+      "\\begin{frame}{Real}",
+      "Content.",
+      "\\end{frame}",
+      "\\end{document}",
+    ].join("\n");
+    const result = convertSourceToPretext(deck);
+    if ("pretextError" in result) throw new Error(result.pretextError);
+    expect(result.pretextSource).not.toContain("Outline");
+    expect(result.pretextSource).toContain("<title>Real</title>");
+  });
+
   it("uses <slideshow> when frames appear under a non-beamer class", () => {
     const result = convertSourceToPretext(
       beamer.replace("{beamer}", "{article}"),
