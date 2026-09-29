@@ -12,6 +12,7 @@ A Visual Studio Code extension to make writing PreTeXt documents easier.
 - Syntax highlighting and indentation based on XML, plus some additions like recognizing math as LaTeX.
 - **Native schema validation** built into the extension's own language server — no third-party XML extension required. Get inline diagnostics with improved error messages, including duplicate-id and cross-reference checks.
 - A large collection of snippets for most PreTeXt elements, plus smart completions based on the schema (tags, attributes, and cross-references).
+- **Typing shortcuts**: `$x$` becomes `<m>x</m>`, a bare `<` becomes `&lt;` (or `\lt` in math), a double Enter starts a new paragraph, and `theorem:` + Enter inserts a theorem.
 - **Live Preview**: an in-editor, side-by-side preview rendered directly from the official PreTeXt stylesheets — no PreTeXt/Python installation required, and rebuilds take well under a second. Includes two-way sync: forward search jumps the preview to your cursor, and clicking in the preview jumps back to the source (inverse search).
 - **Visual Editor** (experimental): a WYSIWYG, TipTap-based editor for PreTeXt documents, for authoring without touching raw XML.
 - **Import Project wizard**: turn an existing LaTeX, Markdown, or Pandoc-supported document into a new PreTeXt project, with a preview of the converted structure before anything is written to disk.
@@ -55,6 +56,17 @@ Here are some options that I find make snippets more useful. For each of these, 
 - Editor: Snippets Suggestions. I set this to "bottom" so that the snippets are shown after other autocomplete suggestions.
 - Editor: Tab Completion. I set this to "only snippets" so that I can hit TAB or ENTER to select the snippet.
 - If you get too many snippet suggestions, experiment with the quick-suggest and completion settings. Please contribute suggestions on the best configuration if you find something that works well.
+
+### Typing Shortcuts
+
+A few things you type are converted to PreTeXt markup on the spot. Each conversion is its own undo step, so Ctrl+Z (Cmd+Z) gives you back exactly what you typed.
+
+- **Math**: `$x^2$` becomes `<m>x^2</m>` as you type the closing `$`, and `$$...$$` becomes `<md>...</md>`. Dollar signs inside math, code, comments, and attributes are left alone, and a `$` typed right after a space never closes math (so "$5 or $10" is safe).
+- **Escaping**: a bare `<` or `&` followed by a space becomes `&lt;` or `&amp;`, and a `>` typed after a space becomes `&gt;`. Inside math, `a < b` and `a > b` become `a \lt b` and `a \gt b`.
+- **Paragraphs**: inside a `<p>`, press Enter twice (or Shift+Enter) to end the paragraph and start a new one. Outside a paragraph, Shift+Enter starts a new `<p>`.
+- **Environments**: outside a paragraph, type an environment name and a colon on a line of its own (`theorem:`, `definition:`, `proof:`, `example:`, ...) and press Enter to insert its snippet.
+
+Each shortcut can be turned off in the settings under "PreTeXt › Typing Shortcuts".
 
 ### Live Preview
 

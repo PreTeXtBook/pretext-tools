@@ -18,7 +18,9 @@ const items = await getPretextCompletions({
 });
 ```
 
-The returned completion items follow `vscode-languageserver` completion item types.
+The returned completion items follow the LSP completion item types from `vscode-languageserver-types`, which has no runtime side effects, so the package can be bundled into browsers and extension hosts as well as language servers.
+
+The element snippet bodies behind the completions are exported as `ELEMENTS` (keyed by element name), for hosts that want to expand a snippet by name.
 
 If `schema` is omitted, the package uses a bundled precomputed PreTeXt dev schema.
 You can still provide `schema` explicitly (for custom/stable/publication/project schema behavior).

@@ -11,6 +11,7 @@ export default defineConfig({
         importSmoke: "import-smoke.html",
         latexDemo: "latex-demo.html",
         markdownDemo: "markdown-demo.html",
+        typingDemo: "typing-demo.html",
       },
     },
   },

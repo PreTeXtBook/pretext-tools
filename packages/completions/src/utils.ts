@@ -1,4 +1,4 @@
-import { Position, Range } from "vscode-languageserver/node";
+import { Position, Range } from "vscode-languageserver-types";
 
 function positionCharShift(position: Position, shift?: number): Position {
   return {

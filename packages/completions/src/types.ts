@@ -1,4 +1,4 @@
-import { CompletionItem, Position } from "vscode-languageserver/node";
+import { CompletionItem, Position } from "vscode-languageserver-types";
 
 export type CompletionType = "element" | "attribute" | "file" | "ref";
 

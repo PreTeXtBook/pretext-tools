@@ -46,6 +46,8 @@ if (packageJson.dependencies) {
   delete packageJson.dependencies["@pretextbook/markdown-style-pretext"];
   // bundled into out/instant-preview-worker.mjs
   delete packageJson.dependencies["@pretextbook/pretext-html"];
+  // bundled into out/extension.js
+  delete packageJson.dependencies["@pretextbook/typing-shortcuts"];
 }
 
 fs.writeFileSync(

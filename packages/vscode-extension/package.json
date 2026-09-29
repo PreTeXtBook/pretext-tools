@@ -177,6 +177,11 @@
         "key": "ctrl+shift+v",
         "mac": "cmd+shift+v",
         "when": "editorTextFocus && !editorReadonly && editorLangId == 'pretext' && config.pretext-tools.paste.autoConvert"
+      },
+      {
+        "command": "pretext-tools.newParagraph",
+        "key": "shift+enter",
+        "when": "editorTextFocus && !editorReadonly && editorLangId == 'pretext' && !suggestWidgetVisible && config.pretext-tools.typingShortcuts.paragraphs"
       }
     ],
     "commands": [
@@ -379,6 +384,12 @@
         "category": "PreTeXt"
       },
       {
+        "command": "pretext-tools.newParagraph",
+        "title": "New Paragraph",
+        "category": "PreTeXt",
+        "description": "Inside a <p>, end it at the cursor and start the next one; elsewhere, start a new <p>. Bound to Shift+Enter."
+      },
+      {
         "command": "pretext-tools.gettingStarted",
         "title": "Open getting started walkthrough",
         "category": "PreTeXt"
@@ -468,6 +479,10 @@
         {
           "command": "pretext-tools.revealTargetDefinition",
           "when": "false"
+        },
+        {
+          "command": "pretext-tools.newParagraph",
+          "when": "editorLangId == 'pretext'"
         }
       ]
     },
@@ -800,6 +815,26 @@
             "type": "boolean",
             "default": true,
             "description": "Convert LaTeX or Markdown to PreTeXt when pasting into a PreTeXt file. Press Ctrl+Shift+V (Cmd+Shift+V on macOS) to paste without converting, or use the paste control that appears after pasting. Turn this off to paste plainly by default and convert with the \"PreTeXt: Paste and Convert to PreTeXt\" command instead."
+          },
+          "pretext-tools.typingShortcuts.mathDelimiters": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Convert `$...$` to `<m>...</m>` and `$$...$$` to `<md>...</md>` as you type the closing dollar sign. Undo reverts the conversion."
+          },
+          "pretext-tools.typingShortcuts.escapeCharacters": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Escape a bare `<`, `>`, or `&` as you type it: `&lt;`, `&gt;`, `&amp;` in text, and `\\lt`, `\\gt` inside math (when surrounded by spaces). Undo reverts the conversion."
+          },
+          "pretext-tools.typingShortcuts.paragraphs": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Inside a `<p>`, pressing Enter twice (or Shift+Enter) ends the paragraph and starts a new one. Elsewhere, Shift+Enter starts a new `<p>`."
+          },
+          "pretext-tools.typingShortcuts.environments": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Outside a paragraph, type an environment name and a colon on a line of its own (e.g. `theorem:`, `definition:`, `proof:`) and press Enter to insert that environment's snippet."
           }
         }
       }
@@ -913,6 +948,7 @@
     "@pretextbook/ptxast": "*",
     "@pretextbook/remark-pretext": "*",
     "@pretextbook/schema": "*",
+    "@pretextbook/typing-shortcuts": "*",
     "@pretextbook/visual-editor": "*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
