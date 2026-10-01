@@ -13,7 +13,16 @@ export interface TextChange {
 }
 
 /** Which shortcut produced an edit. */
-export type ShortcutKind = "math" | "escape" | "paragraph" | "environment";
+export type ShortcutKind =
+  | "math"
+  | "escape"
+  | "paragraph"
+  | "environment"
+  | "markup"
+  | "typography"
+  | "xref"
+  | "code-block"
+  | "list";
 
 /**
  * An edit for the host editor to apply: replace `start`–`end` (offsets into
@@ -35,6 +44,11 @@ export interface ShortcutEdit {
    * into the document *after* the edit.
    */
   caret?: number;
+  /**
+   * Open the host's completion list once the edit is in — for
+   * `<xref ref="">`, whose ids the language server completes.
+   */
+  suggest?: boolean;
 }
 
 export interface TypingShortcutsOptions {
@@ -47,12 +61,41 @@ export interface TypingShortcutsOptions {
   escapes?: boolean;
   /**
    * Inside a `<p>`, a double Enter (or Shift+Enter, via
-   * {@link TypingShortcuts.newParagraph}) splits the paragraph; elsewhere
-   * `newParagraph` starts a new one. Default `true`.
+   * {@link TypingShortcuts.newParagraph}) splits the paragraph, and in the
+   * text of an `<li>` splits it into two `<p>`s; elsewhere `newParagraph`
+   * starts a new one. Default `true`.
    */
   paragraphs?: boolean;
   /** `theorem:` + Enter on a line of its own expands the theorem snippet. Default `true`. */
   environments?: boolean;
+  /**
+   * Markdown-style inline markup: `*em*` → `<em>`, `**alert**` → `<alert>` and
+   * `` `code` `` → `<c>` on the closing delimiter; `_term_` → `<term>` and
+   * `"quote"` → `<q>` on the space after the closing delimiter;
+   * `[text](url)` → `<url>` on the `)`. Default `true`.
+   */
+  inlineMarkup?: boolean;
+  /**
+   * `--`, `---` and `...` → `<ndash/>`, `<mdash/>`, `<ellipsis/>` on the space
+   * typed after them. Default `true`.
+   */
+  typography?: boolean;
+  /**
+   * `@` typed after a space → `<xref ref=""/>`, with the id completions open.
+   * Default `true`.
+   */
+  crossReferences?: boolean;
+  /**
+   * ```` ``` ```` + Enter on a line of its own → `<pre>`, and
+   * ```` ```python ```` + Enter → `<program language="python">` (`<cd>`
+   * inside a paragraph). Default `true`.
+   */
+  codeBlocks?: boolean;
+  /**
+   * At the start of a line in a `<p>`, `- ` or `* ` starts a `<ul>` and `1. `
+   * an `<ol>`; in an `<li>`, a marker starts the next item. Default `true`.
+   */
+  lists?: boolean;
 }
 
 /** What the host knows about the editor when a change happens. */

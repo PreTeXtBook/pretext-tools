@@ -829,12 +829,37 @@
           "pretext-tools.typingShortcuts.paragraphs": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Inside a `<p>`, pressing Enter twice (or Shift+Enter) ends the paragraph and starts a new one. Elsewhere, Shift+Enter starts a new `<p>`."
+            "markdownDescription": "Inside a `<p>`, pressing Enter twice (or Shift+Enter) ends the paragraph and starts a new one; in a list item, it turns the item's text into paragraphs. Elsewhere, Shift+Enter starts a new `<p>`."
           },
           "pretext-tools.typingShortcuts.environments": {
             "type": "boolean",
             "default": true,
             "markdownDescription": "Outside a paragraph, type an environment name and a colon on a line of its own (e.g. `theorem:`, `definition:`, `proof:`) and press Enter to insert that environment's snippet."
+          },
+          "pretext-tools.typingShortcuts.inlineMarkup": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Convert Markdown-style markup as you type: `*text*` to `<em>`, `**text**` to `<alert>`, and `` `text` `` to `<c>` on the closing delimiter; `_text_` to `<term>` and `\"text\"` to `<q>` on the space after the closing delimiter; `[text](url)` to `<url>` on the closing parenthesis. Undo reverts the conversion."
+          },
+          "pretext-tools.typingShortcuts.typography": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Convert `--`, `---`, and `...` to `<ndash/>`, `<mdash/>`, and `<ellipsis/>` when you type a space after them. Undo reverts the conversion."
+          },
+          "pretext-tools.typingShortcuts.crossReferences": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Typing `@` after a space inserts `<xref ref=\"\"/>` and opens the list of ids to reference."
+          },
+          "pretext-tools.typingShortcuts.codeBlocks": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Type a Markdown code fence on a line of its own and press Enter: ```` ```python ```` inserts `<program language=\"python\">`, a bare ```` ``` ```` inserts `<pre>`, and inside a paragraph either inserts `<cd>`."
+          },
+          "pretext-tools.typingShortcuts.lists": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "At the start of a line in a paragraph, `- ` or `* ` starts a `<ul>` and `1. ` starts an `<ol>` (`a.`, `(i)`, ... set its marker). Inside a list item, typing a marker at the start of a line starts the next item."
           }
         }
       }

@@ -30,6 +30,16 @@ export interface LineMathMatch {
 }
 
 /**
+ * Whether an odd number of backticks lies between `from` and `to`: a
+ * `` `code` `` span is still open there, so a `$` is code, not math.
+ */
+const inOpenCodeSpan = (line: string, from: number, to: number): boolean => {
+  let ticks = 0;
+  for (let i = from; i < to; i++) if (line[i] === "`") ticks++;
+  return ticks % 2 === 1;
+};
+
+/**
  * Finds the `$...$` / `$$...$$` span that a `$` just typed at `column`
  * (1-based — the position immediately after the new character) closes, if
  * any. Pure, single-line string logic: the search never looks past the
@@ -60,6 +70,7 @@ export const findLineMathMatch = (
     ) {
       return null;
     }
+    if (inOpenCodeSpan(lineText, searchStart, openIdx)) return null;
     const content = lineText.slice(openIdx + 2, closerStart);
     if (content.length === 0 || /\s$/.test(content)) return null;
     return {
@@ -82,6 +93,7 @@ export const findLineMathMatch = (
   // ambiguous, so bail rather than guess.
   if (openIdx > searchStart && lineText[openIdx - 1] === "$") return null;
   if (openIdx > searchStart && lineText[openIdx - 1] === "\\") return null;
+  if (inOpenCodeSpan(lineText, searchStart, openIdx)) return null;
   const content = lineText.slice(openIdx + 1, closerIdx);
   if (content.length === 0 || /\s$/.test(content)) return null;
   return {

@@ -1,8 +1,9 @@
 /**
  * Test helpers: documents are written with `|` marking the caret.
  */
+import { TypingShortcuts } from "./session";
 import { snippetToPlainText } from "./snippets";
-import type { ShortcutEdit, TextChange } from "./types";
+import type { ShortcutEdit, TextChange, TypingShortcutsOptions } from "./types";
 
 export interface Doc {
   source: string;
@@ -59,5 +60,78 @@ export const type = (
       caret: caret + inserted.length,
     },
     changes: [{ rangeOffset: caret, rangeLength: 0, text: inserted }],
+  };
+};
+
+/**
+ * Drives a {@link TypingShortcuts} like an editor adapter does: each keystroke
+ * produces a change event, and any shortcut edit is applied (after resetting
+ * the session, as the adapters do for their own edits).
+ */
+export const editor = (marked: string, options?: TypingShortcutsOptions) => {
+  const shortcuts = new TypingShortcuts(options);
+  let current = doc(marked);
+  let lastEdit: ShortcutEdit | null = null;
+  const fire = (next: Doc, changes: TextChange[]) => {
+    const edit = shortcuts.afterChange(next.source, changes);
+    current = edit ? applyEdit(next.source, edit) : next;
+    lastEdit = edit;
+    if (edit) shortcuts.reset();
+  };
+  return {
+    type(...keys: string[]) {
+      for (const key of keys) {
+        const { doc: next, changes } = type(current, key);
+        fire(next, changes);
+      }
+      return this;
+    },
+    /** Type each character of `text` in turn (`\n` is an Enter). */
+    typeText(text: string) {
+      return this.type(...text.split(""));
+    },
+    /**
+     * Type `ch` over the identical character after the caret, as editors do
+     * with a character they auto-closed.
+     */
+    overtype(ch: string) {
+      const { source, caret } = current;
+      if (source[caret] !== ch) {
+        throw new Error(`no ${ch} to type over in ${show(current)}`);
+      }
+      fire({ source, caret: caret + 1 }, [
+        { rangeOffset: caret, rangeLength: 1, text: ch },
+      ]);
+      return this;
+    },
+    /** Replay a raw change event. */
+    change(next: Doc, changes: TextChange[]) {
+      fire(next, changes);
+      return this;
+    },
+    moveTo(caret: number) {
+      current = { ...current, caret };
+      return this;
+    },
+    shiftEnter() {
+      const edit = shortcuts.newParagraph(
+        current.source,
+        current.caret,
+        current.caret,
+      );
+      if (edit) current = applyEdit(current.source, edit);
+      return edit;
+    },
+    get text() {
+      return show(current);
+    },
+    get doc() {
+      return current;
+    },
+    /** The shortcut edit the most recent change produced, if any. */
+    get lastEdit() {
+      return lastEdit;
+    },
+    shortcuts,
   };
 };
