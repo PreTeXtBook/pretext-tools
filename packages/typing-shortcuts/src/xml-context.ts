@@ -126,6 +126,29 @@ export const scanXmlContext = (source: string, offset: number): XmlContext => {
   return { inText: true, open };
 };
 
+/**
+ * Offset of the end tag `</name>` that closes an element open at `from`
+ * (nested elements of the same name are matched up), or -1 if there is none.
+ */
+export const findEndTag = (
+  source: string,
+  from: number,
+  name: string,
+): number => {
+  const tag = new RegExp(`<(/?)${name.replace(/[.]/g, "\\.")}(?=[\\s/>])`, "g");
+  tag.lastIndex = from;
+  let depth = 0;
+  for (let match = tag.exec(source); match; match = tag.exec(source)) {
+    if (match[1]) {
+      if (depth === 0) return match.index;
+      depth--;
+    } else if (source[findTagEnd(source, match.index) - 2] !== "/") {
+      depth++;
+    }
+  }
+  return -1;
+};
+
 /** The innermost open element's name, if any. */
 export const innermost = (context: XmlContext): string | undefined =>
   context.open[context.open.length - 1]?.name;

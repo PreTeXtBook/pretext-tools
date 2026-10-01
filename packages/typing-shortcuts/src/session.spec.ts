@@ -1,56 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TypingShortcuts, typedInput } from "./session";
-import { applyEdit, doc, show, type, type Doc } from "./spec-utils";
-import type { TextChange, TypingShortcutsOptions } from "./types";
-
-/**
- * Drives a {@link TypingShortcuts} like an editor adapter does: each keystroke
- * produces a change event, and any shortcut edit is applied (after resetting
- * the session, as the adapters do for their own edits).
- */
-const editor = (marked: string, options?: TypingShortcutsOptions) => {
-  const shortcuts = new TypingShortcuts(options);
-  let current = doc(marked);
-  const fire = (next: Doc, changes: TextChange[]) => {
-    const edit = shortcuts.afterChange(next.source, changes);
-    current = edit ? applyEdit(next.source, edit) : next;
-    if (edit) shortcuts.reset();
-  };
-  return {
-    type(...keys: string[]) {
-      for (const key of keys) {
-        const { doc: next, changes } = type(current, key);
-        fire(next, changes);
-      }
-      return this;
-    },
-    /** Replay a raw change event. */
-    change(next: Doc, changes: TextChange[]) {
-      fire(next, changes);
-      return this;
-    },
-    moveTo(caret: number) {
-      current = { ...current, caret };
-      return this;
-    },
-    shiftEnter() {
-      const edit = shortcuts.newParagraph(
-        current.source,
-        current.caret,
-        current.caret,
-      );
-      if (edit) current = applyEdit(current.source, edit);
-      return edit;
-    },
-    get text() {
-      return show(current);
-    },
-    get doc() {
-      return current;
-    },
-    shortcuts,
-  };
-};
+import { editor } from "./spec-utils";
 
 const lines = (...parts: string[]) => parts.join("\n");
 
@@ -104,6 +54,15 @@ describe("typedInput", () => {
     ).toBeNull();
     expect(
       typedInput([{ rangeOffset: 0, rangeLength: 3, text: "" }]),
+    ).toBeNull();
+  });
+
+  it("recognizes a closing character typed over an auto-closed one", () => {
+    expect(typedInput([{ rangeOffset: 7, rangeLength: 1, text: ")" }])).toEqual(
+      { start: 7, end: 8, text: ")", before: 7, enter: false },
+    );
+    expect(
+      typedInput([{ rangeOffset: 7, rangeLength: 2, text: ")" }]),
     ).toBeNull();
   });
 });

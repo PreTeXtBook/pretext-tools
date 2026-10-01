@@ -106,6 +106,9 @@ export const registerMonacoTypingShortcuts = (
       applying = false;
     }
     shortcuts.reset();
+    if (edit.suggest) {
+      editor.trigger(EDIT_SOURCE, "editor.action.triggerSuggest", {});
+    }
   };
 
   const contentListener = editor.onDidChangeModelContent((event: any) => {

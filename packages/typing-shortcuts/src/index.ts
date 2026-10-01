@@ -9,12 +9,28 @@ export {
   type LineMathMatch,
 } from "./math-delimiters";
 export { escapeBeforeWhitespace, escapeGreaterThan } from "./escapes";
-export { insertParagraphEdit, splitParagraphEdit } from "./paragraphs";
+export {
+  insertParagraphEdit,
+  splitElementEdit,
+  splitListItemEdit,
+  splitParagraphEdit,
+} from "./paragraphs";
+export { listMarkerEdit } from "./lists";
 export {
   ENVIRONMENT_NAMES,
   environmentEdit,
   environmentSnippet,
 } from "./environments";
+export {
+  codeSpanEdit,
+  emphasisEdit,
+  isMarkupContext,
+  linkEdit,
+  wrapBeforeWhitespaceEdit,
+  xrefEdit,
+} from "./inline-markup";
+export { typographyEdit } from "./typography";
+export { codeBlockEdit, codeBlockSnippet } from "./code-blocks";
 export { snippetToPlainText } from "./snippets";
 export {
   scanXmlContext,

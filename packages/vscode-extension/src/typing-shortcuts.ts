@@ -1,7 +1,8 @@
 /**
  * Typing shortcuts in PreTeXt documents: `$x$` → `<m>x</m>`, escaping a bare
- * `<`/`>`/`&`, double Enter or Shift+Enter for a new paragraph, and
- * `theorem:` + Enter for the theorem snippet.
+ * `<`/`>`/`&`, double Enter or Shift+Enter for a new paragraph,
+ * `theorem:` + Enter for the theorem snippet, Markdown-style inline markup
+ * and code fences, `--`/`---`/`...`, and `@` for an `<xref>`.
  *
  * All the decisions live in `@pretextbook/typing-shortcuts` (shared with the
  * pretext-plus web editor); this file feeds it document changes and applies
@@ -40,6 +41,11 @@ function readOptions(): TypingShortcutsOptions {
     escapes: config.get("escapeCharacters", true),
     paragraphs: config.get("paragraphs", true),
     environments: config.get("environments", true),
+    inlineMarkup: config.get("inlineMarkup", true),
+    typography: config.get("typography", true),
+    crossReferences: config.get("crossReferences", true),
+    codeBlocks: config.get("codeBlocks", true),
+    lists: config.get("lists", true),
   };
 }
 
@@ -77,7 +83,13 @@ async function applyEdit(
     document.positionAt(edit.end),
   );
   if (edit.snippet) {
-    await editor.insertSnippet(new SnippetString(edit.text), range);
+    const inserted = await editor.insertSnippet(
+      new SnippetString(edit.text),
+      range,
+    );
+    if (inserted && edit.suggest) {
+      await commands.executeCommand("editor.action.triggerSuggest");
+    }
     return;
   }
   // Undo stops on both sides make the shortcut its own undo step: one Ctrl+Z
