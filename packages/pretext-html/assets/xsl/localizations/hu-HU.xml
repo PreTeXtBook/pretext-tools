@@ -144,12 +144,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- <localization string-id='fragment'>Fragment</localization> -->
     <!-- Parts of an exercise and its solution -->
     <!-- See the en-US file for a detailed explanation of the words for exercises -->
-    <localization string-id='divisionalexercise'>Feladat</localization>
+    <localization string-id='exercise-divisional'>Feladat</localization>
     <!-- Translation needed for Hungary Hungarian -->
     <!-- See en-US file for distinctions here, do not repeat previous translation -->
-    <!-- <localization string-id='inlineexercise'>Checkpoint</localization> -->
-    <!-- <localization string-id='worksheetexercise'>Worksheet Exercise</localization> -->
-    <!-- <localization string-id='readingquestion'>Reading Question</localization> -->
+    <!-- <localization string-id='exercise-inline'>Checkpoint</localization> -->
+    <!-- <localization string-id='exercise-worksheet'>Worksheet Exercise</localization> -->
+    <!-- <localization string-id='exercise-reading'>Reading Question</localization> -->
     <localization string-id='webwork'>WeBWorK</localization>
     <localization string-id='hint'>Tipp</localization>
     <localization string-id='answer'>Vélasz</localization>
@@ -240,7 +240,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- This needs to be defined to *something* (English) -->
     <!-- Translate at first opportunity, please -->
     <localization string-id='evaluate'>Evaluate</localization>
-    <!-- <localization string-id='code'>Code</localization> -->
     <!-- <localization string-id='instructions'>Instructions</localization> -->
     <!-- <localization string-id='correct'>Correct</localization> -->
     <!-- <localization string-id='incorrect'>Incorrect</localization> -->
@@ -253,7 +252,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- <localization string-id='reset'>Reset</localization> -->
     <!-- <localization string-id='array'>array</localization> -->
     <!-- <localization string-id="papersize">Paper size</localization> -->
-    <!-- <localization string-id="printing-options">Additional printing options</localization> -->
+    <!-- <localization string-id="printing-options">Printing options</localization> -->
     <!-- <localization string-id="hide-hints">Hide hints</localization> -->
     <!-- <localization string-id="hide-answers">Hide answers</localization> -->
     <!-- <localization string-id="hide-solutions">Hide solutions</localization> -->

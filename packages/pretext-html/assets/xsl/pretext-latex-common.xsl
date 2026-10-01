@@ -824,23 +824,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:if>
 </xsl:template>
 
-<!-- The funding/support acknowledgment ("bibinfo/support") is an   -->
-<!-- unnumbered footnote on an article's title page: temporarily    -->
-<!-- hijack \thefootnote to suppress the mark, then restore it.     -->
-<!-- Shared: the regular conversion employs this via its            -->
-<!-- "footnote-numbering", classic via its "frontmatter-helpers"    -->
-<xsl:template name="support-footnote">
-    <xsl:if test="$b-is-article and $bibinfo/support">
-        <xsl:text>%% add a \ptxsupport command as unnumbered footnote&#xa;</xsl:text>
-        <xsl:text>\let\ptxsavedfootnote\thefootnote%&#xa;</xsl:text>
-        <xsl:text>\newcommand\ptxsupport[1]{%&#xa;</xsl:text>
-        <xsl:text>  \let\thefootnote\relax%&#xa;</xsl:text>
-        <xsl:text>  \footnotetext{#1}%&#xa;</xsl:text>
-        <xsl:text>  \let\thefootnote\ptxsavedfootnote%&#xa;</xsl:text>
-        <xsl:text>}&#xa;</xsl:text>
-    </xsl:if>
-</xsl:template>
-
 <!-- Semantic Macros -->
 <xsl:template name="semantic-macros">
     <xsl:text>%% Begin: Semantic Macros&#xa;</xsl:text>
@@ -1629,6 +1612,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </xsl:call-template>
     </xsl:if>
     <xsl:text>]{block}{}&#xa;</xsl:text>
+    <!-- tcolorbox names each auto counter after its box, so the names     -->
+    <!-- below reappear in the LaTeX as counters, "tcb@cnt@figuredistinct" -->
+    <!-- for one, and as macros, "\thetcb@cnt@figuredistinct", which       -->
+    <!-- subfigure captions write out directly.  A control sequence name   -->
+    <!-- cannot contain a hyphen, so none of the box names does.           -->
     <!-- should condition on $project-reps, but it is not defined yet -->
     <xsl:if test="$b-number-project-distinct">
         <xsl:text>%%&#xa;</xsl:text>
@@ -1644,7 +1632,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:with-param name="level" select="$numbering-projects" />
             </xsl:call-template>
         </xsl:if>
-        <xsl:text>]{project-distinct}{}&#xa;</xsl:text>
+        <xsl:text>]{projectdistinct}{}&#xa;</xsl:text>
     </xsl:if>
     <xsl:if test="$b-number-exercise-distinct">
         <xsl:text>%%&#xa;</xsl:text>
@@ -1659,7 +1647,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:with-param name="level" select="$numbering-exercises" />
             </xsl:call-template>
         </xsl:if>
-        <xsl:text>]{exercise-distinct}{}&#xa;</xsl:text>
+        <xsl:text>]{exercisedistinct}{}&#xa;</xsl:text>
     </xsl:if>
     <xsl:if test="$b-number-figure-distinct">
         <xsl:text>%%&#xa;</xsl:text>
@@ -1674,7 +1662,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:with-param name="level" select="$numbering-figures" />
             </xsl:call-template>
         </xsl:if>
-        <xsl:text>]{figure-distinct}{}&#xa;</xsl:text>
+        <xsl:text>]{figuredistinct}{}&#xa;</xsl:text>
     </xsl:if>
     <xsl:if test="$b-number-openproblem-distinct">
         <xsl:text>%%&#xa;</xsl:text>
@@ -1690,7 +1678,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:with-param name="level" select="$numbering-openproblems" />
             </xsl:call-template>
         </xsl:if>
-        <xsl:text>]{openproblem-distinct}{}&#xa;</xsl:text>
+        <xsl:text>]{openproblemdistinct}{}&#xa;</xsl:text>
     </xsl:if>
     <!-- TODO: condition of figure/*/figure-like, or $subfigure-reps -->
     <xsl:text>%% A faux tcolorbox whose only purpose is to provide common numbering&#xa;</xsl:text>
@@ -1701,16 +1689,24 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\newtcolorbox[auto counter</xsl:text>
     <!-- control the levels of the numbering -->
     <!-- global (no periods) is the default  -->
+    <!-- The subnumbers nest within the counter that numbers figures, -->
+    <!-- and the full number, a figure number followed by a letter,   -->
+    <!-- is built from that same counter                              -->
+    <xsl:variable name="figure-counter">
+        <xsl:choose>
+            <xsl:when test="$b-number-figure-distinct">
+                <xsl:text>tcb@cnt@figuredistinct</xsl:text>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:text>tcb@cnt@block</xsl:text>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
     <xsl:text>, number within=</xsl:text>
-    <xsl:choose>
-        <xsl:when test="$b-number-figure-distinct">
-            <xsl:text>tcb@cnt@figure-distinct</xsl:text>
-        </xsl:when>
-        <xsl:otherwise>
-            <xsl:text>tcb@cnt@block</xsl:text>
-        </xsl:otherwise>
-    </xsl:choose>
-    <xsl:text>, number freestyle={\noexpand\thetcb@cnt@block(\noexpand\alph{\tcbcounter})}</xsl:text>
+    <xsl:value-of select="$figure-counter"/>
+    <xsl:text>, number freestyle={\noexpand\the</xsl:text>
+    <xsl:value-of select="$figure-counter"/>
+    <xsl:text>(\noexpand\alph{\tcbcounter})}</xsl:text>
     <xsl:text>]{subdisplay}{}&#xa;</xsl:text>
     <!-- faux subdisplay requires manipulating low-level counters -->
     <xsl:text>\makeatother&#xa;</xsl:text>
@@ -1918,14 +1914,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- FIGURE-LIKE come in three flavors: blocks (not in a side-by-side),  -->
     <!-- panels (in a side-by-side, but not in an overall "figure"), or      -->
     <!-- subnumbered (panel of a side-by-side, which is then in an overall   -->
-    <!-- "figure').  Selections must be careful (not like dropping through   -->
+    <!-- "figure", or a "figure" in a "stack" that is the content of an      -->
+    <!-- overall "figure").  Selections must be careful (not dropping through -->
     <!-- a choose/when).  Environments need to consider title/caption        -->
     <!-- placement and counters.  So we might create twelve different        -->
     <!-- environments here.  In -common, see the "figure-placement" template -->
     <!-- for another determination, and a more careful explanation.          -->
     <!-- (There was once a subtle bug when we were not so careful here.)     -->
     <xsl:variable name="figure-reps" select="
-        ($document-root//figure[not(parent::sidebyside)])[1]|
+        ($document-root//figure[not(parent::sidebyside or parent::stack/parent::figure)])[1]|
         ($document-root//table[not(parent::sidebyside)])[1]|
         ($document-root//listing[not(parent::sidebyside)])[1]|
         ($document-root//list[not(parent::sidebyside)])[1]"/>
@@ -1955,7 +1952,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- (SUB)FIGURE-LIKE -->
     <!-- subnumbered versions, if contained by overall figure -->
     <xsl:variable name="subnumber-reps" select="
-        ($document-root//figure/sidebyside/figure|$document-root//figure/sbsgroup/sidebyside/figure)[1]|
+        ($document-root//figure/sidebyside/figure|$document-root//figure/sbsgroup/sidebyside/figure|$document-root//figure/stack/figure)[1]|
         ($document-root//figure/sidebyside/table|$document-root//figure/sbsgroup/sidebyside/table)[1]|
         ($document-root//figure/sidebyside/listing|$document-root//figure/sbsgroup/sidebyside/listing)[1]|
         ($document-root//figure/sidebyside/list|$document-root//figure/sbsgroup/sidebyside/list)[1]"/>
@@ -2355,6 +2352,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- tcolorbox would *automatically* be made unbreakable, and the result  -->
 <!-- was really bad page breaks, or worse, the potential for the interior -->
 <!-- box dribbling off the bottom of the page.                            -->
+<!-- The begin-clauses open a paragraph with a run-in title, and -->
+<!-- the first "p" inside continues that very line.  This idiom  -->
+<!-- is why a "p" may not open with an unconditional "\par" - it -->
+<!-- would strand every run-in title on a line of its own.  Note -->
+<!-- the division of labor: the conclusion's own "\par\medskip"  -->
+<!-- closes its predecessor, boundary material belonging to the  -->
+<!-- environment, not to the neighbors.                          -->
 <xsl:template match="introduction|conclusion" mode="environment">
     <xsl:variable name="environment-name">
         <xsl:value-of select="local-name(.)"/>
@@ -2547,6 +2551,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- cross-reference.  Not stylable, though we      -->
 <!-- could use a macro for the tombstone/Halmos/QED -->
 <!-- so that could be set.                          -->
+<!-- The end-clause appends the tombstone to the last paragraph -->
+<!-- of the proof: stretchy glue and the symbol ride the final  -->
+<!-- line.  This idiom is why no element may end its content    -->
+<!-- with "\par" - a closing "\par" here would strand the       -->
+<!-- tombstone on a line of its own.                            -->
 <xsl:template match="*[&PROOF-FILTER;][&SOLUTION-PROOF-FILTER;]" mode="environment">
     <xsl:text>\NewDocumentEnvironment{solution</xsl:text>
     <xsl:value-of select="local-name(.)"/>
@@ -2559,6 +2568,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Title comes with punctuation, always.              -->
 <!-- TODO: move implication definitions here, and       -->
 <!-- pass semantic strings out of the construction      -->
+<!-- The begin-clause opens a paragraph with a run-in heading    -->
+<!-- (implication arrows, or a title); the "case" text continues -->
+<!-- that line.  So "case" appears in the leaves-paragraph-open  -->
+<!-- authority, and a following "p" closes the paragraph.        -->
 <xsl:template match="case" mode="environment">
     <xsl:text>\NewDocumentEnvironment{case}{mmmm}&#xa;</xsl:text>
     <xsl:text>{\par\medskip\noindent\notblank{#2}{#2\space{}}{}\textit{\notblank{#3}{#3\space{}}{}\notblank{#2#3}{}{#1.\space{}}}</xsl:text>
@@ -2722,13 +2735,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="counter">
         <xsl:choose>
             <xsl:when test="(&PROJECT-FILTER;) and $b-number-project-distinct">
-                <xsl:text>project-distinct</xsl:text>
+                <xsl:text>projectdistinct</xsl:text>
             </xsl:when>
             <xsl:when test="self::exercise and boolean(&INLINE-EXERCISE-FILTER;) and $b-number-exercise-distinct">
-                <xsl:text>exercise-distinct</xsl:text>
+                <xsl:text>exercisedistinct</xsl:text>
             </xsl:when>
             <xsl:when test="(&OPENPROBLEM-FILTER;) and $b-number-openproblem-distinct">
-                <xsl:text>openproblem-distinct</xsl:text>
+                <xsl:text>openproblemdistinct</xsl:text>
             </xsl:when>
             <xsl:otherwise>
                 <xsl:text>block</xsl:text>
@@ -2758,7 +2771,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>}</xsl:text>
     <!-- number of arguments -->
     <xsl:choose>
-        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER;">
+        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;">
             <xsl:text>[4]</xsl:text>
         </xsl:when>
         <xsl:otherwise>
@@ -2770,7 +2783,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- begin: title construction -->
     <xsl:text>title={{#1~\thetcbcounter</xsl:text>
     <xsl:choose>
-        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER;">
+        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;">
             <!-- first space of double space -->
             <xsl:text>\notblank{#2#3}{\space}{}</xsl:text>
             <xsl:text>\notblank{#2}{\space#2}{}</xsl:text>
@@ -2784,7 +2797,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- end: title construction -->
     <!-- label in argument 3 or argument 4 -->
     <xsl:choose>
-        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER;">
+        <xsl:when test="&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;">
             <xsl:text>phantomlabel={#4}, </xsl:text>
         </xsl:when>
         <xsl:otherwise>
@@ -2818,7 +2831,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:text>subdisplay</xsl:text>
             </xsl:when>
             <xsl:when test="$b-number-figure-distinct">
-                <xsl:text>figure-distinct</xsl:text>
+                <xsl:text>figuredistinct</xsl:text>
             </xsl:when>
             <xsl:otherwise>
                 <xsl:text>block</xsl:text>
@@ -2855,10 +2868,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>{</xsl:text>
     <!-- begin: title/caption construction -->
     <xsl:choose>
-        <!-- Captions/titlesof 2D displays within panels of figure/sidebyside  -->
+        <!-- Captions/titles of 2D displays within panels of figure/sidebyside -->
+        <!-- or of figures stacked within a figure.                            -->
         <!-- \thetcbcounter comes from subdisplay, looks like 25.3(b),         -->
         <!-- and this is what will render in a cross-reference via \label/\ref -->
-        <!-- The enclosing figure is numbered from block or figure-distinct.   -->
+        <!-- The enclosing figure is numbered from block or figuredistinct.    -->
         <!-- We us the "xstring" package to strip out this number (e.g. 25.3)  -->
         <!-- and leave just the sub-numbering (e.g, (b)).                      -->
         <!-- NB: parameter #3 is a hardcoded number supplied by the -common    -->
@@ -2872,7 +2886,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>before lower={{</xsl:text>
             <xsl:choose>
                 <xsl:when test="$b-number-figure-distinct">
-                    <xsl:text>\textbf{\StrSubstitute{\thetcbcounter}{\thetcb@cnt@figure-distinct}{}}</xsl:text>
+                    <xsl:text>\textbf{\StrSubstitute{\thetcbcounter}{\thetcb@cnt@figuredistinct}{}}</xsl:text>
                 </xsl:when>
                 <xsl:otherwise>
                     <xsl:text>\textbf{\StrSubstitute{\thetcbcounter}{\thetcb@cnt@block}{}}</xsl:text>
@@ -3348,16 +3362,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- http://stackoverflow.com/questions/2817664/xsl-how-to-tell-if-element-is-last-in-series -->
 <xsl:template match="author" mode="article-info">
     <xsl:apply-templates select="personname" />
+    <!-- A support statement is a "\thanks" footnote off the name.  The -->
+    <!-- "\author" block is set as a one-column tabular, where a "\\"   -->
+    <!-- row cannot wrap: a sentence of ordinary length overflows the   -->
+    <!-- page and carries the name, affiliation and email with it.      -->
+    <xsl:if test="support">
+        <xsl:text>\thanks{</xsl:text>
+        <xsl:apply-templates select="support" />
+        <xsl:text>}</xsl:text>
+    </xsl:if>
     <xsl:if test="affiliation">
         <xsl:apply-templates select="affiliation" />
     </xsl:if>
     <xsl:if test="email">
         <xsl:text>\\&#xa;</xsl:text>
         <xsl:apply-templates select="email" />
-    </xsl:if>
-    <xsl:if test="support">
-        <xsl:text>\\&#xa;</xsl:text>
-        <xsl:apply-templates select="support" />
     </xsl:if>
     <xsl:if test="following-sibling::author" >
         <xsl:text>&#xa;\and</xsl:text>
@@ -3401,14 +3420,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:text>\\&#xa;</xsl:text>
         <xsl:apply-templates select="location" />
     </xsl:if>
-</xsl:template>
-
-<xsl:template match="bibinfo/support" mode="article-info">
-    <xsl:apply-templates select="*"/>
-</xsl:template>
-
-<xsl:template match="bibinfo/support" mode="article-info">
-    <xsl:apply-templates select="*"/>
 </xsl:template>
 
 <!-- Departments, Institutions, and Addresses are free-form, or sequences of lines  -->
@@ -4315,20 +4326,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Examples have no structure, or have statement and solution -->
 <!-- Exercises have hints, answers and solutions                -->
 
-<!-- Environments/blocks implemented with tcolorbox          -->
-<!-- expect certain arguments.  This template provides them. -->
-<!--                                                         -->
-<!-- 1.  title, with punctuation as needed                   -->
-<!-- 2.  the "unique-id", which suffices for                 -->
-<!--     the LaTeX label/ref mechanism                       -->
-<!--                                                         -->
-<!-- Or, for THEOREM-LIKE and AXIOM-LIKE,                    -->
-<!--                                                         -->
-<!-- 1.  title, right now we add punctuation as needed       -->
-<!-- 2.  a list of creator(s)                                -->
-<!-- 3.  the "unique-id", which suffices for                 -->
-<!--     the LaTeX label/ref mechanism                       -->
-<!-- N.B.: "objectives", "outcomes" need to use this         -->
+<!-- Environments/blocks implemented with tcolorbox            -->
+<!-- expect certain arguments.  This template provides them.   -->
+<!--                                                           -->
+<!-- 1.  title, with punctuation as needed                     -->
+<!-- 2.  the "unique-id", which suffices for                   -->
+<!--     the LaTeX label/ref mechanism                         -->
+<!--                                                           -->
+<!-- Or, for the mathematical blocks (THEOREM-LIKE, AXIOM-LIKE, -->
+<!-- DEFINITION-LIKE, OPENPROBLEM-LIKE),                       -->
+<!--                                                           -->
+<!-- 1.  title, right now we add punctuation as needed         -->
+<!-- 2.  the attribution: creator and origins, comma-separated -->
+<!-- 3.  the "unique-id", which suffices for                   -->
+<!--     the LaTeX label/ref mechanism                         -->
+<!-- N.B.: "objectives", "outcomes" need to use this           -->
 <xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&REMARK-LIKE;|&COMPUTATION-LIKE;|&OPENPROBLEM-LIKE;|&EXAMPLE-LIKE;|&PROJECT-LIKE;|&ASIDE-LIKE;|exercise[boolean(&INLINE-EXERCISE-FILTER;)]|assemblage" mode="block-options">
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="type-name"/>
@@ -4336,9 +4348,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>{</xsl:text>
     <xsl:apply-templates select="." mode="title-full"/>
     <xsl:text>}</xsl:text>
-    <xsl:if test="&THEOREM-FILTER; or &AXIOM-FILTER;">
+    <xsl:if test="&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;">
         <xsl:text>{</xsl:text>
-        <xsl:apply-templates select="." mode="creator-full" />
+        <xsl:apply-templates select="." mode="attribution-full"/>
         <xsl:text>}</xsl:text>
     </xsl:if>
     <!-- unique-id destined for tcolorbox  phantomlabel=  option -->
@@ -5406,6 +5418,28 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 
+<!-- The LaTeX realization of some elements ends with a paragraph -->
+<!-- still open: a "p" never closes its own paragraph, and the    -->
+<!-- run-in heading of a proof "case" opens one for the text that -->
+<!-- follows it.  A follower that starts a fresh paragraph must   -->
+<!-- close its predecessor's with "\par" - separation is the      -->
+<!-- FOLLOWER's job.  It cannot be the other way around: an       -->
+<!-- environment may legitimately append to its final paragraph   -->
+<!-- (a "proof" ends with a tombstone riding the last line, a     -->
+<!-- workspace ends with a strut) or open its first one (an       -->
+<!-- "introduction" begins with a run-in title), so no element    -->
+<!-- may close its own paragraphs unconditionally.  This template -->
+<!-- is the single authority on which elements leave a paragraph  -->
+<!-- open; to admit a new element, extend the match here - never  -->
+<!-- grow a private list at a call site.                          -->
+<xsl:template match="p|paragraphs|sidebyside|case" mode="leaves-paragraph-open">
+    <xsl:text>true</xsl:text>
+</xsl:template>
+
+<xsl:template match="*" mode="leaves-paragraph-open">
+    <xsl:text>false</xsl:text>
+</xsl:template>
+
 <!-- Paragraphs -->
 <!-- \par *separates* paragraphs So look backward for          -->
 <!-- cases where a paragraph would have been the previous      -->
@@ -5424,8 +5458,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:template match="p">
     <xsl:apply-templates select="." mode="newpage"/>
     <xsl:variable name="node-preceding-current" select="preceding-sibling::*[not(&SUBDIVISION-METADATA-FILTER;)][1]" />
-    <xsl:if test="$node-preceding-current[self::p or self::paragraphs or self::sidebyside or self::case]">
+    <xsl:variable name="predecessor-leaves-paragraph-open">
+        <xsl:apply-templates select="$node-preceding-current" mode="leaves-paragraph-open"/>
+    </xsl:variable>
+    <xsl:if test="$predecessor-leaves-paragraph-open = 'true'">
         <xsl:text>\par</xsl:text>
+        <!-- spacing policy, not separation: a bit of extra room -->
+        <!-- after these two, in addition to the paragraph break -->
         <xsl:if test="$node-preceding-current[self::paragraphs or self::case]">
             <xsl:text>\medskip</xsl:text>
         </xsl:if>
@@ -5776,10 +5815,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:if test="@marker or ($format-code = '0') or ancestor::exercises or ancestor::worksheet or ancestor::handout or ancestor::reading-questions or ancestor::references">
         <xsl:text>[label={</xsl:text>
         <xsl:apply-templates select="." mode="latex-list-label" />
+        <xsl:text>}</xsl:text>
+        <!-- The braces delimit the replacement text of the "label" key. -->
+        <!-- "start" is a key in its own right, so it follows them.      -->
         <xsl:if test="$format-code = '0'">
             <xsl:text>, start=0</xsl:text>
         </xsl:if>
-        <xsl:text>}]</xsl:text>
+        <xsl:text>]</xsl:text>
     </xsl:if>
     <xsl:text>&#xa;</xsl:text>
      <xsl:apply-templates select="li"/>
@@ -7082,17 +7124,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\par\smallskip\centerline{A deprecated JSXGraph interactive demonstration goes here in interactive output.}\smallskip&#xa;</xsl:text>
 </xsl:template>
 
-<!-- We sometimes need to explicitly leave LaTeX's vertical mode.     -->
-<!-- But we try to be judicious about using this.  Overuse makes      -->
-<!-- for bad spacing.                                                 -->
-<!-- Explanation:  http://tex.stackexchange.com/questions/22852/      -->
-<!-- function-and-usage-of-leavevmode                                 -->
-<!--   "Use \leavevmode for all macros which could be used at         -->
-<!--   the begin of the paragraph and add horizontal boxes            -->
-<!--   by themselves (e.g. in form of text)."                         -->
-<!-- Potential alternate solution: write a leading "empty" \mbox{}    -->
-<!-- http://tex.stackexchange.com/questions/171220/                   -->
-<!-- include-non-floating-graphic-in-a-theorem-environment            -->
+<!-- A "sidebyside" as the first content of "paragraphs" follows -->
+<!-- the run-in title, and each token below is load-bearing, by  -->
+<!-- measurement: dropping "\leavevmode" un-indents the first    -->
+<!-- panel line, and reducing the whole to "\par" tightens the   -->
+<!-- layout by one "\parskip".  Together they mean: break the    -->
+<!-- title's line, add a paragraph of separation, and set the    -->
+<!-- panels at the paragraph-indent position.  Whether that is   -->
+<!-- the intended look has never been decided deliberately, so   -->
+<!-- change this only on purpose, re-measuring.                  -->
+<!-- Background on the primitive:                                -->
+<!-- http://tex.stackexchange.com/questions/22852/               -->
+<!-- function-and-usage-of-leavevmode                            -->
 <xsl:template match="sidebyside" mode="leave-vertical-mode">
     <xsl:if test="not(preceding-sibling::*[not(&SUBDIVISION-METADATA-FILTER;)]) and parent::paragraphs">
         <xsl:text>\leavevmode\par\noindent%&#xa;</xsl:text>
@@ -7151,7 +7194,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- likewise, sidebyside and tabular will center themselves -->
     <!-- Eventually everything in a figure should control itself -->
     <!-- TODO: need to investigate more (poem? etc)              -->
-    <xsl:if test="self::figure and not(image or sidebyside or tabular)">
+    <xsl:if test="self::figure and not(image or sidebyside or tabular or stack)">
         <xsl:text>\centering&#xa;</xsl:text>
     </xsl:if>
     <!-- TODO: process meta-data, then restrict contents -->
@@ -7166,6 +7209,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
       <xsl:text>\end{sidewaysfigure}%&#xa;</xsl:text>
     </xsl:if>
     <xsl:call-template name="end-saved-footnotes"/>
+</xsl:template>
+
+<!-- A "stack" within a "figure" holds subfigures: each is a  -->
+<!-- "figure" set in the subnumbered environment, one after   -->
+<!-- another at full width, and the enclosing figure supplies -->
+<!-- the caption for the whole.                               -->
+<xsl:template match="figure/stack">
+    <xsl:apply-templates select="figure"/>
 </xsl:template>
 
 <!-- Tables, (Named) Lists -->
@@ -7305,10 +7356,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Images -->
 <!-- ###### -->
 
-<!-- First: images in full-width contexts                   -->
-<!-- naked images go into a tcolorbox for layout control    -->
-<!-- figure/image (not in a sidebyside) into same tcolorbox -->
-<xsl:template match="image[not(ancestor::sidebyside)]">
+<!-- First: images in full-width contexts                     -->
+<!-- naked images go into a tcolorbox for layout control      -->
+<!-- figure/image (not in a sidebyside) into same tcolorbox   -->
+<!-- An image more deeply within a "sidebyside" (in an        -->
+<!-- "exercise" panel or a list item, say) is here too: the   -->
+<!-- tcolorbox measures from "\linewidth", the available      -->
+<!-- width where the image sits.                              -->
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;)]">
     <xsl:apply-templates select="." mode="newpage"/>
     <xsl:variable name="rtf-layout">
         <xsl:apply-templates select="." mode="layout-parameters" />
@@ -7345,14 +7400,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:choose>
 </xsl:template>
 
+<!-- An "image" or a "tabular" in a side-by-side panel is set as a   -->
+<!-- bare box with a leading "\noindent", so a paragraph already in  -->
+<!-- progress must be broken before it, and the box's own line must  -->
+<!-- be closed before any successor.  Within a panel this needs no   -->
+<!-- analysis of the neighbors: panels hold no run-in headings and   -->
+<!-- no trailing tombstones, so a redundant "\par" lands in vertical -->
+<!-- mode, where it is a no-op.  So bracket every such box with a    -->
+<!-- "\par" on each side, unconditionally.                           -->
+
 <!-- Second: images already constrained by side-by-side panels -->
-<xsl:template match="image[ancestor::sidebyside]">
-    <!-- get a newline if inside a "stack" -->
-    <xsl:if test="parent::stack and preceding-sibling::*">
-        <xsl:text>\par&#xa;</xsl:text>
-    </xsl:if>
+<xsl:template match="image[&SBS-LAYOUT-FILTER;]">
+    <xsl:text>\par&#xa;</xsl:text>
     <xsl:text>\noindent</xsl:text>
     <xsl:apply-templates select="." mode="image-inclusion" />
+    <xsl:text>\par&#xa;</xsl:text>
 </xsl:template>
 
 <!-- Various versions of images have their width set to the         -->
@@ -7595,12 +7657,16 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <xsl:template match="tabular[ancestor::sidebyside]">
+    <!-- bracketing "\par" pair: see the panel rule at the "image" -->
+    <!-- template for side-by-side panels                          -->
+    <xsl:text>\par&#xa;</xsl:text>
     <!-- with layout control (inside sidebyside), scale down, but not up  -->
     <!-- https://tex.stackexchange.com/questions/327887/                  -->
     <!-- resizing-or-scaling-table-only-if-it-is-larger-than-column-width -->
     <xsl:text>\noindent\resizebox{\ifdim\width > \linewidth\linewidth\else\width\fi}{!}{%&#xa;</xsl:text>
     <xsl:apply-templates select="." mode="tabular-inclusion"/>
     <xsl:text>}%&#xa;</xsl:text>
+    <xsl:text>\par&#xa;</xsl:text>
 </xsl:template>
 
 <xsl:template match="tabular" mode="tabular-inclusion">
@@ -7661,10 +7727,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
-    <!-- get a newline if inside a "stack" -->
-    <xsl:if test="parent::stack and preceding-sibling::*">
-        <xsl:text>\par&#xa;</xsl:text>
-    </xsl:if>
     <!-- center within a sidebyside if by itself       -->
     <!-- \centering needs a closing \par within a      -->
     <!-- defensive group if it is to be effective      -->

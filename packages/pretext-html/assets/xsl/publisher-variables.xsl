@@ -105,6 +105,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- as an empty string -->
 <xsl:variable name="chunk-level-entered" select="string($chunks)"/>
 
+<!-- Experimental: "statement" and "feedback" inside the "premise" -->
+<!-- and "response" (the "cards") of a "cardsort" exercise.  With  -->
+<!-- "no" a card is the content of its "statement" and "feedback"  -->
+<!-- is dropped.  With "yes" the structure survives, for eventual  -->
+<!-- use by Runestone.  Declared here, since assembly needs it.    -->
+<xsl:param name="debug.advanced.feedback" select="'no'"/>
+<xsl:variable name="b-debug-advanced-feedback" select="$debug.advanced.feedback = 'yes'"/>
+
 <!-- ############################# -->
 <!-- Structure of the Version Tree -->
 <!-- ############################# -->
@@ -133,6 +141,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="version-article-sections"    select="boolean($version-root/article/section)"/>
 <xsl:variable name="version-article-printouts"   select="boolean($version-root/article/worksheet|$version-root/article/handout)"/>
 <xsl:variable name="version-article-subsections" select="boolean($version-root/article/section/subsection)"/>
+<xsl:variable name="version-slideshow-sections"  select="boolean($version-root/slideshow/section)"/>
 
 <!-- A book must have a chapter              -->
 <!-- An article need not have a section      -->
@@ -266,7 +275,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:variable>
 
 <!-- This is the minimum information to locate a     -->
-<!-- Citation Stylesheet Language (CSL) style file   -->
+<!-- Citation Style Language (CSL) style file        -->
 <!-- in the CSL repository.  It is not expected to   -->
 <!-- have the ".csl" suffix, but should have partial -->
 <!-- path names, such as "dependent/".  Employers    -->
@@ -275,7 +284,18 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="csl-style-file">
     <xsl:apply-templates select="$publisher-attribute-options/common/citation-stylesheet-language/pi:pub-attribute[@name='style']" mode="set-pubfile-variable"/>
 </xsl:variable>
-<!-- global indication of if a publisher has opted in -->
+<!-- A journal named in the publication file supplies a default  -->
+<!-- style, as recorded in the list of supported journals, and a -->
+<!-- style named in the publication file still wins.  Journal    -->
+<!-- codes are matched regardless of case, as in the Python      -->
+<!-- get_journal_info() function.                                -->
+<xsl:template match="common/citation-stylesheet-language/pi:pub-attribute[@name='style']" mode="get-default-pub-variable">
+    <xsl:variable name="journal-code" select="translate($journal-name, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')"/>
+    <xsl:if test="not($journal-code = '')">
+        <xsl:value-of select="document('../journals/journals.xml')/ptx-journals/journal[code = $journal-code]/citation-stylesheet-language/@style"/>
+    </xsl:if>
+</xsl:template>
+<!-- global indication of if a publisher has opted in, perhaps by way of a journal -->
 <xsl:variable name="b-using-csl-styles" select="not(normalize-space($csl-style-file) = '')"/>
 <!-- if using styles we form the filename of generated references and citations -->
 <xsl:variable name="csl-file">
@@ -1409,8 +1429,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- on a local http.server process. The summary of all             -->
 <!-- are recorded in the dynamic-substitutions-file.                -->
 <xsl:variable name="dynamic-substitutions-file">
-    <!-- Only relevant if there are dynamic exercises present.      -->
-    <xsl:if test="$original//exercise//setup">
+    <!-- Only relevant if there are dynamic exercises present.       -->
+    <!-- The test here covers exactly the cases that need this file. -->
+    <xsl:if test="$original//fillin[@ansobj] or $original//eval[@obj]">
         <!-- the generated directory, declared or defaulted -->
         <xsl:value-of select="str:replace(concat($generated-directory-source, 'dynamic_subs/dynamic_substitutions.xml'), '&#x20;', '%20')"/>
     </xsl:if>
@@ -1497,12 +1518,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- numbered) specialized divisions of a          -->
 <!-- "subsubsection", then the non-zero maximums   -->
 <!-- below would go up by 1                        -->
-<!--   article/section: s.ss.sss => 3              -->
-<!--   book:            c.s.ss.sss => 4            -->
-<!--   book/part:       p.c.s.ss.sss => 5          -->
+<!--   article/section:   s.ss.sss => 3            -->
+<!--   book:              c.s.ss.sss => 4          -->
+<!--   book/part:         p.c.s.ss.sss => 5        -->
+<!--   slideshow/section: s.n => 1                 -->
 <xsl:variable name="numbering-maxlevel-entered">
-    <!-- these are the maximum possible for a given document type -->
-    <!-- the default, and also an error-check upper-limit         -->
+    <!-- these are the maximum possible for a given document type, -->
+    <!-- an error-check upper-limit, and usually the default       -->
     <xsl:variable name="max-feasible">
         <xsl:choose>
             <xsl:when test="$version-has-parts">5</xsl:when>
@@ -1510,10 +1532,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:when test="$version-article-sections or $version-article-printouts">3</xsl:when>
             <xsl:when test="$version-doc-type = 'article'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'letter'">0</xsl:when>
+            <xsl:when test="$version-slideshow-sections">1</xsl:when>
             <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
             <xsl:when test="$version-doc-type = 'memo'">0</xsl:when>
             <xsl:otherwise>
                 <xsl:message>PTX:BUG: a document type needs a maximum division level defined</xsl:message>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <!-- A slideshow defaults to level 0, whatever its structure, -->
+    <!-- so its slides are counted through the whole slideshow    -->
+    <xsl:variable name="default-level">
+        <xsl:choose>
+            <xsl:when test="$version-doc-type = 'slideshow'">0</xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="$max-feasible"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
@@ -1526,7 +1559,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                     <!-- NaN does not equal *anything*, so tests if a number -->
                     <xsl:when test="not(number($the-number) = number($the-number)) or ($the-number &lt; 0)">
                         <xsl:message>PTX:FALLBACK:   numbering level for divisions given in the publisher file ("<xsl:value-of select="$the-number"/>") is not a number or is negative.  The default value will be used instead</xsl:message>
-                        <xsl:value-of select="$max-feasible"/>
+                        <xsl:value-of select="$default-level"/>
                         </xsl:when>
                     <xsl:otherwise>
                         <xsl:value-of select="$publication/numbering/divisions/@level"/>
@@ -1537,9 +1570,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:when test="not($numbering.maximum.level = '')">
                 <xsl:value-of select="$numbering.maximum.level" />
             </xsl:when>
-            <!-- various defaults are the maximum possible -->
+            <!-- various defaults, usually the maximum possible -->
             <xsl:otherwise>
-                <xsl:value-of select="$max-feasible"/>
+                <xsl:value-of select="$default-level"/>
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
@@ -1547,7 +1580,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:choose>
         <xsl:when test="$candidate-maxlevel > $max-feasible">
             <xsl:message>PTX:FALLBACK:   numbering level set for divisions ("<xsl:value-of select="$candidate-maxlevel"/>") is greater than the maximum possible ("<xsl:value-of select="$max-feasible"/>") for this document type.  The default value will be used instead</xsl:message>
-            <xsl:value-of select="$max-feasible"/>
+            <xsl:value-of select="$default-level"/>
         </xsl:when>
         <xsl:otherwise>
             <xsl:value-of select="$candidate-maxlevel"/>
@@ -2207,8 +2240,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="$publisher-attribute-options/html/knowl/pi:pub-attribute[@name='exercise-worksheet']" mode="set-pubfile-variable"/>
 </xsl:variable>
 
-<xsl:variable name="knowl-exercise-readingquestion">
-    <xsl:apply-templates select="$publisher-attribute-options/html/knowl/pi:pub-attribute[@name='exercise-readingquestion']" mode="set-pubfile-variable"/>
+<xsl:variable name="knowl-exercise-reading">
+    <xsl:apply-templates select="$publisher-attribute-options/html/knowl/pi:pub-attribute[@name='exercise-reading']" mode="set-pubfile-variable"/>
 </xsl:variable>
 
 <!--                   -->
@@ -3122,6 +3155,33 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:value-of select="substring-after($join-latex-pagebreaks, ' ')"/>
 </xsl:variable>
 
+<!-- The document classes of the LaTeX conversions, and the Beamer   -->
+<!-- class, accept the same eight point sizes as a class option, so  -->
+<!-- the check on a publisher's choice is shared.  A caller provides -->
+<!-- the value to test, the value to use when the test fails, and    -->
+<!-- the name of the publication file entry, for the message.        -->
+<xsl:template name="validate-font-size">
+    <xsl:param name="candidate"/>
+    <xsl:param name="fallback"/>
+    <xsl:param name="entry"/>
+    <xsl:choose>
+        <xsl:when test="($candidate =  '8') or
+                        ($candidate =  '9') or
+                        ($candidate = '10') or
+                        ($candidate = '11') or
+                        ($candidate = '12') or
+                        ($candidate = '14') or
+                        ($candidate = '17') or
+                        ($candidate = '20')">
+            <xsl:value-of select="$candidate"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:message>PTX:FALLBACK: <xsl:value-of select="$entry"/> in publication file should be 8, 9, 10, 11, 12, 14, 17 or 20 points, not "<xsl:value-of select="$candidate"/>".  Proceeding with default value: "<xsl:value-of select="$fallback"/>"</xsl:message>
+            <xsl:value-of select="$fallback"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
 <!-- For historical reasons, this variable has "pt" as part -->
 <!-- of its value.  A change would need to be coordinated   -->
 <!-- with every application in the -latex conversion.       -->
@@ -3129,25 +3189,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:choose>
         <!-- via publication file -->
         <xsl:when test="$publication/latex/@font-size">
-            <!-- provisional, convenience -->
-            <xsl:variable name="fs" select="$publication/latex/@font-size"/>
-            <xsl:choose>
-                <xsl:when test="($fs =  '8') or
-                                ($fs =  '9') or
-                                ($fs = '10') or
-                                ($fs = '11') or
-                                ($fs = '12') or
-                                ($fs = '14') or
-                                ($fs = '17') or
-                                ($fs = '20')">
-                    <xsl:value-of select="$fs"/>
-                    <xsl:text>pt</xsl:text>
-                </xsl:when>
-                <xsl:otherwise>
-                    <xsl:message>PTX:FALLBACK: LaTeX @font-size in publication file should be 8, 9, 10, 11, 12, 14, 17 or 20 points, not "<xsl:value-of select="$publication/latex/@font-size"/>".  Proceeding with default value: "10"</xsl:message>
-                    <xsl:text>10pt</xsl:text>
-                </xsl:otherwise>
-            </xsl:choose>
+            <xsl:call-template name="validate-font-size">
+                <xsl:with-param name="candidate" select="$publication/latex/@font-size"/>
+                <xsl:with-param name="fallback" select="'10'"/>
+                <xsl:with-param name="entry" select="'LaTeX @font-size'"/>
+            </xsl:call-template>
+            <xsl:text>pt</xsl:text>
         </xsl:when>
         <!-- via deprecated stringparam: assumes "pt" as the unit of measure   -->
         <!-- (this is recycled code, so no real attempt to do better)          -->
@@ -3176,18 +3223,22 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:variable>
 
 <!-- Font selection for the XSL-FO PDF route ("pdf-fo").  A key names a -->
-<!-- tested font set; the FO conversion maps the key to concrete font  -->
-<!-- family names, which  pretext/fop.xconf  embeds.  Guaranteed to be  -->
-<!-- currently only 'latin-modern' (default, matches the LaTeX route).  -->
+<!-- tested font set; the FO conversion maps the key to concrete font   -->
+<!-- family names, which  pretext/fop.xconf  embeds.  The keys are      -->
+<!-- 'latin-modern' (the default, matching the LaTeX route) and         -->
+<!-- 'alegreya' (a book face for text-heavy documents).                 -->
 <xsl:variable name="pdf-font">
     <xsl:variable name="default-pdf-font" select="'latin-modern'"/>
     <xsl:choose>
         <xsl:when test="$publication/pdf/@font = 'latin-modern'">
             <xsl:text>latin-modern</xsl:text>
         </xsl:when>
+        <xsl:when test="$publication/pdf/@font = 'alegreya'">
+            <xsl:text>alegreya</xsl:text>
+        </xsl:when>
         <!-- attempted to set, but not a recognized key -->
         <xsl:when test="$publication/pdf/@font">
-            <xsl:message>PTX:FALLBACK: PDF (XSL-FO) font setting in publisher file should be "latin-modern", not "<xsl:value-of select="$publication/pdf/@font"/>". Proceeding with default value: "<xsl:value-of select="$default-pdf-font"/>"</xsl:message>
+            <xsl:message>PTX:FALLBACK: PDF (XSL-FO) font setting in publisher file should be "latin-modern" or "alegreya", not "<xsl:value-of select="$publication/pdf/@font"/>". Proceeding with default value: "<xsl:value-of select="$default-pdf-font"/>"</xsl:message>
             <xsl:value-of select="$default-pdf-font"/>
         </xsl:when>
         <!-- no attempt at all, so default -->
@@ -3315,7 +3366,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </xsl:when>
         <!-- set, but not correct, so inform and use default -->
         <xsl:when test="$publication/html/asymptote/@links">
-            <xsl:message>PTX:FALLBACK: HTML links to Asymptote publisher file should be "yes" (adds link below image) or "no" (no links), not "<xsl:value-of select="$publication/latex/asymptote/@links"/>". Proceeding with default value: "no" (no links)</xsl:message>
+            <xsl:message>PTX:FALLBACK: HTML links to Asymptote publisher file should be "yes" (adds link below image) or "no" (no links), not "<xsl:value-of select="$publication/html/asymptote/@links"/>". Proceeding with default value: "no" (no links)</xsl:message>
             <xsl:text>no</xsl:text>
         </xsl:when>
         <!-- unset, use the default, which is "no" since -->
@@ -3405,6 +3456,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="reveal-custom-css">
     <xsl:apply-templates select="$publisher-attribute-options/revealjs/appearance/pi:pub-attribute[@name='custom-css']" mode="set-pubfile-variable"/>
 </xsl:variable>
+
+<!-- Reveal.js Slide Numbering -->
+
+<xsl:variable name="reveal-slide-numbering">
+    <xsl:apply-templates select="$publisher-attribute-options/revealjs/appearance/pi:pub-attribute[@name='slide-numbering']" mode="set-pubfile-variable"/>
+</xsl:variable>
+<!-- Convert "yes"/"no" to a boolean variable -->
+<xsl:variable name="b-reveal-slide-numbering" select="$reveal-slide-numbering = 'yes'"/>
 
 <!-- Reveal.js Controls Back Arrows -->
 
@@ -3528,6 +3587,48 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="$publisher-attribute-options/beamer/appearance/pi:pub-attribute[@name='theme']" mode="set-pubfile-variable"/>
 </xsl:variable>
 
+<!-- Beamer Slide Numbering -->
+
+<xsl:variable name="beamer-slide-numbering">
+    <xsl:apply-templates select="$publisher-attribute-options/beamer/appearance/pi:pub-attribute[@name='slide-numbering']" mode="set-pubfile-variable"/>
+</xsl:variable>
+<!-- Convert "yes"/"no" to a boolean variable -->
+<xsl:variable name="b-beamer-slide-numbering" select="$beamer-slide-numbering = 'yes'"/>
+
+<!-- Beamer Aspect Ratio -->
+
+<!-- Beamer builds a slide as a small page, which a viewer scales up -->
+<!-- to fill a screen, so the shape of that page is all a publisher  -->
+<!-- chooses.  The Beamer class realizes a shape as a class option,  -->
+<!-- spelled without the separator, and the conversion does that     -->
+<!-- translation; here we only record the publisher's choice.        -->
+<xsl:variable name="beamer-aspect-ratio">
+    <xsl:apply-templates select="$publisher-attribute-options/beamer/page/pi:pub-attribute[@name='aspect-ratio']" mode="set-pubfile-variable"/>
+</xsl:variable>
+
+<!-- Beamer Font Size -->
+
+<!-- The Beamer class accepts the same eight point sizes as the    -->
+<!-- LaTeX document classes, and 11 points is its own default.  A  -->
+<!-- size other than 10, 11, or 12 points needs the "extsizes"     -->
+<!-- package.  As with the LaTeX conversion, this variable carries -->
+<!-- "pt" as part of its value.                                    -->
+<xsl:variable name="beamer-font-size">
+    <xsl:choose>
+        <xsl:when test="$publication/beamer/@font-size">
+            <xsl:call-template name="validate-font-size">
+                <xsl:with-param name="candidate" select="$publication/beamer/@font-size"/>
+                <xsl:with-param name="fallback" select="'11'"/>
+                <xsl:with-param name="entry" select="'Beamer @font-size'"/>
+            </xsl:call-template>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>11</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
+    <xsl:text>pt</xsl:text>
+</xsl:variable>
+
 
 <!-- ########################################### -->
 <!-- Set Values/Defaults for Publisher Variables -->
@@ -3568,10 +3669,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </journal>
         <!-- The default CSL style file is empty so that this  -->
         <!-- feature can be "opt in", initially, and perhaps   -->
-        <!-- forever.  A good first choice for a CSL style is  -->
-        <!-- the "harvard1" style since it is copied into the  -->
-        <!-- right place in the citeproc-py distribution and   -->
-        <!-- should be present out-of-the-box.                 -->
+        <!-- forever.  Naming a journal is one way to opt in,  -->
+        <!-- when the journal has a style (see the template    -->
+        <!-- computing this default).  citeproc-py bundles a   -->
+        <!-- single style, while the "citeproc-py-styles"      -->
+        <!-- package supplies the CSL repository's thousands.  -->
         <citation-stylesheet-language>
             <pi:pub-attribute name="style" default="" freeform="yes"/>
         </citation-stylesheet-language>
@@ -3606,7 +3708,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <html>
         <pi:pub-attribute name="short-answer-responses" default="graded" options="always"/>
         <pi:pub-attribute name="read-aloud" default="yes" options="no"/>
-        <pi:pub-attribute name="favicon" default="none" options="simple"/>
+        <pi:pub-attribute name="favicon" default="none" options="simple svg"/>
         <pi:pub-attribute name="embed-button" default="no" options="yes"/>
         <pi:pub-attribute name="design-width" freeform="yes"/>
         <calculator>
@@ -3639,7 +3741,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <pi:pub-attribute name="exercise-inline" default="yes" options="no" legacy-stringparam="html.knowl.exercise.inline"/>
             <pi:pub-attribute name="exercise-divisional" default="no" options="yes" legacy-stringparam="html.knowl.exercise.sectional"/>
             <pi:pub-attribute name="exercise-worksheet" default="no" options="yes" legacy-stringparam="html.knowl.exercise.worksheet"/>
-            <pi:pub-attribute name="exercise-readingquestion" default="no" options="yes" legacy-stringparam="html.knowl.exercise.readingquestion"/>
+            <pi:pub-attribute name="exercise-reading" legacy-name="exercise-readingquestion" default="no" options="yes" legacy-stringparam="html.knowl.exercise.readingquestion"/>
         </knowl>
         <cross-references>
             <pi:pub-attribute name="knowled" default="maximum" options="never cross-page"/>
@@ -3764,6 +3866,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <appearance>
             <pi:pub-attribute name="theme" default="simple" freeform="yes"/>
             <pi:pub-attribute name="custom-css" default="" freeform="yes"/>
+            <pi:pub-attribute name="slide-numbering" default="no" options="yes"/>
         </appearance>
         <controls>
             <pi:pub-attribute name="backarrows" default="faded" options="hidden visible"/>
@@ -3784,7 +3887,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <beamer>
         <appearance>
             <pi:pub-attribute name="theme" default="Boadilla" freeform="yes"/>
+            <pi:pub-attribute name="slide-numbering" default="no" options="yes"/>
         </appearance>
+        <page>
+            <pi:pub-attribute name="aspect-ratio" default="16:9" options="4:3 16:10 14:9 5:4 3:2"/>
+        </page>
     </beamer>
 </pi:publisher>
 
@@ -3802,7 +3909,29 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- get the corresponding attribute from the publisher file -->
     <!-- which may not exist                                     -->
     <xsl:variable name="full-path" select="concat('$publication/', $path)"/>
-    <xsl:variable name="pubfile-attribute" select="dyn:evaluate($full-path)"/>
+    <xsl:variable name="new-name-attribute" select="dyn:evaluate($full-path)"/>
+    <!-- An attribute that has been renamed carries its old name as       -->
+    <!-- "@legacy-name", and a publisher who used that name still gets    -->
+    <!-- the value, with a deprecation message.  The path to it is the    -->
+    <!-- path to this attribute's parent, plus the old name.              -->
+    <xsl:variable name="legacy-name-path">
+        <xsl:choose>
+            <xsl:when test="@legacy-name">
+                <xsl:apply-templates select=".." mode="pub-entry-path"/>
+                <xsl:value-of select="concat('@', @legacy-name)"/>
+            </xsl:when>
+            <!-- no old name, so a legal expression selecting nothing -->
+            <xsl:otherwise>
+                <xsl:text>self::node()[false()]</xsl:text>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:variable name="legacy-name-attribute" select="dyn:evaluate(concat('$publication/', $legacy-name-path))"/>
+    <xsl:variable name="pubfile-attribute" select="$new-name-attribute | $legacy-name-attribute"/>
+    <!-- say so, once, when only the old name is present -->
+    <xsl:if test="$legacy-name-attribute and not($new-name-attribute)">
+        <xsl:message>PTX:DEPRECATE: the publisher file entry  <xsl:value-of select="$legacy-name-path"/>  has been renamed  <xsl:value-of select="$path"/>.  Your value, "<xsl:value-of select="$legacy-name-attribute"/>", will be used.  However you should move to the new name.</xsl:message>
+    </xsl:if>
     <!-- The default value, which may be specified or may vary conditionally -->
     <!-- (via a custom template) appears frequently as the provided value    -->
     <!-- when there is an error condition of some type, and is also echo'ed  -->
@@ -3919,7 +4048,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- is to allow deprecation warnings to flag (and often react        -->
 <!-- favorably) to attempted uses. Dated, and in chronological        -->
 <!-- order.  Grep, or the git pickaxe (log -S) using the date strings -->
- <!-- is often effective in locating all the pieces of a deprecation. -->
+<!-- is often effective in locating all the pieces of a deprecation.  -->
+<!-- A NEW ENTRY GOES AT THE END OF THE BANK, just above the marker   -->
+<!-- that closes it, never beside a similar parameter higher up.      -->
 
 <!-- Conversion specific parameters that die will   -->
 <!-- live on in warnings, which are isolated in the -->
@@ -4144,6 +4275,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- html/annotation/@platform  in publisher file -->
 <xsl:param name="html.annotation" select="''" />
 
+<!-- End of the bank: a new retired parameter goes just above. -->
+
 <!-- ###################################### -->
 <!-- Parameter Deprecation Warning Messages -->
 <!-- ###################################### -->
@@ -4185,6 +4318,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="document-root" select="./*[not(self::docinfo)]"/>
 
 
+    <!-- The messages below are in the order the parameters were deprecated, -->
+    <!-- and they print in that order, so A NEW ENTRY GOES AT THE END OF THE -->
+    <!-- SEQUENCE, just above the marker that closes it.  Placing one beside -->
+    <!-- a similar message instead lands it among far older dates, where the -->
+    <!-- next reader will not think to look for it.                          -->
+    <!--  -->
     <!-- 2017-07-05  sidebyside cannot be cross-referenced anymore, so not knowlizable -->
     <xsl:call-template name="parameter-deprecation-message">
         <xsl:with-param name="date-string" select="'2017-07-05'" />
@@ -4816,6 +4955,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:with-param name="incorrect-use" select="($directory.images != '')" />
     </xsl:call-template>
     <!--  -->
+    <!-- End of the chronological sequence: a new entry goes just above. -->
 </xsl:template>
 
 </xsl:stylesheet>

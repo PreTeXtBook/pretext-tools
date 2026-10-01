@@ -2094,7 +2094,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- REMARK-LIKE, COMPUTATION-LIKE, DEFINITION-LIKE, SOLUTION-LIKE, objectives (xref-content), outcomes (xref-content), EXAMPLE-LIKE, PROJECT-LIKE, OPENPROBLEM-LIKE, exercise (inline), task (xref-content), fn (xref-content), biblio/note (xref-content)-->
-<!-- E.g. Corollary 4.1 (Leibniz, Newton).  The fundamental theorem of calculus. -->
+<!-- E.g. Corollary 4.1 The fundamental theorem of calculus. (Leibniz, Newton, [3]) -->
 <xsl:template match="*" mode="heading-full">
     <xsl:param name="b-make-link" select="false()"/>
     <xsl:param name="heading-level"/>
@@ -2115,26 +2115,51 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                     <xsl:value-of select="$the-number"/>
                 </span>
             </xsl:if>
-            <!--  -->
-            <xsl:if test="creator and (&THEOREM-FILTER; or &AXIOM-FILTER;)">
-                <xsl:call-template name="space-styled"/>
-                <span class="creator">
-                    <xsl:text>(</xsl:text>
-                    <xsl:apply-templates select="." mode="creator-full"/>
-                    <xsl:text>)</xsl:text>
-                </span>
+            <!-- The attribution of a mathematical block: creator and -->
+            <!-- origins, one parenthesized group after the title     -->
+            <xsl:variable name="b-attribution" select="(creator or origins) and (&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;)"/>
+            <!-- A period after the number only when nothing follows it: a -->
+            <!-- title carries its own punctuation, and an attribution     -->
+            <!-- follows with none, exactly as in the LaTeX conversion     -->
+            <xsl:if test="not(title) and not($b-attribution)">
+                <xsl:call-template name="period-styled"/>
             </xsl:if>
-            <!-- A period now, no matter which of 4 combinations we have above-->
-            <xsl:call-template name="period-styled"/>
-            <!-- A title carries its own punctuation -->
             <xsl:if test="title">
                 <xsl:call-template name="space-styled"/>
                 <span class="title">
                     <xsl:apply-templates select="." mode="title-full"/>
                 </span>
             </xsl:if>
+            <xsl:if test="$b-attribution">
+                <xsl:call-template name="space-styled"/>
+                <span class="attribution">
+                    <xsl:text>(</xsl:text>
+                    <xsl:apply-templates select="." mode="attribution-full"/>
+                    <xsl:text>)</xsl:text>
+                </span>
+            </xsl:if>
         </xsl:with-param>
     </xsl:apply-templates>
+</xsl:template>
+
+<!-- Within the attribution, the creator and the origins each get a -->
+<!-- span, so a stylesheet can address the name and the citations   -->
+<!-- separately; the text and the commas come from the common       -->
+<!-- versions of these modes                                        -->
+<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&OPENPROBLEM-LIKE;" mode="creator-full">
+    <xsl:if test="creator">
+        <span class="creator">
+            <xsl:apply-imports/>
+        </span>
+    </xsl:if>
+</xsl:template>
+
+<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&OPENPROBLEM-LIKE;" mode="origins-full">
+    <xsl:if test="origins">
+        <span class="origins">
+            <xsl:apply-imports/>
+        </span>
+    </xsl:if>
 </xsl:template>
 
 <xsl:template match="&FIGURE-LIKE;" mode="figure-caption">
@@ -3273,9 +3298,27 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- The optionally born-hidden items can be panels of -->
 <!-- a sidebyside, where we should not be hiding them. -->
 <!-- A figure wrapping the sidebyside could be knowled -->
-<!-- if they need to be hidden.                        -->
-<xsl:template match="sidebyside/figure|sidebyside/table|sidebyside/listing|sidebyside/list" mode="is-hidden">
+<!-- if they need to be hidden.  The same goes for a   -->
+<!-- figure stacked within a figure.                   -->
+<xsl:template match="sidebyside/figure|sidebyside/table|sidebyside/listing|sidebyside/list|figure/stack/figure" mode="is-hidden">
     <xsl:value-of select="false()" />
+</xsl:template>
+
+<!-- A "stack" within a "figure" holds subfigures, which the    -->
+<!-- enclosing figure captions as a whole.  Each is an ordinary -->
+<!-- figure, subnumbered "(a)", "(b)", ... by the numbering     -->
+<!-- routines, and never a knowl.  The wrapper is a hook for    -->
+<!-- styling the vertical arrangement.                          -->
+<xsl:template match="figure/stack">
+    <xsl:param name="b-original" select="true()" />
+    <xsl:param name="heading-level"/>
+
+    <div class="figure-stack">
+        <xsl:apply-templates select="figure">
+            <xsl:with-param name="b-original" select="$b-original" />
+            <xsl:with-param name="heading-level" select="$heading-level"/>
+        </xsl:apply-templates>
+    </div>
 </xsl:template>
 
 <!-- Overall enclosing element -->
@@ -3872,7 +3915,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:value-of select="$knowl-exercise-worksheet = 'yes'"/>
 </xsl:template>
 <xsl:template match="reading-questions//exercise" mode="is-hidden">
-    <xsl:value-of select="$knowl-exercise-readingquestion = 'yes'"/>
+    <xsl:value-of select="$knowl-exercise-reading = 'yes'"/>
 </xsl:template>
 
 <!-- Overall enclosing element -->
@@ -6347,7 +6390,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- fill this box horizontally, with necessary vertical dimension -->
 <!-- to preserve the aspect ratio.  This div is also used to       -->
 <!-- provide vertical spacing from its surroundings.               -->
-<xsl:template match="image[not(ancestor::sidebyside)]">
+<!-- An image more deeply within a "sidebyside" (in an "exercise"  -->
+<!-- panel or a list item, say) comes here too: the percentages    -->
+<!-- refer to the available width where the image sits.            -->
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;)]">
     <xsl:variable name="rtf-layout">
         <xsl:apply-templates select="." mode="layout-parameters" />
     </xsl:variable>
@@ -6380,7 +6426,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- If the panel is a PTX "figure" then there will be -->
 <!-- an intermediate HTML "figure" which will not      -->
 <!-- interfere with the panel's constraints            -->
-<xsl:template match="image[ancestor::sidebyside]">
+<xsl:template match="image[&SBS-LAYOUT-FILTER;]">
     <div class="image-box">
         <xsl:apply-templates select="." mode="image-inclusion" />
     </div>
@@ -8326,17 +8372,20 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:apply-templates select="." mode="effective-top"/>
     </xsl:variable>
 
-    <!-- a cell of a header row needs to be "th" -->
-    <!-- else the HTML mark up is "td"           -->
+    <!-- A nonempty cell of a header row needs to be "th".  Empty cells     -->
+    <!-- are data cells, even when their row supplies headers. All other    -->
+    <!-- HTML table cells are "td". Note that "nbsp" looks like an element, -->
+    <!-- but will render as whitespace.                                     -->
     <xsl:variable name="header-row-elt">
+        <xsl:variable name="b-has-contents" select="*[not(self::nbsp)] or normalize-space(.)"/>
         <xsl:choose>
-            <xsl:when test="parent::row/@header = 'yes'">
+            <xsl:when test="$b-has-contents and parent::row/@header = 'yes'">
                 <xsl:text>th</xsl:text>
             </xsl:when>
-            <xsl:when test="parent::row/@header = 'vertical'">
+            <xsl:when test="$b-has-contents and parent::row/@header = 'vertical'">
                 <xsl:text>th</xsl:text>
             </xsl:when>
-            <xsl:when test="$b-row-header">
+            <xsl:when test="$b-has-contents and $b-row-header">
                 <xsl:text>th</xsl:text>
             </xsl:when>
             <!-- "no" is other choice, or no attribute at all -->
@@ -12925,78 +12974,219 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:apply-templates>
         </h2>
         <div class="print-controls">
-            <div class="print-controls-toggles">
-                <xsl:apply-templates select="." mode="papersize-toggle"/>
-                <xsl:apply-templates select="." mode="printing-options"/>
-            </div>
+            <xsl:apply-templates select="." mode="printing-options"/>
             <xsl:apply-templates select="." mode="print-button"/>
         </div>
     </div>
 </xsl:template>
 
+<!-- A row of the "Printing options" dialog, laid out like the text -->
+<!-- options below it: a label, then the choices                    -->
 <xsl:template match="*" mode="papersize-toggle">
-    <xsl:variable name="papersize">
-        <xsl:apply-templates select="." mode="type-name">
-            <xsl:with-param name="string-id" select="'papersize'"/>
-        </xsl:apply-templates>
-    </xsl:variable>
-    <form class="papersize-select" id="papersize-select">
-        <span class="name"><xsl:value-of select="$papersize"/></span>
-        <label>
-            <input type="radio" name="papersize" value="a4"/>A4
-        </label>
-        <label>
-            <input type="radio" name="papersize" value="letter"/>Letter
-        </label>
-    </form>
+    <div class="print-option-row papersize-select" id="papersize-select" role="radiogroup" aria-labelledby="ptx-print-papersize-label">
+        <span class="print-option-label" id="ptx-print-papersize-label">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'description'"/>
+            </xsl:call-template>
+            <span>
+                <xsl:apply-templates select="." mode="type-name">
+                    <xsl:with-param name="string-id" select="'papersize'"/>
+                </xsl:apply-templates>
+            </span>
+        </span>
+        <span class="papersize-choices">
+            <label>
+                <input type="radio" name="papersize" value="a4"/>
+                <span>A4</span>
+            </label>
+            <label>
+                <input type="radio" name="papersize" value="letter"/>
+                <span>Letter</span>
+            </label>
+        </span>
+    </div>
 </xsl:template>
 
+<!-- The options for a print preview outnumber what fits in the   -->
+<!-- header, so they live in a modal dialog, opened by a button   -->
+<!-- carrying the same icon as the readability settings of an     -->
+<!-- ordinary page.  That dialog is in the navbar, which a print  -->
+<!-- preview hides, so this one is a separate dialog with ids of  -->
+<!-- its own.  pretext-printouts.js wires it up with PTXDialog.   -->
 <xsl:template match="*" mode="printing-options">
-    <details class="print-options">
-        <summary>
-            <xsl:apply-templates select="." mode="type-name">
-                <xsl:with-param name="string-id" select="'printing-options'"/>
-            </xsl:apply-templates>
-        </summary>
+    <xsl:variable name="printing-options-localization">
+        <xsl:apply-templates select="." mode="type-name">
+            <xsl:with-param name="string-id" select="'printing-options'"/>
+        </xsl:apply-templates>
+    </xsl:variable>
+    <xsl:variable name="close-localization">
+        <xsl:apply-templates select="." mode="type-name">
+            <xsl:with-param name="string-id" select="'close'"/>
+        </xsl:apply-templates>
+    </xsl:variable>
+    <button type="button" id="ptx-print-options-button" class="ptx-print-options-button button" title="{$printing-options-localization}">
+        <xsl:call-template name="insert-symbol">
+            <xsl:with-param name="name" select="'match_case'"/>
+        </xsl:call-template>
+        <span class="name">
+            <xsl:value-of select="$printing-options-localization"/>
+        </span>
+    </button>
+    <dialog class="ptx-dialog ptx-print-options-popup" id="ptx-print-options-popup">
+        <div class="ptx-print-options-popup-controls">
+            <h2 class="heading">
+                <xsl:value-of select="$printing-options-localization"/>
+            </h2>
+            <button type="button" class="ptx-print-options-close-button button" id="ptx-print-options-close-button" title="{$close-localization}">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'close'"/>
+                </xsl:call-template>
+            </button>
+        </div>
+        <div class="ptx-print-options-group">
+            <xsl:apply-templates select="." mode="papersize-toggle"/>
+            <xsl:apply-templates select="." mode="print-text-options"/>
+        </div>
         <xsl:apply-templates select="." mode="hide-solutions"/>
         <xsl:apply-templates select="." mode="header-footer-toggles"/>
         <xsl:apply-templates select="." mode="highlight-workspace-toggle"/>
-    </details>
+        <!-- Back to the standard for everything above but the paper size, -->
+        <!-- which is a fact about the reader's printer, not a preference   -->
+        <div class="ptx-print-options-group">
+            <button type="button" class="ptx-print-options-reset-button button" id="ptx-print-options-reset-button">
+                <xsl:call-template name="insert-symbol">
+                    <xsl:with-param name="name" select="'restart_alt'"/>
+                </xsl:call-template>
+                <span class="name">
+                    <xsl:apply-templates select="." mode="type-name">
+                        <xsl:with-param name="string-id" select="'reset-all'"/>
+                    </xsl:apply-templates>
+                </span>
+            </button>
+        </div>
+    </dialog>
+</xsl:template>
+
+<!-- Size of the type, space between lines and between letters,   -->
+<!-- and typeface of the printout.  Each menu's standard is the   -->
+<!-- empty value, meaning "leave as styled", so print-worksheet   -->
+<!-- .css alone says what the standard is.  Page breaks are       -->
+<!-- planned at the standard, so they do not depend on a reader's -->
+<!-- choices; the Javascript applies any other choice afterward,  -->
+<!-- spilling text that no longer fits onto extra pages.  Sizes   -->
+<!-- are in points and line spacing is a CSS line-height, while   -->
+<!-- print-worksheet.css maps a letter spacing or font value to   -->
+<!-- its spacing or typeface.                                     -->
+<!--                                                              -->
+<!-- The words below are literal English rather than localization -->
+<!-- string-ids.  xsl/localizations is for strings that reach     -->
+<!-- more than one output format, and this is an HTML-only        -->
+<!-- control surface; a Javascript-side translation layer will    -->
+<!-- eventually localize it.                                      -->
+<xsl:template match="*" mode="print-text-options">
+    <div class="print-option-row">
+        <label for="ptx-print-font-size">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'format_size'"/>
+            </xsl:call-template>
+            <span>Font size</span>
+        </label>
+        <select id="ptx-print-font-size">
+            <option value="10">10 pt</option>
+            <option value="" selected="selected">11 pt (standard)</option>
+            <option value="12">12 pt</option>
+            <option value="14">14 pt</option>
+            <option value="16">16 pt</option>
+            <option value="18">18 pt</option>
+            <option value="20">20 pt</option>
+        </select>
+    </div>
+    <div class="print-option-row">
+        <label for="ptx-print-line-spacing">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'format_line_spacing'"/>
+            </xsl:call-template>
+            <span>Line spacing</span>
+        </label>
+        <select id="ptx-print-line-spacing">
+            <option value="1.15">1.15</option>
+            <option value="" selected="selected">1.35 (standard)</option>
+            <option value="1.5">1.5</option>
+            <option value="1.75">1.75</option>
+            <option value="2">2</option>
+            <option value="2.5">2.5</option>
+        </select>
+    </div>
+    <div class="print-option-row">
+        <label for="ptx-print-letter-spacing">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'format_letter_spacing'"/>
+            </xsl:call-template>
+            <span>Letter spacing</span>
+        </label>
+        <select id="ptx-print-letter-spacing">
+            <option value="" selected="selected">Standard</option>
+            <option value="wide">Wide</option>
+            <option value="wider">Wider</option>
+            <option value="widest">Widest</option>
+        </select>
+    </div>
+    <div class="print-option-row">
+        <label for="ptx-print-font">
+            <xsl:call-template name="insert-symbol">
+                <xsl:with-param name="name" select="'font_download'"/>
+            </xsl:call-template>
+            <span>Font</span>
+        </label>
+        <select id="ptx-print-font">
+            <option value="" selected="selected">Serif (standard)</option>
+            <option value="sans-serif">Sans serif</option>
+            <option value="hyperlegible">Atkinson Hyperlegible</option>
+            <option value="lexend">Lexend</option>
+            <option value="andika">Andika</option>
+        </select>
+    </div>
 </xsl:template>
 
 <!-- We provide a checkboxes to hide hints, answers, and solution -->
 <!-- but only if the worksheet contains these elements.           -->
 <xsl:template match="*" mode="hide-solutions">
     <xsl:if test=".//solution or .//answer or .//hint">
-        <div class="hide-solutions-options">
+        <div class="ptx-print-options-group hide-solutions-options">
             <xsl:if test=".//hint">
                 <div class="hide-option">
                     <label for="hide-hint-checkbox">
-                        <xsl:apply-templates select="." mode="type-name">
-                            <xsl:with-param name="string-id" select="'hide-hints'"/>
-                        </xsl:apply-templates>
+                        <input type="checkbox" id="hide-hint-checkbox"/>
+                        <span>
+                            <xsl:apply-templates select="." mode="type-name">
+                                <xsl:with-param name="string-id" select="'hide-hints'"/>
+                            </xsl:apply-templates>
+                        </span>
                     </label>
-                    <input type="checkbox" id="hide-hint-checkbox"/>
                 </div>
             </xsl:if>
             <xsl:if test=".//answer">
                 <div class="hide-option">
                     <label for="hide-answer-checkbox">
-                        <xsl:apply-templates select="." mode="type-name">
-                            <xsl:with-param name="string-id" select="'hide-answers'"/>
-                        </xsl:apply-templates>
+                        <input type="checkbox" id="hide-answer-checkbox"/>
+                        <span>
+                            <xsl:apply-templates select="." mode="type-name">
+                                <xsl:with-param name="string-id" select="'hide-answers'"/>
+                            </xsl:apply-templates>
+                        </span>
                     </label>
-                    <input type="checkbox" id="hide-answer-checkbox"/>
                 </div>
             </xsl:if>
             <xsl:if test=".//solution">
                 <div class="hide-option">
                     <label for="hide-solution-checkbox">
-                        <xsl:apply-templates select="." mode="type-name">
-                            <xsl:with-param name="string-id" select="'hide-solutions'"/>
-                        </xsl:apply-templates>
+                        <input type="checkbox" id="hide-solution-checkbox"/>
+                        <span>
+                            <xsl:apply-templates select="." mode="type-name">
+                                <xsl:with-param name="string-id" select="'hide-solutions'"/>
+                            </xsl:apply-templates>
+                        </span>
                     </label>
-                    <input type="checkbox" id="hide-solution-checkbox"/>
                 </div>
             </xsl:if>
         </div>
@@ -13004,7 +13194,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <xsl:template match="*" mode="header-footer-toggles">
-    <div class="header-footer-options">
+    <div class="ptx-print-options-group header-footer-options">
         <div class="header-option">
             <span class="title">
                 <xsl:apply-templates select="." mode="type-name">
@@ -13012,16 +13202,20 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 </xsl:apply-templates>
             </span>
             <label>
-                <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'first-page'"/>
-                </xsl:apply-templates>
                 <input type="checkbox" id="print-first-page-header-checkbox" checked="checked"/>
+                <span>
+                    <xsl:apply-templates select="." mode="type-name">
+                        <xsl:with-param name="string-id" select="'first-page'"/>
+                    </xsl:apply-templates>
+                </span>
             </label>
             <label>
-                <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'running'"/>
-                </xsl:apply-templates>
                 <input type="checkbox" id="print-running-header-checkbox" checked="checked"/>
+                <span>
+                    <xsl:apply-templates select="." mode="type-name">
+                        <xsl:with-param name="string-id" select="'running'"/>
+                    </xsl:apply-templates>
+                </span>
             </label>
         </div>
         <div class="footer-option">
@@ -13031,29 +13225,35 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 </xsl:apply-templates>
             </span>
             <label>
-                <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'first-page'"/>
-                </xsl:apply-templates>
                 <input type="checkbox" id="print-first-page-footer-checkbox" checked="checked"/>
+                <span>
+                    <xsl:apply-templates select="." mode="type-name">
+                        <xsl:with-param name="string-id" select="'first-page'"/>
+                    </xsl:apply-templates>
+                </span>
             </label>
             <label>
-                <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'running'"/>
-                </xsl:apply-templates>
                 <input type="checkbox" id="print-running-footer-checkbox" checked="checked"/>
+                <span>
+                    <xsl:apply-templates select="." mode="type-name">
+                        <xsl:with-param name="string-id" select="'running'"/>
+                    </xsl:apply-templates>
+                </span>
             </label>
         </div>
     </div>
 </xsl:template>
 
 <xsl:template match="*" mode="highlight-workspace-toggle">
-    <div class="highlight-workspace-option">
+    <div class="ptx-print-options-group highlight-workspace-option">
         <label for="highlight-workspace-checkbox">
-            <xsl:apply-templates select="." mode="type-name">
-                <xsl:with-param name="string-id" select="'highlight-workspace'"/>
-            </xsl:apply-templates>
+            <input type="checkbox" id="highlight-workspace-checkbox"/>
+            <span>
+                <xsl:apply-templates select="." mode="type-name">
+                    <xsl:with-param name="string-id" select="'highlight-workspace'"/>
+                </xsl:apply-templates>
+            </span>
         </label>
-        <input type="checkbox" id="highlight-workspace-checkbox"/>
     </div>
 </xsl:template>
 
@@ -13949,15 +14149,21 @@ TODO:
     </a>
 </xsl:template>
 
+<!-- The Runestone Academy and MathJax logos are in the page, so they       -->
+<!-- appear when a reader is offline.  Each is a PNG, sized for a           -->
+<!-- high-resolution display of its place in the footer (96 pixels          -->
+<!-- high), and reduced to 128 colors.  Sources:                            -->
+<!--   https://runestone.academy/runestone/static/images/RAIcon_cropped.png -->
+<!--   https://www.mathjax.org/badge/badge-square-2.png                     -->
 <xsl:template name="runestone-link">
     <a class="runestone-link" href="https://runestone.academy" title="Runestone Academy">
-        <img class="logo" src="https://runestone.academy/runestone/static/images/RAIcon_cropped.png" alt="Runstone Academy logo"/>
+        <img class="logo" alt="Runestone Academy logo" src="data:image/png;base64,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"/>
     </a>
 </xsl:template>
 
 <xsl:template name="mathjax-link">
     <a class="mathjax-link" href="https://www.mathjax.org" title="MathJax">
-        <img class="logo" src="https://www.mathjax.org/badge/badge-square-2.png" alt="MathJax logo"/>
+        <img class="logo" alt="MathJax logo" src="data:image/png;base64,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"/>
     </a>
 </xsl:template>
 
@@ -14027,7 +14233,13 @@ TODO:
         <xsl:text>});&#xa;</xsl:text>
     </script>
     <!-- MathJax 4 CDN -->
-    <script defer="true">
+    <script defer="true" data-pretext-mathjax="true">
+        <!-- These scripts execute in document order, but their resources    -->
+        <!-- fetch independently.  The CDN request can therefore fail before -->
+        <!-- mathjax_startup.js has evaluated.                               -->
+        <xsl:attribute name="onerror">
+            <xsl:text>this.dataset.loadFailed = 'true';</xsl:text>
+        </xsl:attribute>
         <xsl:attribute name="src">
             <xsl:text>https://cdn.jsdelivr.net/npm/mathjax@4/</xsl:text>
             <xsl:choose>
@@ -14543,7 +14755,7 @@ TODO:
 </xsl:template>
 
 <!-- Header information for favicon -->
-<!-- Presently: needs two image files placeed in  HTML output     -->
+<!-- Presently: needs image files placed in HTML output           -->
 <!-- Publisher file could be extended to allow for other schemes. -->
 <!--      See: https://realfavicongenerator.net/faq               -->
 <!-- for one such option and ideas for others.                    -->
@@ -14553,24 +14765,34 @@ TODO:
     <!-- (pre-processor) phase, so we leave this in.  Removal   -->
     <!-- will require a sterner deprecation message that the    -->
     <!-- current, gentle, reminder.                             -->
-    <xsl:if test="($favicon-scheme = 'simple') or $docinfo/html/favicon">
-        <!-- Expects publisher to provide both -->
-        <!--     favicon/favicon-32x32.png     -->
-        <!--     favicon/favicon-16x16.png     -->
-        <!-- in the external images directory  -->
-        <xsl:variable name="res32">
-            <!-- empty when not using managed directories -->
-            <xsl:value-of select="$external-directory"/>
-            <xsl:text>favicon/favicon-32x32.png</xsl:text>
-        </xsl:variable>
-        <xsl:variable name="res16">
-            <!-- empty when not using managed directories -->
-            <xsl:value-of select="$external-directory"/>
-            <xsl:text>favicon/favicon-16x16.png</xsl:text>
-        </xsl:variable>
-        <link rel="icon" type="image/png" sizes="32x32" href="{$res32}"/>
-        <link rel="icon" type="image/png" sizes="16x16" href="{$res16}"/>
-    </xsl:if>
+    <xsl:choose>
+        <!-- All image references below are expected in the external         -->
+        <!-- images directory.                                               -->
+        <!-- $external-directory is empty when not using managed directories -->
+        <xsl:when test="$favicon-scheme = 'svg'">
+            <!-- Expects publisher to provide favicon/favicon.svg -->
+            <xsl:variable name="favicon-svg">
+                <xsl:value-of select="$external-directory"/>
+                <xsl:text>favicon/favicon.svg</xsl:text>
+            </xsl:variable>
+            <link rel="icon" type="image/svg+xml" href="{$favicon-svg}"/>
+        </xsl:when>
+        <xsl:when test="($favicon-scheme = 'simple') or $docinfo/html/favicon">
+            <!-- Expects publisher to provide both -->
+            <!--     favicon/favicon-32x32.png     -->
+            <!--     favicon/favicon-16x16.png     -->
+            <xsl:variable name="res32">
+                <xsl:value-of select="$external-directory"/>
+                <xsl:text>favicon/favicon-32x32.png</xsl:text>
+            </xsl:variable>
+            <xsl:variable name="res16">
+                <xsl:value-of select="$external-directory"/>
+                <xsl:text>favicon/favicon-16x16.png</xsl:text>
+            </xsl:variable>
+            <link rel="icon" type="image/png" sizes="32x32" href="{$res32}"/>
+            <link rel="icon" type="image/png" sizes="16x16" href="{$res16}"/>
+        </xsl:when>
+    </xsl:choose>
 </xsl:template>
 
 <!-- SCORM tracking script -->
@@ -14625,8 +14847,17 @@ TODO:
 <xsl:template name="fonts">
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
-    <!-- Material Symbols font used for symbols -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <!-- Material Symbols font used for symbols, a copy placed with the  -->
+    <!-- other static files, so icons work offline (see fonts/README.md) -->
+    <!-- CDN resources are online, so then use Google Fonts              -->
+    <xsl:choose>
+        <xsl:when test="$b-cdn-resources">
+            <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+        </xsl:when>
+        <xsl:otherwise>
+            <link rel="stylesheet" href="_static/pretext/fonts/material-symbols-outlined.css" />
+        </xsl:otherwise>
+    </xsl:choose>
     <!-- Legacy themes need these fonts, modern ones load them on their own -->
     <xsl:if test="$b-html-theme-legacy">
             <!-- DejaVu Serif from an alternate CDN -->

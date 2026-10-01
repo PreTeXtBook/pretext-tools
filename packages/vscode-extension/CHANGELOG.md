@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Changed
+
+- Instant Preview and schemas now match pretext-cli v2.55.0 (PreTeXt core ee0a7e1).
+
 ### Added
 
 - Typing shortcuts in PreTeXt files: `$x$` becomes `<m>x</m>` (and `$$x$$` becomes `<md>x</md>`); a bare `<`, `>`, or `&` is escaped as you type (`\lt`/`\gt` inside math); inside a `<p>`, a double Enter or Shift+Enter starts a new paragraph, and Shift+Enter starts one elsewhere; `theorem:` (or `definition:`, `proof:`, ...) + Enter inserts that environment. Each can be turned off under "PreTeXt › Typing Shortcuts".

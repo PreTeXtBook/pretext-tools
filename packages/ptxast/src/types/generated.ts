@@ -298,6 +298,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -822,6 +823,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -1083,6 +1085,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -1738,6 +1741,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -1947,6 +1951,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -2120,6 +2125,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -2578,8 +2584,10 @@ export const ptxSchemaElementChildren = {
   },
   "definition": {
     "elements": [
+      "creator",
       "idx",
       "notation",
+      "origins",
       "statement",
       "title"
     ],
@@ -3438,6 +3446,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -3573,6 +3582,7 @@ export const ptxSchemaElementChildren = {
       "sbsgroup",
       "score",
       "sidebyside",
+      "stack",
       "title",
       "video"
     ],
@@ -4099,6 +4109,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -4170,6 +4181,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -4204,6 +4216,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -5069,6 +5082,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -5772,10 +5786,12 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5795,10 +5811,12 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5818,10 +5836,12 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5866,6 +5886,14 @@ export const ptxSchemaElementChildren = {
       "label",
       "xml:id",
       "xml:lang"
+    ]
+  },
+  "origins": {
+    "elements": [
+      "xref"
+    ],
+    "attributes": [
+      "component"
     ]
   },
   "outcomes": {
@@ -6425,6 +6453,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -6719,6 +6748,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -7719,7 +7749,9 @@ export const ptxSchemaElementChildren = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "xml:lang"
+    ]
   },
   "shorttitle": {
     "elements": [
@@ -8114,6 +8146,7 @@ export const ptxSchemaElementChildren = {
     "elements": [
       "console",
       "dl",
+      "figure",
       "image",
       "ol",
       "p",
@@ -9060,6 +9093,7 @@ export const ptxSchemaElementChildren = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -10114,6 +10148,7 @@ export const ptxUnmodeledSchemaElementNames = [
   "obelus",
   "objectives",
   "opinion",
+  "origins",
   "outcomes",
   "page",
   "page-first",

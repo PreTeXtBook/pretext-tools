@@ -431,8 +431,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- stylesheet older than the script that wrote it, and the mismatch      -->
 <!-- would surface as substitutions quietly coming out wrong instead of    -->
 <!-- as a statement of what is actually the matter.                        -->
+<!-- The file is read only if this tree holds something the lookups below  -->
+<!-- will substitute, the same elements that open the file there.  A       -->
+<!-- "setup" alone (such as "var" with "condition") is enough to name the  -->
+<!-- file, but has nothing to substitute and so the file is never made.    -->
 <xsl:template match="/" mode="dynamic-substitution">
-    <xsl:if test="($exercise-style = 'static') and not($b-extracting) and not($dynamic-substitutions-file = '')">
+    <xsl:if test="($exercise-style = 'static') and not($b-extracting) and not($dynamic-substitutions-file = '') and (.//fillin[@ansobj] or .//eval[@obj])">
         <xsl:variable name="recorded" select="document($dynamic-substitutions-file,$original)/*/@version"/>
         <!-- A missing @version is an older file, and is silent: the        -->
         <!-- representation template already falls back for those.  Only a  -->
@@ -1159,35 +1163,36 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- $b-using-csl-styles: a consequence of opting in via publisher file         -->
 <!-- $b-extracting-biblio: set here and overridden in the extraction stylesheet -->
 
+<!-- The generated file is only consulted in a conversion (extraction -->
+<!-- is making the file, not using it), with CSL styles in use, of a  -->
+<!-- document that has references to replace.  A stylesheet with no   -->
+<!-- use for the file (the publisher variable report) overrides this. -->
+<xsl:variable name="b-consulting-csl-file" select="$b-using-csl-styles and not($b-extracting-biblio) and boolean($original//backmatter/references[not(@source)])"/>
+
 <!-- two error conditions -->
-<!-- 2025-08-13: this variable is always false -->
+<!-- The generated file is made on request, so is often absent.  The -->
+<!-- xsltproc executable reads a missing file as an empty node-set,  -->
+<!-- while lxml would halt, so the Python xsltproc() (in common.py)  -->
+<!-- supplies a stand-in document for it instead.  Either way, no    -->
+<!-- "pi:csl-references" element is found.                           -->
 <xsl:variable name="missing-csl-file">
     <xsl:choose>
         <!-- can't be missing if we don't need it, and we   -->
         <!-- don't induce panic by looking for it, when it  -->
         <!-- isn't called for, and getting ominous warnings -->
-        <xsl:when test="not($b-using-csl-styles)">
+        <xsl:when test="not($b-consulting-csl-file)">
             <xsl:text>no</xsl:text>
         </xsl:when>
-        <xsl:otherwise>
+        <!-- since we build the file, condition on the size of -->
+        <!-- this node-set:  one (good) or none (bad, missing) -->
+        <xsl:when test="count(document($csl-file, $original)/pi:csl-references) = 1">
             <xsl:text>no</xsl:text>
-            <!-- this is only a test, variable is local and not retained -->
-            <!-- <xsl:variable name="the-references" -->
-                <!-- select="document($csl-file, $original)/pi:csl-references"/> -->
-            <!-- since we build the file, condiition on the size of -->
-            <!-- this node-set:  one (good) or none (bad, missing)  -->
-            <!-- <xsl:choose> -->
-                <!-- file looks good -->
-                <!-- <xsl:when test="count($the-references) = 1"> -->
-                    <!-- <xsl:text>no</xsl:text> -->
-                <!-- </xsl:when> -->
-                <!-- nothing came of document() -->
-                <!-- <xsl:otherwise> -->
-                    <!-- <xsl:text>yes</xsl:text> -->
-                    <!-- and we take the opportunity to say so, just once, and early on -->
-                    <!-- <xsl:message>PTX:ERROR:     your publisher file indicates the use of a Citation Stylesheet Language (CSL) specification for references, but we have not located your file of generated references and citations at "<xsl:value-of select="$csl-file"/>".  We will fall back to default processing in order to proceed.</xsl:message> -->
-                <!-- </xsl:otherwise> -->
-            <!-- </xsl:choose> -->
+        </xsl:when>
+        <!-- nothing came of document() -->
+        <xsl:otherwise>
+            <xsl:text>yes</xsl:text>
+            <!-- and we take the opportunity to say so, just once, and early on -->
+            <xsl:message>PTX:FALLBACK:  your publisher file indicates the use of a Citation Style Language (CSL) style for references ("<xsl:value-of select="$csl-style-file"/>"), perhaps by way of a journal, but we have not located your file of generated references and citations at "<xsl:value-of select="$csl-file"/>".  Generate the "references" assets to create it.  We will fall back to default processing in order to proceed.</xsl:message>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:variable>
@@ -1202,7 +1207,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:choose>
         <!-- we do not warning at the end of this template, -->
         <!-- just because the file itself does not exist    -->
-        <xsl:when test="not($b-using-csl-styles) or $missing-csl-file">
+        <xsl:when test="not($b-consulting-csl-file) or $b-missing-csl-file">
             <xsl:text>no</xsl:text>
         </xsl:when>
         <!-- now we are using CSL styles and we do have a file to interrogate -->
@@ -1221,7 +1226,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:otherwise>
                     <xsl:text>yes</xsl:text>
                     <!-- and we take the opportunity to say so, just once, and early on -->
-                    <xsl:message>PTX:WARNING:     your publisher file indicates the use of one Citation Stylesheet Language (CSL) specification for references ("<xsl:value-of select="$csl-style-file"/>"), but your file of generated references and citations at "<xsl:value-of select="$csl-file"/>" was built using a different CSL style file ("<xsl:value-of select="$csl-style-file-for-generated"/>").  We will fall back to default processing in order to proceed.</xsl:message>
+                    <xsl:message>PTX:WARNING:     your publisher file indicates the use of one Citation Style Language (CSL) specification for references ("<xsl:value-of select="$csl-style-file"/>"), but your file of generated references and citations at "<xsl:value-of select="$csl-file"/>" was built using a different CSL style file ("<xsl:value-of select="$csl-style-file-for-generated"/>").  We will fall back to default processing in order to proceed.</xsl:message>
                 </xsl:otherwise>
             </xsl:choose>
         </xsl:otherwise>
@@ -1238,8 +1243,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:template match="backmatter/references[not(@source)]" mode="assembly">
     <xsl:choose>
         <!-- duplicate for biblio extraction process or if using -->
-        <!-- default (simplistic) PreTeXt bibliography support   -->
-        <xsl:when test="$b-extracting-biblio or not($b-using-csl-styles)">
+        <!-- default (simplistic) PreTeXt bibliography support,  -->
+        <!-- or any other pass not consulting the generated file -->
+        <xsl:when test="not($b-consulting-csl-file)">
             <xsl:copy>
                 <xsl:apply-templates select="node()|@*" mode="assembly"/>
             </xsl:copy>
@@ -1332,7 +1338,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <!-- Note: not using CSL styles immediately determines that    -->
         <!-- this "xrref" is not a "biblio target" and a copy is       -->
         <!-- made here, immediately as well                            -->
-        <xsl:when test="not($b-is-biblio-target) or $b-extracting-biblio">
+        <!-- A missing or mismatched generated file is met the same    -->
+        <!-- way here as with the "references" division above: keep    -->
+        <!-- the author's "xref", so citations and bibliography both   -->
+        <!-- fall back to default processing, together                 -->
+        <xsl:when test="not($b-is-biblio-target) or not($b-consulting-csl-file) or $b-missing-csl-file or $b-style-file-mismatch">
             <xsl:copy>
                 <xsl:apply-templates select="node()|@*" mode="assembly"/>
             </xsl:copy>
@@ -1342,7 +1352,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:variable name="the-xref-id">
                 <xsl:value-of select="@pi:original-id"/>
             </xsl:variable>
-            <xsl:variable name="matched-citation" select="document('gen/references/csl-bibliography.xml', $original)/pi:csl-references/pi:csl-citation[@xml:id = $the-xref-id]"/>
+            <!-- $csl-file is defined in the publisher-variables stylesheet -->
+            <xsl:variable name="matched-citation" select="document($csl-file, $original)/pi:csl-references/pi:csl-citation[@xml:id = $the-xref-id]"/>
             <xsl:copy-of select="$matched-citation"/>
             <!-- WARN ON UNMATCHED -->
         </xsl:otherwise>
@@ -1379,8 +1390,35 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:value-of select="parent::match/@order"/>
             </xsl:attribute>
         </xsl:if>
-        <xsl:apply-templates select="node()" mode="assembly"/>
+        <xsl:apply-templates select="." mode="cardsort-card-assembly"/>
     </xsl:copy>
+</xsl:template>
+
+<xsl:template match="cardsort/match/response" mode="assembly">
+    <xsl:copy>
+        <xsl:apply-templates select="@*" mode="assembly"/>
+        <xsl:apply-templates select="." mode="cardsort-card-assembly"/>
+    </xsl:copy>
+</xsl:template>
+
+<!-- Experimental, see "debug.advanced.feedback": a card may have a -->
+<!-- "statement" and a "feedback".  Unless the experiment is on,    -->
+<!-- the card is just the content of its "statement", and any       -->
+<!-- "feedback" is dropped, so is never seen by any conversion.     -->
+<xsl:template match="cardsort/match/premise|cardsort/match/response" mode="cardsort-card-assembly">
+    <xsl:choose>
+        <xsl:when test="not($b-debug-advanced-feedback) and statement">
+            <xsl:apply-templates select="statement/node()" mode="assembly"/>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:apply-templates select="node()" mode="assembly"/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
+<!-- The deprecated "matches" form does not get this new feature -->
+<xsl:template match="matches/match/premise" mode="cardsort-card-assembly">
+    <xsl:apply-templates select="node()" mode="assembly"/>
 </xsl:template>
 
 <!-- WeBWorK @copy resolution -->
@@ -2724,6 +2762,57 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:attribute name="xml:lang">
         <xsl:value-of select="."/>
     </xsl:attribute>
+</xsl:template>
+
+<!-- 2026-09-22  A type of "exercise" is named as a publication file   -->
+<!-- names it, as "exercise-inline" and so on, in a "rename" and in    -->
+<!-- "list-of/@elements" alike.  An older one-word name is upgraded    -->
+<!-- here.  "divisionexercise", which only "list-of" ever accepted,    -->
+<!-- joins it, so that one type of "exercise" has one name.            -->
+<xsl:template match="rename/@element" mode="repair">
+    <xsl:attribute name="element">
+        <xsl:call-template name="exercise-type-name">
+            <xsl:with-param name="name" select="string(.)"/>
+        </xsl:call-template>
+    </xsl:attribute>
+</xsl:template>
+
+<xsl:template match="list-of/@elements" mode="repair">
+    <xsl:attribute name="elements">
+        <xsl:for-each select="str:tokenize(., ', ')">
+            <xsl:if test="position() != 1">
+                <xsl:text> </xsl:text>
+            </xsl:if>
+            <xsl:call-template name="exercise-type-name">
+                <xsl:with-param name="name" select="string(.)"/>
+            </xsl:call-template>
+        </xsl:for-each>
+    </xsl:attribute>
+</xsl:template>
+
+<!-- The current name of a type of "exercise", given whatever name an  -->
+<!-- author wrote for it.  Any other name, an ordinary element among   -->
+<!-- them, passes through untouched.                                   -->
+<xsl:template name="exercise-type-name">
+    <xsl:param name="name"/>
+
+    <xsl:choose>
+        <xsl:when test="$name = 'inlineexercise'">
+            <xsl:text>exercise-inline</xsl:text>
+        </xsl:when>
+        <xsl:when test="($name = 'divisionalexercise') or ($name = 'divisionexercise')">
+            <xsl:text>exercise-divisional</xsl:text>
+        </xsl:when>
+        <xsl:when test="$name = 'worksheetexercise'">
+            <xsl:text>exercise-worksheet</xsl:text>
+        </xsl:when>
+        <xsl:when test="$name = 'readingquestion'">
+            <xsl:text>exercise-reading</xsl:text>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:value-of select="$name"/>
+        </xsl:otherwise>
+    </xsl:choose>
 </xsl:template>
 
 <!-- 2021-07-02 wrap notation/usage in "m" if not present -->
@@ -4146,6 +4235,42 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:copy>
 </xsl:template>
 
+<!-- A "slide" is numbered as a division is: its @pi:struct is the -->
+<!-- structure number of its container and its @pi:serial counts   -->
+<!-- slides.  The numbering level of divisions decides the form.   -->
+<!-- At level 0 slides are counted through the whole slideshow and -->
+<!-- there is no structure number.  At level 1, only possible with -->
+<!-- sections, slides are counted within their "section", and its  -->
+<!-- number is the structure number.  A slide gets no              -->
+<!-- @pi:block-struct, so blocks within it are numbered by the     -->
+<!-- enclosing division alone.                                     -->
+<xsl:template match="slide" mode="augment">
+    <xsl:param name="parent-struct"/>
+    <xsl:param name="level"/>
+
+    <xsl:copy>
+        <xsl:attribute name="pi:struct">
+            <xsl:if test="$numbering-maxlevel > 0">
+                <xsl:value-of select="$parent-struct"/>
+            </xsl:if>
+        </xsl:attribute>
+        <xsl:attribute name="pi:serial">
+            <xsl:choose>
+                <xsl:when test="$numbering-maxlevel > 0">
+                    <xsl:number count="slide"/>
+                </xsl:when>
+                <xsl:otherwise>
+                    <xsl:number count="slide" level="any" from="slideshow"/>
+                </xsl:otherwise>
+            </xsl:choose>
+        </xsl:attribute>
+        <xsl:apply-templates select="node()|@*" mode="augment">
+            <xsl:with-param name="parent-struct" select="$parent-struct"/>
+            <xsl:with-param name="level" select="$level"/>
+        </xsl:apply-templates>
+    </xsl:copy>
+</xsl:template>
+
 <!-- The top-level division (book, article, ...) is the root of the   -->
 <!-- division tree, at level 0, which the catch-all does not record.  -->
 <!-- A level-0 numbering scheme counts continuously from the root.    -->
@@ -4393,7 +4518,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- ("-fn") are single counters; the block families share the "blocks"     -->
 <!-- counter unless figure-likes, projects, inline exercises, or open       -->
 <!-- problems are set "distinct", each then opening its own counter.        -->
-<xsl:template match="book|article|part|chapter|appendix|frontmatter|backmatter|preface|section|subsection|subsubsection|exercises|worksheet|handout|reading-questions|references|glossary|solutions" mode="serial-stamp">
+<xsl:template match="book|article|slideshow|part|chapter|appendix|frontmatter|backmatter|preface|section|subsection|subsubsection|exercises|worksheet|handout|reading-questions|references|glossary|solutions" mode="serial-stamp">
     <xsl:param name="eq-nodes"/>
     <xsl:param name="fn-nodes"/>
     <xsl:param name="blocks-nodes"/>

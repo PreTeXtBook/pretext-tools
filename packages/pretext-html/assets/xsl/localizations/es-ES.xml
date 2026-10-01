@@ -149,12 +149,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='fragment'>Fragmento</localization>
     <!-- Parts of an exercise and its solution -->
     <!-- See the en-US file for a detailed explanation of the words for exercises -->
-    <localization string-id='divisionalexercise'>Ejercicio</localization>
+    <localization string-id='exercise-divisional'>Ejercicio</localization>
     <!-- Translation needed for Spain Spanish -->
     <!-- See en-US file for distinctions here, do not repeat previous translation -->
-    <localization string-id='inlineexercise'>Punto de control</localization>
-    <localization string-id='worksheetexercise'>Ejercicio de hoja de trabajo</localization>
-    <localization string-id='readingquestion'>Pregunta de lectura</localization>
+    <localization string-id='exercise-inline'>Punto de control</localization>
+    <localization string-id='exercise-worksheet'>Ejercicio de hoja de trabajo</localization>
+    <localization string-id='exercise-reading'>Pregunta de lectura</localization>
     <localization string-id='webwork'>WeBWorK</localization>
     <localization string-id='hint'>Pista</localization>
     <localization string-id='answer'>Respuesta</localization>
@@ -247,7 +247,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- This needs to be defined to *something* (English) -->
     <!-- Translate at first opportunity, please -->
     <localization string-id='evaluate'>Evaluar</localization>
-    <!-- <localization string-id='code'>Code</localization> -->
     <localization string-id='instructions'>Instrucciones</localization>
     <localization string-id='correct'>Correcto</localization>
     <localization string-id='incorrect'>Incorrecto</localization>
@@ -260,7 +259,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='reset'>Reiniciar</localization>
     <localization string-id='array'>Arreglo</localization>
     <localization string-id="papersize">Tamaño del papel</localization>
-    <localization string-id="printing-options">Opciones de impresión adicionales</localization>
+    <localization string-id="printing-options">Opciones de impresión</localization>
     <localization string-id="hide-hints">Ocultar pistas</localization>
     <localization string-id="hide-answers">Ocultar respuestas</localization>
     <localization string-id="hide-solutions">Ocultar soluciones</localization>

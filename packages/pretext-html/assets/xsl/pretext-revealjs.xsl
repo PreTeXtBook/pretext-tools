@@ -66,6 +66,22 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:variable name="math-repr" select="document($mathfile)/pi:math-representations"/>
 <xsl:variable name="speech-repr" select="document($speechfile)/pi:math-representations"/>
 
+<!-- Embedded mathematics is extracted as SVG with clause-ending    -->
+<!-- punctuation absorbed into display mathematics only, so the     -->
+<!-- text after inline mathematics must keep its punctuation.  This -->
+<!-- overrides the HTML value, which absorbs punctuation into all   -->
+<!-- mathematics, as MathJax does for online mathematics.           -->
+<xsl:variable name="math.punctuation.include">
+    <xsl:choose>
+        <xsl:when test="$b-reveal-embedded-math">
+            <xsl:text>display</xsl:text>
+        </xsl:when>
+        <xsl:otherwise>
+            <xsl:text>all</xsl:text>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:variable>
+
 <!-- Reveal.js output is one monolithic page, so heading levels are -->
 <!-- threaded, not chunked.  The slideshow title (h1) and subtitle  -->
 <!-- (h2) are fixed.  A "section" is always level 2 (sections never -->
@@ -178,6 +194,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>.reveal .slides section.valign-top { top: 0 !important; }&#xa;</xsl:text>
             <xsl:text>.reveal .slides section.valign-middle.present { display: flex !important; flex-direction: column; justify-content: center; top: 0 !important; height: 100% !important; }&#xa;</xsl:text>
             <xsl:text>.reveal .slides section.valign-bottom.present { display: flex !important; flex-direction: column; justify-content: flex-end; top: 0 !important; height: 100% !important; }&#xa;</xsl:text>
+            <!-- A slide without a number still gets the number's box, -->
+            <!-- which reveal.js displays with an inline style         -->
+            <xsl:if test="$b-reveal-slide-numbering">
+                <xsl:text>.reveal .slide-number:has(.slide-number-a:empty) { display: none !important; }&#xa;</xsl:text>
+            </xsl:if>
           </style>
           <!-- no diagcess machinery with embedded mathematics: an  -->
           <!-- annotated PreFigure diagram is then a static image   -->
@@ -251,6 +272,20 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:value-of select="$reveal-navigation-mode"/>
             <xsl:text>',&#xa;</xsl:text>
             <xsl:text>  progress: false,&#xa;</xsl:text>
+            <!-- reveal.js displays what this function returns, so a -->
+            <!-- slide shows the number PreTeXt computed for it, the -->
+            <!-- same in every navigation mode, and any other slide  -->
+            <!-- (title, abstract, section title) shows nothing      -->
+            <xsl:text>  slideNumber: </xsl:text>
+                <xsl:choose>
+                    <xsl:when test="$b-reveal-slide-numbering">
+                        <xsl:text>function(slide) { return [(slide &amp;&amp; slide.dataset.slideNumber) || '']; }</xsl:text>
+                    </xsl:when>
+                    <xsl:otherwise>
+                        <xsl:text>false</xsl:text>
+                    </xsl:otherwise>
+                </xsl:choose>
+            <xsl:text>,&#xa;</xsl:text>
             <!-- reveal.js "center" vertically centers every slide,  -->
             <!-- so it realizes a document-wide "middle" default;    -->
             <!-- a "top" or "bottom" default disables it, and slides -->
@@ -448,6 +483,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                   <xsl:apply-templates select="." mode="valign"/>
               </xsl:with-param>
           </xsl:call-template>
+          <xsl:if test="$b-reveal-slide-numbering">
+              <xsl:attribute name="data-slide-number">
+                  <xsl:apply-templates select="." mode="number"/>
+              </xsl:attribute>
+          </xsl:if>
           <xsl:variable name="slide-hN">
               <xsl:apply-templates select="." mode="hN">
                   <xsl:with-param name="heading-level" select="$reveal-slide-heading-level"/>
@@ -628,7 +668,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 
 <!-- Images get wrapped in a div with @class="fragment" if they are  -->
 <!-- paused                                                          -->
-<xsl:template match="image[not(ancestor::sidebyside) and (@pause='yes')]">
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;) and (@pause='yes')]">
     <div class="fragment">
       <xsl:apply-imports/>
     </div>
@@ -757,7 +797,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- match covers all mathematics.  Slides never link to an         -->
 <!-- equation (a cross-reference renders as its text), so no HTML   -->
 <!-- id is placed, unlike EPUB.                                     -->
-<xsl:template match="m|md[mrow]">
+<!-- Music notation ("n", "scaledeg", "timesignature", "chord")     -->
+<!-- is set as inline math, so it has a representation as well.     -->
+<xsl:template match="m|md[mrow]|n|scaledeg|timesignature|chord">
     <xsl:choose>
         <xsl:when test="$b-reveal-embedded-math">
             <!-- NB: math-representation file writes with "unique-id" -->

@@ -154,7 +154,7 @@
 <!-- "top" figure-like is a captioned display that earns a number (a    -->
 <!-- panel inside a captioned side-by-side earns a letter instead).     -->
 <!ENTITY FUNDAMENTAL-BLOCK-FILTER "(&DEFINITION-FILTER;) or (&THEOREM-FILTER;) or (&AXIOM-FILTER;) or (&REMARK-FILTER;) or (&COMPUTATION-FILTER;) or (&EXAMPLE-FILTER;)">
-<!ENTITY TOP-FIGURE-FILTER "(&FIGURE-FILTER;) and not(parent::sidebyside/parent::figure or parent::sidebyside/parent::sbsgroup/parent::figure)">
+<!ENTITY TOP-FIGURE-FILTER "(&FIGURE-FILTER;) and not(parent::sidebyside/parent::figure or parent::sidebyside/parent::sbsgroup/parent::figure or self::figure[parent::stack/parent::figure])">
 
 <!-- Panels of a "sidebyside", and content of a "stack" panel.  The   -->
 <!-- lists mirror the schema, plus grandfathered items the code still -->
@@ -165,6 +165,19 @@
 <!-- stylesheet.                                                      -->
 <!ENTITY SBSPANEL "p|pre|ol|ul|dl|program|console|poem|audio|video|interactive|slate|exercise|image|figure|table|listing|list|tabular|stack">
 <!ENTITY STACKABLE "tabular|image|p|pre|ol|ul|dl|audio|video|interactive|slate|program|console">
+
+<!-- A panel of a "sidebyside" is a child of the "sidebyside", or a     -->
+<!-- child of a "stack" in the "sidebyside".  The layout of the         -->
+<!-- "sidebyside" sizes its panels (and the content of a "figure"       -->
+<!-- panel).  An object nested more deeply, such as an "image" in an    -->
+<!-- "exercise" panel or in a list item, is sized by its own attributes -->
+<!-- relative to the available width where it sits.                     -->
+<!ENTITY SBS-PANEL-FILTER "parent::sidebyside or parent::stack/parent::sidebyside">
+
+<!-- An object sized by the layout of the "sidebyside": a panel, or the -->
+<!-- content of a "figure" panel.  Anything nested more deeply is sized -->
+<!-- by its own attributes.                                             -->
+<!ENTITY SBS-LAYOUT-FILTER "(&SBS-PANEL-FILTER;) or parent::figure[&SBS-PANEL-FILTER;]">
 
 <!-- appendages of examples, exercises, tasks -->
 <!ENTITY SOLUTION-LIKE "hint|answer|solution">

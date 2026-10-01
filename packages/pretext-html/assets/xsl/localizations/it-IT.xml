@@ -24,10 +24,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- it-IT, Italian (Italy) -->
 <!-- Valerio Monti, gedeonedepaperoni@gmail.com, 2020-07-27   -->
 
+<!-- Quotation marks: the English style is a deliberate choice for   -->
+<!-- Italian, not a default (Valerio Monti, pretext-dev, 2026-09-02) -->
 <locale language="it-IT" direction="ltr"
         quote-primary="english-double" quote-secondary="english-single">
     <!-- THEOREM-LIKE blocks -->
-    <!-- The english quotation style above is just a default, it needs adjustment -->
     <localization string-id='theorem'>Teorema</localization>
     <localization string-id='corollary'>Corollario</localization>
     <localization string-id='lemma'>Lemma</localization>
@@ -144,10 +145,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='fragment'>Porzione</localization>
     <!-- Parts of an exercise and its solution -->
     <!-- See the en-US file for a detailed explanation of the words for exercises -->
-    <localization string-id='divisionalexercise'>Esercizio</localization>
-    <localization string-id='inlineexercise'>Punto di controllo</localization>
-    <localization string-id='worksheetexercise'>Esercizio in scheda didattica</localization>
-    <localization string-id='readingquestion'>Domanda di comprensione del testo</localization>
+    <localization string-id='exercise-divisional'>Esercizio</localization>
+    <localization string-id='exercise-inline'>Punto di controllo</localization>
+    <localization string-id='exercise-worksheet'>Esercizio in scheda didattica</localization>
+    <localization string-id='exercise-reading'>Domanda di comprensione del testo</localization>
     <localization string-id='webwork'>WeBWorK</localization>
     <localization string-id='hint'>Suggerimento</localization>
     <localization string-id='answer'>Risposta</localization>
@@ -232,7 +233,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='permalink-tooltip'>Copia titolo e permalink per</localization>
     <localization string-id='calculator'>Calcolatrice</localization>
     <localization string-id='evaluate'>Calcola</localization>
-    <localization string-id='code'>Codice</localization>
     <localization string-id='instructions'>Istruzioni</localization>
     <localization string-id='correct'>Giusto</localization>
     <localization string-id='incorrect'>Sbagliato</localization>
@@ -245,7 +245,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='reset'>Azzera</localization>
     <localization string-id='array'>tabella</localization>
     <localization string-id="papersize">Formato carta</localization>
-    <localization string-id="printing-options">Opzioni di stampa addizionali</localization>
+    <localization string-id="printing-options">Opzioni di stampa</localization>
     <localization string-id="hide-hints">Nascondi suggerimenti</localization>
     <localization string-id="hide-answers">Nascondi risposte</localization>
     <localization string-id="hide-solutions">Nascondi soluzioni</localization>

@@ -156,7 +156,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- *are* present in "math-original" but that introduces a new  -->
 <!-- element in-between "md" and "mrow", so matches on           -->
 <!-- "md[mrow]" can be problematic here (and perhaps elsewhere). -->
-<xsl:template match="m|md" mode="meld-math">
+<!-- Music notation ("n", "scaledeg", "timesignature", "chord") is  -->
+<!-- set as inline math, so it has a representation as an "m" does. -->
+<xsl:template match="m|md|n|scaledeg|timesignature|chord" mode="meld-math">
     <!-- preserve author's element -->
     <xsl:copy>
         <!-- preserve attributes -->
@@ -1779,6 +1781,23 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:choose>
 </xsl:template>
 
+<!-- Music notation ("n", "scaledeg", "timesignature", "chord") is   -->
+<!-- LaTeX built by the -common templates and set as inline math,    -->
+<!-- melded with a Nemeth representation just as an "m" is.  It      -->
+<!-- always has structure (an accidental, an octave, a chord's       -->
+<!-- figures), so it is never one of the simple cases above, and it  -->
+<!-- absorbs no clause-ending punctuation, so none is restored here. -->
+<xsl:template match="n|scaledeg|timesignature|chord">
+    <xsl:variable name="raw-braille">
+        <xsl:call-template name="brf-symbols-filter">
+            <xsl:with-param name="text" select="math-nemeth"/>
+        </xsl:call-template>
+    </xsl:variable>
+    <math>
+        <xsl:value-of select="$raw-braille"/>
+    </math>
+</xsl:template>
+
 <xsl:template match="m[contains(math-nemeth, '&#xa;')]|md">
     <!-- Lines are trimmed, and possibly converted to BRF ASCII -->
     <!-- symbols ("early"), one at a time, below                -->
@@ -2338,7 +2357,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- xref: xref-number and xref-link defined above -->
 <!-- today, timeofday: pure text in common -->
 <!-- ad, am, bc, ca, eg, etal, etc, ie, nb, pm, ps, vs, viz: Latin abbreviations, defined as text in common -->
-<!-- title, subtitle, shorttitle, plaintitle, creator: killed in common as metadata -->
+<!-- title, subtitle, shorttitle, plaintitle, creator, origins: killed in common as metadata -->
 <!-- caption: killed in common as metadata -->
 <!-- cline: a simple template in common is active -->
 <!-- c: a simple template in common is active -->
@@ -2433,7 +2452,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         self::xref or
         self::today or self::timeofday or
         self::ad or self::am or self::bc or self::ca or self::eg or self::etal or self::etc or self::ie or self::nb or self::pm or self::ps or self::vs or self::viz or
-        self::title or self::subtitle or self::shorttitle or self::plaintitle or self::creator or
+        self::title or self::subtitle or self::shorttitle or self::plaintitle or self::creator or self::origins or
         self::caption or
         self::cline or
         self::c or

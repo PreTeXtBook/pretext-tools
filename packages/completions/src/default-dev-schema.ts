@@ -301,6 +301,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -825,6 +826,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -1086,6 +1088,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -1741,6 +1744,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -1950,6 +1954,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -2123,6 +2128,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -2581,8 +2587,10 @@ export const defaultDevSchema: CompletionSchema = {
   },
   "definition": {
     "elements": [
+      "creator",
       "idx",
       "notation",
+      "origins",
       "statement",
       "title"
     ],
@@ -3441,6 +3449,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -3576,6 +3585,7 @@ export const defaultDevSchema: CompletionSchema = {
       "sbsgroup",
       "score",
       "sidebyside",
+      "stack",
       "title",
       "video"
     ],
@@ -4102,6 +4112,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -4173,6 +4184,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -4207,6 +4219,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -5072,6 +5085,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -5775,10 +5789,12 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5798,10 +5814,12 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5821,10 +5839,12 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "conclusion",
       "context",
+      "creator",
       "discussion",
       "idx",
       "introduction",
       "opinion",
+      "origins",
       "postlude",
       "prelude",
       "statement",
@@ -5869,6 +5889,14 @@ export const defaultDevSchema: CompletionSchema = {
       "label",
       "xml:id",
       "xml:lang"
+    ]
+  },
+  "origins": {
+    "elements": [
+      "xref"
+    ],
+    "attributes": [
+      "component"
     ]
   },
   "outcomes": {
@@ -6428,6 +6456,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "creator",
       "idx",
+      "origins",
       "statement",
       "title"
     ],
@@ -6722,6 +6751,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",
@@ -7722,7 +7752,9 @@ export const defaultDevSchema: CompletionSchema = {
       "xetex",
       "xref"
     ],
-    "attributes": []
+    "attributes": [
+      "xml:lang"
+    ]
   },
   "shorttitle": {
     "elements": [
@@ -8117,6 +8149,7 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [
       "console",
       "dl",
+      "figure",
       "image",
       "ol",
       "p",
@@ -9063,6 +9096,7 @@ export const defaultDevSchema: CompletionSchema = {
       "image",
       "list",
       "listing",
+      "origins",
       "p",
       "pre",
       "program",

@@ -189,7 +189,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Here we build the "standard" (classic) latex preamble,       -->
 <!-- with some minor modifications suggested by the texstyle file -->
 <xsl:template match="texstyle/ptx-preamble">
-    <xsl:call-template name="frontmatter-helpers"/>
     <xsl:call-template name="preamble-early"/>
     <xsl:call-template name="cleardoublepage"/>
     <xsl:call-template name="standard-packages"/>
@@ -208,6 +207,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:call-template name="latex-engine-support"/>
     <xsl:call-template name="font-support"/>
     <xsl:call-template name="math-packages"/>
+    <xsl:call-template name="text-symbols"/>
     <xsl:call-template name="pdfpages-package"/>
     <xsl:call-template name="semantic-macros"/>
     <xsl:call-template name="chapter-start-number"/>
@@ -756,8 +756,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 
+<!-- A journal's bibliography is formatted by PreTeXt, not by BibTeX: -->
+<!-- in the journal's CSL style, when references have been generated  -->
+<!-- and replaced during assembly, else in PreTeXt's own way.  So the -->
+<!-- texstyle file only says *where* the list belongs.                -->
 <xsl:template match="texstyle/bibliography">
-    <xsl:message>PTX:WARNING: Bibliographies are not implemented correctly yet.</xsl:message>
     <xsl:apply-templates select="$document-root/references|$document-root/backmatter/references"/>
 </xsl:template>
 

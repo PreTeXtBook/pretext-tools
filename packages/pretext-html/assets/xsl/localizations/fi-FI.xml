@@ -143,10 +143,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- <localization string-id='pre'>Code Block</localization> -->
     <localization string-id='fragment'>Koodinpala</localization>
     <!-- Parts of an exercise and its solution -->
-    <localization string-id='divisionalexercise'>Harjoitustehtävä</localization>
-    <localization string-id='inlineexercise'>Harjoitus</localization>
-    <localization string-id='worksheetexercise'>Tehtävämonisteen tehtävä</localization>
-    <localization string-id='readingquestion'>Luetunymmärtämistehtävä</localization>
+    <localization string-id='exercise-divisional'>Harjoitustehtävä</localization>
+    <localization string-id='exercise-inline'>Harjoitus</localization>
+    <localization string-id='exercise-worksheet'>Tehtävämonisteen tehtävä</localization>
+    <localization string-id='exercise-reading'>Luetunymmärtämistehtävä</localization>
     <localization string-id='webwork'>WeBWorK</localization>
     <localization string-id='hint'>Vihje</localization>
     <localization string-id='answer'>Vastaus</localization>
@@ -235,7 +235,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <localization string-id='permalink-tooltip'>Copy heading and permalink for</localization>
     <!-- <localization string-id='calculator'>Calculator</localization> -->
     <localization string-id='evaluate'>Aja</localization>
-    <!-- <localization string-id='code'>Code</localization> -->
     <!-- <localization string-id='instructions'>Instructions</localization> -->
     <!-- <localization string-id='correct'>Correct</localization> -->
     <!-- <localization string-id='incorrect'>Incorrect</localization> -->
@@ -248,7 +247,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <!-- <localization string-id='reset'>Reset</localization> -->
     <!-- <localization string-id='array'>array</localization> -->
     <!-- <localization string-id="papersize">Paper size</localization> -->
-    <!-- <localization string-id="printing-options">Additional printing options</localization> -->
+    <!-- <localization string-id="printing-options">Printing options</localization> -->
     <!-- <localization string-id="hide-hints">Hide hints</localization> -->
     <!-- <localization string-id="hide-answers">Hide answers</localization> -->
     <!-- <localization string-id="hide-solutions">Hide solutions</localization> -->

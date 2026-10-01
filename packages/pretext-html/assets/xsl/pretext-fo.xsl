@@ -102,22 +102,28 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- we will map the *intent* of such requests as this conversion      -->
 <!-- matures.                                                          -->
 
-<!-- PDF/UA (ISO 14289) requires every font to be embedded, so    -->
-<!-- each font family must name a real, available font: a generic -->
-<!-- family (serif, monospace) would fall back to a base-14 PDF   -->
+<!-- PDF/UA (ISO 14289) requires every font to be embedded, so     -->
+<!-- each font family must name a real, available font: a generic  -->
+<!-- family (serif, monospace) would fall back to a base-14 PDF    -->
 <!-- font, which is never embedded.  Each named family must have a -->
-<!-- matching declaration in  pretext/fop.xconf.  The body is      -->
-<!-- Latin Modern Roman and the monospace face Inconsolata; the     -->
-<!-- symbol family is "PreTeXt Symbols", the bundled FreeSerif      -->
-<!-- subset (see  fonts/README.md ), which carries the currency     -->
-<!-- signs, primes, geometric end-marks, and dingbats that Latin    -->
-<!-- Modern lacks.  It is named after the body font on  fo:root ,   -->
-<!-- so FOP falls back to it for any glyph the body font is         -->
-<!-- missing, and named outright where a specific symbol is drawn.  -->
-<!-- the 12-point optical design is used for a body font size of   -->
-<!-- 12pt or more; smaller sizes (and 11pt) use the 10-point face  -->
+<!-- matching declaration in  pretext/fop.xconf.  The body face    -->
+<!-- follows the publication file's  pdf/@font  key ($pdf-font):   -->
+<!-- Latin Modern Roman by default, matching the LaTeX route, in   -->
+<!-- its 12-point optical design for a body font size of 12pt or   -->
+<!-- more; or Alegreya, a book face for text-heavy documents, in   -->
+<!-- one design for every size.  The monospace face is Inconsolata -->
+<!-- for every key.  The symbol family is "PreTeXt Symbols", the   -->
+<!-- bundled FreeSerif subset (see  fonts/README.md ), which       -->
+<!-- carries the currency signs, primes, geometric end-marks, and  -->
+<!-- dingbats that the body faces lack.  It is named after the     -->
+<!-- body font on  fo:root , so FOP falls back to it for any glyph -->
+<!-- the body font is missing, and named outright where a specific -->
+<!-- symbol is drawn.                                              -->
 <xsl:variable name="font-family-main">
     <xsl:choose>
+        <xsl:when test="$pdf-font = 'alegreya'">
+            <xsl:text>Alegreya</xsl:text>
+        </xsl:when>
         <xsl:when test="number(substring-before($font-size, 'pt')) &gt;= 12">
             <xsl:text>Latin Modern Roman 12</xsl:text>
         </xsl:when>
@@ -1012,11 +1018,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- A run-in heading is a bold inline, built by one of a few modes -->
 <!-- that vary in the number they show.  The font style is reset,   -->
 <!-- since the heading may land inside an italic THEOREM-LIKE       -->
-<!-- statement.  Each ends with a period and an optional title.     -->
+<!-- statement.  Each has an optional title, for a mathematical     -->
+<!-- block the attribution (creator and origins), and a period only -->
+<!-- when neither follows the number.                               -->
 
-<!-- "heading-full": type-name, full number, and (for a THEOREM or  -->
-<!-- AXIOM) the attributing creator.  Basic blocks and inline       -->
-<!-- exercises and projects.                                        -->
+<!-- "heading-full": type-name, full number, any title, and (for a   -->
+<!-- mathematical block) the attribution, as in the HTML conversion. -->
+<!-- Basic blocks and inline exercises and projects.                 -->
 <xsl:template match="*" mode="heading-full">
     <fo:inline font-weight="bold" font-style="normal">
         <xsl:apply-templates select="." mode="type-name"/>
@@ -1027,16 +1035,20 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text> </xsl:text>
             <xsl:value-of select="$the-number"/>
         </xsl:if>
-        <!-- attribution of a theorem or axiom, as in the HTML conversion -->
-        <xsl:if test="creator and (&THEOREM-FILTER; or &AXIOM-FILTER;)">
-            <xsl:text> (</xsl:text>
-            <xsl:apply-templates select="." mode="creator-full"/>
-            <xsl:text>)</xsl:text>
+        <xsl:variable name="b-attribution" select="(creator or origins) and (&THEOREM-FILTER; or &AXIOM-FILTER; or &DEFINITION-FILTER; or &OPENPROBLEM-FILTER;)"/>
+        <!-- A period after the number only when nothing follows it, -->
+        <!-- as in the HTML and LaTeX conversions                    -->
+        <xsl:if test="not(title) and not($b-attribution)">
+            <xsl:text>.</xsl:text>
         </xsl:if>
-        <xsl:text>.</xsl:text>
         <xsl:if test="title">
             <xsl:text> </xsl:text>
             <xsl:apply-templates select="." mode="title-full"/>
+        </xsl:if>
+        <xsl:if test="$b-attribution">
+            <xsl:text> (</xsl:text>
+            <xsl:apply-templates select="." mode="attribution-full"/>
+            <xsl:text>)</xsl:text>
         </xsl:if>
     </fo:inline>
 </xsl:template>
@@ -1267,13 +1279,16 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="idx | notation"/>
     <xsl:variable name="content" select="*[not(self::title) and not(self::idx) and not(self::notation)]"/>
     <xsl:variable name="last" select="$content[last()]"/>
-    <!-- The mark rides a closing paragraph only when that paragraph   -->
-    <!-- holds running text alone.  A paragraph that carries a display  -->
-    <!-- ("...written as <md/>") would otherwise have its line          -->
-    <!-- justified (to push the mark to the margin), spreading the text -->
-    <!-- around the display; such a block takes the mark on its own     -->
-    <!-- line instead.                                                  -->
-    <xsl:variable name="b-mark-rides" select="boolean(($last[self::p] and not($last/md)) or ($last[self::statement] and $last/*[last()][self::p] and not($last/*[last()]/md)))"/>
+    <!-- The mark rides the paragraph that closes the block (directly,   -->
+    <!-- or by closing a "statement") only when that paragraph holds     -->
+    <!-- running text alone.  A paragraph carrying a block-level child   -->
+    <!-- (a display "md", a code display "cd", or a list "ol", "ul",     -->
+    <!-- "dl") would otherwise have "text-align-last" justified to push  -->
+    <!-- the mark to the margin, which spreads the text line before the  -->
+    <!-- block and, since the property inherits, the last line of every  -->
+    <!-- list item; such a block takes the mark on its own line instead. -->
+    <xsl:variable name="closing-paragraph" select="$last[self::p] | $last[self::statement]/*[last()][self::p]"/>
+    <xsl:variable name="b-mark-rides" select="$closing-paragraph and not($closing-paragraph/*[self::md or self::cd or self::ol or self::ul or self::dl])"/>
     <!-- the heading runs in to a leading paragraph, plain or in a "statement" -->
     <xsl:choose>
         <xsl:when test="$content[1][self::p] or ($content[1][self::statement] and $content[1]/*[1][self::p])">
@@ -2146,15 +2161,16 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- An image is a centered block, with the authored @width      -->
 <!-- percentage (or the documented defaults) honored by the      -->
 <!-- common machinery, which makes an image fill its panel when  -->
-<!-- inside a "sidebyside".  The percentage width of the graphic -->
-<!-- is relative to the available width, and the image scales to -->
-<!-- it, preserving the aspect ratio.  Restricted to externally  -->
-<!-- provided and pre-generated images; the harness reports the  -->
-<!-- born-in-source kinds (e.g. "latex-image"), which need       -->
-<!-- companion image-generation components.  N.B. an SVG file    -->
-<!-- must carry its intrinsic @width and @height: with only a    -->
-<!-- @viewBox, FOP assumes a square, and the drawing floats in   -->
-<!-- extra vertical space.                                       -->
+<!-- it is a panel of a "sidebyside" (or the content of a        -->
+<!-- "figure" panel).  The percentage width of the graphic is    -->
+<!-- relative to the available width where the image sits, and   -->
+<!-- the image scales to it, preserving the aspect ratio.        -->
+<!-- Restricted to externally provided and pre-generated images; -->
+<!-- the harness reports the born-in-source kinds (e.g.          -->
+<!-- "latex-image"), which need companion image-generation       -->
+<!-- components.  N.B. an SVG file must carry its intrinsic      -->
+<!-- @width and @height: with only a @viewBox, FOP assumes a     -->
+<!-- square, and the drawing floats in extra vertical space.     -->
 <xsl:template match="image[@source|@pi:generated]|image[latex-image]|image[sageplot]|image[asymptote]|image[pf:prefigure]|image[mermaid]">
     <xsl:variable name="width">
         <xsl:apply-templates select="." mode="get-width-percentage"/>
@@ -3204,6 +3220,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="&STACKABLE;"/>
 </xsl:template>
 
+<!-- A "stack" within a "figure" holds subfigures, each a      -->
+<!-- "figure" with its own caption, subnumbered "(a)", "(b)",  -->
+<!-- ...; the enclosing figure captions the whole.             -->
+<xsl:template match="figure/stack">
+    <xsl:apply-templates select="figure"/>
+</xsl:template>
+
 <!-- A "sbsgroup" is as pure a container as there can be: the -->
 <!-- "sidebyside" children just pile up vertically.  (Common  -->
 <!-- layout attributes on the group are consulted by each     -->
@@ -3444,6 +3467,19 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- concrete Unicode values below.  So these elements are        -->
 <!-- implemented entirely in common, and need no FO template      -->
 <!-- of their own here.                                           -->
+
+<!-- The "text()" template of -common passes each run of prose  -->
+<!-- through this hook.  A keyboard apostrophe (U+0027) becomes -->
+<!-- the typographic 'RIGHT SINGLE QUOTATION MARK' (U+2019), as -->
+<!-- in the HTML conversion; TeX makes the same change on its   -->
+<!-- own in the LaTeX conversion.  Verbatim text ("c", "cd",    -->
+<!-- "pre", "program", "kbd", and the like) is taken whole with -->
+<!-- "value-of" and never arrives here, so code keeps its       -->
+<!-- straight mark.                                             -->
+<xsl:template name="text-processing">
+    <xsl:param name="text"/>
+    <xsl:value-of select="str:replace($text, $apos, '&#x2019;')"/>
+</xsl:template>
 
 <!-- An <icon> is a FontAwesome 5 glyph, as in the LaTeX route: the -->
 <!-- face follows  iconinfo/@font-awesome-family  and the glyph is  -->
@@ -3991,10 +4027,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- FO "alignment-adjust": FOP raises the object by the length,  -->
 <!-- so the (negative) drop lowers it below the baseline, exactly -->
 <!-- as in CSS (verified empirically, 2026-06-11).                -->
-<xsl:template match="m|me|men|md|mdn">
+<!-- Music notation ("n", "scaledeg", "timesignature", "chord") is   -->
+<!-- LaTeX built by the -common templates and set as inline math,   -->
+<!-- so it has a representation, and a placeholder, just as "m".    -->
+<xsl:template match="m|me|men|md|mdn|n|scaledeg|timesignature|chord">
     <xsl:variable name="id">
         <xsl:apply-templates select="." mode="unique-id"/>
     </xsl:variable>
+    <xsl:variable name="b-inline" select="self::m or self::n or self::scaledeg or self::timesignature or self::chord"/>
     <xsl:variable name="svg" select="$math-repr/pi:math[@id = $id]/div[@class = 'svg']/svg:svg"/>
     <xsl:variable name="speech" select="normalize-space($speech-repr/pi:math[@id = $id]/div[@class = 'speech'])"/>
     <!-- A display fills the full text measure only when no     -->
@@ -4063,7 +4103,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </xsl:choose>
     </xsl:variable>
     <xsl:choose>
-        <xsl:when test="$svg and self::m">
+        <xsl:when test="$svg and $b-inline">
             <!-- for math sitting on the baseline (e.g. a lone digit),  -->
             <!-- MathJax writes "vertical-align: 0;", unitless, and the -->
             <!-- parse of the "ex" quantity comes up empty, not zero    -->
@@ -4185,6 +4225,39 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <fo:inline font-family="{$font-family-monospace}" border="solid 0.5pt #888888" padding-left="2pt" padding-right="2pt">
         <xsl:value-of select="."/>
     </fo:inline>
+</xsl:template>
+<!-- The LaTeX of a music element is built by the "inner-music"  -->
+<!-- templates of the -common stylesheet, the same LaTeX MathJax -->
+<!-- receives; this mode only boxes it, as for "m" above.        -->
+<xsl:template match="n|scaledeg|timesignature|chord" mode="math-placeholder">
+    <fo:inline font-family="{$font-family-monospace}" border="solid 0.5pt #888888" padding-left="2pt" padding-right="2pt">
+        <xsl:apply-templates select="." mode="inner-music"/>
+    </fo:inline>
+</xsl:template>
+
+<!-- Accidentals in prose ("sharp", "flat", and so on, outside any  -->
+<!-- note or chord); the -common templates for the elements call    -->
+<!-- these by name.  The body fonts lack the glyphs, and FOP falls  -->
+<!-- back to another face only for a whole word, so each is set     -->
+<!-- outright in the symbol font, as the end-marks are.  FOP cannot -->
+<!-- address a character beyond the Basic Multilingual Plane (it    -->
+<!-- mangles the surrogate pair), so the double sharp and double    -->
+<!-- flat, U+1D12A and U+1D12B, are the single characters doubled,  -->
+<!-- as the MathJax representations also render them.               -->
+<xsl:template name="doublesharp">
+    <fo:inline font-family="{$font-family-symbol}">&#x266F;&#x266F;</fo:inline>
+</xsl:template>
+<xsl:template name="sharp">
+    <fo:inline font-family="{$font-family-symbol}">&#x266F;</fo:inline>
+</xsl:template>
+<xsl:template name="natural">
+    <fo:inline font-family="{$font-family-symbol}">&#x266E;</fo:inline>
+</xsl:template>
+<xsl:template name="flat">
+    <fo:inline font-family="{$font-family-symbol}">&#x266D;</fo:inline>
+</xsl:template>
+<xsl:template name="doubleflat">
+    <fo:inline font-family="{$font-family-symbol}">&#x266D;&#x266D;</fo:inline>
 </xsl:template>
 
 <!-- Assembly rewrites every display to "md", so that is the only    -->
@@ -4637,6 +4710,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         self::nbsp or self::ndash or self::mdash or self::lsq or self::rsq or self::lq or self::rq or self::ldblbracket or self::rdblbracket or self::langle or self::rangle or self::ellipsis or self::midpoint or self::swungdash or self::permille or self::pilcrow or self::section-mark or self::minus or self::times or self::solidus or self::obelus or self::plusminus or self::copyright or self::phonomark or self::copyleft or self::registered or self::trademark or self::servicemark or self::degree or self::prime or self::dblprime or
         self::q or self::sq or self::dblbrackets or self::angles or
         self::c or self::cline or self::tag or self::tage or self::attr or self::today or self::timeofday or self::pi:localize or
+        self::sharp or self::flat or self::natural or self::doublesharp or self::doubleflat or
         self::xref or self::index-list or self::notation-list or self::list-of)]">
     <xsl:message>PTX:FO-TODO: <xsl:value-of select="local-name()"/> (child of "<xsl:value-of select="local-name(parent::*)"/>")</xsl:message>
     <xsl:apply-templates select="*"/>

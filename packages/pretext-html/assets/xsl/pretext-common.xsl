@@ -2230,8 +2230,9 @@ Book (with parts), "section" at level 3
 <!--     of its own, since there is no enclosing "figure"                -->
 <!--                                                                     -->
 <!--   "subnumber" - a panel of a side-by-side, which in turn is a       -->
-<!--     child/descendant of a "figure" (a "sbsgroup" may intervene).    -->
-<!--     This triggers a block number foor the exterior "figure" and     -->
+<!--     child/descendant of a "figure" (a "sbsgroup" may intervene),    -->
+<!--     or a "figure" in a "stack" that is the content of a "figure".   -->
+<!--     This triggers a block number for the exterior "figure" and      -->
 <!--     a subnumber for the interior FIGURE-LIKE.                       -->
 <!--                                                                     -->
 <!-- (These code comments are referenced in the LaTeX conversion.)       -->
@@ -2240,6 +2241,9 @@ Book (with parts), "section" at level 3
     <!-- more specific first, reverse of description above -->
     <xsl:choose>
         <xsl:when test="parent::sidebyside and ancestor::figure">
+            <xsl:text>subnumber</xsl:text>
+        </xsl:when>
+        <xsl:when test="self::figure and parent::stack/parent::figure">
             <xsl:text>subnumber</xsl:text>
         </xsl:when>
         <xsl:when test="parent::sidebyside">
@@ -2522,16 +2526,17 @@ Book (with parts), "section" at level 3
 <!-- the localization routines.                              -->
 
 
-<!-- With modal templates below, the default template does nothing   -->
-<!-- We include the "creator" element of a theorem/axiom as metadata -->
-<!-- NB: since these elements get killed on-sight, when we actually  -->
-<!-- want to process them we need to use a "select" attribute        -->
-<!-- similar to  title/*|title/text() or title/node().               -->
+<!-- With modal templates below, the default template does nothing    -->
+<!-- The "creator" and "origins" of a mathematical block are metadata -->
+<!-- NB: since these elements get killed on-sight, when we actually   -->
+<!-- want to process them we need to use a "select" attribute         -->
+<!-- similar to  title/*|title/text() or title/node().                -->
 <xsl:template match="title" />
 <xsl:template match="subtitle" />
 <xsl:template match="shorttitle"/>
 <xsl:template match="plaintitle"/>
 <xsl:template match="creator" />
+<xsl:template match="origins"/>
 
 <!-- Some items have default titles that make sense         -->
 <!-- Typically these are one-off subdivisions (eg preface), -->
@@ -2742,6 +2747,10 @@ Book (with parts), "section" at level 3
         <xsl:when test="plaintitle">
             <xsl:apply-templates select="plaintitle/text()"/>
         </xsl:when>
+        <!-- only the lines, not the whitespace between them -->
+        <xsl:when test="title/line">
+            <xsl:apply-templates select="title/line" mode="plain-title-edit"/>
+        </xsl:when>
         <xsl:when test="title">
             <xsl:apply-templates select="title/node()[not(self::fn)]" mode="plain-title-edit"/>
         </xsl:when>
@@ -2756,8 +2765,24 @@ Book (with parts), "section" at level 3
 
 <!-- Plain subtitle: used for HTML <meta> tags -->
 <xsl:template match="*" mode="subtitle-plain">
-    <xsl:if test="subtitle">
-        <xsl:apply-templates select="subtitle/node()[not(self::fn)]" mode="plain-title-edit"/>
+    <xsl:choose>
+        <!-- only the lines, not the whitespace between them -->
+        <xsl:when test="subtitle/line">
+            <xsl:apply-templates select="subtitle/line" mode="plain-title-edit"/>
+        </xsl:when>
+        <xsl:when test="subtitle">
+            <xsl:apply-templates select="subtitle/node()[not(self::fn)]" mode="plain-title-edit"/>
+        </xsl:when>
+    </xsl:choose>
+</xsl:template>
+
+<!-- The lines of a structured title (or subtitle) run together -->
+<!-- in a plain version, separated by a space, as they are in   -->
+<!-- the "title-simple" template                                -->
+<xsl:template match="title/line|subtitle/line" mode="plain-title-edit">
+    <xsl:apply-templates select="node()[not(self::fn)]" mode="plain-title-edit"/>
+    <xsl:if test="following-sibling::line">
+        <xsl:text> </xsl:text>
     </xsl:if>
 </xsl:template>
 
@@ -2822,7 +2847,7 @@ Book (with parts), "section" at level 3
 <!-- pieces simply so it is more readable.                     -->
 <!--                                                           -->
 <!-- Blocks -->
-<xsl:template match="&THEOREM-LIKE;|&PROOF-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&REMARK-LIKE;|&COMPUTATION-LIKE;|&EXAMPLE-LIKE;|&PROJECT-LIKE;|&ASIDE-LIKE;|exercise|assemblage" mode="title-wants-punctuation">
+<xsl:template match="&THEOREM-LIKE;|&PROOF-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&REMARK-LIKE;|&COMPUTATION-LIKE;|&OPENPROBLEM-LIKE;|&EXAMPLE-LIKE;|&PROJECT-LIKE;|&ASIDE-LIKE;|exercise|assemblage" mode="title-wants-punctuation">
     <xsl:value-of select="true()"/>
 </xsl:template>
 <!-- Miscellaneous -->
@@ -2841,9 +2866,34 @@ Book (with parts), "section" at level 3
     <xsl:value-of select="false()"/>
 </xsl:template>
 
-<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;" mode="creator-full">
+<!-- The attribution of a mathematical block: the "creator" (a name,  -->
+<!-- as short text) and the "origins" (cross-references, typically to -->
+<!-- bibliography entries).  Each conversion places the whole group   -->
+<!-- after the title, in parentheses, so the pieces here carry only   -->
+<!-- the commas between them.                                         -->
+<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&OPENPROBLEM-LIKE;" mode="creator-full">
     <!-- select="creator" would just get it killed -->
     <xsl:apply-templates select="creator/*|creator/text()" />
+</xsl:template>
+
+<!-- The schema allows only "xref" inside "origins", so each one is -->
+<!-- a live cross-reference; commas separate them, with no          -->
+<!-- conjunction before the last                                    -->
+<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&OPENPROBLEM-LIKE;" mode="origins-full">
+    <xsl:for-each select="origins/xref">
+        <xsl:if test="preceding-sibling::xref">
+            <xsl:text>, </xsl:text>
+        </xsl:if>
+        <xsl:apply-templates select="."/>
+    </xsl:for-each>
+</xsl:template>
+
+<xsl:template match="&THEOREM-LIKE;|&AXIOM-LIKE;|&DEFINITION-LIKE;|&OPENPROBLEM-LIKE;" mode="attribution-full">
+    <xsl:apply-templates select="." mode="creator-full"/>
+    <xsl:if test="creator and origins">
+        <xsl:text>, </xsl:text>
+    </xsl:if>
+    <xsl:apply-templates select="." mode="origins-full"/>
 </xsl:template>
 
 <!-- Structured titles -->
@@ -2904,13 +2954,17 @@ Book (with parts), "section" at level 3
 <!--                                                                      -->
 <!--   1.  in a figure (itself not in a sidebyside) where it              -->
 <!--       can have a width specification on itself                       -->
-<!--   2.  in a sidebyside directly, or a figure in a sidebyside.         -->
+<!--   2.  as a panel of a sidebyside, or in a figure that is a panel.    -->
 <!--       These widths come from the layout, and are converter dependent -->
+<!--   3.  more deeply within a sidebyside, such as in an "exercise"      -->
+<!--       panel or in a list item.  The layout does not size it, so it   -->
+<!--       is handled as in case 1, relative to the available width       -->
+<!--       where it sits.                                                 -->
 <!--                                                                      -->
-<!-- Entirely similar for jsxgraph, audio and video but we do             -->
-<!-- not consult default *image* width in docinfo                         -->
+<!-- Entirely similar for jsxgraph, audio, video, interactive and slate,  -->
+<!-- but we do not consult default *image* width in docinfo               -->
 
-<xsl:template match="image[not(ancestor::sidebyside)]|audio[not(ancestor::sidebyside)]|video[not(ancestor::sidebyside)]|jsxgraph[not(ancestor::sidebyside)]|interactive[not(ancestor::sidebyside)]|slate[not(ancestor::sidebyside)]" mode="get-width-percentage">
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;)]|audio[not(&SBS-LAYOUT-FILTER;)]|video[not(&SBS-LAYOUT-FILTER;)]|jsxgraph[not(&SBS-LAYOUT-FILTER;)]|interactive[not(&SBS-LAYOUT-FILTER;)]|slate[not(&SBS-LAYOUT-FILTER;)]" mode="get-width-percentage">
     <!-- find it first -->
     <xsl:variable name="raw-width">
         <xsl:choose>
@@ -2948,11 +3002,13 @@ Book (with parts), "section" at level 3
     </xsl:choose>
 </xsl:template>
 
-<!-- Any way that an image gets placed in a sidebyside -->
-<!-- panel it should have a relative size filling that -->
-<!-- panel, so this is easy, just 100% all the time    -->
-<!-- Exception: asymptote WebGL needs actual pixels    -->
-<xsl:template match="image[ancestor::sidebyside]" mode="get-width-percentage">
+<!-- An image that is a panel of a sidebyside, or that is   -->
+<!-- the content of a figure panel, has a relative size     -->
+<!-- filling that panel, so this is easy, just 100% all the -->
+<!-- time.  An image more deeply within a sidebyside is     -->
+<!-- handled above.                                         -->
+<!-- Exception: asymptote WebGL needs actual pixels         -->
+<xsl:template match="image[&SBS-LAYOUT-FILTER;]" mode="get-width-percentage">
     <xsl:text>100%</xsl:text>
 </xsl:template>
 
@@ -2968,8 +3024,8 @@ Book (with parts), "section" at level 3
 <!-- of the sidebyside, a naked object, or a figure holding the object  -->
 <!-- Widths from sidebyside layouts have been error-checked as input    -->
 
-<!-- occurs in a figure, not contained in a sidebyside -->
-<xsl:template match="audio[ancestor::sidebyside]|video[ancestor::sidebyside]|jsxgraph[ancestor::sidebyside]|interactive[ancestor::sidebyside]|slate[ancestor::sidebyside]|image[asymptote and ancestor::sidebyside]|image[sageplot and ancestor::sidebyside]" mode="get-width-percentage">
+<!-- a panel of a sidebyside, or the content of a stack or figure panel -->
+<xsl:template match="audio[&SBS-LAYOUT-FILTER;]|video[&SBS-LAYOUT-FILTER;]|jsxgraph[&SBS-LAYOUT-FILTER;]|interactive[&SBS-LAYOUT-FILTER;]|slate[&SBS-LAYOUT-FILTER;]|image[asymptote and (&SBS-LAYOUT-FILTER;)]|image[sageplot and (&SBS-LAYOUT-FILTER;)]" mode="get-width-percentage">
     <!-- in a side-by-side, get layout, locate in layout -->
     <!-- and get width.  The layout-parameters template  -->
     <!-- will analyze an enclosing sbsgroup              -->
@@ -3257,26 +3313,27 @@ Book (with parts), "section" at level 3
 <!-- First, a "divisional" "exercise" in an "exercises",      -->
 <!-- with perhaps intervening groups, like an "exercisegroup" -->
 <xsl:template match="exercises//exercise" mode="string-id">
-    <xsl:text>divisionalexercise</xsl:text>
+    <xsl:text>exercise-divisional</xsl:text>
 </xsl:template>
 
 <!-- Second, an "exercise" placed within a "worksheet"-->
 <xsl:template match="worksheet//exercise" mode="string-id">
-    <xsl:text>worksheetexercise</xsl:text>
+    <xsl:text>exercise-worksheet</xsl:text>
 </xsl:template>
 
 <!-- Third, an "exercise" placed within a "reading-questions"-->
 <xsl:template match="reading-questions//exercise" mode="string-id">
-    <xsl:text>readingquestion</xsl:text>
+    <xsl:text>exercise-reading</xsl:text>
 </xsl:template>
 
 <!-- Finally, an inline exercise has a division (several possible)        -->
 <!-- as a parent. We just drop in here last if other matches do not       -->
 <!-- succeed, but could improve with a filter or list of specific matches -->
-<!-- This matches the LaTeX environment of the same name, so              -->
-<!-- template to create an "inlineexercise" environment runs smoothly     -->
+<!-- The LaTeX conversions name their environment for an inline exercise  -->
+<!-- "inlineexercise", written there as a literal: an environment name is -->
+<!-- not a string-id, and a hyphen does not belong in one.                -->
 <xsl:template match="exercise" mode="string-id">
-    <xsl:text>inlineexercise</xsl:text>
+    <xsl:text>exercise-inline</xsl:text>
 </xsl:template>
 
 <!-- "solutions" divisions are "Solutions 5.6" in the  -->
@@ -4222,7 +4279,7 @@ Book (with parts), "section" at level 3
             </xsl:when>
             <!-- not placed on image, or figure/image,      -->
             <!-- but a document-wide default margins exists -->
-            <xsl:when test="self::image and not(ancestor::sidebyside) and $docinfo/defaults/images/@margins">
+            <xsl:when test="self::image and not(&SBS-LAYOUT-FILTER;) and $docinfo/defaults/images/@margins">
                 <xsl:value-of select="normalize-space($docinfo/defaults/images/@margins)" />
             </xsl:when>
             <!-- default if not specified -->
@@ -4263,7 +4320,7 @@ Book (with parts), "section" at level 3
             </xsl:when>
             <!-- not placed on image, or figure/image,    -->
             <!-- but a document-wide default width exists -->
-            <xsl:when test="self::image and not(ancestor::sidebyside) and $docinfo/defaults/images/@width">
+            <xsl:when test="self::image and not(&SBS-LAYOUT-FILTER;) and $docinfo/defaults/images/@width">
                 <xsl:value-of select="$docinfo/defaults/images/@width" />
             </xsl:when>
             <!-- default setting if not specified, and not global -->
@@ -7140,19 +7197,22 @@ Book (with parts), "section" at level 3
     <!-- categorized by their ancestors.  So we recognize certain strings        -->
     <!-- as "pseudo-elements".  We do this once and then pass them along.        -->
     <!--                                                                         -->
-    <!--   * inlineexercise                                                      -->
-    <!--   * divisionexercise                                                    -->
-    <!--   * worksheetexercise                                                   -->
-    <!--   * readingquestion                                                     -->
+    <!--   * exercise-inline                                                     -->
+    <!--   * exercise-divisional                                                 -->
+    <!--   * exercise-worksheet                                                  -->
+    <!--   * exercise-reading                                                    -->
     <!--                                                                         -->
-    <!-- Equality of strings (e.g. 'inlineexercise') and the node-set ($elements)-->
-    <!-- is true when the *string-value* of *one* node in the set is identical   -->
-    <!-- NB: if this gets out-of-hand, it should be passed as a structure        -->
-    <xsl:variable name="b-inline-exercises" select="'inlineexercise' = $elements"/>
-    <xsl:variable name="b-division-exercises" select="'divisionexercise' = $elements"/>
-    <xsl:variable name="b-worksheet-exercises" select="'worksheetexercise' = $elements"/>
-    <xsl:variable name="b-reading-questions" select="'readingquestion' = $elements"/>
-    <!-- display subdivision headings with empty contents? -->
+    <!-- These are the names a publication file uses, and the names an           -->
+    <!-- author writes in a "rename", so a type of "exercise" has one name.      -->
+    <!--                                                                         -->
+    <!-- Equality of strings (e.g. 'exercise-inline') and the node-set           -->
+    <!-- ($elements) is true when the *string-value* of *one* node in the        -->
+    <!-- set is identical.  NB: if this gets out-of-hand, pass a structure       -->
+    <xsl:variable name="b-inline-exercises" select="'exercise-inline' = $elements"/>
+    <xsl:variable name="b-division-exercises" select="'exercise-divisional' = $elements"/>
+    <xsl:variable name="b-worksheet-exercises" select="'exercise-worksheet' = $elements"/>
+    <xsl:variable name="b-reading-questions" select="'exercise-reading' = $elements"/>
+    <!-- display subdivision headings with empty contents?                       -->
     <xsl:variable name="entered-empty">
         <xsl:choose>
             <xsl:when test="not(@empty)">
@@ -11975,6 +12035,21 @@ http://andrewmccarthy.ie/2014/11/06/swung-dash-in-latex/
         <xsl:with-param name="message" select="'an &quot;sbsgroup&quot; now requires at least two &quot;sidebyside&quot;.  A group of one behaves exactly like the &quot;sidebyside&quot; alone, so use the &quot;sidebyside&quot; by itself, with the layout attributes moved onto it'"/>
     </xsl:call-template>
     <!--  -->
+    <!-- 2026-09-22  a type of "exercise" is named as in a publication file -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$docinfo/rename[(@element = 'inlineexercise') or (@element = 'divisionalexercise') or (@element = 'worksheetexercise') or (@element = 'readingquestion')]&quot;" />
+        <xsl:with-param name="date-string" select="'2026-09-22'" />
+        <xsl:with-param name="message" select="'a &quot;rename&quot; now names a type of &quot;exercise&quot; the way a publication file does: &quot;exercise-inline&quot;, &quot;exercise-divisional&quot;, &quot;exercise-worksheet&quot;, or &quot;exercise-reading&quot;.  The one-word names are deprecated, and will continue to be honored'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- 2026-09-22  a type of "exercise" is named as in a publication file -->
+    <xsl:call-template name="deprecation-message">
+        <xsl:with-param name="occurrences" select="&quot;$document-root//list-of[contains(@elements, 'inlineexercise') or contains(@elements, 'divisionexercise') or contains(@elements, 'divisionalexercise') or contains(@elements, 'worksheetexercise') or contains(@elements, 'readingquestion')]&quot;" />
+        <xsl:with-param name="date-string" select="'2026-09-22'" />
+        <xsl:with-param name="message" select="'the &quot;elements&quot; attribute of a &quot;list-of&quot; now names a type of &quot;exercise&quot; the way a publication file does: &quot;exercise-inline&quot;, &quot;exercise-divisional&quot;, &quot;exercise-worksheet&quot;, or &quot;exercise-reading&quot;.  The one-word names are deprecated, and will continue to be honored'"/>
+    </xsl:call-template>
+    <!--  -->
+    <!-- End of the chronological sequence: a new entry goes just above. -->
 </xsl:template>
 
 <!-- Miscellaneous -->

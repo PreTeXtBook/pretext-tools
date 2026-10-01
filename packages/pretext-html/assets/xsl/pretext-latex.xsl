@@ -428,7 +428,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:otherwise>
         </xsl:choose>
     </xsl:if>
-    <xsl:call-template name="support-footnote"/>
 </xsl:template>
 
 <!-- Text Alignment, Right and Bottom -->
@@ -498,6 +497,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>%% Title page information for article&#xa;</xsl:text>
     <xsl:text>\title{</xsl:text>
     <xsl:apply-templates select="." mode="title-full" />
+    <!-- The article-level support statement is a "\thanks" on the     -->
+    <!-- title: a marked footnote on the title page, so it reads apart -->
+    <!-- from the per-author statements, which are "\thanks" off names -->
+    <xsl:if test="$bibinfo/support">
+        <xsl:text>\thanks{</xsl:text>
+        <xsl:apply-templates select="$bibinfo/support"/>
+        <xsl:text>}</xsl:text>
+    </xsl:if>
     <xsl:if test="subtitle">
         <xsl:text>\\&#xa;</xsl:text>
         <!-- Trying to match author fontsize -->
@@ -510,11 +517,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>\\</xsl:text>
         </xsl:if>
         <xsl:apply-templates select="$bibinfo/event" />
-    </xsl:if>
-    <xsl:if test="$bibinfo/support">
-        <xsl:text>\ptxsupport{</xsl:text>
-        <xsl:apply-templates select="$bibinfo/support" mode="article-info"/>
-        <xsl:text>}&#xa;</xsl:text>
     </xsl:if>
     <xsl:text>}&#xa;</xsl:text>
     <xsl:if test="$bibinfo/author or $bibinfo/editor">
@@ -1980,25 +1982,25 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <!--divisional exercise -->
             <xsl:when test="self::exercise and ancestor::exercises">
                 <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'divisionalexercise'"/>
+                    <xsl:with-param name="string-id" select="'exercise-divisional'"/>
                 </xsl:apply-templates>
             </xsl:when>
             <!-- worksheet exercise -->
             <xsl:when test="self::exercise and ancestor::worksheet">
                 <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'worksheetexercise'"/>
+                    <xsl:with-param name="string-id" select="'exercise-worksheet'"/>
                 </xsl:apply-templates>
             </xsl:when>
             <!-- reading question -->
             <xsl:when test="self::exercise and ancestor::reading-questions">
                 <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'readingquestion'"/>
+                    <xsl:with-param name="string-id" select="'exercise-reading'"/>
                 </xsl:apply-templates>
             </xsl:when>
             <!-- inline exercise ("Checkpoint") by elimination -->
             <xsl:when test="self::exercise">
                 <xsl:apply-templates select="." mode="type-name">
-                    <xsl:with-param name="string-id" select="'inlineexercise'"/>
+                    <xsl:with-param name="string-id" select="'exercise-inline'"/>
                 </xsl:apply-templates>
             </xsl:when>
             <!-- now PROJECT-LIKE by elimination, don't need $string-id -->
