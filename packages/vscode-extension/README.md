@@ -53,7 +53,16 @@ If you open a new empty document that you will include via `xi:include`, save it
 Here are some options that I find make snippets more useful. For each of these, open settings in VS code and search for them.
 
 - Emmet: Excluded Languages. I exclude PreTeXt Emmet for PreTeXt, since the snippets behave better.
-- Editor: Snippets Suggestions. This is "none" for PreTeXt files by default: the language server's completions already include every element snippet, so the contributed snippets would show up twice. They are all still available through **Snippets: Insert Snippet**; set this to "bottom" to have them in the completion list as well.
+- Editor: Snippet Suggestions. This is "none" for PreTeXt files by default: the language server's completions already include every element snippet, so the contributed snippets would show up twice. They are all still available through **Snippets: Insert Snippet**. To have them in the completion list as well, change the setting for PreTeXt files specifically: search Settings for `@lang:pretext snippet suggestions`, or add this to your `settings.json`:
+
+  ```json
+  "[pretext]": {
+    "editor.snippetSuggestions": "bottom"
+  }
+  ```
+
+  Changing the plain "Editor: Snippet Suggestions" setting has no effect on PreTeXt files, because the extension's PreTeXt-specific default takes precedence over it.
+
 - Editor: Tab Completion. I set this to "only snippets" so that I can hit TAB or ENTER to select the snippet.
 - If you get too many snippet suggestions, experiment with the quick-suggest and completion settings. Please contribute suggestions on the best configuration if you find something that works well.
 
