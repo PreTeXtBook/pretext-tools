@@ -299,7 +299,8 @@ export const ELEMENTS: CompletionItems = {
   },
   blockquote: {
     label: "<blockquote>",
-    insertText: "<blockquote>\n\t<p>\n\t\t$0\n\t</p>\n</blockquote>",
+    insertText:
+      "<blockquote>\n\t<p>\n\t\t$TM_SELECTED_TEXT$0\n\t</p>\n</blockquote>",
     documentation: "blockquote",
   },
   blocks: {
@@ -533,7 +534,7 @@ export const ELEMENTS: CompletionItems = {
   },
   li: {
     label: "<li>",
-    insertText: "<li>\n\t<p>\n\t\t$0\n\t</p>\n</li>",
+    insertText: "<li>\n\t<p>\n\t\t$TM_SELECTED_TEXT$0\n\t</p>\n</li>",
     documentation: "list item (w/ p)",
     sortText: "0",
   },
@@ -551,7 +552,7 @@ export const ELEMENTS: CompletionItems = {
   },
   md: {
     label: "<md>",
-    insertText: "<md>\n\t$1\n</md>\n$0",
+    insertText: "<md>\n\t${1:$TM_SELECTED_TEXT}\n</md>\n$0",
     documentation: "math-display",
   },
   mdn: {
@@ -561,7 +562,7 @@ export const ELEMENTS: CompletionItems = {
   },
   me: {
     label: "<me>",
-    insertText: "<md>\n\t$1\n</md>\n$0",
+    insertText: "<md>\n\t${1:$TM_SELECTED_TEXT}\n</md>\n$0",
     documentation: "math-equation (<md> is the new markup).",
   },
   men: {
@@ -605,7 +606,7 @@ export const ELEMENTS: CompletionItems = {
   },
   p: {
     label: "<p>",
-    insertText: "<p>\n\t$0\n</p>",
+    insertText: "<p>\n\t$TM_SELECTED_TEXT$0\n</p>",
     documentation: "paragraph",
     sortText: "0",
   },
@@ -803,7 +804,7 @@ export const ELEMENTS: CompletionItems = {
   },
   title: {
     label: "<title>",
-    insertText: "<title>$1</title>\n\n$0",
+    insertText: "<title>${1:$TM_SELECTED_TEXT}</title>\n\n$0",
     documentation: "title",
     sortText: "0",
   },
@@ -916,7 +917,7 @@ export const ELEMENTS: CompletionItems = {
   },
   fn: {
     label: "<fn>",
-    insertText: "<fn>$0</fn>",
+    insertText: "<fn>$TM_SELECTED_TEXT$0</fn>",
     documentation: "footnote",
   },
   foreign: {
@@ -998,7 +999,7 @@ export const ELEMENTS: CompletionItems = {
   },
   url: {
     label: "<url>",
-    insertText: '<url href="$1">$2</url>$0',
+    insertText: '<url href="$1">${2:$TM_SELECTED_TEXT}</url>$0',
     documentation: "url",
   },
   xref: {

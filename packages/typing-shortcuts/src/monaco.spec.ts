@@ -38,6 +38,8 @@ const makeEditor = (
   { snippets = true }: { snippets?: boolean } = {},
 ) => {
   let { source, caret } = doc(marked);
+  // The selection runs from the caret to here, when there is one.
+  let selectionEnd: number | null = null;
   let listener: ((event: any) => void) | null = null;
   const actions: any[] = [];
   const snippetInsert = vi.fn();
@@ -64,6 +66,7 @@ const makeEditor = (
   ) => {
     const rangeLength = end - start;
     source = source.slice(0, start) + text + source.slice(end);
+    selectionEnd = null;
     listener?.({
       changes: [{ rangeOffset: start, rangeLength, text }],
       ...event,
@@ -84,15 +87,20 @@ const makeEditor = (
   };
   const editor = {
     getModel: () => model,
-    getPosition: () => getPositionAt(caret),
-    getSelections: () => {
-      const at = getPositionAt(caret);
-      return [
-        new FakeRange(at.lineNumber, at.column, at.lineNumber, at.column),
-      ];
+    getPosition: () => getPositionAt(selectionEnd ?? caret),
+    getSelection: () => {
+      const from = getPositionAt(caret);
+      const to = getPositionAt(selectionEnd ?? caret);
+      return new FakeRange(
+        from.lineNumber,
+        from.column,
+        to.lineNumber,
+        to.column,
+      );
     },
+    getSelections: () => [editor.getSelection()],
     setSelection: (range: FakeRange) => {
-      caret = offsetsOf(range)[0];
+      [caret, selectionEnd] = offsetsOf(range);
     },
     onDidChangeModelContent: (cb: (event: any) => void) => {
       listener = cb;
@@ -118,8 +126,37 @@ const makeEditor = (
       actions.push(action);
       return { dispose: () => actions.splice(actions.indexOf(action), 1) };
     },
-    trigger: (_source: string, handler: string, payload: { text: string }) => {
-      if (handler === "type") editor.type(payload.text);
+    trigger: vi.fn(
+      (_source: string, handler: string, payload: { text: string }) => {
+        if (handler === "type") editor.type(payload.text);
+      },
+    ),
+    /** Select `start`–`end`. */
+    select: (start: number, end: number) => {
+      caret = start;
+      selectionEnd = end;
+    },
+    /**
+     * Simulate typing `open` over the selection with auto-surround: both
+     * characters go in as one event, and the text between stays selected.
+     */
+    surround: (open: string, close: string) => {
+      const start = caret;
+      const end = selectionEnd ?? caret;
+      source =
+        source.slice(0, start) +
+        open +
+        source.slice(start, end) +
+        close +
+        source.slice(end);
+      caret = start + 1;
+      selectionEnd = end + 1;
+      listener?.({
+        changes: [
+          { rangeOffset: end, rangeLength: 0, text: close },
+          { rangeOffset: start, rangeLength: 0, text: open },
+        ],
+      });
     },
     /** Simulate a keystroke (no auto-indent). */
     type: (text: string, event: object = {}) => {
@@ -229,7 +266,48 @@ describe("registerMonacoTypingShortcuts", () => {
   it("skips the Shift+Enter action when paragraphs are off", () => {
     const fake = makeEditor("<p>|</p>");
     registerMonacoTypingShortcuts(monaco, fake.editor, { paragraphs: false });
-    expect(fake.actions).toHaveLength(0);
+    expect(fake.actions.map((action) => action.id)).toEqual([
+      "pretext.typingShortcuts.wrapSelection",
+    ]);
+  });
+
+  it("wraps a selection typed over with $ or <", () => {
+    const fake = makeEditor("<p>Let |x be.</p>");
+    registerMonacoTypingShortcuts(monaco, fake.editor);
+    fake.editor.select(7, 8);
+    fake.editor.surround("$", "$");
+    expect(fake.snippetInsert).toHaveBeenLastCalledWith("<m>${1:x}</m>$0", {
+      adjustWhitespace: false,
+    });
+    // The selection covers `$x$`, for the snippet to replace.
+    expect(fake.editor.getSelection()).toEqual(new FakeRange(1, 8, 1, 11));
+
+    const other = makeEditor("<p>Let |x be.</p>");
+    registerMonacoTypingShortcuts(monaco, other.editor);
+    other.editor.select(7, 8);
+    other.editor.surround("<", ">");
+    expect(other.snippetInsert).toHaveBeenLastCalledWith(
+      "<$1>${2:x}</${1/[\\s>].*//}>$0",
+      { adjustWhitespace: false },
+    );
+    expect(other.editor.trigger).toHaveBeenCalledWith(
+      "pretext-typing-shortcuts",
+      "editor.action.triggerSuggest",
+      {},
+    );
+  });
+
+  it("adds an action that wraps the selection", () => {
+    const fake = makeEditor("<p>Let |x be.</p>");
+    registerMonacoTypingShortcuts(monaco, fake.editor);
+    const action = fake.actions.find(
+      ({ id }) => id === "pretext.typingShortcuts.wrapSelection",
+    );
+    fake.editor.select(7, 8);
+    action.run(fake.editor, { element: "em" });
+    expect(fake.snippetInsert).toHaveBeenLastCalledWith("<em>${1:x}</em>$0", {
+      adjustWhitespace: false,
+    });
   });
 
   it("removes everything on dispose", () => {

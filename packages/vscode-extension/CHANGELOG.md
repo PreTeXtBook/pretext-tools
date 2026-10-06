@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- Wrap selected text by typing over it: `$` wraps it in `<m>`, `*` in `<em>`, `` ` `` in `<c>`, `"` in `<q>`, and `<` in any element, whose name you type into both tags at once (or pick from the completions). The new **PreTeXt: Wrap Selection in Element** command does the same as `<`, and takes an element to bind a key to (`"args": { "element": "term" }`). Turn the typing part off with "PreTeXt › Typing Shortcuts: Wrap Selection".
+
+### Changed
+
+- Snippets no longer appear in the completion list in PreTeXt files (`editor.snippetSuggestions` defaults to `"none"` there), since the language server already offers every element snippet; they are all still in **Snippets: Insert Snippet**. To bring them back, set the new "PreTeXt › Snippet Suggestions" setting to "bottom", "top" or "inline"; it sets `editor.snippetSuggestions` for PreTeXt files, which the global "Editor: Snippet Suggestions" setting doesn't override.
+
 ## [1.3.1] - 2026-10-01
 
 ### Changed

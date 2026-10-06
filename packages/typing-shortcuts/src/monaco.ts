@@ -1,7 +1,7 @@
 /**
  * Monaco wiring for the typing shortcuts: one content-change subscription
  * that feeds {@link TypingShortcuts}, plus a Shift+Enter action for a new
- * paragraph.
+ * paragraph and a "wrap selection" action.
  *
  * `monaco` and `editor` are typed loosely (as pretext-plus's editor configs
  * do), so this package needs no `monaco-editor` dependency.
@@ -14,6 +14,7 @@
 import { TypingShortcuts } from "./session";
 import { snippetToPlainText } from "./snippets";
 import type { ShortcutEdit, TypingShortcutsOptions } from "./types";
+import { wrapSelectionEdit } from "./wrap";
 
 export interface MonacoTypingShortcutsOptions extends TypingShortcutsOptions {
   /**
@@ -82,7 +83,11 @@ export const registerMonacoTypingShortcuts = (
       model.pushStackElement();
       if (snippets) {
         editor.setSelection(range);
-        snippets.insert(text);
+        if (edit.keepWhitespace) {
+          snippets.insert(text, { adjustWhitespace: false });
+        } else {
+          snippets.insert(text);
+        }
       } else {
         editor.executeEdits(
           EDIT_SOURCE,
@@ -129,6 +134,7 @@ export const registerMonacoTypingShortcuts = (
       indentUnit: indentUnitOf(model),
       eol: model.getEOL(),
       caret: position ? model.getOffsetAt(position) : undefined,
+      selections: editor.getSelections()?.length,
     });
     if (edit) apply(model, edit);
   });
@@ -162,10 +168,36 @@ export const registerMonacoTypingShortcuts = (
           },
         });
 
+  // Wrap the selection in the element named by `args.element` (run it with
+  // `editor.trigger(source, id, { element: "m" })`), or with none given, in
+  // one named by typing, as typing `<` over it does.
+  const wrapSelection = editor.addAction({
+    id: "pretext.typingShortcuts.wrapSelection",
+    label: "PreTeXt: Wrap Selection in Element",
+    run: (_editor: any, args?: { element?: unknown }) => {
+      const model = editor.getModel();
+      const selection = editor.getSelection();
+      if (!model || !selection) return;
+      const element =
+        typeof args?.element === "string" && args.element.trim()
+          ? args.element.trim()
+          : null;
+      const edit = wrapSelectionEdit(
+        model.getValue(),
+        model.getOffsetAt(selection.getStartPosition()),
+        model.getOffsetAt(selection.getEndPosition()),
+        element,
+        { indentUnit: indentUnitOf(model), eol: model.getEOL() },
+      );
+      if (edit) apply(model, edit);
+    },
+  });
+
   return {
     dispose: () => {
       contentListener?.dispose?.();
       newParagraph?.dispose?.();
+      wrapSelection?.dispose?.();
     },
   };
 };

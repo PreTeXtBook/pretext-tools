@@ -24,6 +24,12 @@ export function linePrefix(text: string, position: Position): string {
   return lineText.slice(0, position.character);
 }
 
+export function lineSuffix(text: string, position: Position): string {
+  const lines = text.split(/\r?\n/);
+  const lineText = lines[position.line] || "";
+  return lineText.slice(position.character);
+}
+
 export function getTextInRange(text: string, range: Range): string {
   const lines = text.split(/\r?\n/);
   if (range.start.line !== range.end.line) {

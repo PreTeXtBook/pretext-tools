@@ -70,6 +70,7 @@ import {
 import { projects, resetProjectList } from "./project";
 import { registerFlavorTakeover } from "./flavor-takeover";
 import { registerTypingShortcuts } from "./typing-shortcuts";
+import { registerSnippetSuggestions } from "./snippet-suggestions";
 //import { cmdInstallSage } from "./commands/installSage";
 import { PretextVisualEditorProvider } from "./visualEditor";
 import { cmdImport } from "./importWizardPanel";
@@ -131,6 +132,9 @@ export async function activate(context: ExtensionContext) {
 
   // $x$ → <m>x</m>, escaping, double Enter / Shift+Enter paragraphs, theorem:.
   context.subscriptions.push(registerTypingShortcuts());
+
+  // "PreTeXt › Snippet Suggestions" → `[pretext]` editor.snippetSuggestions.
+  context.subscriptions.push(registerSnippetSuggestions());
 
   ///////////////// Commands //////////////////////
 

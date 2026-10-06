@@ -68,6 +68,21 @@
     {
       "open": "<",
       "close": ">"
+    },
+    // `$`, `*` and `` ` `` (with `"` and `<` above) are wrap shortcuts: the
+    // typing shortcuts turn `$text$` into `<m>text</m>`, `<text>` into an
+    // element named by typing, and so on.
+    {
+      "open": "$",
+      "close": "$"
+    },
+    {
+      "open": "*",
+      "close": "*"
+    },
+    {
+      "open": "`",
+      "close": "`"
     }
   ],
   "onEnterRules": [

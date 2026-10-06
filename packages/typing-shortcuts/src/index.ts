@@ -1,5 +1,11 @@
 export * from "./types";
-export { TypingShortcuts, typedInput, type TypedInput } from "./session";
+export {
+  TypingShortcuts,
+  surroundInput,
+  typedInput,
+  type SurroundInput,
+  type TypedInput,
+} from "./session";
 export { registerMonacoTypingShortcuts } from "./monaco";
 export type { MonacoTypingShortcutsOptions } from "./monaco";
 export {
@@ -31,7 +37,17 @@ export {
 } from "./inline-markup";
 export { typographyEdit } from "./typography";
 export { codeBlockEdit, codeBlockSnippet } from "./code-blocks";
-export { snippetToPlainText } from "./snippets";
+export {
+  escapeSnippetText,
+  resolveSelectedText,
+  snippetToPlainText,
+} from "./snippets";
+export {
+  SURROUND_WRAPPERS,
+  isWrappable,
+  surroundEdit,
+  wrapSelectionEdit,
+} from "./wrap";
 export {
   scanXmlContext,
   type OpenElement,

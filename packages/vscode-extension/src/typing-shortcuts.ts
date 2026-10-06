@@ -2,7 +2,9 @@
  * Typing shortcuts in PreTeXt documents: `$x$` → `<m>x</m>`, escaping a bare
  * `<`/`>`/`&`, double Enter or Shift+Enter for a new paragraph,
  * `theorem:` + Enter for the theorem snippet, Markdown-style inline markup
- * and code fences, `--`/`---`/`...`, and `@` for an `<xref>`.
+ * and code fences, `--`/`---`/`...`, `@` for an `<xref>`, and `$`, `*`, `` ` ``,
+ * `"` or `<` typed over a selection to wrap it in an element (plus the
+ * `wrapSelection` command, to wrap it in any element).
  *
  * All the decisions live in `@pretextbook/typing-shortcuts` (shared with the
  * pretext-plus web editor); this file feeds it document changes and applies
@@ -22,6 +24,7 @@ import {
 } from "vscode";
 import {
   TypingShortcuts,
+  wrapSelectionEdit,
   type EditorState,
   type ShortcutEdit,
   type TypingShortcutsOptions,
@@ -33,6 +36,8 @@ const PRETEXT_LANGUAGE_ID = "pretext";
 const SETTINGS = "pretext-tools.typingShortcuts";
 
 export const NEW_PARAGRAPH_COMMAND = "pretext-tools.newParagraph";
+
+export const WRAP_SELECTION_COMMAND = "pretext-tools.wrapSelection";
 
 function readOptions(): TypingShortcutsOptions {
   const config = workspace.getConfiguration(SETTINGS);
@@ -46,6 +51,7 @@ function readOptions(): TypingShortcutsOptions {
     crossReferences: config.get("crossReferences", true),
     codeBlocks: config.get("codeBlocks", true),
     lists: config.get("lists", true),
+    wrapSelection: config.get("wrapSelection", true),
   };
 }
 
@@ -61,6 +67,7 @@ function editorState(editor: TextEditor): EditorState {
   return {
     indentUnit: insertSpaces === false ? "\t" : " ".repeat(size),
     eol: editor.document.eol === EndOfLine.CRLF ? "\r\n" : "\n",
+    selections: editor.selections.length,
   };
 }
 
@@ -86,6 +93,11 @@ async function applyEdit(
     const inserted = await editor.insertSnippet(
       new SnippetString(edit.text),
       range,
+      {
+        undoStopBefore: true,
+        undoStopAfter: true,
+        keepWhitespace: edit.keepWhitespace,
+      },
     );
     if (inserted && edit.suggest) {
       await commands.executeCommand("editor.action.triggerSuggest");
@@ -170,6 +182,38 @@ export function registerTypingShortcuts(): Disposable {
         await commands.executeCommand("type", { text: "\n" });
       }
     }),
+
+    // Wrap the selection in `args.element`, or with no element given, in one
+    // named by typing (as typing `<` over it does). From a keybinding:
+    // `"args": { "element": "m" }`.
+    commands.registerCommand(
+      WRAP_SELECTION_COMMAND,
+      async (args?: { element?: unknown }) => {
+        const editor = window.activeTextEditor;
+        if (!editor || editor.document.languageId !== PRETEXT_LANGUAGE_ID) {
+          return;
+        }
+        const { document, selection } = editor;
+        const element =
+          typeof args?.element === "string" && args.element.trim()
+            ? args.element.trim()
+            : null;
+        const edit = wrapSelectionEdit(
+          document.getText(),
+          document.offsetAt(selection.start),
+          document.offsetAt(selection.end),
+          element,
+          editorState(editor),
+        );
+        if (edit) {
+          await applyEdit(editor, edit, document.version);
+        } else {
+          void window.showInformationMessage(
+            `Can't wrap the selection${element ? ` in <${element}>` : ""}: it has to start and end in the text of one element.`,
+          );
+        }
+      },
+    ),
 
     workspace.onDidChangeConfiguration((event) => {
       if (!event.affectsConfiguration(SETTINGS)) {

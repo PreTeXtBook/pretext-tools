@@ -390,6 +390,12 @@
         "description": "Inside a <p>, end it at the cursor and start the next one; elsewhere, start a new <p>. Bound to Shift+Enter."
       },
       {
+        "command": "pretext-tools.wrapSelection",
+        "title": "Wrap Selection in Element",
+        "category": "PreTeXt",
+        "description": "Wrap the selection in an element: type its name into both tags at once (or pick it from the completions). To bind a key to one element, pass it as an argument: \"args\": { \"element\": \"m\" }."
+      },
+      {
         "command": "pretext-tools.gettingStarted",
         "title": "Open getting started walkthrough",
         "category": "PreTeXt"
@@ -423,6 +429,9 @@
       "xml.validation.xInclude.enabled": true,
       "cSpell.enabledFileTypes": {
         "pretext": true
+      },
+      "[pretext]": {
+        "editor.snippetSuggestions": "none"
       }
     },
     "menus": {
@@ -483,6 +492,17 @@
         {
           "command": "pretext-tools.newParagraph",
           "when": "editorLangId == 'pretext'"
+        },
+        {
+          "command": "pretext-tools.wrapSelection",
+          "when": "editorLangId == 'pretext'"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "pretext-tools.wrapSelection",
+          "when": "editorHasSelection && !editorReadonly && editorLangId == 'pretext'",
+          "group": "1_modification"
         }
       ]
     },
@@ -816,6 +836,23 @@
             "default": true,
             "description": "Convert LaTeX or Markdown to PreTeXt when pasting into a PreTeXt file. Press Ctrl+Shift+V (Cmd+Shift+V on macOS) to paste without converting, or use the paste control that appears after pasting. Turn this off to paste plainly by default and convert with the \"PreTeXt: Paste and Convert to PreTeXt\" command instead."
           },
+          "pretext-tools.snippetSuggestions": {
+            "type": "string",
+            "default": "none",
+            "enum": [
+              "none",
+              "top",
+              "bottom",
+              "inline"
+            ],
+            "markdownEnumDescriptions": [
+              "Leave snippets out of the completion list (default).",
+              "Show snippets above the other suggestions.",
+              "Show snippets below the other suggestions.",
+              "Show snippets mixed in with the other suggestions."
+            ],
+            "markdownDescription": "Whether and where the extension's snippets appear in the completion list in PreTeXt files. They are left out by default because the language server's completions already include every element, so each would appear twice; all of them are still in **Snippets: Insert Snippet**. Changing this sets `#editor.snippetSuggestions#` for PreTeXt files in the same settings scope. With snippets shown, avoid picking one when wrapping a selection with `<`: the whole snippet would go into both tags."
+          },
           "pretext-tools.typingShortcuts.mathDelimiters": {
             "type": "boolean",
             "default": true,
@@ -860,6 +897,11 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "At the start of a line in a paragraph, `- ` or `* ` starts a `<ul>` and `1. ` starts an `<ol>` (`a.`, `(i)`, ... set its marker). Inside a list item, typing a marker at the start of a line starts the next item."
+          },
+          "pretext-tools.typingShortcuts.wrapSelection": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "With text selected, typing `$` wraps it in `<m>`, `*` in `<em>`, `` ` `` in `<c>`, and `\"` in `<q>`; typing `<` wraps it in an element whose name you type into both tags at once (or pick from the completions), then Tab selects the text again. Needs `#editor.autoSurround#` on. The **PreTeXt: Wrap Selection in Element** command works either way."
           }
         }
       }

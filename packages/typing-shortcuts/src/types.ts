@@ -22,7 +22,8 @@ export type ShortcutKind =
   | "typography"
   | "xref"
   | "code-block"
-  | "list";
+  | "list"
+  | "wrap";
 
 /**
  * An edit for the host editor to apply: replace `start`–`end` (offsets into
@@ -39,6 +40,13 @@ export interface ShortcutEdit {
    * the line it lands on.
    */
   snippet?: boolean;
+  /**
+   * For snippets: `text` is already indented as it should end up, so the host
+   * must insert it as is (VS Code's `keepWhitespace`, Monaco's
+   * `adjustWhitespace: false`). Snippet engines don't agree on re-indenting a
+   * placeholder's text: Monaco's does, VS Code's `insertSnippet` doesn't.
+   */
+  keepWhitespace?: boolean;
   /**
    * For plain-text edits: where the caret belongs afterwards, as an offset
    * into the document *after* the edit.
@@ -96,6 +104,14 @@ export interface TypingShortcutsOptions {
    * an `<ol>`; in an `<li>`, a marker starts the next item. Default `true`.
    */
   lists?: boolean;
+  /**
+   * Typed over a selection, `$`, `*`, `` ` `` and `"` wrap it in `<m>`,
+   * `<em>`, `<c>` and `<q>`, and `<` wraps it in an element whose name goes
+   * into both tags at once. Works with the editor's auto-surround: the
+   * language configuration must list these as `surroundingPairs` (with `>`
+   * closing `<`). Default `true`.
+   */
+  wrapSelection?: boolean;
 }
 
 /** What the host knows about the editor when a change happens. */
@@ -114,4 +130,10 @@ export interface EditorState {
    * a collaborator's edit, say — and is ignored.
    */
   caret?: number;
+  /**
+   * How many selections (carets) the editor has, when the host knows it. Two
+   * carets typing the same character look just like an auto-surround of the
+   * text between them; only a single selection is ever surrounded.
+   */
+  selections?: number;
 }

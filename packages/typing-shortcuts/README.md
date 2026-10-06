@@ -21,10 +21,14 @@ Typing shortcuts for PreTeXt XML source, shared by the PreTeXt Tools VS Code ext
 | `--`, `---`, `...`, then a space                                  | `<ndash/>`, `<mdash/>`, `<ellipsis/>`                                                                                       |
 | `@` after a space                                                 | `<xref ref="\|"/>` with the id completions open                                                                             |
 | ` ```python ` + Enter on a line of its own                        | `<program language="python"><code>…</code></program>`; a bare ` ``` ` gives `<pre>`, and inside a `<p>` either gives `<cd>` |
+| `$`, `*`, `` ` ``, `"` typed over a selection                     | the selection in `<m>`, `<em>`, `<c>`, `<q>`, still selected                                                                |
+| `<` typed over a selection                                        | `<\|>selection</\|>`: the name goes into both tags at once, with the element completions open; Tab then selects the text    |
 
 The Markdown-style delimiters pair only within one line and one text node (complete inline elements such as `<m>x</m>` may sit inside), follow CommonMark's flanking rules (`2*3*4` and `snake_case_` stay as typed), and do nothing inside math, verbatim elements, or a `` ` ``/`$` span that is still open.
 
 Each shortcut is applied as a separate edit with undo stops around it, so one undo restores exactly what was typed. The snippets are the ones `@pretextbook/completions` offers, so `theorem:` inserts the same thing as picking `<theorem>` from the completion list.
+
+Wrapping works with the editor's own auto-surround, so the language configuration has to list `$`, `*`, `` ` ``, `"` and `<` (closed by `>`) among its `surroundingPairs`. An element's wrapper is its completion snippet, with `$TM_SELECTED_TEXT` marking where the selection goes (`<p>`, `<blockquote>`, `<md>`, `<url>`, … have one); any other element gets a plain `<name>…</name>`, on lines of their own around selected lines. `wrapSelectionEdit` wraps a selection in an element by name, for a "wrap selection" command.
 
 ## Monaco
 
@@ -42,6 +46,7 @@ const registration = registerMonacoTypingShortcuts(monaco, editor, {
   crossReferences: true,
   codeBlocks: true,
   lists: true,
+  wrapSelection: true,
   // A collaborator's edit arriving through a CRDT binding must not trigger shortcuts.
   isRemoteChange: () => collabBinding.applyingRemote,
   // Veto edits that would reach into read-only lines.
@@ -51,6 +56,8 @@ const registration = registerMonacoTypingShortcuts(monaco, editor, {
 // When the editor stops showing PreTeXt XML:
 registration.dispose();
 ```
+
+Besides Shift+Enter, it adds a `pretext.typingShortcuts.wrapSelection` action: `editor.trigger("keyboard", "pretext.typingShortcuts.wrapSelection", { element: "em" })` wraps the selection in `<em>`, and with no element it wraps it in one named by typing, as `<` does.
 
 In pretext-plus this replaces `autoConvert.ts` (and the math, angle-bracket and ampersand triggers behind it): return `registerMonacoTypingShortcuts(monaco, editor, …)` from `pretextConfig.registerMonacoExtensions` in its place.
 
@@ -81,7 +88,9 @@ onShiftEnter(() => {
 });
 ```
 
-An edit replaces `start`–`end` with `text`. Plain edits carry a `caret` offset for afterwards; edits with `snippet: true` are snippet syntax for the host's snippet engine (`snippetToPlainText` flattens one for hosts without). An edit with `suggest: true` (the `@` → `<xref>` shortcut) wants the host's completion list opened once it is applied.
+An edit replaces `start`–`end` with `text`. Plain edits carry a `caret` offset for afterwards; edits with `snippet: true` are snippet syntax for the host's snippet engine (`snippetToPlainText` flattens one for hosts without). A snippet with `keepWhitespace: true` (the wrap shortcuts) is already indented as it is to end up, so insert it without re-indenting (VS Code's `keepWhitespace`, Monaco's `adjustWhitespace: false`). An edit with `suggest: true` (`@` → `<xref>`, and `<` over a selection) wants the host's completion list opened once it is applied.
+
+Pass `selections` (how many the editor has) in the state: two carets typing the same character look just like an auto-surround of the text between them.
 
 A closing character typed over one the editor auto-closed (`)`, `]`, `}`, `"`, `'`, `` ` ``) arrives as a one-character replacement rather than an insertion; it counts as typing, so `[text](url)` converts even with bracket auto-closing on.
 
