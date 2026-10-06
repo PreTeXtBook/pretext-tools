@@ -1,4 +1,7 @@
 import * as assert from "assert";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 
 /**
@@ -41,6 +44,19 @@ async function typeKeys(editor: vscode.TextEditor, ...keys: string[]) {
     await vscode.commands.executeCommand("type", { text: key });
     await settle(editor.document);
   }
+}
+
+/** Select the first occurrence of `text`. */
+function select(editor: vscode.TextEditor, text: string): void {
+  const start = editor.document.getText().indexOf(text);
+  editor.selection = new vscode.Selection(
+    editor.document.positionAt(start),
+    editor.document.positionAt(start + text.length),
+  );
+}
+
+function selectedText(editor: vscode.TextEditor): string {
+  return editor.document.getText(editor.selection);
 }
 
 /** The document text with `|` at the caret. */
@@ -157,5 +173,94 @@ suite("Typing shortcuts", () => {
         "</section>",
       ),
     );
+  });
+
+  test("$ typed over a selection wraps it in <m>, and undo restores $x$", async () => {
+    const editor = await open("<p>Let |x^2 be.</p>");
+    select(editor, "x^2");
+    await typeKeys(editor, "$");
+    assert.strictEqual(editor.document.getText(), "<p>Let <m>x^2</m> be.</p>");
+    assert.strictEqual(selectedText(editor), "x^2");
+
+    await vscode.commands.executeCommand("undo");
+    await settle(editor.document);
+    assert.strictEqual(editor.document.getText(), "<p>Let $x^2$ be.</p>");
+  });
+
+  test("< typed over a selection names an element in both tags at once", async () => {
+    const editor = await open("<p>Let |x be.</p>");
+    select(editor, "x");
+    await typeKeys(editor, "<");
+    assert.strictEqual(editor.document.getText(), "<p>Let <>x</> be.</p>");
+    assert.strictEqual(editor.selections.length, 2);
+
+    await vscode.commands.executeCommand("hideSuggestWidget");
+    await typeKeys(editor, ..."url href".split(""));
+    assert.strictEqual(
+      editor.document.getText(),
+      "<p>Let <url href>x</url href> be.</p>",
+    );
+
+    // Moving on drops the attributes from the end tag and selects the text.
+    await vscode.commands.executeCommand("jumpToNextSnippetPlaceholder");
+    await settle(editor.document);
+    assert.strictEqual(
+      editor.document.getText(),
+      "<p>Let <url href>x</url> be.</p>",
+    );
+    assert.strictEqual(selectedText(editor), "x");
+  });
+
+  test("the element completions name both tags of a < wrap", async () => {
+    // The language server only serves files.
+    const file = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "ptx-wrap-")),
+      "wrap.ptx",
+    );
+    fs.writeFileSync(file, "<section>\n  <p>Let x be.</p>\n</section>\n");
+    try {
+      const document = await vscode.workspace.openTextDocument(file);
+      const editor = await vscode.window.showTextDocument(document);
+      select(editor, "x");
+      await typeKeys(editor, "<");
+      await typeKeys(editor, "t", "e", "r");
+      // Give the language server time to answer.
+      await sleep(1500);
+      await vscode.commands.executeCommand("acceptSelectedSuggestion");
+      await settle(document);
+      assert.strictEqual(
+        document.getText(),
+        "<section>\n  <p>Let <term>x</term> be.</p>\n</section>\n",
+      );
+    } finally {
+      // Close it before deleting it (teardown then finds nothing to close).
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+      fs.rmSync(path.dirname(file), { recursive: true, force: true });
+    }
+  });
+
+  test("the wrapSelection command wraps lines in a given element", async () => {
+    const editor = await open(
+      lines("<section>", "  |One.", "  Two.", "</section>"),
+    );
+    select(editor, "One.\n  Two.");
+    await vscode.commands.executeCommand("pretext-tools.wrapSelection", {
+      element: "p",
+    });
+    await settle(editor.document);
+    assert.strictEqual(
+      editor.document.getText(),
+      lines(
+        "<section>",
+        "  <p>",
+        "    One.",
+        "    Two.",
+        "  </p>",
+        "</section>",
+      ),
+    );
+    assert.strictEqual(selectedText(editor), "One.\n    Two.");
   });
 });

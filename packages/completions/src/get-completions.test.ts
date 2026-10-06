@@ -74,3 +74,53 @@ describe("getPretextCompletions sort order", () => {
     expect(elements?.every((item) => item.sortText)).toBe(true);
   });
 });
+
+describe("getPretextCompletions in a start tag's name", () => {
+  // A selection wrapped by typing `<`: carets in `<|>` and the mirroring `</|>`.
+  const wrapped = (line: string) => {
+    const character = line.indexOf("|");
+    return getPretextCompletions({
+      text: line.replace("|", ""),
+      position: { line: 0, character },
+    });
+  };
+
+  it("offers bare names of the elements allowed there", async () => {
+    const items = await wrapped("<p>Let <|>x</> be.</p>");
+    const labels = items?.map((item) => item.label);
+    expect(labels).toContain("em");
+    expect(labels).toContain("m");
+    expect(labels).not.toContain("section");
+    expect(labels?.some((label) => label.startsWith("<"))).toBe(false);
+    expect(items?.find((item) => item.label === "em")?.textEdit).toEqual({
+      newText: "em",
+      range: {
+        start: { line: 0, character: 8 },
+        end: { line: 0, character: 8 },
+      },
+    });
+  });
+
+  it("replaces just the name, wherever the caret is in it", async () => {
+    const items = await wrapped("<p>Let <e|m>x</em> be.</p>");
+    expect(items?.find((item) => item.label === "em")?.textEdit).toEqual({
+      newText: "em",
+      range: {
+        start: { line: 0, character: 8 },
+        end: { line: 0, character: 10 },
+      },
+    });
+  });
+
+  it("ranks curated elements first", async () => {
+    const items = await wrapped("<p>Let <|>x</> be.</p>");
+    const sortKey = (label: string) =>
+      items?.find((item) => item.label === label)?.sortText ?? label;
+    expect(sortKey("em") < sortKey("abbr")).toBe(true);
+  });
+
+  it("still offers element snippets for a `<` just typed", async () => {
+    const items = await wrapped("<p>Let <| be.</p>");
+    expect(items?.some((item) => item.label === "<em>")).toBe(true);
+  });
+});

@@ -1,6 +1,11 @@
 import { CompletionItem, Position } from "vscode-languageserver-types";
 
-export type CompletionType = "element" | "attribute" | "file" | "ref";
+export type CompletionType =
+  | "element"
+  | "tagName"
+  | "attribute"
+  | "file"
+  | "ref";
 
 export type CompletionItems = {
   [key: string]: CompletionItem;

@@ -44,16 +44,16 @@ PreTeXt has a lot of markup to describe the structure of the document. To vastly
 
 Some shorter snippets also allow you to tab out of them. For example, start typing `<m>` and hit enter. Your cursor will be between the start and end tags. When you are done typing your math, hit tab to jump out of the tags so you can keep typing.
 
-Short tags like `<m>` and `<c>` and `<em>` can also be used to wrap selected content. Select the string of characters you want inside the tag, and start typing the tag name, then hit enter when given the option. The selected text should be restored with the start and end tags surrounding it.
+To wrap selected content in a tag, select it and type `<`, then the tag name (or pick it from the list): see [Typing Shortcuts](#typing-shortcuts).
 
 Attributes are available if you start typing with "@".
 
-If you open a new empty document that you will include via `xi:include`, save it with a `.ptx` extension and then fill in the structure using a "!" snippet.
+If you open a new empty document that you will include via `xi:include`, save it with a `.ptx` extension and then fill in the structure with **Snippets: Insert Snippet** from the Command Palette, choosing one of the `<!ptx-` templates.
 
 Here are some options that I find make snippets more useful. For each of these, open settings in VS code and search for them.
 
 - Emmet: Excluded Languages. I exclude PreTeXt Emmet for PreTeXt, since the snippets behave better.
-- Editor: Snippets Suggestions. I set this to "bottom" so that the snippets are shown after other autocomplete suggestions.
+- Editor: Snippets Suggestions. This is "none" for PreTeXt files by default: the language server's completions already include every element snippet, so the contributed snippets would show up twice. They are all still available through **Snippets: Insert Snippet**; set this to "bottom" to have them in the completion list as well.
 - Editor: Tab Completion. I set this to "only snippets" so that I can hit TAB or ENTER to select the snippet.
 - If you get too many snippet suggestions, experiment with the quick-suggest and completion settings. Please contribute suggestions on the best configuration if you find something that works well.
 
@@ -70,6 +70,7 @@ A few things you type are converted to PreTeXt markup on the spot. Each conversi
 - **Typography**: `--`, `---`, and `...` followed by a space become `<ndash/>`, `<mdash/>`, and `<ellipsis/>`.
 - **Cross-references**: `@` typed after a space inserts `<xref ref=""/>` and opens the list of ids you can reference.
 - **Code blocks**: on a line of its own, ` ```python ` + Enter inserts a `<program language="python">` block, a bare ` ``` ` + Enter inserts `<pre>`, and inside a paragraph either inserts `<cd>`.
+- **Wrapping a selection**: with text selected, type `$` to wrap it in `<m>`, `*` for `<em>`, `` ` `` for `<c>`, or `"` for `<q>`. Type `<` to wrap it in any element: type the name (it goes into both tags at once) or pick it from the list, then press Tab to select the text again. Selected lines get the tags on lines of their own. The **PreTeXt: Wrap Selection in Element** command (also in the editor's context menu) does the same as `<`; bind a key to a particular element with `"args": { "element": "term" }`.
 
 Each shortcut can be turned off in the settings under "PreTeXt › Typing Shortcuts".
 

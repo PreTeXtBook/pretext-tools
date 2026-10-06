@@ -8,6 +8,7 @@
  */
 import { ELEMENTS } from "@pretextbook/completions";
 import { NON_BLOCK_ELEMENTS } from "./elements";
+import { resolveSelectedText } from "./snippets";
 import { isWhitespace, lineEndOf, lineStartOf } from "./text";
 import type { ShortcutEdit } from "./types";
 import { isWithin, scanXmlContext } from "./xml-context";
@@ -79,7 +80,10 @@ export const environmentSnippet = (name: string): string | undefined => {
   if (!ENVIRONMENTS.has(name)) return undefined;
   const body = ELEMENTS[name]?.insertText;
   // Some bodies end in a newline; the author's own Enter already supplied one.
-  return typeof body === "string" ? body.replace(/\n+$/, "") : undefined;
+  // Nothing is selected when an environment is typed out.
+  return typeof body === "string"
+    ? resolveSelectedText(body.replace(/\n+$/, ""))
+    : undefined;
 };
 
 /**

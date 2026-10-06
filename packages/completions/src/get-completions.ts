@@ -15,6 +15,7 @@ import {
   getCurrentTag,
   getTextInRange,
   linePrefix,
+  lineSuffix,
   rangeInLine,
 } from "./utils";
 
@@ -85,11 +86,25 @@ function withOptionalDotPrefix(filePath: string): string {
   return "./" + filePath;
 }
 
+/** A start tag's name up to the caret: `<` and whatever of the name is typed. */
+const TAG_NAME_BEFORE = /<([A-Za-z_][\w.:-]*)?$/;
+
+/** The rest of a start tag's name, then the end of the tag. */
+const TAG_NAME_AFTER = /^[\w.:-]*>/;
+
 export function getCompletionType(
   text: string,
   position: GetPretextCompletionsParams["position"],
 ): CompletionType {
   const prefix = linePrefix(text, position);
+  // The name of a start tag that is already complete, like the `<|>` a
+  // selection wrapped by typing `<` gets, with its end tag mirroring it.
+  if (
+    TAG_NAME_BEFORE.test(prefix) &&
+    TAG_NAME_AFTER.test(lineSuffix(text, position))
+  ) {
+    return "tagName";
+  }
   const match = prefix.match(/<[^>/]+$/);
   if (match) {
     if (match[0].match(/<xref ref="[^"]*$/)) {
@@ -134,6 +149,10 @@ export async function getPretextCompletions(
   if (completionType === "ref") {
     completionItems = getRefCompletions(params.references || []);
     return completionItems;
+  }
+
+  if (completionType === "tagName") {
+    return getTagNameCompletions(params, schema);
   }
 
   const charsBefore = getTextInRange(text, rangeInLine(position, -2, 0));
@@ -209,6 +228,40 @@ function getAttributeCompletions(
         newText: `${attr}="$1"$0`,
         range,
       },
+    };
+  });
+}
+
+/**
+ * Bare element names for the name of a start tag that is already complete:
+ * the tag is there, only its name is missing (or being changed). The edit
+ * covers just the name, not the `<`, so where an end tag mirrors it (one
+ * caret in each tag) the editor makes the same edit at both carets.
+ */
+function getTagNameCompletions(
+  params: GetPretextCompletionsParams,
+  schema: NonNullable<GetPretextCompletionsParams["schema"]>,
+): CompletionItem[] {
+  const { text, position } = params;
+  const typed = TAG_NAME_BEFORE.exec(linePrefix(text, position))?.[1] ?? "";
+  const rest = TAG_NAME_AFTER.exec(lineSuffix(text, position))![0].length - 1;
+  const parent = getCurrentTag(text, {
+    line: position.line,
+    character: position.character - typed.length - 1,
+  });
+  const names =
+    (parent && schema.elementChildren[parent]?.elements) ||
+    Object.keys(schema.elementChildren);
+  const range = rangeInLine(position, -typed.length, rest);
+
+  return names.map((name) => {
+    const base = ELEMENTS[name];
+    return {
+      label: name,
+      kind: CompletionItemKind.TypeParameter,
+      documentation: base?.documentation,
+      sortText: base?.sortText || name,
+      textEdit: { newText: name, range },
     };
   });
 }

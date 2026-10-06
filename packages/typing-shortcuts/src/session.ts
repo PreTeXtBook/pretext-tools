@@ -28,6 +28,7 @@ import {
   splitParagraphEdit,
 } from "./paragraphs";
 import { typographyEdit } from "./typography";
+import { surroundEdit } from "./wrap";
 import type {
   EditorState,
   ShortcutEdit,
@@ -45,6 +46,7 @@ const DEFAULT_OPTIONS: Required<TypingShortcutsOptions> = {
   crossReferences: true,
   codeBlocks: true,
   lists: true,
+  wrapSelection: true,
 };
 
 const DEFAULT_INDENT = "  ";
@@ -114,6 +116,49 @@ export const typedInput = (
   };
 };
 
+/** A selection the editor has just surrounded with a pair of characters. */
+export interface SurroundInput {
+  /** The character put before the selection. */
+  open: string;
+  /** The character put after it. */
+  close: string;
+  /** Offset of `open`, in the document after the change. */
+  start: number;
+  /** Offset just past `close`, in the document after the change. */
+  end: number;
+}
+
+/**
+ * Recognize an auto-surround in one change event: a character inserted at
+ * each end of a selection, which is how editors apply a `surroundingPairs`
+ * character typed with text selected (both insertions placed in the document
+ * as it was, leaving the text between them selected).
+ */
+export const surroundInput = (
+  changes: readonly TextChange[],
+): SurroundInput | null => {
+  if (changes.length !== 2) return null;
+  const [first, second] =
+    changes[0].rangeOffset <= changes[1].rangeOffset
+      ? changes
+      : [changes[1], changes[0]];
+  if (
+    first.rangeLength !== 0 ||
+    second.rangeLength !== 0 ||
+    first.text.length !== 1 ||
+    second.text.length !== 1 ||
+    first.rangeOffset >= second.rangeOffset
+  ) {
+    return null;
+  }
+  return {
+    open: first.text,
+    close: second.text,
+    start: first.rangeOffset,
+    end: second.rangeOffset + 2,
+  };
+};
+
 /**
  * Typing shortcuts for one PreTeXt document. Keep one instance per document
  * (or per editor model): it remembers the previous Enter so it can recognize
@@ -154,6 +199,20 @@ export class TypingShortcuts {
   ): ShortcutEdit | null {
     const previousEnter = this.lastEnter;
     this.lastEnter = null;
+    const surround = surroundInput(changes);
+    if (surround) {
+      if (
+        !this.options.wrapSelection ||
+        (state.selections ?? 1) !== 1 ||
+        (state.caret !== undefined &&
+          (state.caret < surround.start || state.caret > surround.end))
+      ) {
+        return null;
+      }
+      const { open, close, start, end } = surround;
+      const text = typeof source === "string" ? source : source();
+      return surroundEdit(text, open, close, start, end, state);
+    }
     const input = typedInput(changes);
     if (!input) return null;
     if (
