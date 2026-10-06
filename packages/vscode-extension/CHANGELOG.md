@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Snippets no longer appear in the completion list in PreTeXt files (`editor.snippetSuggestions` defaults to `"none"` there), since the language server already offers every element snippet; they are all still in **Snippets: Insert Snippet**. To bring them back, set `editor.snippetSuggestions` for PreTeXt files (search Settings for `@lang:pretext snippet suggestions`); the global setting doesn't override this default.
+- Snippets no longer appear in the completion list in PreTeXt files (`editor.snippetSuggestions` defaults to `"none"` there), since the language server already offers every element snippet; they are all still in **Snippets: Insert Snippet**. To bring them back, set the new "PreTeXt › Snippet Suggestions" setting to "bottom", "top" or "inline"; it sets `editor.snippetSuggestions` for PreTeXt files, which the global "Editor: Snippet Suggestions" setting doesn't override.
 
 ## [1.3.1] - 2026-10-01
 

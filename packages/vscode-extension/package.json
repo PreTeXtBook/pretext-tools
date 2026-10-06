@@ -836,6 +836,23 @@
             "default": true,
             "description": "Convert LaTeX or Markdown to PreTeXt when pasting into a PreTeXt file. Press Ctrl+Shift+V (Cmd+Shift+V on macOS) to paste without converting, or use the paste control that appears after pasting. Turn this off to paste plainly by default and convert with the \"PreTeXt: Paste and Convert to PreTeXt\" command instead."
           },
+          "pretext-tools.snippetSuggestions": {
+            "type": "string",
+            "default": "none",
+            "enum": [
+              "none",
+              "top",
+              "bottom",
+              "inline"
+            ],
+            "markdownEnumDescriptions": [
+              "Leave snippets out of the completion list (default).",
+              "Show snippets above the other suggestions.",
+              "Show snippets below the other suggestions.",
+              "Show snippets mixed in with the other suggestions."
+            ],
+            "markdownDescription": "Whether and where the extension's snippets appear in the completion list in PreTeXt files. They are left out by default because the language server's completions already include every element, so each would appear twice; all of them are still in **Snippets: Insert Snippet**. Changing this sets `#editor.snippetSuggestions#` for PreTeXt files in the same settings scope. With snippets shown, avoid picking one when wrapping a selection with `<`: the whole snippet would go into both tags."
+          },
           "pretext-tools.typingShortcuts.mathDelimiters": {
             "type": "boolean",
             "default": true,
