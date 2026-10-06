@@ -41,3 +41,36 @@ describe("getPretextCompletions schema fallback", () => {
     expect(items?.some((item) => item.label === "<chapter>")).toBe(false);
   });
 });
+
+describe("getPretextCompletions sort order", () => {
+  // Editors rank equally good matches by sortText, filling in the label when
+  // an item has none, so that is the key a curated element has to win on.
+  const sortKey = (item: { label: string; sortText?: string }) =>
+    item.sortText ?? item.label;
+
+  it.each([
+    ["<q>", "<quantity"],
+    ["<md>", "<mdash"],
+  ])("ranks %s ahead of %s", async (curated, generic) => {
+    const items = await getPretextCompletions({
+      text: "<p>Some text <",
+      position: { line: 0, character: 14 },
+    });
+
+    const find = (label: string) => items?.find((item) => item.label === label);
+    expect(find(curated)).toBeDefined();
+    expect(find(generic)).toBeDefined();
+    expect(sortKey(find(curated)!) < sortKey(find(generic)!)).toBe(true);
+  });
+
+  it("gives every element completion a sortText", async () => {
+    const items = await getPretextCompletions({
+      text: "<p>Some text <",
+      position: { line: 0, character: 14 },
+    });
+
+    const elements = items?.filter((item) => !item.label.startsWith("</"));
+    expect(elements?.length).toBeGreaterThan(0);
+    expect(elements?.every((item) => item.sortText)).toBe(true);
+  });
+});

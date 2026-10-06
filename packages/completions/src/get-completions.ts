@@ -255,6 +255,10 @@ function getElementCompletions(
           range,
         },
         documentation: "Generic implementation for element " + elem,
+        // Editors fall back to the label ("<elem") when sortText is missing,
+        // and "<" sorts before every letter, which would rank all generic
+        // elements above the curated ones (`<quantity` above `<q>`).
+        sortText: elem,
       });
     }
   }
@@ -294,7 +298,7 @@ function getExtraCompletions(
         },
         documentation: item.documentation,
         kind: CompletionItemKind.TypeParameter,
-        sortText: item.sortText,
+        sortText: item.sortText || item.alias,
       });
     }
   }
