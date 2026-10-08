@@ -1027,7 +1027,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
-    "concurrently": "^9.2.3",
+    "concurrently": "^9.2.5",
     "vite": "^7.3.5"
   },
   "prettier": {
