@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/typing-shortcuts",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Editor-agnostic typing shortcuts for PreTeXt source ($math$ to <m>, escaping, paragraph and environment shortcuts), with a Monaco adapter",
   "author": "Oscar Levin",
   "license": "MIT",
