@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.4.0] - 2026-10-08
+
 ### Added
 
 - Wrap selected text by typing over it: `$` wraps it in `<m>`, `*` in `<em>`, `` ` `` in `<c>`, `"` in `<q>`, and `<` in any element, whose name you type into both tags at once (or pick from the completions). The new **PreTeXt: Wrap Selection in Element** command does the same as `<`, and takes an element to bind a key to (`"args": { "element": "term" }`). Turn the typing part off with "PreTeXt › Typing Shortcuts: Wrap Selection".
