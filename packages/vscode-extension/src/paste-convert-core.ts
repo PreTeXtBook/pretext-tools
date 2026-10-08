@@ -7,11 +7,19 @@
  * rules rather than two copies that drift. What remains is the log line, which
  * is only meaningful to a host that has an output channel to write it to.
  */
-import { detectSnippetFormat, scoreSnippetFormats } from "@pretextbook/import";
+import {
+  containsXmlMarkup,
+  detectSnippetFormat,
+  scoreSnippetFormats,
+} from "@pretextbook/import";
 
 /** Why a snippet was or was not offered for conversion — for the log. */
 export function describeDetection(text: string): string {
-  const { latex, markdown } = scoreSnippetFormats(text.trim());
+  const trimmed = text.trim();
+  const { latex, markdown } = scoreSnippetFormats(trimmed);
+  // Markup overrides the scores, so say so, or a LaTeX-scoring snippet that
+  // stays plain looks like a detection bug.
+  const markup = containsXmlMarkup(trimmed) ? " (already XML)" : "";
   const verdict = detectSnippetFormat(text) ?? "none";
-  return `latex=${latex} markdown=${markdown} -> ${verdict}`;
+  return `latex=${latex} markdown=${markdown}${markup} -> ${verdict}`;
 }

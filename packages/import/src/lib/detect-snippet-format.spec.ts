@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  containsXmlMarkup,
   detectSnippetFormat,
   scoreSnippetFormats,
 } from "./detect-snippet-format";
@@ -43,8 +44,49 @@ describe("detectSnippetFormat: declines", () => {
     ["snake_case identifier", "Call the compute_total_value function twice."],
     ["a bare asterisk", "The answer is 5 * 3 = 15."],
     ["prose with a hyphen", "Well - that was unexpected."],
+    // PreTeXt partway through: the LaTeX is already inside the element it
+    // belongs in, and converting would escape the tags into text.
+    ["PreTeXt math mid-sentence", "This is math: <m>\\frac{1}{2}</m>."],
+    [
+      "PreTeXt math beside LaTeX",
+      "Let <m>x \\in \\mathbb{R}</m> and \\emph{note} it.",
+    ],
+    ["a self-closing PreTeXt tag", 'See \\emph{this}, <xref ref="thm-a"/>.'],
+    ["a start tag with an attribute", 'Now <url href="https://x.org">\\alpha'],
+    ["an XML comment", "<!-- todo --> Let $x^2$ be \\emph{big}."],
+    ["Markdown with HTML in it", "Some **bold** and <sup>2</sup> here."],
   ])("leaves %s alone", (_label, text) => {
     expect(detectSnippetFormat(text)).toBeUndefined();
+  });
+});
+
+describe("containsXmlMarkup", () => {
+  it.each([
+    ["an end tag", "x</m>"],
+    ["a self-closing tag", "<nbsp/>"],
+    [
+      "a self-closing tag with attributes",
+      '<xref ref="a" text="type-global" />',
+    ],
+    ["a start tag with an attribute", "<p xml:id='p1'>"],
+    ["a comment", "a <!-- b"],
+    ["a CDATA section", "<![CDATA[x"],
+  ])("finds %s", (_label, text) => {
+    expect(containsXmlMarkup(text)).toBe(true);
+  });
+
+  it.each([
+    ["an inequality", "Suppose $a<b$ and $c > d$."],
+    ["a chained inequality", "$0<x<1$"],
+    ["a bare start tag", "Typed <m> and stopped."],
+    ["a Markdown autolink", "See <https://example.com/notes/> for more."],
+    ["a TikZ arrow", "\\draw[<->] (0,0) -- (1,1);"],
+  ])("ignores %s", (_label, text) => {
+    expect(containsXmlMarkup(text)).toBe(false);
+  });
+
+  it("does not cost LaTeX that compares with < its conversion", () => {
+    expect(detectSnippetFormat("If $a<b$ then \\emph{stop}.")).toBe("latex");
   });
 });
 

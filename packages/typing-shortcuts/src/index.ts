@@ -53,3 +53,4 @@ export {
   type OpenElement,
   type XmlContext,
 } from "./xml-context";
+export { MATH_ELEMENTS } from "./elements";

@@ -36,7 +36,11 @@ export interface XmlContext {
  * closed. Quoted attribute values are skipped, so a `>` inside `title="a > b"`
  * doesn't end the tag early.
  */
-export const findTagEnd = (source: string, start: number): number => {
+export const findTagEnd = (source: string, start: number): number =>
+  closedTagEnd(source, start) ?? source.length;
+
+/** As `findTagEnd`, but `null` when the tag is never closed. */
+const closedTagEnd = (source: string, start: number): number | null => {
   let quote = "";
   for (let i = start + 1; i < source.length; i++) {
     const ch = source[i];
@@ -48,7 +52,7 @@ export const findTagEnd = (source: string, start: number): number => {
       return i + 1;
     }
   }
-  return source.length;
+  return null;
 };
 
 /** Whether `ch` can begin an element name — i.e. whether a `<` before it opens a tag. */
@@ -97,8 +101,10 @@ export const scanXmlContext = (source: string, offset: number): XmlContext => {
     } else if (source.startsWith("<!", lt)) {
       next = skipTo(lt, "<!", ">");
     } else if (source.startsWith("</", lt)) {
-      const end = findTagEnd(source, lt);
-      next = offset < end ? null : end;
+      // A tag still unclosed where the source ends is one the offset is in,
+      // even when the source stops right at the offset.
+      const end = closedTagEnd(source, lt);
+      next = end === null || offset < end ? null : end;
       if (next !== null) {
         const name = readName(source, lt + 2);
         for (let i = open.length - 1; i >= 0; i--) {
@@ -109,10 +115,10 @@ export const scanXmlContext = (source: string, offset: number): XmlContext => {
         }
       }
     } else if (isNameStart(source[lt + 1])) {
-      const end = findTagEnd(source, lt);
-      next = offset < end ? null : end;
-      if (next !== null && source[end - 2] !== "/") {
-        open.push({ name: readName(source, lt + 1), start: lt, end });
+      const end = closedTagEnd(source, lt);
+      next = end === null || offset < end ? null : end;
+      if (next !== null && source[next - 2] !== "/") {
+        open.push({ name: readName(source, lt + 1), start: lt, end: next });
       }
     } else {
       // A stray '<' that doesn't open a tag — ordinary text; keep scanning.

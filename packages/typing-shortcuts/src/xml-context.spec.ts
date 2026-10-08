@@ -52,6 +52,17 @@ describe("scanXmlContext", () => {
     expect(scanXmlContext(source, source.length - 1).inText).toBe(true);
   });
 
+  it("is inside a tag that the source ends before closing", () => {
+    // Scanning only the text up to the cursor ends the source at the offset;
+    // a tag still open there must not read as a closed one.
+    const unclosed = (source: string) => scanXmlContext(source, source.length);
+    expect(unclosed('<section xml:id="sec-').inText).toBe(false);
+    expect(unclosed("<section ").inText).toBe(false);
+    expect(unclosed("<p>a</p").inText).toBe(false);
+    expect(unclosed("<section>").open.map((e) => e.name)).toEqual(["section"]);
+    expect(unclosed("<section>").inText).toBe(true);
+  });
+
   it("tolerates mismatched end tags", () => {
     expect(names("<section><p>a</em>b", "b")).toEqual(["section", "p"]);
   });

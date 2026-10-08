@@ -1086,7 +1086,42 @@ winner clears a floor, so a single weak hint is not enough. Guessing wrong
 mangles text an author meant to keep verbatim, while declining is free because
 the caller simply pastes plainly. Inline math is guarded against currency
 (`costs $5 and $7` is not math), and ties go to LaTeX, the two languages
-overlapping mainly on `*` and `_`.
+overlapping mainly on `*` and `_`. A snippet that already carries XML markup
+anywhere in it — an end tag, a self-closing tag, a start tag with an attribute,
+a comment (`containsXmlMarkup`) — is declined however LaTeX-like it scores:
+`This is math: <m>\frac{1}{2}</m>.` has its backslashes inside the element they
+belong in, and the LaTeX converter would escape the tags into text. A bare `<`
+before a letter does not count, so `$a<b$` still converts.
+
+**Where the paste lands is asked first** (`pasteTargetAt`,
+`lib/paste/paste-target.ts`). TikZ pasted into a `<latex-image>` is LaTeX by any
+measure, and exactly what belongs there; so is LaTeX pasted into an `<m>`. The
+host passes the document text up to the cursor, `scanXmlContext` (from
+`@pretextbook/typing-shortcuts`, the walker the typing shortcuts already trust
+with mid-edit documents) reports the open elements, and conversion is off when:
+
+- the cursor is inside a tag, attribute value, comment, CDATA section or
+  processing instruction;
+- any open element is math (the typing shortcuts' `MATH_ELEMENTS`) or verbatim
+  (the formatter's `verbatimTags` — `<latex-image>`, `<program>`, `<code>`,
+  `<macros>`, `<prefigure>`, …). These are lists, not schema lookups, because
+  the schema cannot say it: `<md>` admits `<xref>`, which holds markup, yet an
+  `<mrow>`'s text is LaTeX;
+- the innermost element is not in the generated schema (a Prefigure
+  `<diagram>`, DoenetML, a typo), or the schema gives it no way to hold markup —
+  it admits neither `<p>` nor `<m>`, and no child of it can, transitively.
+  Only the innermost element is judged this way: a few content models come
+  through the generator empty (`<letter>`, `<memo>`), and trusting them about
+  an ancestor would switch conversion off for everything beneath.
+
+The same scan decides placement, so the two cannot disagree: an innermost
+element that admits `<m>` but not `<p>` (`<title>`, `<caption>`, `<p>`) is
+running text, one that admits `<p>` but not `<m>` takes paragraphs, and the rest
+(`<li>`, `<cell>`, containers) fall back to whether a `<p>` is open, as
+`isInlineContext` does. That keeps a `$x$` pasted into a `<title>` from arriving
+as `<p><m>x</m></p>`. `isInlineContext` itself is unchanged; the insert path
+(§9.2) still asks it the narrower "inside a paragraph?" question. The explicit
+"Paste and Convert" command skips both checks, since asking is reason enough.
 
 **Placement is shared; the host binding is not.** Conversion answers what the
 snippet becomes; `lib/paste/place-markup.ts` answers what has to change for it
@@ -1111,13 +1146,13 @@ block with no paragraph around either. Both are invalid anywhere the cursor is
 not already inside a `<p>`. `wrapLooseParagraphs` supplies the missing ones by
 the schema's own rule: a top-level element the `<p>` content model admits joins
 the paragraph being accumulated (`<m>`, `<em>`, and equally `<md>` and `<ol>`,
-which are `TextParagraphItem`s and belong *inside* a paragraph), and one it does
+which are `TextParagraphItem`s and belong _inside_ a paragraph), and one it does
 not — `<theorem>`, `<pre>`, a division — ends the run and passes through
 untouched. The element list is lifted from the generated
 `default-dev-schema.ts`, and `place-markup.spec.ts` fails if a schema refresh
 moves it. Markup that arrives correctly wrapped is unchanged by the pass, which
 is what lets it run unconditionally on the block-context path — and lets the
-extension run it *before* the formatter, so a pasted paragraph is reflowed like
+extension run it _before_ the formatter, so a pasted paragraph is reflowed like
 any other rather than landing as one long line.
 
 ### 9.5b Cherry-picking divisions

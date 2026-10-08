@@ -79,6 +79,31 @@ const MARKDOWN_SIGNALS: Signal[] = [
   { pattern: /`[^`\n]+`/, weight: 1 },
 ];
 
+/**
+ * Markup no LaTeX or Markdown snippet carries by accident: an end tag, a
+ * self-closing tag, a start tag with a quoted attribute, a comment, a CDATA
+ * section, a processing instruction. A comparison like `$a<b$` matches none of
+ * these, because none of them is just a `<` followed by a letter.
+ */
+const XML_MARKUP = new RegExp(
+  [
+    /<\/[A-Za-z_][\w.:-]*\s*>/,
+    /<[A-Za-z_][\w.:-]*(?:\s+[\w.:-]+\s*=\s*(?:"[^"<]*"|'[^'<]*'))*\s*\/>/,
+    /<[A-Za-z_][\w.:-]*(?:\s+[\w.:-]+\s*=\s*(?:"[^"<]*"|'[^'<]*'))+\s*>/,
+    /<!--|<!\[CDATA\[|<\?[A-Za-z]/,
+  ]
+    .map((pattern) => pattern.source)
+    .join("|"),
+);
+
+/**
+ * Whether `text` already carries XML markup — so is PreTeXt (or HTML) rather
+ * than LaTeX or Markdown, wherever in it the markup sits.
+ */
+export function containsXmlMarkup(text: string): boolean {
+  return XML_MARKUP.test(text);
+}
+
 /** Minimum score before a guess is worth acting on. */
 const SCORE_FLOOR = 2;
 
@@ -109,8 +134,11 @@ export function scoreSnippetFormats(text: string): SnippetFormatScores {
  */
 export function detectSnippetFormat(text: string): SnippetFormat | undefined {
   const trimmed = text.trim();
-  // Already markup — converting would be a round trip through two parsers.
-  if (!trimmed || trimmed.startsWith("<")) {
+  // Already markup — converting would be a round trip through two parsers, and
+  // the LaTeX converter would escape the tags into text. That holds for markup
+  // anywhere in the snippet: `Let <m>\frac{1}{2}</m> be` scores as LaTeX, but
+  // its backslashes are already inside the element they belong in.
+  if (!trimmed || trimmed.startsWith("<") || containsXmlMarkup(trimmed)) {
     return undefined;
   }
 

@@ -25,8 +25,9 @@ import {
 } from "vscode";
 import {
   detectSnippetFormat,
-  isInlineContext,
+  pasteTargetAt,
   placeConvertedMarkup,
+  type PasteTarget,
   type PlacementContext,
   type SnippetFormat,
 } from "@pretextbook/import";
@@ -46,14 +47,24 @@ const FORMAT_LABELS: Record<SnippetFormat, string> = {
   markdown: "Markdown",
 };
 
+/** What the insertion point at `position` will take — see `pasteTargetAt`. */
+export function pasteTargetIn(
+  document: TextDocument,
+  position: Position,
+): PasteTarget {
+  return pasteTargetAt(
+    document.getText(new Range(new Position(0, 0), position)),
+  );
+}
+
 /** Read the placement context out of the document at `position`. */
 export function placementContextAt(
   document: TextDocument,
   position: Position,
+  target: PasteTarget,
 ): PlacementContext {
-  const prefix = document.getText(new Range(new Position(0, 0), position));
   return {
-    inline: isInlineContext(prefix),
+    inline: target.inline,
     baseIndent: document.lineAt(position.line).text.match(/^(\s*)/)?.[1] ?? "",
     midLine: position.character > 0,
   };
@@ -65,8 +76,9 @@ async function convertForPaste(
   format: SnippetFormat,
   document: TextDocument,
   position: Position,
+  target: PasteTarget,
 ): Promise<string> {
-  const context = placementContextAt(document, position);
+  const context = placementContextAt(document, position, target);
   // Wrapped before the formatter sees it, so a pasted paragraph is reflowed
   // like any other `<p>` rather than landing as a single long line.
   const converted = await convertSnippetToPretext(text, format, {
@@ -110,6 +122,18 @@ export const pretextPasteEditProvider: DocumentPasteEditProvider = {
     if (!item) {
       return undefined;
     }
+
+    // Where the paste lands decides before what it is: TikZ pasted into a
+    // `<latex-image>` is LaTeX by any measure, and exactly what belongs there.
+    const position = ranges[0].start;
+    const target = pasteTargetIn(document, position);
+    if (target.literal) {
+      pretextOutputChannel.appendLine(
+        `Paste left unconverted: ${target.literal}.`,
+      );
+      return undefined;
+    }
+
     const text = await item.asString();
     if (token.isCancellationRequested) {
       return undefined;
@@ -131,7 +155,8 @@ export const pretextPasteEditProvider: DocumentPasteEditProvider = {
         text,
         format,
         document,
-        ranges[0].start,
+        position,
+        target,
       );
       if (token.isCancellationRequested) {
         return undefined;
@@ -167,7 +192,9 @@ export const pretextPasteProviderMetadata = {
  *
  * Does the conversion unconditionally rather than sniffing the format, so it
  * also covers what the provider deliberately declines: a bare `$x^2$`, a
- * fragment with no sectioning, anything `detectSourceFormat` cannot place.
+ * fragment with no sectioning, anything `detectSourceFormat` cannot place —
+ * and a paste somewhere the provider leaves alone, like inside `<m>`, since
+ * asking is reason enough.
  */
 export async function cmdPasteAndConvert(): Promise<void> {
   const editor = window.activeTextEditor;
@@ -183,16 +210,17 @@ export async function cmdPasteAndConvert(): Promise<void> {
   // Fall back to LaTeX when detection is unsure: it is the format authors
   // reach for here, and its converter passes plain prose through unharmed.
   const format = detectSnippetFormat(text) ?? "latex";
-  const target = editor.selection;
+  const selection = editor.selection;
 
   try {
     const insertText = await convertForPaste(
       text,
       format,
       editor.document,
-      target.start,
+      selection.start,
+      pasteTargetIn(editor.document, selection.start),
     );
-    await editor.edit((builder) => builder.replace(target, insertText));
+    await editor.edit((builder) => builder.replace(selection, insertText));
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     pretextOutputChannel.appendLine(`Paste and convert failed: ${detail}`);

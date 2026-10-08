@@ -11,4 +11,10 @@ describe("describeDetection", () => {
     );
     expect(describeDetection("Just prose.")).toMatch(/-> none$/);
   });
+
+  it("says when markup already in the snippet kept it plain", () => {
+    expect(describeDetection("Math: <m>\\frac{1}{2}</m>.")).toMatch(
+      /latex=\d+ markdown=\d+ \(already XML\) -> none$/,
+    );
+  });
 });

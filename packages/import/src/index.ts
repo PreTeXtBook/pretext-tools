@@ -4,6 +4,7 @@ export {
   MARKDOWN_FORMAT_MARKERS,
 } from "./lib/detect-source-format";
 export {
+  containsXmlMarkup,
   detectSnippetFormat,
   scoreSnippetFormats,
   type SnippetFormat,
@@ -114,6 +115,7 @@ export {
   type PlacedMarkup,
   type PlacementContext,
 } from "./lib/paste/place-markup";
+export { pasteTargetAt, type PasteTarget } from "./lib/paste/paste-target";
 export {
   outlineDivisions,
   pruneDivisions,
