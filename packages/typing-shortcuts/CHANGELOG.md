@@ -1,5 +1,15 @@
 # @pretextbook/typing-shortcuts
 
+## 0.4.0
+
+### Minor Changes
+
+- d73083f: Export `MATH_ELEMENTS`, the elements whose content is LaTeX math.
+
+  `scanXmlContext` now reports an offset as inside a tag when the tag is still
+  unclosed where the source ends, rather than as in text after it — which matters
+  when the source is only the text up to the cursor.
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/import",
-  "version": "0.15.1",
+  "version": "0.16.0",
   "description": "Shared import helpers for converting LaTeX/Markdown/PreTeXt into PreTeXt for VS Code and web apps",
   "author": "Oscar Levin",
   "license": "MIT",
@@ -59,7 +59,7 @@
     "@pretextbook/latex-pretext": "^0.4.0",
     "@pretextbook/latex-style-pretext": "^0.5.2",
     "@pretextbook/remark-pretext": "^0.2.0",
-    "@pretextbook/typing-shortcuts": "^0.3.0",
+    "@pretextbook/typing-shortcuts": "^0.4.0",
     "@tailwindcss/vite": "^4.0.0",
     "jszip": "^3.10.1",
     "tailwindcss": "^4.0.0"
