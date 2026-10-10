@@ -275,6 +275,8 @@ export {
   alternateFor,
   engineAccepts,
   engineExtensions,
+  experimentalEngineFor,
+  experimentalEngines,
   matchesExtension,
   routeEngine,
   unsupportedFileMessage,

@@ -5,6 +5,8 @@ export type {
   ImportWizardProps,
   ImportMode,
   ImportEngine,
+  ConversionShare,
+  ShareConversionOffer,
   InsertTargetOffer,
   PreparedUpload,
 } from "./import-wizard";
