@@ -589,6 +589,49 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
+  "archive": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "archive_location": {
+    "elements": [],
+    "attributes": []
+  },
   "article": {
     "elements": [
       "activity",
@@ -1145,15 +1188,20 @@ export const defaultDevSchema: CompletionSchema = {
       "alert",
       "am",
       "angles",
+      "archive",
+      "archive_location",
       "articletitle",
       "attr",
       "author",
       "bc",
       "c",
       "ca",
+      "chapter-number",
       "chord",
+      "collection-number",
       "collection-title",
       "container-title",
+      "container-title-short",
       "copyleft",
       "copyright",
       "custom",
@@ -1173,6 +1221,7 @@ export const defaultDevSchema: CompletionSchema = {
       "email",
       "etal",
       "etc",
+      "event",
       "fillin",
       "flat",
       "foreign",
@@ -1206,6 +1255,7 @@ export const defaultDevSchema: CompletionSchema = {
       "note",
       "number",
       "number-of-pages",
+      "number-of-volumes",
       "obelus",
       "page",
       "page-first",
@@ -1239,6 +1289,7 @@ export const defaultDevSchema: CompletionSchema = {
       "solidus",
       "sq",
       "stale",
+      "status",
       "swungdash",
       "tag",
       "tage",
@@ -1255,6 +1306,7 @@ export const defaultDevSchema: CompletionSchema = {
       "url",
       "URL",
       "var",
+      "version",
       "viz",
       "volume",
       "vs",
@@ -1706,6 +1758,10 @@ export const defaultDevSchema: CompletionSchema = {
       "xml:lang"
     ]
   },
+  "chapter-number": {
+    "elements": [],
+    "attributes": []
+  },
   "checkpoint": {
     "elements": [
       "feedback",
@@ -1782,6 +1838,10 @@ export const defaultDevSchema: CompletionSchema = {
       "top",
       "width"
     ]
+  },
+  "collection-number": {
+    "elements": [],
+    "attributes": []
   },
   "collection-title": {
     "elements": [
@@ -1979,6 +2039,45 @@ export const defaultDevSchema: CompletionSchema = {
     ]
   },
   "container-title": {
+    "elements": [
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
+      "icon",
+      "kbd",
+      "langle",
+      "ldblbracket",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
+      "prime",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
+      "section-mark",
+      "servicemark",
+      "solidus",
+      "swungdash",
+      "times",
+      "trademark"
+    ],
+    "attributes": []
+  },
+  "container-title-short": {
     "elements": [
       "copyleft",
       "copyright",
@@ -5722,6 +5821,10 @@ export const defaultDevSchema: CompletionSchema = {
     "elements": [],
     "attributes": []
   },
+  "number-of-volumes": {
+    "elements": [],
+    "attributes": []
+  },
   "obelus": {
     "elements": [],
     "attributes": []
@@ -8309,21 +8412,55 @@ export const defaultDevSchema: CompletionSchema = {
       "biographical",
       "blockquote",
       "console",
+      "copyleft",
+      "copyright",
+      "dblprime",
+      "degree",
+      "ellipsis",
       "figure",
       "historical",
+      "icon",
       "idx",
       "image",
+      "kbd",
+      "langle",
+      "ldblbracket",
       "list",
       "listing",
+      "lq",
+      "lsq",
+      "m",
+      "mdash",
+      "midpoint",
+      "minus",
+      "nbsp",
+      "ndash",
+      "obelus",
       "p",
+      "permille",
+      "phonomark",
+      "pilcrow",
+      "plusminus",
       "pre",
+      "prime",
       "program",
+      "rangle",
+      "rdblbracket",
+      "registered",
+      "rq",
+      "rsq",
       "sage",
       "sbsgroup",
+      "section-mark",
+      "servicemark",
       "sidebyside",
+      "solidus",
+      "swungdash",
       "table",
       "tabular",
+      "times",
       "title",
+      "trademark",
       "video"
     ],
     "attributes": [
@@ -9507,6 +9644,10 @@ export const defaultDevSchema: CompletionSchema = {
       "name",
       "width"
     ]
+  },
+  "version": {
+    "elements": [],
+    "attributes": []
   },
   "video": {
     "elements": [

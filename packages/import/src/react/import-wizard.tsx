@@ -1536,14 +1536,14 @@ function ExperimentalNotice({
 }) {
   return (
     <div
-      className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"
+      className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
       data-testid="experimental-notice"
     >
       <p>{notice}</p>
       {share ? (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           {share.offer.description ? (
-            <p className="text-amber-800">{share.offer.description}</p>
+            <p className="text-amber-700">{share.offer.description}</p>
           ) : null}
           {share.status.state === "shared" ? (
             <p role="status" className="font-medium">
@@ -1554,7 +1554,7 @@ function ExperimentalNotice({
               type="button"
               onClick={share.onShare}
               disabled={share.status.state === "sharing"}
-              className="rounded border border-amber-300 px-3 py-1.5 font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-60"
+              className="rounded border border-amber-200 px-3 py-1.5 font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
             >
               {share.status.state === "sharing"
                 ? "Sharing…"
@@ -1562,7 +1562,7 @@ function ExperimentalNotice({
             </button>
           )}
           {share.status.state === "failed" ? (
-            <p role="alert" className="text-red-700">
+            <p role="alert" className="text-red-800">
               Could not share: {share.status.message}
             </p>
           ) : null}
