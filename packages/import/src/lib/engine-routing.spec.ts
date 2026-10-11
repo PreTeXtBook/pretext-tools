@@ -5,6 +5,8 @@ import {
   alternateEngine,
   alternateFor,
   engineAccepts,
+  experimentalEngineFor,
+  experimentalEngines,
   matchesExtension,
   routeEngine,
   unsupportedFileMessage,
@@ -127,5 +129,34 @@ describe("unsupportedFileMessage", () => {
     expect(message).toContain("photo.png");
     expect(message).toContain(".docx");
     expect(message).toContain(".tar.gz");
+  });
+});
+
+describe("experimental engines", () => {
+  const experimentalPandoc: RoutableEngine = {
+    ...pandoc,
+    experimentalNotice: "Pandoc conversions are experimental.",
+  };
+  const hosted = [builtin, experimentalPandoc];
+
+  it("lists only the engines with a notice, in order", () => {
+    expect(experimentalEngines(hosted)).toEqual([experimentalPandoc]);
+    expect(experimentalEngines(engines)).toEqual([]);
+  });
+
+  it("names the experimental engine a file is routed to", () => {
+    expect(experimentalEngineFor(hosted, "report.docx")).toBe(
+      experimentalPandoc,
+    );
+  });
+
+  // A `.tex` goes to the built-in converter first; that pandoc could also read
+  // it does not make this upload experimental.
+  it("says nothing for a file a dependable engine owns", () => {
+    expect(experimentalEngineFor(hosted, "paper.tex")).toBeUndefined();
+  });
+
+  it("says nothing for a file no engine reads", () => {
+    expect(experimentalEngineFor(hosted, "slides.key")).toBeUndefined();
   });
 });

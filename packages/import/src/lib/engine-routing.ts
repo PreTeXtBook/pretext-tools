@@ -22,6 +22,8 @@ export interface RoutableEngine {
   description?: string;
   /** Extensions this engine accepts, with leading dots. */
   acceptExtensions?: string[];
+  /** Set when the engine is experimental; see `ImportEngine.experimentalNotice`. */
+  experimentalNotice?: string;
 }
 
 /** File extensions accepted by the built-in converter. */
@@ -132,6 +134,29 @@ export function alternateFor<T extends RoutableEngine>(
     return undefined;
   }
   return engineAccepts(alternate, fileName) ? alternate : undefined;
+}
+
+/**
+ * The engines the host marked experimental, in list order. Their notices are
+ * worth showing before any file is chosen, since a file converts the moment
+ * it is dropped.
+ */
+export function experimentalEngines<T extends RoutableEngine>(
+  engines: T[],
+): T[] {
+  return engines.filter((engine) => engine.experimentalNotice);
+}
+
+/**
+ * The engine an upload goes to, when that engine is experimental, or
+ * `undefined` when it goes to a dependable one or to none at all.
+ */
+export function experimentalEngineFor<T extends RoutableEngine>(
+  engines: T[],
+  fileName: string,
+): T | undefined {
+  const engine = routeEngine(engines, fileName);
+  return engine?.experimentalNotice ? engine : undefined;
 }
 
 /** The message shown when no engine can read the file the author chose. */

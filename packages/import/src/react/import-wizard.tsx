@@ -46,6 +46,7 @@ import {
   DEFAULT_ACCEPT_EXTENSIONS,
   allAcceptExtensions,
   alternateFor,
+  experimentalEngines,
   routeEngine,
   unsupportedFileMessage,
 } from "../lib/engine-routing";
@@ -90,6 +91,14 @@ export interface ImportEngine {
   description?: string;
   /** Extensions this engine accepts (with leading dot). Defaults to the built-in set. */
   acceptExtensions?: string[];
+  /**
+   * Marks a converter whose results are not yet dependable, in the host's own
+   * words — say, "Conversion from Word uses pandoc and is still experimental."
+   * The wizard shows it on the upload step, since a file converts the moment
+   * it is dropped, and again beside any result or failure this engine
+   * produces, where it also offers the host's `shareConversion`.
+   */
+  experimentalNotice?: string;
   /** Convert an uploaded file into an import result. */
   convertFile: (
     file: File,
@@ -163,6 +172,37 @@ function nextPaint(): Promise<void> {
   });
 }
 
+/**
+ * A conversion by an experimental engine, handed to the host when the author
+ * chooses to share it (see `ImportWizardProps.shareConversion`).
+ */
+export interface ConversionShare {
+  /** The upload exactly as the author chose it. */
+  file: File;
+  /** `id` of the engine that converted it. */
+  engineId: string;
+  /** `label` of the engine that converted it. */
+  engineLabel: string;
+  /** The converted PreTeXt (`pretextSource`), before any re-layout. Absent on failure. */
+  pretext?: string;
+  /** Why the conversion failed. Absent on success. */
+  error?: string;
+}
+
+/** The host's offer to receive conversions an author chooses to share. */
+export interface ShareConversionOffer {
+  /** Text of the share button. Defaults to "Share this conversion". */
+  label?: string;
+  /** A line before the button saying where the conversion goes and why. */
+  description?: string;
+  /**
+   * Receives the conversion. The wizard waits on it to show "Sharing…" and
+   * then "Shared"; a rejection is shown beside the button, which stays
+   * available so the author can try again.
+   */
+  onShare: (share: ConversionShare) => void | Promise<void>;
+}
+
 export interface ImportWizardProps {
   /**
    * Called when the user confirms the import. May return a promise — writing
@@ -206,6 +246,14 @@ export interface ImportWizardProps {
    * lets the author move the attach level and see the result before confirming.
    */
   insertTarget?: InsertTargetOffer;
+  /**
+   * Let the author send a conversion by an experimental engine (one with an
+   * `experimentalNotice`) to the host — its developers, say — so they can see
+   * where that converter falls short. Offered after the fact, beside the result
+   * or the failure, so the author decides having seen what came out. Omit it
+   * and the notice is shown without the offer.
+   */
+  shareConversion?: ShareConversionOffer;
 }
 
 /** What the host knows about the document an import is being inserted into. */
@@ -235,7 +283,16 @@ type Step =
   | { name: "processing" }
   | { name: "sources"; prepared: PreparedUpload }
   | { name: "review"; result: ImportedProjectSuccess }
-  | { name: "error"; message: string };
+  // `engineId` names the engine whose conversion failed; absent when the
+  // failure came before any engine was involved (an unreadable file type).
+  | { name: "error"; message: string; engineId?: string };
+
+/** Where sharing the conversion on screen stands. */
+type ShareStatus =
+  | { state: "idle" }
+  | { state: "sharing" }
+  | { state: "shared" }
+  | { state: "failed"; message: string };
 
 /** How an extra root should be folded in, keyed by its path. */
 type AttachChoices = Record<string, { include: boolean; level?: AttachLevel }>;
@@ -294,6 +351,7 @@ export function ImportWizard({
   onImportModeChange,
   engines,
   insertTarget,
+  shareConversion,
 }: ImportWizardProps) {
   const engineList = engines && engines.length > 0 ? engines : [BUILTIN_ENGINE];
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -334,6 +392,14 @@ export function ImportWizard({
   // Set when the user cancels, so the conversion's own rejection (a terminated
   // worker) is swallowed instead of surfacing as an import failure.
   const cancelledRef = useRef(false);
+  // Belongs to the conversion on screen, so every new one starts it over.
+  const [shareStatus, setShareStatus] = useState<ShareStatus>({
+    state: "idle",
+  });
+  // Bumped by each share and each new conversion, so only the latest share
+  // reports back — one still in flight from the last conversion cannot say
+  // "Shared" over a result it never saw.
+  const shareRequestRef = useRef(0);
 
   const activeEngine =
     engineList.find((engine) => engine.id === activeEngineId) ?? engineList[0];
@@ -421,6 +487,66 @@ export function ImportWizard({
       : {}),
   });
 
+  /** Start the share state over for a new conversion. */
+  const resetShare = () => {
+    shareRequestRef.current += 1;
+    setShareStatus({ state: "idle" });
+  };
+
+  /** Hand the conversion on screen, by `engine`, to the host. */
+  const shareOutcome = async (
+    engine: ImportEngine,
+    outcome: { pretext: string } | { error: string },
+  ) => {
+    if (!shareConversion || !sourceFile) return;
+    const request = ++shareRequestRef.current;
+    setShareStatus({ state: "sharing" });
+    try {
+      await shareConversion.onShare({
+        file: sourceFile,
+        engineId: engine.id,
+        engineLabel: engine.label,
+        ...outcome,
+      });
+      if (request === shareRequestRef.current) {
+        setShareStatus({ state: "shared" });
+      }
+    } catch (err) {
+      if (request === shareRequestRef.current) {
+        setShareStatus({
+          state: "failed",
+          message:
+            err instanceof Error && err.message
+              ? err.message
+              : "Could not share this conversion.",
+        });
+      }
+    }
+  };
+
+  /**
+   * The notice for a conversion `engine` produced, with the share offer when
+   * the host made one, or nothing for a dependable engine.
+   */
+  const experimentalPanel = (
+    engine: ImportEngine | undefined,
+    outcome: { pretext: string } | { error: string },
+  ) =>
+    engine?.experimentalNotice ? (
+      <ExperimentalNotice
+        notice={engine.experimentalNotice}
+        share={
+          shareConversion
+            ? {
+                offer: shareConversion,
+                status: shareStatus,
+                onShare: () => void shareOutcome(engine, outcome),
+              }
+            : undefined
+        }
+      />
+    ) : null;
+
   /** Re-survey the upload under the user's current format/main-file choices. */
   const currentAnalysis = (upload: PreparedUpload): UploadAnalysis =>
     analyzeImportSources(upload.files, {
@@ -443,6 +569,7 @@ export function ImportWizard({
 
   const runImport = async (upload: PreparedUpload) => {
     cancelledRef.current = false;
+    resetShare();
     setStep({ name: "processing" });
     await nextPaint();
     try {
@@ -462,7 +589,11 @@ export function ImportWizard({
         attachRoots,
       });
       if ("pretextError" in result) {
-        setStep({ name: "error", message: result.pretextError });
+        setStep({
+          name: "error",
+          message: result.pretextError,
+          engineId: activeEngine.id,
+        });
       } else {
         setStep({ name: "review", result });
       }
@@ -474,6 +605,7 @@ export function ImportWizard({
         name: "error",
         message:
           err instanceof Error ? err.message : "An unexpected error occurred.",
+        engineId: activeEngine.id,
       });
     }
   };
@@ -500,6 +632,7 @@ export function ImportWizard({
     setSourceFile(file);
     setActiveEngineId(engine.id);
     resetReviewState();
+    resetShare();
 
     cancelledRef.current = false;
     setStep({ name: "processing" });
@@ -522,7 +655,11 @@ export function ImportWizard({
         const result = await engine.convertPrepared(upload, baseOptions());
         setStep(
           "pretextError" in result
-            ? { name: "error", message: result.pretextError }
+            ? {
+                name: "error",
+                message: result.pretextError,
+                engineId: engine.id,
+              }
             : { name: "review", result },
         );
         return;
@@ -534,7 +671,11 @@ export function ImportWizard({
       setPrepared(null);
       const result = await engine.convertFile(file, baseOptions());
       if ("pretextError" in result) {
-        setStep({ name: "error", message: result.pretextError });
+        setStep({
+          name: "error",
+          message: result.pretextError,
+          engineId: engine.id,
+        });
       } else {
         setStep({ name: "review", result });
       }
@@ -546,6 +687,7 @@ export function ImportWizard({
         name: "error",
         message:
           err instanceof Error ? err.message : "An unexpected error occurred.",
+        engineId: engine.id,
       });
     }
   };
@@ -619,6 +761,10 @@ export function ImportWizard({
           <p className="font-semibold">Import failed</p>
           <p className="mt-1">{step.message}</p>
         </div>
+        {experimentalPanel(
+          engineList.find((engine) => engine.id === step.engineId),
+          { error: step.message },
+        )}
         <div className="flex justify-end gap-2">
           {switchTarget ? (
             <button
@@ -924,6 +1070,10 @@ export function ImportWizard({
             ) : null}
           </dl>
         </div>
+
+        {experimentalPanel(activeEngine, {
+          pretext: step.result.pretextSource,
+        })}
 
         {/*
           The converter override, and the only place it appears. Which
@@ -1355,6 +1505,69 @@ export function ImportWizard({
           }}
         />
       </div>
+
+      {[
+        ...new Set(
+          experimentalEngines(engineList).map(
+            (engine) => engine.experimentalNotice!,
+          ),
+        ),
+      ].map((notice) => (
+        <ExperimentalNotice key={notice} notice={notice} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * An experimental engine's notice, and — beside a conversion it produced, when
+ * the host offers it — the button that shares that conversion.
+ */
+function ExperimentalNotice({
+  notice,
+  share,
+}: {
+  notice: string;
+  share?: {
+    offer: ShareConversionOffer;
+    status: ShareStatus;
+    onShare: () => void;
+  };
+}) {
+  return (
+    <div
+      className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800"
+      data-testid="experimental-notice"
+    >
+      <p>{notice}</p>
+      {share ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          {share.offer.description ? (
+            <p className="text-amber-700">{share.offer.description}</p>
+          ) : null}
+          {share.status.state === "shared" ? (
+            <p role="status" className="font-medium">
+              Shared. Thank you!
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={share.onShare}
+              disabled={share.status.state === "sharing"}
+              className="rounded border border-amber-200 px-3 py-1.5 font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+            >
+              {share.status.state === "sharing"
+                ? "Sharing…"
+                : (share.offer.label ?? "Share this conversion")}
+            </button>
+          )}
+          {share.status.state === "failed" ? (
+            <p role="alert" className="text-red-800">
+              Could not share: {share.status.message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

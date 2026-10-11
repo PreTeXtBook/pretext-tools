@@ -224,3 +224,42 @@ import {
 const mode = resolveImportMode(result, preferredMode);
 const files = filesForImportMode(result, mode);
 ```
+
+### Experimental engines and shared conversions
+
+A host can flag a converter whose results are not yet dependable by giving its
+engine an `experimentalNotice`, in the host's own words. The wizard shows that
+notice on the upload step, before a file is chosen, since a file converts the
+moment it is dropped. It shows it again beside any result or failure that engine
+produces.
+
+Pass `shareConversion` to let the author send such a conversion back to you, so
+you can see where the converter falls short. The offer is a button beside the
+result or the error, so the author decides after seeing what came out. It is
+never made for an engine without a notice, and without `shareConversion` the
+notice is shown on its own.
+
+```tsx
+<ImportWizard
+  engines={[
+    builtinEngine,
+    {
+      ...pandocEngine,
+      experimentalNotice:
+        "Conversion from Word, EPUB and HTML uses pandoc and is still experimental.",
+    },
+  ]}
+  shareConversion={{
+    label: "Share with the developers",
+    description: "Sends this file and its conversion to us privately.",
+    // { file, engineId, engineLabel, pretext } or { …, error }
+    onShare: (share) => postToYourServer(share),
+  }}
+  onConfirm={handleConfirm}
+/>
+```
+
+`onShare` is awaited: the button reads "Sharing…" until it settles, then
+"Shared". If it rejects, the error is shown beside the button and the author can
+try again. `experimentalEngines(engines)` and `experimentalEngineFor(engines,
+fileName)` give the same answers outside the wizard.
