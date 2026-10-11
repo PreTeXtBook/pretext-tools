@@ -1,5 +1,12 @@
 # @pretextbook/visual-editor
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [e0171c1]
+  - @pretextbook/format@0.6.1
+
 ## 0.1.3
 
 ### Patch Changes

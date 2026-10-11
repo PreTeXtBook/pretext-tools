@@ -1,5 +1,14 @@
 # @pretextbook/schema
 
+## 0.7.2
+
+### Patch Changes
+
+- e0171c1: Regenerate schema artifacts from the updated `pretext.rng`, which added
+  bibliography fields such as `archive_location`, `chapter-number`,
+  `collection-number`, `container-title-short`, `number-of-volumes` and `version`.
+  The formatter keeps the new text-only fields on one line with their tags.
+
 ## 0.7.1
 
 ### Patch Changes
