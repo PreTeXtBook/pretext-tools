@@ -1,5 +1,11 @@
 # @pretextbook/completions
 
+## 0.5.2
+
+### Patch Changes
+
+- daf7fc4: Fix bug that prevented completions when cursor is in column 0
+
 ## 0.5.1
 
 ### Patch Changes
