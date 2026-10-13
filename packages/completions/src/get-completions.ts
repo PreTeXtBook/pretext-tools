@@ -155,12 +155,10 @@ export async function getPretextCompletions(
     return getTagNameCompletions(params, schema);
   }
 
-  const charsBefore = getTextInRange(text, rangeInLine(position, -2, 0));
-  if (
-    charsBefore.length !== 0 &&
-    !charsBefore.includes(" ") &&
-    !charsBefore.includes("\t")
-  ) {
+  // No completions in the middle of a word. The start of the line counts as
+  // whitespace, so a `<` typed in column 0 still gets them.
+  const charsBefore = ("\n" + linePrefix(text, position)).slice(-2);
+  if (!/\s/.test(charsBefore)) {
     return null;
   }
 

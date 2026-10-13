@@ -75,6 +75,24 @@ describe("getPretextCompletions sort order", () => {
   });
 });
 
+describe("getPretextCompletions at the start of a line", () => {
+  it("offers element snippets for a `<` typed in column 0", async () => {
+    const items = await getPretextCompletions({
+      text: '<article xml:id="a">\n<title>T</title>\n<',
+      position: { line: 2, character: 1 },
+    });
+    expect(items?.some((item) => item.label === "<section>")).toBe(true);
+  });
+
+  it("offers none in the middle of a word in column 0", async () => {
+    const items = await getPretextCompletions({
+      text: "<article>\nab",
+      position: { line: 1, character: 2 },
+    });
+    expect(items).toBeNull();
+  });
+});
+
 describe("getPretextCompletions in a start tag's name", () => {
   // A selection wrapped by typing `<`: carets in `<|>` and the mirroring `</|>`.
   const wrapped = (line: string) => {
