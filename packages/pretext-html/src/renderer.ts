@@ -14,7 +14,7 @@
 
 import * as path from "node:path";
 import { injectPreviewBanner, type PreviewBannerOptions } from "./banner.js";
-import { assetsBase, joinPath, readMount, readSource } from "./host.js";
+import { assetsBase, joinPath, readMount } from "./host.js";
 import {
   HTML_STATIC_VERSION,
   RUNESTONE_CSS,
@@ -32,6 +32,7 @@ import {
 import {
   forcePortablePublication,
   readAssetDirectories,
+  readPublicationLevels,
 } from "./publication.js";
 import { injectRevealBridge, type RevealView } from "./reveal.js";
 import { computeSourceMap, type PtxSourceMap } from "./sourcemap.js";
@@ -39,30 +40,32 @@ import { detectRenderTarget, type RenderTarget } from "./target.js";
 import { injectThemeBridge, type PreviewTheme } from "./theme.js";
 import {
   extractDocinfo,
-  resolveXIncludes,
+  readWith,
   resolveXIncludesToTree,
+  tagIncludedFile,
+  type ResolveOptions,
+  type SourceReader,
 } from "./xinclude.js";
 import { buildSkeleton, replaceDivision } from "./skeleton.js";
+import { SourceCache } from "./source-cache.js";
+import {
+  countElements,
+  ensureXmlId,
+  selectDivision,
+  type SubtreeOptions,
+} from "./subtree.js";
+import { isStructural } from "./skeleton.js";
 import { rewriteXrefLinks } from "./xrefs.js";
-import { fromXml } from "xast-util-from-xml";
+import { toXml } from "xast-util-to-xml";
 import type { Element, Root } from "xast";
 
-export interface RenderOptions {
+/**
+ * How a document is read: the options every entry point that reads source
+ * shares — {@link renderHtml} and {@link measureDocument}.
+ */
+export interface SourceOptions {
   /** Path to the root PreTeXt source file (typically source/main.ptx). */
   sourcePath: string;
-  /**
-   * Path to the project's *main* source file — the one holding `<pretext>`.
-   * Defaults to `sourcePath`, which is correct whenever a complete document is
-   * being rendered.
-   *
-   * PreTeXt anchors the publication file's relative asset directories
-   * (`source/directories/@external|@generated`) at this file's directory, and
-   * so does every `document()` the stylesheets make. Rendering a fragment from
-   * a subdirectory therefore needs it: previewing `source/chapters/ch1.ptx`
-   * must still resolve `../generated-assets/` from `source/`, not from
-   * `source/chapters/`. Without it, generated images silently render empty.
-   */
-  mainSourcePath?: string;
   /**
    * Source text to transform instead of reading `sourcePath` from disk.
    * `sourcePath` is still used to resolve relative xi:includes. Lets callers
@@ -77,6 +80,75 @@ export interface RenderOptions {
    * transform.
    */
   projectDir?: string;
+  /**
+   * Supply the files the document refers to — xi:include targets, the
+   * context document, the publication file, the docinfo source — from
+   * somewhere other than the platform: an in-memory project in a browser,
+   * an editor's unsaved buffers. Called with each file's absolute, normalized
+   * path; `undefined` falls through to the platform's own read (disk under
+   * Node, an absolute URL in the browser), so the reader can overlay just a
+   * few files or stand in for a filesystem entirely. See {@link SourceReader}.
+   *
+   * This is what lets the browser build resolve `xi:include`s at all, and
+   * what the per-file parse cache (`cache`) keys on: hand it the same string
+   * for an unchanged file and that file is not parsed again.
+   */
+  readSource?: SourceReader;
+  /**
+   * The same as `readSource`, as a map from absolute path to content, for
+   * hosts whose project simply is such a map. Consulted before `readSource`.
+   */
+  files?: Record<string, string>;
+  /**
+   * Reuse the parse of every file whose content has not changed since the
+   * last render (see source-cache.ts). On by default, with one cache shared
+   * by every render in the process; pass a {@link SourceCache} to scope it
+   * (one per project, say, so `invalidate()` has a clear meaning), or
+   * `false` to parse everything afresh each time.
+   *
+   * What it buys: a fragment preview placed in its document
+   * (`contextSourcePath`) and a division preview of a complete document
+   * (`subtree`) both parse the *whole* document to prune it to a skeleton;
+   * with the cache, a keystroke re-parses only the file being edited.
+   */
+  cache?: SourceCache | false;
+}
+
+export interface RenderOptions extends SourceOptions {
+  /**
+   * Path to the project's *main* source file — the one holding `<pretext>`.
+   * Defaults to `sourcePath`, which is correct whenever a complete document is
+   * being rendered.
+   *
+   * PreTeXt anchors the publication file's relative asset directories
+   * (`source/directories/@external|@generated`) at this file's directory, and
+   * so does every `document()` the stylesheets make. Rendering a fragment from
+   * a subdirectory therefore needs it: previewing `source/chapters/ch1.ptx`
+   * must still resolve `../generated-assets/` from `source/`, not from
+   * `source/chapters/`. Without it, generated images silently render empty.
+   */
+  mainSourcePath?: string;
+  /**
+   * Preview one division of the document instead of all of it — the one
+   * around the author's cursor (`line`, and `file` when that is not the file
+   * being rendered) or the one carrying an `id` — numbered and
+   * cross-referenced exactly as the whole document would be, by the same
+   * skeleton pruning a fragment placed in its document gets (see
+   * skeleton.ts). The cost of a render then tracks the division, not the
+   * document, which is what makes previewing a large single-file book as
+   * you type feasible at all.
+   *
+   * `level` chooses the page by PreTeXt's chunk-level rules, and
+   * `wholeDocumentUpTo` keeps small documents previewing whole; see
+   * {@link SubtreeOptions}. With `fragment` and a context document, the
+   * selection is made within the placed fragment (so a cursor line narrows
+   * the preview to the subsection it is in); without `subtree` the fragment's
+   * own root is the division, as before.
+   *
+   * Ignored when no division can be selected — the document then renders
+   * whole, and {@link RenderResult.subtree} is absent.
+   */
+  subtree?: SubtreeOptions;
   /**
    * Path to a publication file. Its settings are respected except
    * `<html><platform portable="yes"/></html>`, which the preview forces.
@@ -290,9 +362,53 @@ export interface RenderOptions {
   printPreview?: string;
 }
 
+/** How big a document is, as {@link measureDocument} reports it. */
+export interface DocumentSize {
+  /** Length of the xi:include-merged source, in UTF-16 code units. */
+  bytes: number;
+  /**
+   * Number of elements in the merged source. The better predictor of render
+   * time: PreTeXt's assembly walks the tree in a dozen passes, so cost tracks
+   * nodes rather than text. For scale, a small article is a few hundred, a
+   * long chapter a few thousand, a whole book tens of thousands.
+   */
+  elements: number;
+  /**
+   * Every file the document spans — the source first, then each xi:included
+   * file in the order first reached. What to watch for changes.
+   */
+  files: string[];
+}
+
 export interface RenderResult {
   /** Complete standalone HTML page (CDN-hosted css/js/MathJax). */
   html: string;
+  /**
+   * The size of the document the render assembled — the whole context
+   * document for a fragment placed in it, the whole document for a `subtree`
+   * preview — before any pruning. What to compare against a threshold when
+   * deciding how much of a document to preview next time.
+   */
+  size: DocumentSize;
+  /**
+   * Present when one division was emitted rather than the whole document:
+   * `id` is its `xml:id`, which is also its HTML id on the page; `level` its
+   * numbering level; `collapsed` whether the divisions nested inside it were
+   * reduced to headings (see {@link SubtreeOptions.level}).
+   */
+  subtree?: {
+    id: string;
+    level: number;
+    collapsed: boolean;
+    /**
+     * When `collapsed`, the ids of the divisions the summary page lists, in
+     * document order — each the `xml:id` (authored or injected) its link
+     * names in `data-ptx-division`, and its id in the source map. A host
+     * following the cursor re-renders when it enters one of these. Empty
+     * for a division shown whole.
+     */
+    children: string[];
+  };
   /**
    * The conversion that actually ran — as asked for, or as detected. Lets an
    * embedder tell a deck from a document without re-inspecting the source,
@@ -444,12 +560,56 @@ function documentRootName(xml: string): string | undefined {
 }
 
 /**
+ * The one cache every render shares unless told otherwise. Keyed by file
+ * path and validated by content, so sharing it across projects is safe; it
+ * only ever costs memory, bounded by its entry limit.
+ */
+let sharedSourceCache: SourceCache | undefined;
+
+/**
+ * The parse cache renders use when {@link SourceOptions.cache} is not given.
+ * Exposed so a host can drop it (`invalidate()`) or read its hit counts.
+ */
+export function defaultSourceCache(): SourceCache {
+  return (sharedSourceCache ??= new SourceCache());
+}
+
+/**
+ * Turn the caller's reader, file map and cache choice into what the include
+ * resolver takes. The map is consulted first, then the reader, then (inside
+ * `readWith`) the platform.
+ */
+function resolveOptionsFor(options: SourceOptions): ResolveOptions {
+  const files = options.files
+    ? new Map(
+        Object.entries(options.files).map(([file, content]) => [
+          path.resolve(file),
+          content,
+        ]),
+      )
+    : undefined;
+  const custom = options.readSource;
+  const readSource: SourceReader | undefined =
+    files || custom
+      ? async (file) => files?.get(file) ?? (await custom?.(file))
+      : undefined;
+  const cache =
+    options.cache === false
+      ? undefined
+      : (options.cache ?? defaultSourceCache());
+  return { readSource, cache };
+}
+
+/**
  * Read a file the caller named, failing loudly. Unlike the best-effort reads
  * (docinfo, mounted resources), there is no sensible way to continue without
  * the source or the publication file the caller explicitly asked for.
  */
-async function readSourceOrThrow(location: string): Promise<string> {
-  const content = await readSource(location);
+async function readSourceOrThrow(
+  resolve: ResolveOptions,
+  location: string,
+): Promise<string> {
+  const content = await readWith(resolve, location);
   if (content === undefined) {
     throw new Error(
       `Could not read ${location}. ` +
@@ -467,13 +627,47 @@ async function readSourceOrThrow(location: string): Promise<string> {
 async function docinfoFromSource(
   docinfoSourcePath: string,
   projectDir: string,
+  resolve: ResolveOptions,
 ): Promise<string | undefined> {
   const resolved = path.resolve(docinfoSourcePath);
-  const content = await readSource(resolved);
+  const content = await readWith(resolve, resolved);
   if (content === undefined) {
     return undefined;
   }
-  return extractDocinfo(content, resolved, projectDir);
+  return extractDocinfo(content, resolved, projectDir, resolve);
+}
+
+/**
+ * Measure a document without rendering it: resolve its xi:includes and count.
+ * Cheap — with the parse cache warm, a copy of the tree and a walk — so a
+ * host can decide before each render whether to preview the whole document
+ * or one division of it (see {@link SubtreeOptions.wholeDocumentUpTo}), and
+ * learn which files to watch.
+ *
+ * Measures the document at `sourcePath` as given: to size the book a
+ * fragment belongs to, pass the main file.
+ */
+export async function measureDocument(
+  options: SourceOptions,
+): Promise<DocumentSize> {
+  const resolve = resolveOptionsFor(options);
+  const sourcePath = path.resolve(options.sourcePath);
+  const projectDir = path.resolve(
+    options.projectDir ?? path.dirname(sourcePath),
+  );
+  const sourceContent =
+    options.sourceContent ?? (await readSourceOrThrow(resolve, sourcePath));
+  const resolved = await resolveXIncludesToTree(
+    sourceContent,
+    sourcePath,
+    projectDir,
+    resolve,
+  );
+  return {
+    bytes: resolved.bytes,
+    elements: countElements(resolved.tree),
+    files: resolved.files,
+  };
 }
 
 /**
@@ -514,10 +708,11 @@ function wrapFragment(
 }
 
 /**
- * Place `fragmentContent` where it belongs in the document at
- * `documentSourcePath`, and prune that document to a skeleton around it (see
- * skeleton.ts). The result renders with upstream's `subtree` parameter, which
- * emits only the fragment's own division.
+ * Place `fragmentRoot` — the fragment's root element, as parsed from the
+ * file at `fragmentPath` with its includes merged — where it belongs in the
+ * document at `documentSourcePath`. The caller then prunes that document to
+ * a skeleton around it (see skeleton.ts) and renders with upstream's
+ * `subtree` parameter, which emits only the chosen division.
  *
  * Returns undefined — meaning "render it standalone instead" — whenever the
  * fragment cannot be located: no `@xml:id` on its root element, no division
@@ -526,41 +721,46 @@ function wrapFragment(
  * being typed), not errors worth failing a preview over.
  */
 async function placeFragmentInDocument(
-  fragmentContent: string,
+  fragmentRoot: Element,
+  fragmentPath: string,
   documentSourcePath: string,
   projectDir: string,
-  documentSourceContent?: string,
+  documentSourceContent: string | undefined,
+  resolve: ResolveOptions,
 ): Promise<
-  { content: string; tree: Root; divisionId: string; level: number } | undefined
+  { tree: Root; divisionId: string; files: string[]; bytes: number } | undefined
 > {
-  const fragmentRoot = fromXml(fragmentContent).children.find(
-    (node): node is Element => node.type === "element",
-  );
-  const divisionId = fragmentRoot?.attributes["xml:id"];
-  if (!fragmentRoot || !divisionId) return undefined;
+  const divisionId = fragmentRoot.attributes["xml:id"];
+  if (!divisionId) return undefined;
 
   const documentPath = path.resolve(documentSourcePath);
   const documentSource =
-    documentSourceContent ?? (await readSource(documentPath));
+    documentSourceContent ?? (await readWith(resolve, documentPath));
   if (documentSource === undefined) return undefined;
 
   let tree: Root;
+  let files: string[];
+  let bytes: number;
   try {
-    tree = (
-      await resolveXIncludesToTree(documentSource, documentPath, projectDir)
-    ).tree;
+    ({ tree, files, bytes } = await resolveXIncludesToTree(
+      documentSource,
+      documentPath,
+      projectDir,
+      resolve,
+    ));
   } catch {
     // A malformed or unreachable include elsewhere in the book should not stop
     // the author previewing the file in front of them.
     return undefined;
   }
   // The editor's copy wins over the one on disk, so unsaved work is what gets
-  // rendered; the document supplies only the structure around it.
+  // rendered; the document supplies only the structure around it. The copy
+  // is tagged with its own file so the source map — and a cursor line used
+  // to narrow the preview further — attribute its elements to that file.
+  tagIncludedFile(fragmentRoot, fragmentPath);
   if (!replaceDivision(tree, divisionId, fragmentRoot)) return undefined;
-
-  const skeleton = buildSkeleton(tree, divisionId);
-  if (!skeleton) return undefined;
-  return { ...skeleton, tree };
+  if (!files.includes(fragmentPath)) files.push(fragmentPath);
+  return { tree, divisionId, files, bytes };
 }
 
 /**
@@ -752,12 +952,13 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
   assertWasmUsable();
   const { XmlDocument } = await loadLibXslt();
 
+  const resolve = resolveOptionsFor(options);
   const sourcePath = path.resolve(options.sourcePath);
   const projectDir = path.resolve(
     options.projectDir ?? path.dirname(sourcePath),
   );
   const sourceContent =
-    options.sourceContent ?? (await readSourceOrThrow(sourcePath));
+    options.sourceContent ?? (await readSourceOrThrow(resolve, sourcePath));
 
   const relSource = path.relative(projectDir, sourcePath);
   if (relSource.startsWith("..")) {
@@ -787,37 +988,31 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     let publicationUrl = `${srcBase}/__pretext-preview-publication.xml`;
     if (options.publicationPath) {
       const pubPath = path.resolve(options.publicationPath);
-      publicationSource = await readSourceOrThrow(pubPath);
+      publicationSource = await readSourceOrThrow(resolve, pubPath);
       const relPub = path.relative(projectDir, pubPath);
       if (!relPub.startsWith("..")) {
         publicationUrl = `${srcBase}/${relPub.split(path.sep).join("/")}`;
       }
     }
     // xi:includes are resolved in JS before parsing: the WASM build cannot
-    // suspend inside libxml2's own XInclude pass (see src/xinclude.ts). When
-    // a source map is wanted, keep the merged tree too — its nodes carry the
-    // per-file line positions the map is built from.
+    // suspend inside libxml2's own XInclude pass (see src/xinclude.ts). The
+    // merged tree is kept too: its nodes carry the per-file line positions
+    // the source map is built from and a cursor line is matched against,
+    // and it is what the skeleton prunes.
     //
     // Done before the publication file is prepared, because which conversion
     // this is decides what goes into that file, and the answer can live in an
     // xi:included file (a slideshow whose slides are all included).
-    let mergedTree;
-    let mergedContent: string;
-    if (options.sourceMap) {
-      const resolved = await resolveXIncludesToTree(
-        sourceContent,
-        sourcePath,
-        projectDir,
-      );
-      mergedTree = resolved.tree;
-      mergedContent = resolved.content;
-    } else {
-      mergedContent = await resolveXIncludes(
-        sourceContent,
-        sourcePath,
-        projectDir,
-      );
-    }
+    const resolved = await resolveXIncludesToTree(
+      sourceContent,
+      sourcePath,
+      projectDir,
+      resolve,
+    );
+    let mergedTree: Root = resolved.tree;
+    let mergedContent = resolved.content;
+    let files = resolved.files;
+    let bytes = resolved.bytes;
 
     const target = options.target ?? detectRenderTarget(mergedContent);
     const xslt = await getStylesheet(options.xslDir ?? defaultXslDir(), target);
@@ -852,13 +1047,60 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     // document element is a child of the (virtual) root: parent "root",
     // position 1 → "root-1". Fragment wrapping re-seats the walk (below).
     let mapRoot = { parentId: "root", position: 1 };
-    // Set when the fragment was placed in its document (see contextSourcePath):
-    // the division to emit, and its numbering level.
-    let subtree: { divisionId: string; level: number } | undefined;
+    // Set when one division is emitted out of a whole assembled document —
+    // a fragment placed in its context document, or a `subtree` selection.
+    let subtree: RenderResult["subtree"] | undefined;
     // The file a source-map walk should attribute the root element to. In
     // skeleton mode that is the document the skeleton was built from, not the
     // fragment; nodes spliced in from elsewhere carry their own file already.
     let mapRootFile = sourcePath;
+    // The document as assembled, measured before any pruning.
+    let size: DocumentSize | undefined;
+
+    /**
+     * Prune `tree` to a skeleton around the division to preview — the one
+     * `options.subtree` selects, else `fallbackId` — unless the document is
+     * small enough to show whole. Returns false when nothing was pruned.
+     */
+    const pruneToSubtree = (tree: Root, fallbackId?: string): boolean => {
+      size = { bytes, elements: countElements(tree), files };
+      const selection = options.subtree
+        ? selectDivision(tree, options.subtree, sourcePath)
+        : undefined;
+      const divisionId = selection?.id ?? fallbackId;
+      if (!divisionId) return false;
+      const limit = options.subtree?.wholeDocumentUpTo;
+      if (limit !== undefined && size.elements <= limit) return false;
+      // The publication file decides how deep the contents list goes and
+      // within what the blocks are numbered, and so how much of the document
+      // the skeleton has to keep around the division.
+      // The divisions a summary page will list, given ids before the
+      // skeleton is serialized so that their links, the source map and this
+      // result all name them the same way.
+      const children =
+        selection?.collapse && selection.element
+          ? selection.element.children
+              .filter(
+                (child): child is Element =>
+                  child.type === "element" && isStructural(child),
+              )
+              .map((child) => ensureXmlId(tree, child))
+          : [];
+      const skeleton = buildSkeleton(tree, divisionId, {
+        collapseChildren: selection?.collapse,
+        ...readPublicationLevels(publicationXml),
+      });
+      if (!skeleton) return false;
+      mergedContent = skeleton.content;
+      subtree = {
+        id: skeleton.divisionId,
+        level: skeleton.level,
+        collapsed: skeleton.collapsed,
+        children: skeleton.collapsed ? children : [],
+      };
+      return true;
+    };
+
     if (rootElement !== "pretext" && rootElement !== "mathbook") {
       if (!options.fragment) {
         throw new Error(
@@ -867,6 +1109,7 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
             `main source file instead, or pass the fragment option.`,
         );
       }
+      let placed = false;
       if (options.contextSourcePath || options.contextSourceContent) {
         // Preferred path: render the fragment where it really sits, so the
         // stylesheets number it — and resolve its cross-references — against
@@ -882,22 +1125,36 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         const contextPath =
           options.contextSourcePath ??
           path.join(path.dirname(sourcePath), "__pretext-preview-context.ptx");
-        const placed = await placeFragmentInDocument(
-          mergedContent,
-          contextPath,
-          projectDir,
-          options.contextSourceContent,
+        const fragmentRoot = mergedTree.children.find(
+          (node): node is Element => node.type === "element",
         );
-        if (placed) {
-          mergedContent = placed.content;
-          // The skeleton is a complete <pretext> document, so the id walk
-          // starts where it does for any whole document — mapRoot stands.
-          mergedTree = options.sourceMap ? placed.tree : undefined;
+        const placement = fragmentRoot
+          ? await placeFragmentInDocument(
+              fragmentRoot,
+              sourcePath,
+              contextPath,
+              projectDir,
+              options.contextSourceContent,
+              resolve,
+            )
+          : undefined;
+        if (placement) {
+          placed = true;
+          mergedTree = placement.tree;
+          files = placement.files;
+          bytes = placement.bytes;
+          // The placed document is a complete <pretext> document, so the id
+          // walk starts where it does for any whole document — mapRoot
+          // stands.
           mapRootFile = path.resolve(contextPath);
-          subtree = { divisionId: placed.divisionId, level: placed.level };
+          if (!pruneToSubtree(mergedTree, placement.divisionId)) {
+            // Small enough to show whole: the fragment in its entire
+            // document. (The skeleton serializes itself otherwise.)
+            mergedContent = toXml(mergedTree);
+          }
         }
       }
-      if (!subtree) {
+      if (!placed) {
         // Prefer an explicit docinfo string; otherwise lift one (resolving
         // xi:includes) from the project's main file so the fragment keeps its
         // macros. Reads only the docinfo, so the chapters are not merged.
@@ -905,7 +1162,11 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         const docinfo =
           options.docinfo ??
           (options.docinfoSourcePath
-            ? await docinfoFromSource(options.docinfoSourcePath, projectDir)
+            ? await docinfoFromSource(
+                options.docinfoSourcePath,
+                projectDir,
+                resolve,
+              )
             : undefined);
         mergedContent = wrapFragment(
           mergedContent,
@@ -919,9 +1180,13 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         const wrapperId = docinfo?.trim() ? "root-1-2" : "root-1-1";
         mapRoot = { parentId: wrapperId, position: 2 };
       }
+    } else if (options.subtree) {
+      // A complete document, of which one division is wanted.
+      pruneToSubtree(mergedTree);
     }
+    size ??= { bytes, elements: countElements(mergedTree), files };
 
-    const sourceMap = mergedTree
+    const sourceMap = options.sourceMap
       ? computeSourceMap(mergedTree, mapRootFile, mapRoot)
       : undefined;
 
@@ -940,9 +1205,14 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
       // Emit only the previewed division, out of the whole assembled document.
       // "subtree-level" raises the chunk level to that division's own, which
       // portable html otherwise pins to 0 — see SUBTREE_CHUNK_LEVEL_OVERRIDE
-      // in scripts/refresh-xsl.mjs.
-      params["subtree"] = xpathStringLiteral(subtree.divisionId);
-      params["subtree-level"] = xpathStringLiteral(String(subtree.level));
+      // in scripts/refresh-xsl.mjs. One level past it makes the division a
+      // summary page: its own content and links to the divisions inside it
+      // (see SUMMARY_PAGE_OVERRIDE there), which is what a collapsed skeleton
+      // has left of them anyway.
+      params["subtree"] = xpathStringLiteral(subtree.id);
+      params["subtree-level"] = xpathStringLiteral(
+        String(subtree.level + (subtree.collapsed ? 1 : 0)),
+      );
     }
     // Last, so a caller can override any default above.
     for (const [name, value] of Object.entries(options.stringParams ?? {})) {
@@ -1009,6 +1279,8 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         html,
         target,
         printouts,
+        size,
+        ...(subtree ? { subtree } : {}),
         ...(sourceMap ? { sourceMap } : {}),
         ...(assetDirs ? { assetDirs } : {}),
         ...(rootPrintout ? { rootPrintout } : {}),

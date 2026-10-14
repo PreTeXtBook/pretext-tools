@@ -93,7 +93,10 @@ function escapeAttribute(value: string): string {
 function classify(
   url: string,
   ids: Set<string>,
-): { kind: "same-page"; id: string } | { kind: "off-page" } | { kind: "keep" } {
+):
+  | { kind: "same-page"; id: string }
+  | { kind: "off-page"; division: string; id?: string }
+  | { kind: "keep" } {
   // Already a bare fragment, or a non-navigational href: upstream's own
   // in-page anchors ("#", "#ptx-content") and every absolute URL.
   if (url.startsWith("#") || url === "") return { kind: "keep" };
@@ -101,11 +104,15 @@ function classify(
     return { kind: "keep" };
   }
   const hash = url.indexOf("#");
-  if (hash === -1) return { kind: "off-page" };
+  // The page a link leaves for is named after the division it is a page of:
+  // `<unique-id>.html` (mode="containing-filename" in pretext-common.xsl).
+  const page = hash === -1 ? url : url.slice(0, hash);
+  const division = page.replace(/\.html?$/i, "");
+  if (hash === -1) return { kind: "off-page", division };
   const id = url.slice(hash + 1);
   return ids.has(id) && id !== ""
     ? { kind: "same-page", id }
-    : { kind: "off-page" };
+    : { kind: "off-page", division, ...(id ? { id } : {}) };
 }
 
 /**
@@ -132,6 +139,9 @@ export function rewriteXrefLinks(
       return `<a${attributes.replace(HREF_ATTRIBUTE, ` href="#${verdict.id}"`)}>`;
     }
     // Off the page: strip the href so the link cannot navigate, and say why.
+    // Keep where it was going, though — the division whose page it is, and
+    // the element on that page — so a host that can show another division
+    // (re-rendering with `subtree: { id }`) can make the link do just that.
     const existingTitle = TITLE_ATTRIBUTE.exec(attributes);
     const explanation = escapeAttribute(message);
     const tooltip = existingTitle
@@ -139,7 +149,10 @@ export function rewriteXrefLinks(
       : explanation;
     const withoutHref = attributes.replace(HREF_ATTRIBUTE, "");
     const withoutTitle = withoutHref.replace(TITLE_ATTRIBUTE, "");
-    return `<a${withoutTitle} title="${tooltip}" aria-disabled="true" style="cursor:default">`;
+    const destination =
+      ` data-ptx-division="${escapeAttribute(verdict.division)}"` +
+      (verdict.id ? ` data-ptx-id="${escapeAttribute(verdict.id)}"` : "");
+    return `<a${withoutTitle} title="${tooltip}" aria-disabled="true" style="cursor:default"${destination}>`;
   });
 
   // Cross-references authored inside display math are rendered by MathJax from

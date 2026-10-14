@@ -84,7 +84,7 @@ Run `PreTeXt: View Live Preview` (or click the preview icon) to open a side-by-s
 - **Forward search**: `PreTeXt: Forward Search` (or just move your cursor) scrolls the preview to match where you are in the source.
 - **Inverse search**: clicking a paragraph in the preview jumps your cursor to the matching line in the source.
 
-Use the `PreTeXt: Live Preview: Choose Scope` command, or the `pretext-tools.instantPreview.scope` setting, to preview just the current file or the whole project.
+By default the preview shows the division around your cursor, numbered and cross-referenced as in the whole project. A division that contains divisions — a chapter, or the whole book when the cursor is at the top of the main file — appears as a summary page: its own content followed by a table of the divisions inside it, each a link that shows that division. Only leaf divisions render in full, which keeps the preview fast however large the book. Documents of at most `pretext-tools.instantPreview.wholeDocumentUpTo` elements (1000 by default) are shown whole. Use the `PreTeXt: Live Preview: Choose Scope` command, or the `pretext-tools.instantPreview.scope` setting, to show the current file in full or the whole project in full instead.
 
 **Runtime requirements.** The preview renders the PreTeXt stylesheets through WebAssembly, which needs a JavaScript engine supporting WebAssembly JSPI. VS Code normally provides this itself, so there is nothing to install. If you see an error saying no such runtime was found — most likely on an older VS Code release, or in a remote/Codespaces window whose server runtime predates JSPI — then:
 

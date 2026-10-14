@@ -47,6 +47,15 @@ describe("rewriteXrefLinks", () => {
     expect(out).toContain('aria-disabled="true"');
   });
 
+  it("records where an inert link was going, for a host that can go there", () => {
+    const page = rewriteXrefLinks(`<a href="sec-three.html">Section 3</a>`);
+    expect(page).toContain('data-ptx-division="sec-three"');
+    expect(page).not.toContain("data-ptx-id");
+    const target = rewriteXrefLinks(`<a href="sec-two.html#thm-b">T</a>`);
+    expect(target).toContain('data-ptx-division="sec-two"');
+    expect(target).toContain('data-ptx-id="thm-b"');
+  });
+
   it("leaves external links and in-page anchors alone", () => {
     const html = [
       '<a href="https://pretextbook.org">PreTeXt</a>',

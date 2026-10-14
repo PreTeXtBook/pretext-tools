@@ -12,8 +12,9 @@
  *    false; several engines still do not ship it.
  *  - **Pass `sourceContent`.** There is no filesystem, so `sourcePath` serves
  *    only as a virtual base for URL and xi:include resolution.
- *  - **`xi:include`s are not resolved from disk.** Pre-merge them, or pass the
- *    already-merged document as `sourceContent`.
+ *  - **`xi:include`s are not resolved from disk.** Supply the project's files
+ *    through `readSource` or `files` and they are resolved from there — or
+ *    pre-merge them and pass the merged document as `sourceContent`.
  *  - **Use `contextSourceContent`, not `contextSourcePath`**, to place a
  *    fragment in its document for correct numbering and resolved `<xref>`s
  *    (see `RenderOptions.contextSourceContent`) — `contextSourcePath` alone
@@ -24,11 +25,22 @@
 
 export {
   renderHtml,
+  measureDocument,
+  defaultSourceCache,
   defaultXslDir,
   isJspiAvailable,
   xpathStringLiteral,
 } from "./renderer.js";
-export type { RenderOptions, RenderResult } from "./renderer.js";
+export type {
+  DocumentSize,
+  RenderOptions,
+  RenderResult,
+  SourceOptions,
+} from "./renderer.js";
+export type { SubtreeOptions } from "./subtree.js";
+export { SourceCache } from "./source-cache.js";
+export type { SourceCacheOptions } from "./source-cache.js";
+export type { SourceReader } from "./xinclude.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
 export { forcePortablePublication } from "./publication.js";

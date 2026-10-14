@@ -225,6 +225,61 @@ function normalizeDirectory(raw: string | undefined): string | undefined {
   return raw.endsWith("/") ? raw : `${raw}/`;
 }
 
+/** The depths a publication file sets numbering and the contents list to. */
+export interface PublicationLevels {
+  /** `common/tableofcontents/@level`. */
+  tocLevel?: number;
+  /**
+   * The deepest of `numbering/{blocks,projects,equations,footnotes,figures,
+   * ...}/@level` — the families share one default, but a publisher may set
+   * them apart, and a preview must keep what the deepest of them counts.
+   */
+  numberingLevel?: number;
+  /** `numbering/divisions/@level`, which caps every other numbering level. */
+  maxNumberingLevel?: number;
+}
+
+function levelAttribute(element: Element | undefined): number | undefined {
+  const raw = element?.attributes?.["level"];
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const level = Number(raw);
+  return Number.isFinite(level) && level >= 0 ? level : undefined;
+}
+
+/**
+ * Read the numbering and table-of-contents depths from a publication file —
+ * the ones that decide how much of a document a division preview has to keep
+ * (see skeleton.ts). Absent entries are left undefined for the skeleton to
+ * default by the document's structure, exactly as publisher-variables.xsl
+ * does. Falls back to MINIMAL_PUBLICATION when none is supplied.
+ */
+export function readPublicationLevels(
+  publicationXml?: string,
+): PublicationLevels {
+  const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
+  const publication = findChildElement(tree, "publication");
+  const common = publication && findChildElement(publication, "common");
+  const toc = common && findChildElement(common, "tableofcontents");
+  const numbering = publication && findChildElement(publication, "numbering");
+  let numberingLevel: number | undefined;
+  let maxNumberingLevel: number | undefined;
+  for (const child of numbering?.children ?? []) {
+    if (child.type !== "element") continue;
+    const level = levelAttribute(child);
+    if (level === undefined) continue;
+    if (child.name === "divisions") {
+      maxNumberingLevel = level;
+    } else {
+      numberingLevel = Math.max(numberingLevel ?? 0, level);
+    }
+  }
+  return {
+    tocLevel: levelAttribute(toc),
+    numberingLevel,
+    maxNumberingLevel,
+  };
+}
+
 /**
  * Read the asset directories from a publication file, falling back to the
  * defaults baked into MINIMAL_PUBLICATION when none is supplied.

@@ -14,19 +14,69 @@
  */
 
 import * as path from "node:path";
-import { readSource } from "./host.js";
+import { readSource as hostReadSource } from "./host.js";
 import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import type { Element, Root, RootContent, Text } from "xast";
+import type { SourceCache } from "./source-cache.js";
 
 const XINCLUDE_NS = "http://www.w3.org/2001/XInclude";
 const MAX_DEPTH = 64;
 
-interface ResolveContext {
+/**
+ * How a file the document refers to is read: by absolute, normalized path
+ * (as `path.resolve` spells it on the platform — posix in the browser build),
+ * returning its text, or `undefined` for a file that does not exist.
+ *
+ * Lets a host that holds its project in memory — a browser editor, an
+ * extension with unsaved buffers — supply files without a filesystem.
+ * Returning `undefined` falls through to the host platform's own read (the
+ * disk under Node, an absolute URL in the browser), so a reader can also just
+ * overlay a few files on top of what is there.
+ */
+export type SourceReader = (
+  file: string,
+) => Promise<string | undefined> | string | undefined;
+
+/** Options shared by everything that resolves includes. */
+export interface ResolveOptions {
+  /** See {@link SourceReader}. */
+  readSource?: SourceReader;
+  /** Reuse parses of unchanged files across calls (see source-cache.ts). */
+  cache?: SourceCache;
+}
+
+/**
+ * Read a file through the caller's reader first, then the platform's.
+ */
+export async function readWith(
+  options: ResolveOptions | undefined,
+  file: string,
+): Promise<string | undefined> {
+  const custom = options?.readSource
+    ? await options.readSource(file)
+    : undefined;
+  return custom ?? (await hostReadSource(file));
+}
+
+interface ResolveContext extends ResolveOptions {
   /** Includes must stay inside this directory. */
   projectDir: string;
   /** Chain of files currently being processed, for cycle/err reporting. */
   stack: string[];
+  /** Every file read so far, in the order first seen. */
+  files: string[];
+  /** Total length of everything read so far. */
+  bytes: number;
+}
+
+/** Parse `content` as the file at `key`, through the cache when there is one. */
+function parseWith(
+  context: ResolveOptions,
+  key: string,
+  content: string,
+): Root {
+  return context.cache ? context.cache.parse(key, content) : fromXml(content);
 }
 
 /**
@@ -38,12 +88,14 @@ export async function resolveXIncludes(
   sourceContent: string,
   sourcePath: string,
   projectDir: string,
+  options?: ResolveOptions,
 ): Promise<string> {
   if (!sourceContent.includes("include")) {
     return sourceContent; // fast path: nothing that could be an include
   }
-  return (await resolveXIncludesToTree(sourceContent, sourcePath, projectDir))
-    .content;
+  return (
+    await resolveXIncludesToTree(sourceContent, sourcePath, projectDir, options)
+  ).content;
 }
 
 /** Result of resolveXIncludesToTree. */
@@ -57,6 +109,17 @@ export interface ResolvedTree {
   tree: Root;
   /** The merged document serialized, as resolveXIncludes would return it. */
   content: string;
+  /**
+   * Every file the document spans — the source itself first, then each
+   * xi:included file in the order first reached. What a host should watch
+   * for changes that affect this document.
+   */
+  files: string[];
+  /**
+   * Total length of those files' contents: the size of the merged document,
+   * near enough, without serializing it.
+   */
+  bytes: number;
 }
 
 /**
@@ -67,19 +130,29 @@ export async function resolveXIncludesToTree(
   sourceContent: string,
   sourcePath: string,
   projectDir: string,
+  options: ResolveOptions = {},
 ): Promise<ResolvedTree> {
-  const tree = fromXml(sourceContent);
+  const rootPath = path.resolve(sourcePath);
+  const tree = parseWith(options, rootPath, sourceContent);
   const context: ResolveContext = {
+    ...options,
     projectDir: path.resolve(projectDir),
-    stack: [path.resolve(sourcePath)],
+    stack: [rootPath],
+    files: [rootPath],
+    bytes: sourceContent.length,
   };
   const changed = await resolveInTree(
     tree,
-    path.dirname(path.resolve(sourcePath)),
+    path.dirname(rootPath),
     { "": "" },
     context,
   );
-  return { tree, content: changed ? toXml(tree) : sourceContent };
+  return {
+    tree,
+    content: changed ? toXml(tree) : sourceContent,
+    files: context.files,
+    bytes: context.bytes,
+  };
 }
 
 /**
@@ -92,7 +165,8 @@ export function includedFileOf(element: Element): string | undefined {
     ?.ptxIncludedFile;
 }
 
-function tagIncludedFile(element: Element, file: string): void {
+/** Record that `element` was parsed from `file` (see includedFileOf). */
+export function tagIncludedFile(element: Element, file: string): void {
   const data = (element.data ?? (element.data = {})) as {
     ptxIncludedFile?: string;
   };
@@ -199,7 +273,7 @@ async function expandInclude(
     throw new Error(`xi:include nesting exceeds ${MAX_DEPTH} levels`);
   }
 
-  const content = await readSource(target);
+  const content = await readWith(context, target);
   if (content === undefined) {
     const fallback = findFallback(include, bindings);
     if (fallback) {
@@ -208,6 +282,10 @@ async function expandInclude(
     }
     throw new Error(`xi:include target not found: ${href} (in ${currentFile})`);
   }
+  if (!context.files.includes(target)) {
+    context.files.push(target);
+  }
+  context.bytes += content.length;
 
   if (include.attributes["parse"] === "text") {
     const text: Text = { type: "text", value: content };
@@ -216,7 +294,7 @@ async function expandInclude(
 
   let subtree: Root;
   try {
-    subtree = fromXml(content);
+    subtree = parseWith(context, target, content);
   } catch (error) {
     throw new Error(
       `Could not parse xi:include target ${target} as XML: ` +
@@ -266,20 +344,24 @@ export async function extractDocinfo(
   mainContent: string,
   mainPath: string,
   projectDir: string,
+  options: ResolveOptions = {},
 ): Promise<string | undefined> {
   try {
-    const tree = fromXml(mainContent);
+    const rootPath = path.resolve(mainPath);
+    const tree = parseWith(options, rootPath, mainContent);
     const root = tree.children.find(
       (node): node is Element => node.type === "element",
     );
     if (!root) {
       return undefined;
     }
-    const rootPath = path.resolve(mainPath);
     const baseDir = path.dirname(rootPath);
     const context: ResolveContext = {
+      ...options,
       projectDir: path.resolve(projectDir),
       stack: [rootPath],
+      files: [rootPath],
+      bytes: mainContent.length,
     };
     const rootBindings = bindingsWithElement({ "": "" }, root);
     for (const child of root.children) {

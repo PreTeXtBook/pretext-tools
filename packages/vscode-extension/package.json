@@ -541,27 +541,36 @@
             "order": 4,
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Update the live preview as you type, from the unsaved contents of the file being previewed, instead of waiting for a save. Only that file is read from the editor; included files and the main file's `<docinfo>` still come from disk. While the document is not well-formed the preview keeps showing the last good version."
+            "markdownDescription": "Update the live preview as you type, from the unsaved contents of the open files, instead of waiting for a save. While the document is not well-formed the preview keeps showing the last good version."
           },
           "pretext-tools.instantPreview.followActiveEditor": {
             "order": 4,
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Re-render the live preview when you switch to a different `.ptx` file, without waiting for a save. Only applies when `#pretext-tools.instantPreview.scope#` is `current-file`; the whole-project scope always renders the main source file. Also toggleable from the preview panel's toolbar."
+            "markdownDescription": "Re-render the live preview when you switch to a different `.ptx` file, without waiting for a save. Only applies when `#pretext-tools.instantPreview.scope#` is `division` or `file`; the `project` scope always renders the main source file. Also toggleable from the preview panel's toolbar."
           },
           "pretext-tools.instantPreview.scope": {
             "order": 4,
             "type": "string",
             "enum": [
-              "current-file",
+              "division",
+              "file",
               "project"
             ],
             "enumDescriptions": [
-              "Render only the active source file. Fragments (a chapter or section pulled in via xi:include) are wrapped in a minimal document; numbering and cross-references outside the file are placeholders.",
-              "Render the project's main source file with all xi:includes."
+              "The division around the cursor in the active source file, numbered and cross-referenced as in the whole project. A division that contains divisions (a chapter, or the book itself) is shown as a summary page: its own content and a table of the divisions inside it; only leaf divisions are shown in full.",
+              "The active source file, in full.",
+              "The project's main source file with every include, in full. Slow for a large book."
             ],
-            "default": "current-file",
-            "markdownDescription": "What the live preview renders: the current source file (fast) or the whole project."
+            "default": "division",
+            "markdownDescription": "How much the live preview shows: the division around the cursor, the current file, or the whole project. The first two follow the active editor. In `division` scope a small document is still shown whole; see `#pretext-tools.instantPreview.wholeDocumentUpTo#`."
+          },
+          "pretext-tools.instantPreview.wholeDocumentUpTo": {
+            "order": 4,
+            "type": "number",
+            "minimum": 0,
+            "default": 1000,
+            "markdownDescription": "In `division` scope, show the whole document when it has at most this many elements; larger documents show only the division around the cursor. A short article is a few hundred elements, a long chapter a few thousand, and render time grows with the count. Set to `0` to always preview one division."
           },
           "pretext-tools.instantPreview.cssTheme": {
             "order": 4,

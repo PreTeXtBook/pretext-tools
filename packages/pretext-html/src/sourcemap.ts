@@ -77,12 +77,63 @@ export function computeSourceMap(
   options?: { parentId?: string; position?: number },
 ): PtxSourceMap {
   const map: PtxSourceMap = [];
+  walkStampedIds(tree, rootFile, options, (element, id, file, parent) => {
+    map.push({
+      id,
+      file,
+      line: element.position?.start.line ?? 1,
+      column: element.position?.start.column ?? 1,
+      endLine: element.position?.end.line ?? element.position?.start.line ?? 1,
+      parent,
+    });
+  });
+  return map;
+}
+
+/**
+ * The @unique-id pretext-assembly.xsl will stamp on `target` — authored or
+ * positional — or undefined when `target` is not in `tree` (or is foreign
+ * vocabulary, which is never stamped). Same walk and same seating as
+ * {@link computeSourceMap}.
+ */
+export function stampedIdOf(
+  tree: Root,
+  target: Element,
+  options?: { parentId?: string; position?: number },
+): string | undefined {
+  let found: string | undefined;
+  walkStampedIds(tree, "", options, (element, id) => {
+    if (element === target) {
+      found = id;
+      return false;
+    }
+    return undefined;
+  });
+  return found;
+}
+
+/**
+ * Called once per stamped element, in document order. Returning `false`
+ * stops the walk.
+ */
+type StampVisitor = (
+  element: Element,
+  id: string,
+  file: string,
+  parent: string | undefined,
+) => boolean | undefined | void;
+
+function walkStampedIds(
+  tree: Root,
+  rootFile: string,
+  options: { parentId?: string; position?: number } | undefined,
+  visit: StampVisitor,
+): void {
   const root = tree.children.find(isElement);
   if (root) {
     const parentId = options?.parentId ?? "root";
-    walk(root, parentId, options?.position ?? 1, rootFile, parentId, map);
+    walk(root, parentId, options?.position ?? 1, rootFile, parentId, visit);
   }
-  return map;
 }
 
 function walk(
@@ -91,8 +142,8 @@ function walk(
   position: number,
   file: string,
   parentStampedId: string | undefined,
-  map: PtxSourceMap,
-): void {
+  visit: StampVisitor,
+): boolean {
   const ownFile = includedFileOf(element) ?? file;
   let stampedId: string | undefined;
   let childParentId: string;
@@ -105,30 +156,27 @@ function walk(
     const authored =
       element.attributes["label"] ?? element.attributes["xml:id"];
     stampedId = authored != null ? authored : `${parentId}-${position}`;
-    map.push({
-      id: stampedId,
-      file: ownFile,
-      line: element.position?.start.line ?? 1,
-      column: element.position?.start.column ?? 1,
-      endLine: element.position?.end.line ?? element.position?.start.line ?? 1,
-      parent: parentStampedId,
-    });
+    if (visit(element, stampedId, ownFile, parentStampedId) === false) {
+      return false;
+    }
     childParentId = stampedId;
   }
   let index = 0;
   for (const child of element.children) {
     if (isElement(child)) {
       index += 1;
-      walk(
+      const go = walk(
         child,
         childParentId,
         index,
         ownFile,
         stampedId ?? parentStampedId,
-        map,
+        visit,
       );
+      if (!go) return false;
     }
   }
+  return true;
 }
 
 /**

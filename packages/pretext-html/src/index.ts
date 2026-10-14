@@ -1,10 +1,25 @@
 export {
   renderHtml,
+  measureDocument,
+  defaultSourceCache,
   defaultXslDir,
   isJspiAvailable,
   xpathStringLiteral,
 } from "./renderer.js";
-export type { RenderOptions, RenderResult } from "./renderer.js";
+export type {
+  DocumentSize,
+  RenderOptions,
+  RenderResult,
+  SourceOptions,
+} from "./renderer.js";
+// Previewing one division of a complete document (see subtree.ts): the
+// renderer does this when RenderOptions.subtree is set.
+export type { SubtreeOptions } from "./subtree.js";
+// Supplying files from memory, and reusing their parses across renders (see
+// source-cache.ts). The renderer uses a shared cache unless told otherwise.
+export { SourceCache } from "./source-cache.js";
+export type { SourceCacheOptions } from "./source-cache.js";
+export type { SourceReader } from "./xinclude.js";
 // Source-map helpers for editor/preview sync (see sourcemap.ts). The map
 // itself comes back from renderHtml({ sourceMap: true }).
 export { findSourceMapEntry } from "./sourcemap.js";
@@ -32,7 +47,9 @@ export { openBornHiddenKnowls } from "./knowls.js";
 // when RenderOptions.contextSourcePath or .contextSourceContent is set;
 // exported for embedders that prepare source themselves.
 export { buildSkeleton, divisionLevel, replaceDivision } from "./skeleton.js";
-export type { Skeleton } from "./skeleton.js";
+export type { Skeleton, SkeletonOptions } from "./skeleton.js";
+export { readPublicationLevels } from "./publication.js";
+export type { PublicationLevels } from "./publication.js";
 // Making a subtree render's links honest about the one page it produced (see
 // xrefs.ts). Applied by the renderer; exported so an embedder can apply it to
 // HTML it already has, or reword the tooltip.

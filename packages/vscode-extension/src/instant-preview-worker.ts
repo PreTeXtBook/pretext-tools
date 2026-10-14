@@ -27,8 +27,10 @@ import {
   type PrintoutInfo,
   type PtxSourceMap,
   type RenderOptions,
+  type RenderResult,
   type RenderTarget,
   type RevealView,
+  type SubtreeOptions,
 } from "@pretextbook/pretext-html";
 
 /** Request sent by the extension over IPC. */
@@ -70,6 +72,17 @@ interface RenderRequest {
   revealZoom?: number;
   /** Dismissible "this is a live preview" banner; see @pretextbook/pretext-html. */
   previewBanner?: PreviewBannerOptions;
+  /**
+   * Preview one division — the one around the cursor, or a named one — of
+   * the document rather than all of it; see RenderOptions.subtree.
+   */
+  subtree?: SubtreeOptions;
+  /**
+   * Unsaved editor buffers of other project files, by absolute path, so the
+   * context document and xi:includes see what the editor sees; see
+   * RenderOptions.files.
+   */
+  files?: Record<string, string>;
 }
 
 /** Response sent back over IPC. */
@@ -97,6 +110,8 @@ type RenderResponse =
       printouts: PrintoutInfo[];
       /** The printout to open in print preview by default, if there is one. */
       rootPrintout?: string;
+      /** The one division shown, when not the whole document. */
+      subtree?: RenderResult["subtree"];
     }
   | { id: number; ok: false; error: string };
 
@@ -172,10 +187,19 @@ function serve(): void {
         revealTheme: request.revealTheme,
         revealZoom: request.revealZoom,
         previewBanner: request.previewBanner,
+        subtree: request.subtree,
+        files: request.files,
       };
       try {
-        const { html, target, sourceMap, assetDirs, printouts, rootPrintout } =
-          await renderHtml(options);
+        const {
+          html,
+          target,
+          sourceMap,
+          assetDirs,
+          printouts,
+          rootPrintout,
+          subtree,
+        } = await renderHtml(options);
         const response: RenderResponse = {
           id: request.id,
           ok: true,
@@ -186,6 +210,7 @@ function serve(): void {
           assetDirs,
           printouts,
           rootPrintout,
+          subtree,
         };
         send(response);
       } catch (error) {

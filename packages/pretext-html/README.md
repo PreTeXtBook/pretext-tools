@@ -91,6 +91,77 @@ const { html } = await renderHtml({
   alone. Pass `openKnowls: false` (`--no-open-knowls` on the CLI) for the
   collapsed reading experience of a real `pretext build`.
 
+### Previewing one division of a large document
+
+A render costs what PreTeXt's assembly costs, and that tracks the number of
+elements in the document: a few hundred milliseconds for a chapter, tens of
+seconds for a whole book. A live preview of a large document therefore should
+not render the whole document, and need not: the `subtree` option renders one
+division of it, numbered and cross-referenced exactly as the whole document
+would number it, by pruning the rest to a skeleton (see `src/skeleton.ts`).
+
+```js
+const { html, size, subtree } = await renderHtml({
+  sourcePath: "source/main.ptx",
+  subtree: {
+    line: cursorLine, // the division around the author's cursor...
+    file: cursorFile, // ...in this file (defaults to sourcePath)
+    level: 2, // chunk level: sections of a book are pages of their own
+    wholeDocumentUpTo: 3000, // but a small document previews whole
+  },
+});
+```
+
+- `line`/`file` select the innermost division containing a source line; `id`
+  selects by `xml:id` instead (an element inside a division selects that
+  division). The division need not carry an `xml:id` of its own — the one
+  PreTeXt would stamp on it is injected, so the page's HTML ids are unchanged.
+- A division that contains divisions is previewed as a **summary page**: its
+  own content (introduction, conclusion, loose paragraphs) rendered in place,
+  then links to the divisions inside it, as the chapter page of a chunked
+  build summarizes its sections. Only leaf divisions render in full, so a
+  cursor at the top of a book shows the book's front matter and a table of
+  its chapters, never the book. The summary links are inert on a one-page
+  preview but carry `data-ptx-division` (and `data-ptx-id` for a link to an
+  element), so a host can make them re-render with `subtree: { id }`.
+- `level` has PreTeXt's chunk-level meaning, for a host that wants whole
+  pages at some depth: the preview is the page that would hold the selection
+  in a build chunked at that level. A selection deeper than `level` previews
+  its ancestor at `level`, whole; one at `level` is shown whole; one shallower
+  is the summary page above. Omit it to treat every division as a page of its
+  own.
+- `wholeDocumentUpTo` renders the whole document instead when it has no more
+  than that many elements — a small document previews whole as fast as any
+  division of it would.
+- Every result carries `size` (`elements`, `bytes`, and the `files` the
+  document spans, to watch for changes), and `subtree` (`id`, `level`,
+  `collapsed`) when one division was emitted rather than the whole document.
+  `measureDocument(options)` reports the same `size` without rendering, for a
+  host deciding how much to preview before each render.
+- With `fragment: true` and a context document, `subtree` narrows the preview
+  within the placed fragment — a cursor line in a chapter file previews the
+  section it is in.
+
+What a division preview still has to do on every render is read and parse the
+whole document, to prune it. Two options keep that cheap:
+
+- `readSource(path)` (or `files`, a map from absolute path to content) supplies
+  the document's files from memory — the xi:include targets, the context
+  document, the publication file — for a host that already holds its project
+  in memory (a browser editor) or has unsaved buffers (an editor). A reader
+  that returns `undefined` for a path falls through to the platform's own read.
+- A per-file parse cache, on by default, reuses the parse of every file whose
+  content has not changed since the last render. It is keyed by file, not by
+  the assembled document, so it does not matter how the project is split into
+  files: a keystroke re-parses the file being edited and nothing else. Pass a
+  `SourceCache` of your own as `cache` to scope it (and `invalidate()` it), or
+  `cache: false` to parse afresh each time.
+
+On a synthetic 12-chapter book of 28,000 elements split into 157 files, a
+section or subsection preview takes well under a second warm (0.3–0.8s
+measured, most of it the division itself), and a chapter's summary page about
+the same, against 20–40 seconds for the whole book.
+
 ### API (browser)
 
 The same renderer runs in a browser — no server, no Python. Bundlers pick it up
@@ -117,9 +188,12 @@ filesystem:
 
 - **`sourceContent` is required.** `sourcePath` still anchors relative
   `xi:include`s and the output's URLs, but nothing is read from it.
-- **`xi:include`s are not resolved from disk.** Pre-merge them, or pass the
-  already-merged document as `sourceContent`. An unresolvable include uses its
-  `<xi:fallback>` if it has one, and otherwise throws.
+- **`xi:include`s are not resolved from disk.** Supply the project's files
+  through `readSource` or `files` (see above) and they are resolved from
+  there, with the per-file parse cache working as it does under Node; or
+  pre-merge them and pass the merged document as `sourceContent`. An
+  unresolvable include uses its `<xi:fallback>` if it has one, and otherwise
+  throws.
 - **`publicationPath` / `docinfoSourcePath` need absolute URLs**, since those
   are the only readable locations. Prefer `docinfo` (a string) over
   `docinfoSourcePath`.

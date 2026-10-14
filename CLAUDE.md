@@ -97,6 +97,7 @@ The extension spawns a **separate LSP server process** via Node IPC (not stdio):
 ## Conventions
 
 - **Commits**: [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `refactor:`, `chore:`). Releases are automated via `semantic-release`.
+- **Changesets vs. semantic-release**: the published `@pretextbook/*` packages are versioned by changesets (add a `.changeset/*.md` for them). The VS Code extension (`pretext-tools`) and `playground` are in the changesets `ignore` list and must **not** get changesets; the extension's version and changelog come from semantic-release reading the commit messages, so put its user-facing release note in the `feat:`/`fix:` commit message instead.
 - **Tests**: `*.test.ts` / `*.spec.ts` alongside source files. Framework: **Vitest**.
 - **Formatting**: Prettier with 2-space indentation (root `package.json`).
 - **TypeScript**: Strict mode. Root `tsconfig.json` targets CommonJS module resolution with ESNext.

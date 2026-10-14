@@ -6,8 +6,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { isJspiAvailable, renderHtml, xpathStringLiteral } from "./renderer.js";
+import {
+  isJspiAvailable,
+  measureDocument,
+  renderHtml,
+  xpathStringLiteral,
+} from "./renderer.js";
 import { forcePortablePublication } from "./publication.js";
+import { SourceCache } from "./source-cache.js";
 import {
   HTML_STATIC_VERSION,
   RUNESTONE_CSS,
@@ -1298,5 +1304,350 @@ describe("renderHtml in document context", () => {
     expect(html).toContain("2.1.1");
     expect(html).not.toContain("cross-reference to target");
     expect(html).toContain("Theorem 1.1.1");
+  });
+
+  it("attributes the fragment's elements to the fragment's own file in the source map", async () => {
+    const { sourceMap, subtree, size } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+      sourceMap: true,
+    });
+    const near = sourceMap?.find((entry) => entry.id === "ctx-near");
+    expect(near?.file).toBe(sectionPath);
+    expect(near?.line).toBe(4);
+    const book = sourceMap?.find((entry) => entry.id === "ctx-book");
+    expect(book?.file).toBe(mainPath);
+    expect(subtree).toEqual({
+      id: "ctx-s21",
+      level: 2,
+      collapsed: false,
+      children: [],
+    });
+    expect(size.files).toEqual([mainPath, sectionPath]);
+  });
+
+  it("shows the fragment in its whole document when that is small enough", async () => {
+    const { html, subtree, size } = await renderHtml({
+      sourcePath: sectionPath,
+      fragment: true,
+      contextSourcePath: mainPath,
+      subtree: { wholeDocumentUpTo: 100_000 },
+    });
+    expect(subtree).toBeUndefined();
+    expect(size.elements).toBeLessThan(100_000);
+    const body = html.slice(html.indexOf('id="ptx-content"'));
+    expect(body).toContain("Distinctive far prose.");
+    expect(body).toContain("Previewed Section");
+  });
+});
+
+/**
+ * Previewing one division of a *complete* document (RenderOptions.subtree):
+ * the same skeleton pruning as fragment-in-context, but the division is
+ * chosen by cursor position or id rather than being the file's root. Checked
+ * against the whole-document render, as above.
+ */
+describe("renderHtml subtree of a complete document", () => {
+  let dir: string;
+  let bookPath: string;
+
+  // A single-file book whose divisions carry no xml:ids, which is the common
+  // case for a document that was never chunked into files. Line numbers
+  // matter: the cursor positions below point into it.
+  const BOOK = `<?xml version="1.0" encoding="UTF-8"?>
+<pretext>
+  <book>
+    <title>Single File</title>
+    <chapter>
+      <title>Opening</title>
+      <introduction><p>Opening words.</p></introduction>
+      <section>
+        <title>First</title>
+        <theorem xml:id="single-far"><statement><p>Far statement.</p></statement></theorem>
+      </section>
+    </chapter>
+    <chapter>
+      <title>Second</title>
+      <introduction><p>Second chapter intro, citing <xref ref="single-far"/>.</p></introduction>
+      <section>
+        <title>Cursor Section</title>
+        <p>Cursor section prose.</p>
+        <subsection>
+          <title>Earlier Subsection</title>
+          <theorem><statement><p>Earlier statement.</p></statement></theorem>
+        </subsection>
+        <subsection>
+          <title>Cursor Subsection</title>
+          <theorem><statement><p>Subsection statement.</p></statement></theorem>
+        </subsection>
+      </section>
+      <section>
+        <title>Trailing</title>
+        <p>Trailing prose.</p>
+      </section>
+    </chapter>
+  </book>
+</pretext>
+`;
+  const CURSOR_SECTION_LINE = 18; // "Cursor section prose."
+  const CURSOR_SUBSECTION_LINE = 25; // "Subsection statement."
+  const SECOND_INTRO_LINE = 15;
+
+  const bodyOf = (html: string) => html.slice(html.indexOf('id="ptx-content"'));
+
+  beforeAll(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-subtree-"));
+    bookPath = path.join(dir, "book.ptx");
+    fs.writeFileSync(bookPath, BOOK);
+  });
+
+  afterAll(() => {
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("renders only the division around the cursor line, numbered as in the whole book", async () => {
+    const whole = await renderHtml({ sourcePath: bookPath });
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: CURSOR_SUBSECTION_LINE },
+    });
+    const body = bodyOf(html);
+    expect(body).toContain("Subsection statement.");
+    expect(body).not.toContain("Cursor section prose.");
+    expect(body).not.toContain("Earlier statement.");
+    expect(body).not.toContain("Trailing prose.");
+    // The number of the theorem under the subsection's heading.
+    const theoremNumber = (html: string) =>
+      bodyOf(html)
+        .slice(bodyOf(html).indexOf("Cursor Subsection"))
+        .match(
+          /<span class="type">Theorem<\/span>(?:<[^>]*>|\s)*<span class="codenumber">([\d.]+)/,
+        )?.[1];
+    // The theorem is numbered the same here as in the whole book — which
+    // means the earlier subsection's theorem was counted: 2.1.2, not 2.1.1.
+    expect(theoremNumber(whole.html)).toBe("2.1.2");
+    expect(theoremNumber(body)).toBe("2.1.2");
+    expect(subtree?.level).toBe(3);
+    expect(subtree?.collapsed).toBe(false);
+    // The injected id is the one assembly stamps anyway, so the division's
+    // HTML id is the same as in the whole-book render.
+    expect(subtree?.id).toBeDefined();
+    expect(whole.html).toContain(`id="${subtree!.id}"`);
+    expect(html).toContain(`id="${subtree!.id}"`);
+  });
+
+  it("climbs to the page at the requested chunk level", async () => {
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: CURSOR_SUBSECTION_LINE, level: 2 },
+    });
+    const body = bodyOf(html);
+    expect(body).toContain("Cursor section prose.");
+    expect(body).toContain("Subsection statement.");
+    expect(body).not.toContain("Trailing prose.");
+    expect(subtree?.level).toBe(2);
+  });
+
+  it("previews a division that contains divisions as a summary page", async () => {
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: SECOND_INTRO_LINE },
+    });
+    const body = bodyOf(html);
+    // The chapter's own content is there...
+    expect(body).toContain("Second chapter intro");
+    // ...its sections are links in upstream's summary list, not expanded...
+    expect(body).toContain('class="summary-links"');
+    expect(body).toContain("Cursor Section");
+    expect(body).toContain("Trailing");
+    expect(body).not.toContain("Cursor section prose.");
+    expect(body).not.toContain("Trailing prose.");
+    // ...each of which says which division it leads to, for the host.
+    expect(body).toMatch(
+      /data-ptx-division="[^"]+"[^>]*>[^<]*<span class="codenumber">2\.2/,
+    );
+    // Only one page came out: the sections' pages were not appended.
+    expect(html.match(/<html\b/g)).toHaveLength(1);
+    // The cross-reference into chapter 1 still resolves to its real number.
+    expect(body).not.toContain("cross-reference to target");
+    expect(body).toContain("Theorem 1.1.1");
+    expect(subtree).toMatchObject({ level: 1, collapsed: true });
+  });
+
+  it("shows the book's front and a table of chapters for a cursor at the top of the file", async () => {
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: 1 },
+    });
+    const body = bodyOf(html);
+    expect(subtree).toMatchObject({ level: 0, collapsed: true });
+    // The chapters it lists, by the ids their links and the source map use.
+    expect(subtree?.children).toHaveLength(2);
+    for (const id of subtree?.children ?? []) {
+      expect(body).toContain(`data-ptx-division="${id}"`);
+    }
+    expect(body).toContain('class="summary-links"');
+    expect(body).toContain("Opening");
+    expect(body).toContain("Second");
+    expect(body).not.toContain("Opening words.");
+    expect(body).not.toContain("Cursor section prose.");
+    expect(html.match(/<html\b/g)).toHaveLength(1);
+  });
+
+  it("expands a division whole when it is a page at the requested chunk level", async () => {
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: SECOND_INTRO_LINE, level: 1 },
+    });
+    const body = bodyOf(html);
+    expect(body).toContain("Second chapter intro");
+    expect(body).toContain("Cursor section prose.");
+    expect(body).toContain("Trailing prose.");
+    expect(body).not.toContain('class="summary-links"');
+    expect(subtree).toMatchObject({ level: 1, collapsed: false });
+  });
+
+  it("selects by id", async () => {
+    const { html, subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { id: "single-far" },
+    });
+    expect(bodyOf(html)).toContain("Far statement.");
+    expect(bodyOf(html)).not.toContain("Cursor section prose.");
+    expect(subtree?.level).toBe(2);
+  });
+
+  it("renders the whole document when it is under the size limit", async () => {
+    const { html, subtree, size } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: CURSOR_SECTION_LINE, wholeDocumentUpTo: 10_000 },
+    });
+    expect(subtree).toBeUndefined();
+    expect(size.elements).toBeGreaterThan(10);
+    expect(bodyOf(html)).toContain("Trailing prose.");
+  });
+
+  it("applies the limit the other way round, too", async () => {
+    const { subtree } = await renderHtml({
+      sourcePath: bookPath,
+      subtree: { line: CURSOR_SECTION_LINE, wholeDocumentUpTo: 5 },
+    });
+    // The section holds subsections, so by default it is a summary page.
+    expect(subtree).toMatchObject({ level: 2, collapsed: true });
+  });
+
+  it("reports the document's size on every render", async () => {
+    const { size } = await renderHtml({ sourcePath: bookPath });
+    expect(size.bytes).toBe(BOOK.length);
+    expect(size.elements).toBe((BOOK.match(/<[a-z]/g) ?? []).length);
+    expect(size.files).toEqual([bookPath]);
+  });
+
+  it("measures a document without rendering it", async () => {
+    const measured = await measureDocument({ sourcePath: bookPath });
+    const { size } = await renderHtml({ sourcePath: bookPath });
+    expect(measured).toEqual(size);
+  });
+
+  it("resolves includes from an in-memory file map, with no disk at all", async () => {
+    const mainPath = path.join(dir, "memory", "main.ptx");
+    const chapterPath = path.join(dir, "memory", "chapters", "one.ptx");
+    const files = {
+      [mainPath]: `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+  <article xml:id="mem-article"><title>In Memory</title>
+    <xi:include href="chapters/one.ptx"/>
+  </article>
+</pretext>`,
+      [chapterPath]: `<section xml:id="mem-one"><title>One</title><p>Memory prose.</p></section>`,
+    };
+    const { html, size } = await renderHtml({
+      sourcePath: mainPath,
+      projectDir: path.join(dir, "memory"),
+      files,
+    });
+    expect(html).toContain("Memory prose.");
+    expect(size.files).toEqual([mainPath, chapterPath]);
+
+    // The same files, via a reader, narrowed to a line of the included file.
+    const narrowed = await renderHtml({
+      sourcePath: mainPath,
+      projectDir: path.join(dir, "memory"),
+      readSource: (file) => files[file],
+      subtree: { file: chapterPath, line: 1 },
+    });
+    expect(narrowed.subtree?.id).toBe("mem-one");
+    expect(bodyOf(narrowed.html)).toContain("Memory prose.");
+  });
+
+  it("re-parses only what changed between renders", async () => {
+    const cache = new SourceCache();
+    const mainPath = path.join(dir, "cached", "main.ptx");
+    const aPath = path.join(dir, "cached", "a.ptx");
+    const bPath = path.join(dir, "cached", "b.ptx");
+    const main = `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+  <article xml:id="cache-article"><title>Cached</title>
+    <xi:include href="a.ptx"/><xi:include href="b.ptx"/>
+  </article>
+</pretext>`;
+    const a = `<section xml:id="cache-a"><title>A</title><p>A prose.</p></section>`;
+    let b = `<section xml:id="cache-b"><title>B</title><p>B prose.</p></section>`;
+    const render = () =>
+      renderHtml({
+        sourcePath: mainPath,
+        projectDir: path.join(dir, "cached"),
+        readSource: (file) =>
+          file === mainPath
+            ? main
+            : file === aPath
+              ? a
+              : file === bPath
+                ? b
+                : undefined,
+        cache,
+        subtree: { file: bPath, line: 1 },
+      });
+    const first = await render();
+    expect(cache.misses).toBe(3);
+    expect(bodyOf(first.html)).toContain("B prose.");
+
+    b = b.replace("B prose.", "B edited.");
+    const second = await render();
+    expect(bodyOf(second.html)).toContain("B edited.");
+    expect(cache.misses).toBe(4);
+    expect(cache.hits).toBe(2);
+    // The skeleton pruned the cached copy, not the cache: A is intact.
+    const third = await render();
+    expect(cache.hits).toBe(5);
+    expect(third.html).toContain("B edited.");
+  });
+
+  it("narrows a fragment placed in its document to the subsection at the cursor", async () => {
+    const mainPath = path.join(dir, "frag", "main.ptx");
+    const chapterPath = path.join(dir, "frag", "ch.ptx");
+    const files = {
+      [mainPath]: `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+  <book xml:id="frag-book"><title>Frag</title>
+    <xi:include href="ch.ptx"/>
+  </book>
+</pretext>`,
+      [chapterPath]: `<chapter xml:id="frag-ch"><title>Chapter</title>
+  <section xml:id="frag-s1"><title>S1</title><p>S1 prose.</p></section>
+  <section xml:id="frag-s2"><title>S2</title><p>S2 prose.</p></section>
+</chapter>`,
+    };
+    const { html, subtree } = await renderHtml({
+      sourcePath: chapterPath,
+      projectDir: path.join(dir, "frag"),
+      files,
+      fragment: true,
+      contextSourcePath: mainPath,
+      subtree: { line: 3 },
+    });
+    expect(subtree?.id).toBe("frag-s2");
+    expect(bodyOf(html)).toContain("S2 prose.");
+    expect(bodyOf(html)).not.toContain("S1 prose.");
+    // Numbered from its place in the book: section 1.2.
+    expect(html).toContain("1.2");
   });
 });

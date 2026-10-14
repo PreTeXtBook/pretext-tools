@@ -226,6 +226,62 @@
     </xsl:choose>
 </xsl:variable>
 
+<!-- A subtree root one level above the chunk level is a summary page: its own  -->
+<!-- content, then links to the divisions inside it. Only that page is emitted; -->
+<!-- the chunker is kept from also producing a page per child division.        -->
+<!-- See SUMMARY_PAGE_OVERRIDE in refresh-xsl.mjs.                              -->
+<xsl:template match="*" mode="chunking">
+    <xsl:choose>
+        <xsl:when test="$b-subsetting and not(generate-id(.) = generate-id(id($subtree)))"/>
+        <xsl:otherwise>
+            <xsl:apply-imports/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
+<xsl:template match="*" mode="intermediate">
+    <xsl:apply-templates select="." mode="file-wrap">
+        <xsl:with-param name="content">
+            <xsl:apply-templates select="." mode="debug-location"/>
+            <section class="{local-name(.)}">
+                <xsl:apply-templates select="." mode="html-id-attribute"/>
+                <xsl:apply-templates select="." mode="section-heading">
+                    <xsl:with-param name="heading-level" select="$chunk-heading-level"/>
+                </xsl:apply-templates>
+                <xsl:apply-templates select="." mode="author-byline"/>
+                <xsl:if test="self::frontmatter[not(titlepage)]">
+                    <xsl:call-template name="frontmatter-title"/>
+                </xsl:if>
+                <!-- The division's own content, in place -->
+                <xsl:for-each select="*">
+                    <xsl:variable name="structural">
+                        <xsl:apply-templates select="." mode="is-structural"/>
+                    </xsl:variable>
+                    <xsl:if test="not($structural = 'true')">
+                        <xsl:apply-templates select=".">
+                            <xsl:with-param name="heading-level" select="$chunk-heading-level + 1"/>
+                        </xsl:apply-templates>
+                    </xsl:if>
+                </xsl:for-each>
+                <!-- Then the divisions inside it, as upstream's summary links -->
+                <nav class="summary-links">
+                    <ul>
+                        <xsl:for-each select="*">
+                            <xsl:variable name="structural">
+                                <xsl:apply-templates select="." mode="is-structural"/>
+                            </xsl:variable>
+                            <xsl:if test="$structural = 'true'">
+                                <xsl:apply-templates select="." mode="summary-nav"/>
+                            </xsl:if>
+                        </xsl:for-each>
+                    </ul>
+                </nav>
+                <xsl:apply-templates select="." mode="permalink"/>
+            </section>
+        </xsl:with-param>
+    </xsl:apply-templates>
+</xsl:template>
+
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->
 <!-- and a host that resolves that query against its own URL sends the reader -->

@@ -175,6 +175,93 @@ const SUBTREE_CHUNK_LEVEL_OVERRIDE = `<xsl:param name="subtree-level" select="''
 </xsl:variable>`;
 
 /**
+ * Let a `$subtree` root be a *summary* page: its own content, then links to
+ * the divisions inside it, instead of all of those divisions expanded.
+ *
+ * A preview of a division that contains divisions — a chapter, or the whole
+ * book when the cursor is at the top of the file — should show the division's
+ * introduction and a table of the divisions below it, the way a chunked
+ * build's page for that division does; expanding everything below it makes
+ * the preview as slow as the book is long. Upstream already does the first
+ * half: with `$subtree-level` one past the root's own level, the root is an
+ * "intermediate" node and gets a summary page. Two things stand in the way.
+ *
+ * First, upstream's summary page (mode="intermediate" in pretext-html.xsl)
+ * carries no content of its own beyond the heading: a chapter's introduction
+ * becomes a link to a page of its own, or nothing at all. An author editing
+ * that introduction has to see it. So the summary template is replaced with
+ * one that renders every non-division child in place, as a page of the
+ * division would, and then upstream's own `summary-nav` list of the divisions
+ * — same markup and classes, so the theme styles it the same.
+ *
+ * Second, chunking an intermediate node recurses into its children, each of
+ * which is then a page: with the <exsl:document> wrapper removed (see
+ * file-wrap above) every one of those pages would be appended to the result,
+ * complete with its own <html>. The chunking template is therefore wrapped:
+ * when subsetting, only the subtree root itself is processed, and every other
+ * node is skipped before any of its content is computed. `xsl:apply-imports`
+ * hands the root to upstream's own chunking, so the leaf/intermediate
+ * decision stays upstream's.
+ *
+ * Both match `*` with a mode check rather than the `&STRUCTURAL;` entity,
+ * which the generated wrapper (having no DTD) cannot use; import precedence
+ * makes them win over the imported templates regardless of priority. The
+ * `is-structural` test is upstream's own, so what counts as a division here
+ * cannot drift from what upstream chunks.
+ */
+const SUMMARY_PAGE_OVERRIDE = `<xsl:template match="*" mode="chunking">
+    <xsl:choose>
+        <xsl:when test="$b-subsetting and not(generate-id(.) = generate-id(id($subtree)))"/>
+        <xsl:otherwise>
+            <xsl:apply-imports/>
+        </xsl:otherwise>
+    </xsl:choose>
+</xsl:template>
+
+<xsl:template match="*" mode="intermediate">
+    <xsl:apply-templates select="." mode="file-wrap">
+        <xsl:with-param name="content">
+            <xsl:apply-templates select="." mode="debug-location"/>
+            <section class="{local-name(.)}">
+                <xsl:apply-templates select="." mode="html-id-attribute"/>
+                <xsl:apply-templates select="." mode="section-heading">
+                    <xsl:with-param name="heading-level" select="$chunk-heading-level"/>
+                </xsl:apply-templates>
+                <xsl:apply-templates select="." mode="author-byline"/>
+                <xsl:if test="self::frontmatter[not(titlepage)]">
+                    <xsl:call-template name="frontmatter-title"/>
+                </xsl:if>
+                <!-- The division's own content, in place -->
+                <xsl:for-each select="*">
+                    <xsl:variable name="structural">
+                        <xsl:apply-templates select="." mode="is-structural"/>
+                    </xsl:variable>
+                    <xsl:if test="not($structural = 'true')">
+                        <xsl:apply-templates select=".">
+                            <xsl:with-param name="heading-level" select="$chunk-heading-level + 1"/>
+                        </xsl:apply-templates>
+                    </xsl:if>
+                </xsl:for-each>
+                <!-- Then the divisions inside it, as upstream's summary links -->
+                <nav class="summary-links">
+                    <ul>
+                        <xsl:for-each select="*">
+                            <xsl:variable name="structural">
+                                <xsl:apply-templates select="." mode="is-structural"/>
+                            </xsl:variable>
+                            <xsl:if test="$structural = 'true'">
+                                <xsl:apply-templates select="." mode="summary-nav"/>
+                            </xsl:if>
+                        </xsl:for-each>
+                    </ul>
+                </nav>
+                <xsl:apply-templates select="." mode="permalink"/>
+            </section>
+        </xsl:with-param>
+    </xsl:apply-templates>
+</xsl:template>`;
+
+/**
  * Extract the entries of a zip archive that `wanted` accepts.
  *
  * The archive is read in process rather than by shelling out to an unzip tool,
@@ -350,6 +437,12 @@ ${inlineTemplate}
 <!-- of 0 makes upstream abort on every division below the document root.     -->
 <!-- See SUBTREE_CHUNK_LEVEL_OVERRIDE in refresh-xsl.mjs.                     -->
 ${SUBTREE_CHUNK_LEVEL_OVERRIDE}
+
+<!-- A subtree root one level above the chunk level is a summary page: its own  -->
+<!-- content, then links to the divisions inside it. Only that page is emitted; -->
+<!-- the chunker is kept from also producing a page per child division.        -->
+<!-- See SUMMARY_PAGE_OVERRIDE in refresh-xsl.mjs.                              -->
+${SUMMARY_PAGE_OVERRIDE}
 
 <!-- Show the print-preview button on printouts, but inert: the page it would -->
 <!-- reload with "?printpreview=<id>" does not exist for an in-memory render, -->

@@ -148,8 +148,19 @@ let lastRender:
       rootPrintout?: string;
       /** The file rendered, which the preview may have moved on from since. */
       renderPath: string;
+      /** The one division shown, when not the whole document. */
+      subtree?: RenderResponse["subtree"];
     }
   | undefined;
+
+/**
+ * A division the reader picked from a summary page's links, to be shown by
+ * the next render in place of the one around the cursor. Cleared by the next
+ * cursor-driven render, so following the cursor resumes as soon as the
+ * reader moves it.
+ */
+let pinnedDivision: string | undefined;
+let divisionTimer: ReturnType<typeof setTimeout> | undefined;
 
 let sourceMapByFile: Map<string, SourceMapEntry[]> | undefined;
 let sourceMapById: Map<string, SourceMapEntry> | undefined;
@@ -260,13 +271,24 @@ interface RenderResponse {
   printouts?: PrintoutInfo[];
   /** The printout to open in print preview by default, if the page has one. */
   rootPrintout?: string;
+  /**
+   * The one division the page shows, when not the whole document: its id,
+   * and — when it is a summary page — the ids of the divisions it lists.
+   * Both are source-map ids, which is how the cursor is matched against them.
+   */
+  subtree?: {
+    id: string;
+    level: number;
+    collapsed: boolean;
+    children: string[];
+  };
 }
 
 interface SourceInfo {
   /**
    * The content file the preview follows (the last relevant .ptx in the
-   * editor). Rendered directly — as a wrapped fragment when needed — in
-   * "current-file" scope.
+   * editor). Rendered directly — as a wrapped fragment when needed — in the
+   * "file" and "division" scopes.
    */
   activePath: string;
   /** The project's main source file, when one could be located. */
@@ -282,13 +304,39 @@ interface SourceInfo {
   htmlTargetName?: string;
 }
 
-type PreviewScope = "current-file" | "project";
+/**
+ * How much the live preview shows:
+ *
+ * - "file": the active source file, whole.
+ * - "division": the division around the cursor in the active source file —
+ *   a division that contains divisions as a summary page, a leaf division in
+ *   full — unless the document is small enough to show whole
+ *   (`instantPreview.wholeDocumentUpTo`).
+ * - "project": the project's main source file with every include, whole.
+ *
+ * The file and division scopes follow the active editor; the project scope
+ * has nothing to follow.
+ */
+type PreviewScope = "file" | "division" | "project";
 
 function previewScope(): PreviewScope {
   const scope = workspace
     .getConfiguration("pretext-tools")
-    .get<string>("instantPreview.scope", "current-file");
-  return scope === "project" ? "project" : "current-file";
+    .get<string>("instantPreview.scope", "division");
+  switch (scope) {
+    case "file":
+    case "project":
+      return scope;
+    default:
+      // Including "current-file", the setting's former name for following the
+      // active file, which the division scope now does.
+      return "division";
+  }
+}
+
+/** Whether the preview follows the active editor rather than the main file. */
+function followsActiveFile(): boolean {
+  return previewScope() !== "project";
 }
 
 /**
@@ -524,7 +572,7 @@ function setupConfigWatcher(extensionPath: string): void {
 /**
  * Whether the live preview re-renders when the reader switches source files.
  *
- * Only meaningful in "current-file" scope — the whole-project scope always
+ * Only meaningful in the file and division scopes — the project scope always
  * renders the main source file, so there is nothing to follow.
  */
 function followActiveEditor(): boolean {
@@ -542,6 +590,89 @@ function updateWhileTyping(): boolean {
       .getConfiguration("pretext-tools")
       .get<boolean>("instantPreview.updateWhileTyping") ?? false
   );
+}
+
+/**
+ * Documents of at most this many elements are previewed whole; larger ones
+ * show only the division around the cursor (see RenderOptions.subtree).
+ */
+function wholeDocumentUpTo(): number {
+  const limit = workspace
+    .getConfiguration("pretext-tools")
+    .get<number>("instantPreview.wholeDocumentUpTo");
+  return typeof limit === "number" && limit >= 0 ? limit : 1000;
+}
+
+/** Whether `file` belongs to the project being previewed. */
+function isProjectFile(file: string): boolean {
+  if (!currentSource || !file.match(/\.(ptx|xml)$/)) {
+    return false;
+  }
+  const relative = path.relative(currentSource.projectDir, file);
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+/**
+ * Where the reader is, for choosing the division to preview: the cursor in
+ * the last focused editor when that editor is on the rendered file, else the
+ * top of that file, which shows the file's own division (a chapter file as a
+ * summary of its sections, a section file whole).
+ */
+function cursorSelection(renderPath: string): { file: string; line: number } {
+  const editor = lastActiveEditor;
+  const file = editor?.document.fileName;
+  if (editor && file && fileKey(file) === fileKey(renderPath)) {
+    return { file, line: editor.selection.active.line + 1 };
+  }
+  return { file: renderPath, line: 1 };
+}
+
+/**
+ * Unsaved buffers of the project's other open files, so the division's
+ * context — the main file, sibling includes — is what the editor shows and
+ * not what the disk last saw. The rendered file travels as sourceContent.
+ */
+function dirtyProjectFiles(renderPath: string): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const document of workspace.textDocuments) {
+    const file = document.fileName;
+    if (
+      document.isDirty &&
+      isProjectFile(file) &&
+      fileKey(file) !== fileKey(renderPath)
+    ) {
+      files[file] = document.getText();
+    }
+  }
+  return files;
+}
+
+/**
+ * Whether a cursor at `line` of `file` has left the division on screen —
+ * out of it, or into one of the divisions a summary page only lists — so
+ * that the preview should move to the division around it.
+ */
+function cursorLeftRenderedDivision(file: string, line: number): boolean {
+  const subtree = lastRender?.subtree;
+  if (!subtree || !sourceMapById || previewScope() !== "division") {
+    return false;
+  }
+  if (fileKey(file) !== fileKey(lastRender?.renderPath ?? "")) {
+    return false;
+  }
+  const contains = (id: string): boolean => {
+    const entry = sourceMapById?.get(id);
+    return (
+      !!entry &&
+      fileKey(entry.file) === fileKey(file) &&
+      entry.line <= line &&
+      line <= entry.endLine
+    );
+  };
+  if (!contains(subtree.id)) {
+    return true;
+  }
+  return subtree.children.some(contains);
 }
 
 /** The toolbar's resting status text: what the live preview is rendering. */
@@ -570,9 +701,9 @@ function patchableKey(): string | undefined {
 
 /**
  * Re-render as the reader types, when that is turned on: after a short pause,
- * from the unsaved document (see renderToPanel). Only edits to the file being
- * rendered count — in whole-project scope that is the main file, since the
- * worker reads included files from disk.
+ * from the unsaved documents (see renderToPanel). Edits to the file being
+ * rendered count; in project scope, so does an edit anywhere in the project,
+ * since every open file's buffer reaches the render.
  */
 function setupTypingWatcher(extensionPath: string): void {
   typingWatcher?.dispose();
@@ -586,10 +717,14 @@ function setupTypingWatcher(extensionPath: string): void {
       return;
     }
     const renderPath = currentRenderPath();
-    if (
-      !renderPath ||
-      fileKey(event.document.fileName) !== fileKey(renderPath)
-    ) {
+    if (!renderPath) {
+      return;
+    }
+    const counts =
+      previewScope() === "project"
+        ? isProjectFile(event.document.fileName)
+        : fileKey(event.document.fileName) === fileKey(renderPath);
+    if (!counts) {
       return;
     }
     if (typingTimer) {
@@ -626,7 +761,7 @@ function setupEditorTracker(extensionPath: string): void {
     if (
       !currentPanel ||
       previewMode !== "live" ||
-      previewScope() !== "current-file" ||
+      !followsActiveFile() ||
       !followActiveEditor()
     ) {
       return;
@@ -739,6 +874,11 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
               void revealSource(msg.ids.filter((x) => typeof x === "string"));
             }
             return;
+          case "showDivision":
+            if (typeof msg.id === "string" && msg.id) {
+              showDivision(msg.id);
+            }
+            return;
           case "setMode":
             if (msg.mode === "live" || msg.mode === "full") {
               void setPreviewMode(msg.mode, extensionPath);
@@ -819,16 +959,24 @@ export async function cmdInstantPreviewScope(
   const picked = await window.showQuickPick(
     [
       {
-        label: "Current file",
+        label: "Division at cursor",
         description:
-          "Render only the active source file — fast, but numbering and " +
-          "cross-references outside the file are placeholders",
-        scope: "current-file" as PreviewScope,
-        picked: current === "current-file",
+          "Show the division around the cursor in the active file; a " +
+          "chapter or book as a summary of the divisions inside it",
+        scope: "division" as PreviewScope,
+        picked: current === "division",
+      },
+      {
+        label: "Current file",
+        description: "Show the active source file in full",
+        scope: "file" as PreviewScope,
+        picked: current === "file",
       },
       {
         label: "Whole project",
-        description: "Render the project's main source file with all includes",
+        description:
+          "Show the project's main source file with all includes, in full " +
+          "— slow for a large book",
         scope: "project" as PreviewScope,
         picked: current === "project",
       },
@@ -1538,6 +1686,24 @@ function renderToPanel(
     contextSourcePath: currentSource.mainSourcePath,
     // id ↔ file/line map for two-way sync; costs a few ms per render.
     sourceMap: true,
+    // In division scope, only the division around the cursor — or the one
+    // picked from a summary page — unless the document is small enough to
+    // show whole. A division that contains divisions is a summary page: its
+    // own content, then links to the divisions inside it; only leaf
+    // divisions render in full. The other scopes render the file whole.
+    ...(scope === "division"
+      ? {
+          subtree: {
+            ...(pinnedDivision
+              ? { id: pinnedDivision }
+              : cursorSelection(renderPath)),
+            wholeDocumentUpTo: wholeDocumentUpTo(),
+          },
+        }
+      : {}),
+    // The other open files' unsaved text, so the structure around the
+    // division is the editor's, not the disk's.
+    ...(updateWhileTyping() ? { files: dirtyProjectFiles(renderPath) } : {}),
     // Bake the editor's current theme into the page so it opens matching VS
     // Code (no light-then-dark flash). setupThemeWatcher posts live updates
     // for subsequent theme switches without a re-render.
@@ -1593,7 +1759,16 @@ function handleRenderResponse(message: RenderResponse): void {
       printouts: message.printouts ?? [],
       rootPrintout: message.rootPrintout,
       renderPath: pendingRenderPath,
+      subtree: message.subtree,
     };
+    if (message.subtree) {
+      pretextOutputChannel.appendLine(
+        `[Instant Preview] Showing division "${message.subtree.id}"` +
+          (message.subtree.collapsed
+            ? ` as a summary of ${message.subtree.children.length} division(s)`
+            : ""),
+      );
+    }
     void commands.executeCommand(
       "setContext",
       "pretext-tools.previewIsSlideshow",
@@ -2424,7 +2599,41 @@ function setupSelectionWatcher(): void {
       () => syncPreviewToCursor(fileName, line),
       SYNC_DEBOUNCE_MS,
     );
+    // Moving into another division means showing that division: the cursor
+    // leads, and a division picked from a summary page stops being pinned.
+    if (
+      previewMode === "live" &&
+      workerExtensionPath &&
+      cursorLeftRenderedDivision(fileName, line)
+    ) {
+      pinnedDivision = undefined;
+      const extensionPath = workerExtensionPath;
+      if (divisionTimer) {
+        clearTimeout(divisionTimer);
+      }
+      divisionTimer = setTimeout(() => {
+        divisionTimer = undefined;
+        renderToPanel(extensionPath);
+      }, FOLLOW_DEBOUNCE_MS);
+    }
   });
+}
+
+/**
+ * Show the division a summary-page link leads to, as picked in the preview.
+ * The source is not moved — the reader asked to look, not to go — so the
+ * division stays pinned until the cursor moves into another one.
+ */
+function showDivision(id: string): void {
+  if (
+    !workerExtensionPath ||
+    previewMode !== "live" ||
+    previewScope() !== "division"
+  ) {
+    return;
+  }
+  pinnedDivision = id;
+  renderToPanel(workerExtensionPath);
 }
 
 /**
@@ -2534,6 +2743,11 @@ export function disposeInstantPreview(): void {
     clearTimeout(syncTimer);
     syncTimer = undefined;
   }
+  if (divisionTimer) {
+    clearTimeout(divisionTimer);
+    divisionTimer = undefined;
+  }
+  pinnedDivision = undefined;
   sourceMapByFile = undefined;
   sourceMapById = undefined;
   lastRender = undefined;

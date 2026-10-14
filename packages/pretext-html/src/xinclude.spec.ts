@@ -2,7 +2,8 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { resolveXIncludes } from "./xinclude.js";
+import { resolveXIncludes, resolveXIncludesToTree } from "./xinclude.js";
+import { SourceCache } from "./source-cache.js";
 
 describe("resolveXIncludes", () => {
   let dir: string;
@@ -141,6 +142,65 @@ describe("resolveXIncludes", () => {
       dir,
     );
     expect(result).toContain("Other prefix works.");
+  });
+
+  it("reads included files through a caller-supplied reader before disk", async () => {
+    write("overlay.ptx", `<p>On disk.</p>`);
+    write("disk-only.ptx", `<p>Only on disk.</p>`);
+    const main = path.join(dir, "reader-main.ptx");
+    const content = `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+        <xi:include href="overlay.ptx"/><xi:include href="disk-only.ptx"/><xi:include href="memory.ptx"/>
+      </pretext>`;
+    const memory: Record<string, string> = {
+      [path.join(dir, "overlay.ptx")]: `<p>From memory.</p>`,
+      [path.join(dir, "memory.ptx")]: `<p>Never on disk.</p>`,
+    };
+    const result = await resolveXIncludesToTree(content, main, dir, {
+      readSource: (file) => memory[file],
+    });
+    expect(result.content).toContain("From memory.");
+    expect(result.content).not.toContain("On disk.");
+    expect(result.content).toContain("Only on disk.");
+    expect(result.content).toContain("Never on disk.");
+    expect(result.files).toEqual([
+      main,
+      path.join(dir, "overlay.ptx"),
+      path.join(dir, "disk-only.ptx"),
+      path.join(dir, "memory.ptx"),
+    ]);
+    expect(result.bytes).toBe(
+      content.length +
+        memory[path.join(dir, "overlay.ptx")]!.length +
+        `<p>Only on disk.</p>`.length +
+        memory[path.join(dir, "memory.ptx")]!.length,
+    );
+  });
+
+  it("re-parses only the files whose content changed when given a cache", async () => {
+    write("cached-a.ptx", `<section xml:id="a"><p>A.</p></section>`);
+    write("cached-b.ptx", `<section xml:id="b"><p>B.</p></section>`);
+    const main = write(
+      "cached-main.ptx",
+      `<pretext xmlns:xi="http://www.w3.org/2001/XInclude"><article>
+        <xi:include href="cached-a.ptx"/><xi:include href="cached-b.ptx"/>
+      </article></pretext>`,
+    );
+    const cache = new SourceCache();
+    const content = fs.readFileSync(main, "utf8");
+    const first = await resolveXIncludesToTree(content, main, dir, { cache });
+    expect(cache.misses).toBe(3);
+    expect(cache.hits).toBe(0);
+
+    const second = await resolveXIncludesToTree(content, main, dir, { cache });
+    expect(cache.hits).toBe(3);
+    expect(second.content).toBe(first.content);
+
+    write("cached-b.ptx", `<section xml:id="b"><p>B changed.</p></section>`);
+    const third = await resolveXIncludesToTree(content, main, dir, { cache });
+    expect(cache.misses).toBe(4);
+    expect(cache.hits).toBe(5);
+    expect(third.content).toContain("B changed.");
+    expect(third.content).toContain("A.");
   });
 
   it("leaves sources without includes untouched", async () => {
