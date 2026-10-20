@@ -172,6 +172,36 @@ describe("patchDocument", () => {
     expectShows(live, parse, after);
   });
 
+  it("points an image at its new URL in place when only its version changes", () => {
+    // A host versions each asset URL by the file's modification time, so a
+    // regenerated image arrives as the same page with one `src` changed. The
+    // image must be fetched again, and nothing around it disturbed.
+    const figure = (version: string) =>
+      '<figure class="figure figure-like" id="fig-a">' +
+      '<div class="image-box" style="width: 60%;">' +
+      `<img src="https://file+.vscode-resource.vscode-cdn.net/p/gen/latex-image/a.svg?${version}"` +
+      ' role="img" class="contained"></div>' +
+      '<figcaption><span class="type">Figure</span> ' +
+      '<span class="codenumber">1.1.1</span></figcaption></figure>';
+    const before = page(section(para("sec-a-2", "One."), figure("100-10")));
+    const after = page(section(para("sec-a-2", "One."), figure("200-12")));
+    const { live, parse, patch } = open(before);
+    const image = live.querySelector("img");
+
+    const result = patch(before, after);
+
+    expect(result).toMatchObject({
+      ok: true,
+      added: [],
+      removed: [],
+      attributeUpdates: 1,
+    });
+    // The same element, now asking for the new version.
+    expect(live.querySelector("img")).toBe(image);
+    expect(image?.getAttribute("src")).toMatch(/a\.svg\?200-12$/);
+    expectShows(live, parse, after);
+  });
+
   it("removes a deleted block and renumbers what follows", () => {
     const before = page(
       section(

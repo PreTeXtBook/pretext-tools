@@ -53,11 +53,12 @@ const generateOnly = process.argv.includes("--generate-only");
  * FILESYSTEM=0 WASM build, and emscripten's abort() is terminal — the renderer
  * is unusable for the rest of the process, not just for that one render.
  *
- * Under portable-html several of these are already suppressed by publication
- * settings, but not all: an <interactive> on a slide reaches
- * "create-iframe-page" and writes a page even in a portable build. Kept as one
- * shared constant so the two wrappers cannot drift apart, and so this list
- * stays next to the KNOWN_WRITER_TEMPLATES audit that guards it.
+ * The preview's publication settings keep some of these from being reached,
+ * but not all: an ordinary build writes a search index, a redirect page and a
+ * standalone page per video and interactive, and an <interactive> on a slide
+ * reaches "create-iframe-page" whatever the settings. Kept as one shared
+ * constant so the two wrappers cannot drift apart, and so this list stays next
+ * to the KNOWN_WRITER_TEMPLATES audit that guards it.
  *
  * "file-wrap" is deliberately absent: preview-html.xsl replaces it with the
  * inlined copy, and the reveal.js conversion never chunks, so it is unreachable
@@ -78,6 +79,42 @@ const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
     <xsl:param name="content"/>
     <xsl:copy-of select="$content"/>
 </xsl:template>`;
+
+/**
+ * Skip work whose only product is a file the preview never writes.
+ *
+ * PreTeXt's portable mode skipped these itself, and the preview used to build
+ * portable. It no longer does (see src/publication.ts), so upstream now runs
+ * them and the file-writer stubs discard the result. That is correct but
+ * wasteful, since each is a pass whose output the page never shows:
+ *
+ * - "make-xref-knowls" walks every <xref> in the document to make a knowl
+ *   file per target. Cross-references are forced to plain links
+ *   (knowled="never"), so nothing would open those files.
+ * - "media-standalone-page" renders each <video> and <audio> a second time,
+ *   as the content of a standalone page that "standalone-page" then drops.
+ *
+ * Interactives build their standalone page the same way, but from inside the
+ * template that renders them in place, so skipping that would mean copying
+ * the template. The "standalone-page" stub discards the copy instead.
+ */
+const SKIPPED_WORK_STUBS = `<xsl:template match="*" mode="make-xref-knowls"/>
+<xsl:template match="audio|video" mode="media-standalone-page"/>`;
+
+/**
+ * The test in upstream's "file-wrap" that decides whether the search index is
+ * written into the page, and what the preview replaces it with.
+ *
+ * Upstream embeds the index (a <script> at the end of <body>) only in a
+ * portable build, and otherwise writes it to a separate file. A preview has no
+ * separate file, so it embeds the index whether or not the build is portable,
+ * keeping the page's search box working as it did when previews were
+ * portable. Patched into the copied template rather than overridden, because
+ * the test sits in the middle of the one template that is already copied
+ * verbatim.
+ */
+const EMBEDDED_SEARCH_TEST = "$b-portable-html and $has-native-search";
+const EMBEDDED_SEARCH_REPLACEMENT = "$has-native-search";
 
 /**
  * Neutralize the print-preview buttons upstream puts on printout headings
@@ -146,8 +183,9 @@ const PRINTOUT_LINK_OVERRIDE = `<xsl:template match="*" mode="standalone-printou
  * fragment preview wants: the section on screen numbered as it will be in the
  * built book, with cross-references to the rest of the document resolved.
  *
- * It refuses to run here unmodified. Portable builds pin `html-chunk-level` to
- * 0 (publisher-variables.xsl), and upstream aborts with a FATAL when the
+ * It refuses to run here unmodified. The preview pins `html-chunk-level` to 0
+ * (its publication file forces `common/chunking/@level`, so that a whole
+ * document lands on one page), and upstream aborts with a FATAL when the
  * subtree root sits below the chunk level — "only a partial HTML page at the
  * current chunking level". Every division except the document root is below
  * level 0, so every fragment preview would abort.
@@ -364,10 +402,11 @@ function copyXslTree(sourceRoot) {
  * Extracts the body of the `file-wrap` template from the vendored
  * pretext-html.xsl and strips the <exsl:document> element (keeping its
  * children) so the page lands on the main result tree instead of aborting in
- * the FILESYSTEM=0 WASM build. All other file-writing templates are stubbed;
- * most are already suppressed by the portable-html publication setting the
- * renderer forces. Printout headings additionally get their print-preview
- * buttons disabled (see PRINTOUT_LINK_OVERRIDE).
+ * the FILESYSTEM=0 WASM build. The copy also embeds the search index in the
+ * page (see EMBEDDED_SEARCH_TEST). All other file-writing templates are
+ * stubbed, and the passes that only feed them skipped (SKIPPED_WORK_STUBS).
+ * Printout headings additionally get their print-preview buttons disabled
+ * (see PRINTOUT_LINK_OVERRIDE).
  */
 function generatePreviewXsl() {
   const htmlXsl = fs.readFileSync(
@@ -394,9 +433,18 @@ function generatePreviewXsl() {
         "Upstream has changed; preview-html.xsl generation needs updating.",
     );
   }
+  const searchTests = template.split(EMBEDDED_SEARCH_TEST).length - 1;
+  if (searchTests !== 1) {
+    throw new Error(
+      `Expected the test "${EMBEDDED_SEARCH_TEST}" exactly once in file-wrap ` +
+        `(found ${searchTests}). Upstream has changed how the search index is ` +
+        "embedded; preview-html.xsl generation needs updating.",
+    );
+  }
   const inlineTemplate = template
     .replace(opens[0], "")
-    .replace("</exsl:document>", "");
+    .replace("</exsl:document>", "")
+    .replace(EMBEDDED_SEARCH_TEST, EMBEDDED_SEARCH_REPLACEMENT);
 
   const wrapper = `<?xml version="1.0" encoding="UTF-8"?>
 <!--
@@ -404,12 +452,15 @@ function generatePreviewXsl() {
   Regenerate with: npm run refresh-xsl -w @pretextbook/pretext-html
 
   Wrapper around pretext-html.xsl for single-page in-memory HTML builds
-  (previews). The "file-wrap" template below is a verbatim copy of the
-  upstream template with the <exsl:document> element removed, so the complete
-  page is emitted on the main result tree. Intended to be applied together
-  with a publication file that sets <html><platform portable="yes"/></html>,
-  which forces chunk level 0 (one page) and CDN-hosted css/js, and suppresses
-  most auxiliary file output. Remaining file writers are stubbed at the end.
+  (previews). The "file-wrap" template below is a copy of the upstream
+  template with two changes: the <exsl:document> element is removed, so the
+  complete page is emitted on the main result tree, and the search index is
+  embedded in the page whether or not the build is portable. Intended to be
+  applied together with a publication file that forces CDN-hosted css/js
+  (<html><resources host="cdn"/>), chunk level 0 (one page), cross-references
+  as links rather than knowls, and portable mode off, so that latex-image and
+  PreFigure SVGs are linked rather than inlined. Remaining file writers are
+  stubbed at the end.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -429,12 +480,14 @@ function generatePreviewXsl() {
 <xsl:import href="pretext-html.xsl"/>
 <xsl:output method="html" encoding="UTF-8" doctype-system="about:legacy-compat"/>
 
-<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed -->
+<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed, -->
+<!-- and the search index embedded in every build, not only portable ones.   -->
+<!-- See EMBEDDED_SEARCH_TEST in refresh-xsl.mjs.                            -->
 ${inlineTemplate}
 
 <!-- Chunk at the subtree root's own level, so a fragment preview can name a  -->
-<!-- division of any depth as $subtree. Without this, portable's chunk level  -->
-<!-- of 0 makes upstream abort on every division below the document root.     -->
+<!-- division of any depth as $subtree. Without this, the preview's chunk     -->
+<!-- level of 0 makes upstream abort on every division below the root.        -->
 <!-- See SUBTREE_CHUNK_LEVEL_OVERRIDE in refresh-xsl.mjs.                     -->
 ${SUBTREE_CHUNK_LEVEL_OVERRIDE}
 
@@ -453,11 +506,16 @@ ${SUMMARY_PAGE_OVERRIDE}
 <!-- See PRINTOUT_LINK_OVERRIDE in refresh-xsl.mjs.                           -->
 ${PRINTOUT_LINK_OVERRIDE}
 
+<!-- Skip the passes whose only product is a file the preview never writes: -->
+<!-- knowl files for cross-references, and standalone pages for media.     -->
+<!-- See SKIPPED_WORK_STUBS in refresh-xsl.mjs.                            -->
+${SKIPPED_WORK_STUBS}
+
 <!-- Stub out the remaining file writers (every other template reachable    -->
-<!-- from pretext-html.xsl that contains exsl:document). Under portable-    -->
-<!-- html several of these are already suppressed; the stubs cover the      -->
-<!-- rest and act as a safety net if publication settings change. Any       -->
-<!-- exsl:document that does fire aborts the FILESYSTEM=0 WASM build.       -->
+<!-- from pretext-html.xsl that contains exsl:document). The preview's      -->
+<!-- publication settings keep some of these from being reached; the stubs -->
+<!-- cover the rest and act as a safety net if publication settings change. -->
+<!-- Any exsl:document that does fire aborts the FILESYSTEM=0 WASM build.   -->
 ${FILE_WRITER_STUBS}
 
 </xsl:stylesheet>
@@ -500,7 +558,8 @@ function generatePreviewRevealXsl() {
 
   Intended to be applied together with a publication file that forces
   <revealjs><resources host="cdn" math="online"/></revealjs>, since neither
-  locally hosted nor embedded reveal.js resources exist for an in-memory build.
+  locally hosted nor embedded reveal.js resources exist for an in-memory build,
+  and <html><resources host="cdn"/> for PreTeXt's own css/js on the slides.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -554,7 +613,10 @@ function generatePreviewRevealXsl() {
     </xsl:for-each>
 </xsl:template>
 
-<!-- Same file-writer stubs as preview-html.xsl; see FILE_WRITER_STUBS. -->
+<!-- Same skipped passes and file-writer stubs as preview-html.xsl (a video -->
+<!-- on a slide renders through the same templates); see SKIPPED_WORK_STUBS -->
+<!-- and FILE_WRITER_STUBS.                                                 -->
+${SKIPPED_WORK_STUBS}
 ${FILE_WRITER_STUBS}
 
 </xsl:stylesheet>

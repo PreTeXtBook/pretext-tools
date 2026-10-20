@@ -14,7 +14,7 @@
  *
  * Caveat: assembly passes that restructure the tree before the @unique-id
  * stamp (component/version filtering, WeBWorK extraction) would shift the
- * auto-generated ids. Those passes are inert in the portable preview build,
+ * auto-generated ids. Those passes are inert in the preview build,
  * and authored @xml:id/@label values are immune regardless (they reset the
  * id chain), so in practice the map matches the page; worst case a lookup
  * lands on a nearby ancestor instead of the exact element.

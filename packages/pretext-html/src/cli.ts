@@ -5,19 +5,34 @@
  * be piped or captured by a parent process (the VS Code extension does this).
  */
 
+import { existsSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
+import * as path from "node:path";
 import * as process from "node:process";
+import { pathToFileURL } from "node:url";
+import { rewriteAssetUrls } from "./assets.js";
+import { missingAssetPlaceholder } from "./missing-asset.js";
 import { injectPrintPreview } from "./printout.js";
-import { renderHtml, type RenderOptions } from "./renderer.js";
+import {
+  renderHtml,
+  type RenderOptions,
+  type RenderResult,
+} from "./renderer.js";
 
 const USAGE = `Usage: pretext-html <source.ptx> [options]
 
-Render a PreTeXt document to a single standalone HTML page (portable build:
-one page, css/js/MathJax from CDN). No PreTeXt installation required.
+Render a PreTeXt document to a single standalone HTML page (one page,
+css/js/MathJax from CDN). No PreTeXt installation required.
+
+Images, generated ones included, are linked rather than embedded. With
+--output, their URLs point at the project's own files, relative to the output
+file, and a missing one shows a placeholder naming what to generate. On stdout
+they are left as PreTeXt emits them, under external/ and generated/.
 
 Options:
   -o, --output <file>       Write HTML to a file instead of stdout
-  --publication <file>      Publication file (portable html is forced on)
+  --publication <file>      Publication file (CDN resources, chunk level 0 and
+                            cross-references as links are forced on)
   --css-theme <name>        HTML theme to use when the publication file names
                             none of its own: default-modern (PreTeXt's default),
                             denver, tacoma, salem, greeley or boulder
@@ -177,6 +192,35 @@ export function parseArgs(argv: string[]): CliArgs {
   };
 }
 
+/**
+ * Point the page's `external/` and `generated/` URLs at the project's files,
+ * relative to `pageDir`, so a page written to disk opens with its images.
+ *
+ * A real build copies both directories next to its pages; the CLI writes one
+ * page and copies nothing, so it links the files where they are. A file that
+ * does not exist gets the same placeholder the VS Code preview shows, which
+ * says what to generate. A file on another drive than the page (Windows) has
+ * no relative path, and gets an absolute file URL instead.
+ */
+export function linkAssetsFrom(
+  html: string,
+  assetDirs: RenderResult["assetDirs"],
+  pageDir: string,
+): string {
+  return rewriteAssetUrls(html, (kind, relPath) => {
+    const dir = assetDirs[kind];
+    const file = dir === undefined ? undefined : path.resolve(dir, relPath);
+    if (file === undefined || !existsSync(file)) {
+      return missingAssetPlaceholder(kind, relPath);
+    }
+    const relative = path.relative(pageDir, file);
+    if (path.isAbsolute(relative)) {
+      return pathToFileURL(file).href;
+    }
+    return relative.split(path.sep).map(encodeURIComponent).join("/");
+  });
+}
+
 export async function main(argv: string[]): Promise<void> {
   const { options, output, docinfoPath, sourceMapPath, printPreview } =
     parseArgs(argv);
@@ -214,6 +258,11 @@ export async function main(argv: string[]): Promise<void> {
     process.stderr.write(`pretext-html: wrote ${sourceMapPath}\n`);
   }
   if (output) {
+    html = linkAssetsFrom(
+      html,
+      result.assetDirs,
+      path.dirname(path.resolve(output)),
+    );
     await writeFile(output, html);
     process.stderr.write(`pretext-html: wrote ${output}\n`);
   } else {

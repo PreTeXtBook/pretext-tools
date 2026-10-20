@@ -11,7 +11,8 @@
 
   Intended to be applied together with a publication file that forces
   <revealjs><resources host="cdn" math="online"/></revealjs>, since neither
-  locally hosted nor embedded reveal.js resources exist for an in-memory build.
+  locally hosted nor embedded reveal.js resources exist for an in-memory build,
+  and <html><resources host="cdn"/> for PreTeXt's own css/js on the slides.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -65,7 +66,11 @@
     </xsl:for-each>
 </xsl:template>
 
-<!-- Same file-writer stubs as preview-html.xsl; see FILE_WRITER_STUBS. -->
+<!-- Same skipped passes and file-writer stubs as preview-html.xsl (a video -->
+<!-- on a slide renders through the same templates); see SKIPPED_WORK_STUBS -->
+<!-- and FILE_WRITER_STUBS.                                                 -->
+<xsl:template match="*" mode="make-xref-knowls"/>
+<xsl:template match="audio|video" mode="media-standalone-page"/>
 <xsl:template name="index-redirect-page"/>
 <xsl:template match="*" mode="manufacture-knowl"/>
 <xsl:template name="ol-marker-styles"/>

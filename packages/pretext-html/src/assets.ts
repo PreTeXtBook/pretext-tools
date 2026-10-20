@@ -1,14 +1,18 @@
 /**
  * Retargeting the asset URLs PreTeXt emits.
  *
- * A portable build inlines `latex-image` and `prefigure` SVGs directly into
- * the page (pretext-html.xsl, mode="svg-embedded"), so those need nothing from
- * us — they are read at transform time through the fetch shim. Everything else
- * — author-supplied images and media, sageplot, asymptote — is emitted as a
- * *runtime* URL under one of two fixed prefixes:
+ * Every asset a preview shows — author-supplied images and media, and
+ * everything `pretext generate` makes (latex-image, PreFigure, sageplot,
+ * asymptote) — is emitted as a *runtime* URL under one of two fixed prefixes:
  *
  *     <img src="external/kitten.png">
+ *     <img src="generated/latex-image/diagram.svg">
  *     <img src="generated/sageplot/plot.svg">
+ *
+ * (A portable build would instead inline the latex-image and PreFigure SVGs,
+ * reading them during the transform. The preview no longer builds portable,
+ * so those images reach the host here like the rest, and nothing has to read
+ * image files while rendering. See publication.ts.)
  *
  * Those prefixes (`$external-directory` / `$generated-directory` in
  * publisher-variables.xsl) name directories a real build populates by copying

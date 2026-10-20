@@ -1,13 +1,30 @@
 /**
  * Publication-file handling for single-page preview builds.
  *
- * The preview relies on PreTeXt's "portable HTML" mode
- * (`<html><platform portable="yes"/></html>` in the publication file), which
- * forces chunk level 0 (the whole document on one page), serves css/js from
- * the jsDelivr CDN, and suppresses most auxiliary file output. Publisher
- * variables can only come from a publication file — there is no stringparam
- * for `portable` — so we rewrite the user's publication file (or synthesize a
- * minimal one) and serve it through the fetch shim as a virtual file.
+ * A preview is one page, rendered in memory, with no output directory beside
+ * it. Four publisher settings make an ordinary HTML build fit that, and the
+ * preview forces all four (see {@link PREVIEW_SETTINGS}):
+ *
+ * - `<html><resources host="cdn"/>` serves PreTeXt's css/js, the theme and
+ *   the icon font from the jsDelivr CDN, since there is no `_static/` to copy
+ *   them into.
+ * - `<common><chunking level="0"/>` puts the whole document on one page.
+ * - `<html><cross-references knowled="never"/>` renders every `<xref>` as a
+ *   link, because the knowl files a cross-reference knowl opens are separate
+ *   files that an in-memory build never writes.
+ * - `<html><platform portable="no"/>` keeps PreTeXt's "portable HTML" mode off,
+ *   even for a project that builds portable.
+ *
+ * Portable mode would do the first three in one switch, and the preview used
+ * to rely on it. It also inlines every latex-image and PreFigure SVG into the
+ * page, read at transform time. Without it those images are `<img>` links into
+ * the generated directory, like every other asset. A host then serves them the
+ * same way it serves the rest (see assets.ts), and a host without a filesystem
+ * (a browser editor) needs no image files available during the render.
+ *
+ * Publisher variables can only come from a publication file, so we rewrite the
+ * user's publication file (or synthesize a minimal one) and serve it through
+ * the fetch shim as a virtual file.
  *
  * That rewrite is also how an embedder's default HTML theme gets in
  * (`<html><css theme="..."/></html>`): same reason, no stringparam for it
@@ -32,11 +49,26 @@ const MINIMAL_PUBLICATION = `<?xml version="1.0" encoding="UTF-8"?>
   <common>
     <tableofcontents level="0"/>
   </common>
-  <html>
-    <platform portable="yes"/>
-  </html>
 </publication>
 `;
+
+/**
+ * The publisher settings every preview build forces, as
+ * `[path to element, attribute, value]`. They override the project's own
+ * choices, because each alternative needs files written next to the page. See
+ * the module comment for what each one does.
+ *
+ * `chunking` is a `common` setting, not an `html` one, so it also reaches the
+ * reveal.js conversion. That conversion never chunks, so it is inert there.
+ */
+const PREVIEW_SETTINGS: ReadonlyArray<
+  readonly [location: readonly string[], attribute: string, value: string]
+> = [
+  [["html", "resources"], "host", "cdn"],
+  [["html", "platform"], "portable", "no"],
+  [["html", "cross-references"], "knowled", "never"],
+  [["common", "chunking"], "level", "0"],
+];
 
 /**
  * Attributes on `<html><css/>` by which a project states which HTML theme it
@@ -149,24 +181,22 @@ export interface PublicationOverrides {
 }
 
 /**
- * Return publication-file XML with `<html><platform portable="yes"/></html>`
- * forced, preserving everything else from `publicationXml` when given.
+ * Return publication-file XML with the preview's settings forced (see
+ * {@link PREVIEW_SETTINGS}), preserving everything else from `publicationXml`
+ * when given.
  *
- * Portable mode is forced for slideshows too, even though the reveal.js
- * conversion never chunks: it is what sets `$cdn-prefix`, and so what puts the
- * PreTeXt-side css and js (sagecell, syntax highlighting, the slide styling)
- * on the CDN rather than at a relative path that does not exist.
+ * The CDN host is forced for slideshows too: it is what sets `$cdn-prefix`, and
+ * so what puts the PreTeXt-side css and js (sagecell, syntax highlighting, the
+ * slide styling) on the CDN rather than at a relative path that does not
+ * exist.
  */
-export function forcePortablePublication(
+export function forcePreviewPublication(
   publicationXml?: string,
   overrides: PublicationOverrides = {},
 ): string {
   const cssTheme = overrides.cssTheme?.trim();
   const revealTheme = overrides.revealTheme?.trim();
   const slides = overrides.target === "slides";
-  if (!publicationXml && !cssTheme && !slides) {
-    return MINIMAL_PUBLICATION;
-  }
   const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
   const publication = findChildElement(tree, "publication");
   if (!publication) {
@@ -174,9 +204,14 @@ export function forcePortablePublication(
       "Invalid publication file: no root <publication> element found",
     );
   }
+  for (const [location, attribute, value] of PREVIEW_SETTINGS) {
+    const element = location.reduce<Element>(
+      (parent, name) => ensureChildElement(parent, name),
+      publication,
+    );
+    element.attributes = { ...element.attributes, [attribute]: value };
+  }
   const html = ensureChildElement(publication, "html");
-  const platform = ensureChildElement(html, "platform");
-  platform.attributes = { ...platform.attributes, portable: "yes" };
   if (cssTheme) {
     applyDefaultCssTheme(html, cssTheme);
   }
@@ -191,27 +226,40 @@ export function forcePortablePublication(
 }
 
 /**
- * Where a project's images live, as declared by
- * `<source><directories external generated/></source>`.
+ * The previous name of {@link forcePreviewPublication}, from when the preview
+ * forced PreTeXt's portable HTML mode.
+ *
+ * @deprecated Use {@link forcePreviewPublication}. The preview no longer uses
+ * portable mode, so the name no longer describes what this does.
+ */
+export const forcePortablePublication = forcePreviewPublication;
+
+/**
+ * Where a project's images live. PreTeXt emits every asset URL under one of
+ * two fixed prefixes, `external/` and `generated/`, and these are the
+ * directories those prefixes stand for.
  *
  * Both paths are relative to the directory of the *main* source file — the one
  * holding `<pretext>` — not to whichever file is being rendered. See
  * RenderOptions.mainSourcePath.
  */
 export interface AssetDirectories {
-  /** e.g. "../assets/" — trailing slash, relative to the main source dir. */
-  external?: string;
-  /** e.g. "../generated-assets/" — likewise. */
-  generated?: string;
   /**
-   * True when the publication declares both attributes ("managed
-   * directories"). Only then does PreTeXt emit asset URLs under the fixed
-   * `external/` and `generated/` prefixes that {@link rewriteAssetUrls} keys
-   * on; legacy projects emit bare or `images/`-prefixed paths that cannot be
-   * told apart from anything else, so the preview leaves them alone.
+   * e.g. "../assets/" — trailing slash, relative to the main source dir.
+   * Undefined when nothing declares one, which upstream reads as "this
+   * project has no external assets".
    */
-  managed: boolean;
+  external?: string;
+  /**
+   * e.g. "../generated-assets/" — likewise. Always set: the directory is
+   * machine-owned, so an undeclared one defaults to "generated/" beside the
+   * source.
+   */
+  generated: string;
 }
+
+/** Where PreTeXt looks for generated assets when nothing says otherwise. */
+const DEFAULT_GENERATED_DIRECTORY = "generated/";
 
 /**
  * Normalise one `@external`/`@generated` value the way publisher-variables.xsl
@@ -281,27 +329,67 @@ export function readPublicationLevels(
 }
 
 /**
- * Read the asset directories from a publication file, falling back to the
- * defaults baked into MINIMAL_PUBLICATION when none is supplied.
+ * Read the asset directories the way PreTeXt resolves them (as of 2026-08,
+ * when managed directories became the only scheme):
+ *
+ * - **external** is a property of the source. The document's
+ *   `<docinfo><directories external="..."/>` wins; the publication file's
+ *   `source/directories/@external` is the deprecated fallback; with neither,
+ *   the project has no external assets.
+ * - **generated** is a publication setting, `source/directories/@generated`,
+ *   and defaults to "generated/" beside the source.
+ *
+ * `docinfoExternal` is the raw `@external` from the document's docinfo, which
+ * the caller reads from the source (see {@link docinfoExternalDirectory}). The
+ * publication file falls back to MINIMAL_PUBLICATION when none is supplied.
  */
 export function readAssetDirectories(
   publicationXml?: string,
+  docinfoExternal?: string,
 ): AssetDirectories {
   const tree = fromXml(publicationXml ?? MINIMAL_PUBLICATION);
   const publication = findChildElement(tree, "publication");
   const source = publication && findChildElement(publication, "source");
   const directories = source && findChildElement(source, "directories");
-  const external = normalizeDirectory(
-    directories?.attributes?.["external"] ?? undefined,
-  );
-  const generated = normalizeDirectory(
-    directories?.attributes?.["generated"] ?? undefined,
-  );
-  // PreTeXt only switches on managed directories when *both* are declared;
-  // one alone is a publication-file error it warns about and ignores.
-  return {
-    external,
-    generated,
-    managed: external !== undefined && generated !== undefined,
+  const attribute = (name: string): string | undefined => {
+    const value = directories?.attributes?.[name];
+    return value === null || value === undefined ? undefined : String(value);
   };
+  const external =
+    docinfoExternal !== undefined
+      ? normalizeDirectory(docinfoExternal)
+      : normalizeDirectory(attribute("external"));
+  const generated =
+    normalizeDirectory(attribute("generated")) ?? DEFAULT_GENERATED_DIRECTORY;
+  return external === undefined ? { generated } : { external, generated };
+}
+
+/**
+ * The raw `directories/@external` of a document's `<docinfo>`, or undefined
+ * when it declares none. `root` is a parsed document (whose `<pretext>` holds
+ * the docinfo), or a `<docinfo>` on its own — parsed, or as the XML string a
+ * fragment preview is given. Only the docinfo's direct `<directories>` child
+ * counts, as upstream's `$version-root/docinfo/directories` does.
+ *
+ * A string that does not parse declares nothing here; the transform reports
+ * the malformed docinfo itself.
+ */
+export function docinfoExternalDirectory(
+  root: Root | string,
+): string | undefined {
+  if (typeof root === "string") {
+    try {
+      return docinfoExternalDirectory(fromXml(root));
+    } catch {
+      return undefined;
+    }
+  }
+  const top = root.children.find(
+    (node): node is Element => node.type === "element",
+  );
+  const docinfo =
+    top?.name === "docinfo" ? top : top && findChildElement(top, "docinfo");
+  const directories = docinfo && findChildElement(docinfo, "directories");
+  const value = directories?.attributes?.["external"];
+  return value === null || value === undefined ? undefined : String(value);
 }

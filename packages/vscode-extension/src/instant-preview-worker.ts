@@ -100,7 +100,7 @@ type RenderResponse =
       target: RenderTarget;
       sourceMap?: PtxSourceMap;
       /** Real directories behind the page's `external/`/`generated/` URLs. */
-      assetDirs?: { external: string; generated: string };
+      assetDirs?: { external?: string; generated: string };
       /**
        * The page's printouts (worksheets, handouts, and projects with a
        * workspace), which the toolbar offers a print preview of. Entering that

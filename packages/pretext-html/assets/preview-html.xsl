@@ -4,12 +4,15 @@
   Regenerate with: npm run refresh-xsl -w @pretextbook/pretext-html
 
   Wrapper around pretext-html.xsl for single-page in-memory HTML builds
-  (previews). The "file-wrap" template below is a verbatim copy of the
-  upstream template with the <exsl:document> element removed, so the complete
-  page is emitted on the main result tree. Intended to be applied together
-  with a publication file that sets <html><platform portable="yes"/></html>,
-  which forces chunk level 0 (one page) and CDN-hosted css/js, and suppresses
-  most auxiliary file output. Remaining file writers are stubbed at the end.
+  (previews). The "file-wrap" template below is a copy of the upstream
+  template with two changes: the <exsl:document> element is removed, so the
+  complete page is emitted on the main result tree, and the search index is
+  embedded in the page whether or not the build is portable. Intended to be
+  applied together with a publication file that forces CDN-hosted css/js
+  (<html><resources host="cdn"/>), chunk level 0 (one page), cross-references
+  as links rather than knowls, and portable mode off, so that latex-image and
+  PreFigure SVGs are linked rather than inlined. Remaining file writers are
+  stubbed at the end.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -29,7 +32,9 @@
 <xsl:import href="pretext-html.xsl"/>
 <xsl:output method="html" encoding="UTF-8" doctype-system="about:legacy-compat"/>
 
-<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed -->
+<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed, -->
+<!-- and the search index embedded in every build, not only portable ones.   -->
+<!-- See EMBEDDED_SEARCH_TEST in refresh-xsl.mjs.                            -->
 <xsl:template match="*" mode="file-wrap">
     <xsl:param name="content" />
     <xsl:param name="title" select="''"/>
@@ -199,7 +204,7 @@
             </div>
             <xsl:copy-of select="$file-wrap-full-endbody-cache"/>
             <!-- For portable builds we stash the lunr search here -->
-            <xsl:if test="$b-portable-html and $has-native-search">
+            <xsl:if test="$has-native-search">
                 <xsl:call-template name="embedded-search-construction"/>
             </xsl:if>
             <!-- optional body content that needs to be inserted after all content -->
@@ -211,8 +216,8 @@
 </xsl:template>
 
 <!-- Chunk at the subtree root's own level, so a fragment preview can name a  -->
-<!-- division of any depth as $subtree. Without this, portable's chunk level  -->
-<!-- of 0 makes upstream abort on every division below the document root.     -->
+<!-- division of any depth as $subtree. Without this, the preview's chunk     -->
+<!-- level of 0 makes upstream abort on every division below the root.        -->
 <!-- See SUBTREE_CHUNK_LEVEL_OVERRIDE in refresh-xsl.mjs.                     -->
 <xsl:param name="subtree-level" select="''"/>
 <xsl:variable name="chunk-level">
@@ -311,11 +316,17 @@
     </div>
 </xsl:template>
 
+<!-- Skip the passes whose only product is a file the preview never writes: -->
+<!-- knowl files for cross-references, and standalone pages for media.     -->
+<!-- See SKIPPED_WORK_STUBS in refresh-xsl.mjs.                            -->
+<xsl:template match="*" mode="make-xref-knowls"/>
+<xsl:template match="audio|video" mode="media-standalone-page"/>
+
 <!-- Stub out the remaining file writers (every other template reachable    -->
-<!-- from pretext-html.xsl that contains exsl:document). Under portable-    -->
-<!-- html several of these are already suppressed; the stubs cover the      -->
-<!-- rest and act as a safety net if publication settings change. Any       -->
-<!-- exsl:document that does fire aborts the FILESYSTEM=0 WASM build.       -->
+<!-- from pretext-html.xsl that contains exsl:document). The preview's      -->
+<!-- publication settings keep some of these from being reached; the stubs -->
+<!-- cover the rest and act as a safety net if publication settings change. -->
+<!-- Any exsl:document that does fire aborts the FILESYSTEM=0 WASM build.   -->
 <xsl:template name="index-redirect-page"/>
 <xsl:template match="*" mode="manufacture-knowl"/>
 <xsl:template name="ol-marker-styles"/>

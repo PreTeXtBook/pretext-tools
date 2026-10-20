@@ -43,7 +43,11 @@ export type { SourceCacheOptions } from "./source-cache.js";
 export type { SourceReader } from "./xinclude.js";
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
-export { forcePortablePublication } from "./publication.js";
+export {
+  forcePreviewPublication,
+  // Deprecated alias of forcePreviewPublication, kept for existing callers.
+  forcePortablePublication,
+} from "./publication.js";
 export type { PublicationOverrides } from "./publication.js";
 export { detectRenderTarget } from "./target.js";
 export type { RenderTarget } from "./target.js";

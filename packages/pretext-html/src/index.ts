@@ -24,7 +24,11 @@ export type { SourceReader } from "./xinclude.js";
 // itself comes back from renderHtml({ sourceMap: true }).
 export { findSourceMapEntry } from "./sourcemap.js";
 export type { PtxSourceMap, SourceMapEntry } from "./sourcemap.js";
-export { forcePortablePublication } from "./publication.js";
+export {
+  forcePreviewPublication,
+  // Deprecated alias of forcePreviewPublication, kept for existing callers.
+  forcePortablePublication,
+} from "./publication.js";
 export type { PublicationOverrides } from "./publication.js";
 // Which conversion a render runs (ordinary HTML vs a reveal.js slideshow).
 export { detectRenderTarget } from "./target.js";
@@ -55,9 +59,9 @@ export type { PublicationLevels } from "./publication.js";
 // HTML it already has, or reword the tooltip.
 export { OFF_PAGE_MESSAGE, rewriteXrefLinks } from "./xrefs.js";
 export type { RewriteXrefLinkOptions } from "./xrefs.js";
-// Retargeting the `external/` and `generated/` asset URLs a portable build
-// emits onto something the host can serve (see assets.ts). Pair with
-// RenderResult.assetDirs.
+// Retargeting the `external/` and `generated/` asset URLs a preview emits,
+// generated SVGs included, onto something the host can serve (see
+// assets.ts). Pair with RenderResult.assetDirs.
 export { rewriteAssetUrls } from "./assets.js";
 export type { AssetKind, AssetUrlResolver } from "./assets.js";
 // Stand-ins for assets that have not been generated (or cannot be found).

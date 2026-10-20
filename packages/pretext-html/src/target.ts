@@ -2,7 +2,7 @@
  * Which PreTeXt conversion a render drives.
  *
  * The two share almost everything — the same assembly passes, the same
- * publication file, the same portable/CDN resource handling — and differ in
+ * publication file, the same CDN resource handling — and differ in
  * the stylesheet they enter through:
  *
  *   "html"   - assets/preview-html.xsl, wrapping pretext-html.xsl.

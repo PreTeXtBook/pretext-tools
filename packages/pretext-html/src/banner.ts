@@ -1,8 +1,8 @@
 /**
  * Dismissible "this is a live preview" warning banner.
  *
- * The preview forces `<html><platform portable="yes"/></html>` (see
- * {@link forcePortablePublication}) and skips the asset-generation step
+ * The preview forces a few publication settings of its own (see
+ * {@link forcePreviewPublication}) and skips the asset-generation step
  * entirely, so what an author sees while editing can genuinely differ from a
  * real build — different chunking, no locally generated images, etc. The
  * banner exists to say so, once, without nagging: it renders across the top

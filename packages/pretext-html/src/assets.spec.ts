@@ -1,13 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import { rewriteAssetUrls } from "./assets.js";
-import { readAssetDirectories } from "./publication.js";
+import { fromXml } from "xast-util-from-xml";
+import {
+  docinfoExternalDirectory,
+  readAssetDirectories,
+} from "./publication.js";
 
 describe("readAssetDirectories", () => {
   it("defaults to the minimal publication's directories", () => {
     expect(readAssetDirectories()).toEqual({
       external: "../assets/",
       generated: "../generated-assets/",
-      managed: true,
     });
   });
 
@@ -15,35 +18,72 @@ describe("readAssetDirectories", () => {
     const dirs = readAssetDirectories(
       `<publication><source><directories external="img" generated="gen"/></source></publication>`,
     );
-    expect(dirs).toEqual({
-      external: "img/",
-      generated: "gen/",
-      managed: true,
-    });
+    expect(dirs).toEqual({ external: "img/", generated: "gen/" });
   });
 
-  it("is unmanaged when the publication declares neither directory", () => {
+  it("defaults the generated directory and declares no external one", () => {
+    // Managed directories are PreTeXt's only scheme now: the generated
+    // directory is machine-owned and defaultable, and an undeclared external
+    // directory means the project has no external assets.
     const dirs = readAssetDirectories(
       `<publication><html><platform portable="yes"/></html></publication>`,
     );
-    expect(dirs.managed).toBe(false);
+    expect(dirs).toEqual({ generated: "generated/" });
   });
 
-  it("is unmanaged when only one directory is declared", () => {
-    // PreTeXt warns and proceeds as if neither was given; matching that keeps
-    // the preview from rewriting URLs the stylesheets never emitted.
+  it("reads either directory on its own", () => {
+    expect(
+      readAssetDirectories(
+        `<publication><source><directories generated="gen"/></source></publication>`,
+      ),
+    ).toEqual({ generated: "gen/" });
+    expect(
+      readAssetDirectories(
+        `<publication><source><directories external="img"/></source></publication>`,
+      ),
+    ).toEqual({ external: "img/", generated: "generated/" });
+  });
+
+  it("prefers the docinfo's external directory to the publication's", () => {
     const dirs = readAssetDirectories(
-      `<publication><source><directories external="img"/></source></publication>`,
+      `<publication><source><directories external="old" generated="gen"/></source></publication>`,
+      "media",
     );
-    expect(dirs.managed).toBe(false);
+    expect(dirs).toEqual({ external: "media/", generated: "gen/" });
   });
 
   it("rejects an absolute path, as publisher-variables.xsl does", () => {
     const dirs = readAssetDirectories(
-      `<publication><source><directories external="/abs" generated="gen"/></source></publication>`,
+      `<publication><source><directories external="/abs" generated="/gen"/></source></publication>`,
     );
     expect(dirs.external).toBeUndefined();
-    expect(dirs.managed).toBe(false);
+    expect(dirs.generated).toBe("generated/");
+  });
+});
+
+describe("docinfoExternalDirectory", () => {
+  it("reads the docinfo of a whole document", () => {
+    const tree = fromXml(
+      `<pretext><docinfo><directories external="media" data="d"/></docinfo>` +
+        `<article/></pretext>`,
+    );
+    expect(docinfoExternalDirectory(tree)).toBe("media");
+  });
+
+  it("reads a docinfo on its own, parsed or as a string", () => {
+    const docinfo = `<docinfo><directories external="pics"/></docinfo>`;
+    expect(docinfoExternalDirectory(docinfo)).toBe("pics");
+    expect(docinfoExternalDirectory(fromXml(docinfo))).toBe("pics");
+  });
+
+  it("declares nothing when the docinfo does not say", () => {
+    expect(
+      docinfoExternalDirectory(fromXml(`<pretext><article/></pretext>`)),
+    ).toBeUndefined();
+    expect(
+      docinfoExternalDirectory(`<docinfo><directories data="d"/></docinfo>`),
+    ).toBeUndefined();
+    expect(docinfoExternalDirectory("<docinfo>")).toBeUndefined();
   });
 });
 

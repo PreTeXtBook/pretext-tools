@@ -10,11 +10,13 @@ CLI uses via lxml), so the HTML matches a real `pretext build`. It is a fork of
 with a larger WASM stack so whole-book documents render without overflowing
 (see [Forking libxslt-wasm](#forking-libxslt-wasm)).
 
-The output is a single, standalone HTML page: PreTeXt's _portable HTML_ mode
-is forced on, so theme css/js and MathJax load from public CDNs and the whole
-document is rendered as one page. This is what powers the "Instant Preview"
-in the PreTeXt-tools VS Code extension, and it is published so other tools
-(e.g. pretext.plus) can render previews the same way.
+The output is a single, standalone HTML page. The theme css/js and MathJax
+load from public CDNs, the whole document is rendered as one page, and images
+are linked rather than embedded, so the host serves them from wherever it
+keeps them (see [Images and other assets](#images-and-other-assets)). This is
+what powers the "Live Preview" in the PreTeXt-tools VS Code extension, and it
+is published so other tools (e.g. pretext.plus) can render previews the same
+way.
 
 ## Usage
 
@@ -66,9 +68,19 @@ const { html } = await renderHtml({
   element has no HTML id of its own, and `findSourceMapEntry(entries, line)`
   picks the element nearest a cursor line. (This powers the two-way sync in
   the VS Code Instant Preview; the same map works for any embedder.)
-- The user's publication file is respected, except
-  `<html><platform portable="yes"/></html>` is always forced — that is what
-  makes single-page in-memory output possible.
+- The user's publication file is respected, except for four settings that
+  single-page in-memory output needs, which are always forced (see
+  `src/publication.ts`):
+  - `<html><resources host="cdn"/>`: css/js, theme and icon font from the CDN.
+  - `<common><chunking level="0"/>`: the whole document on one page.
+  - `<html><cross-references knowled="never"/>`: cross-references are links,
+    because the knowl files they would open are never written.
+  - `<html><platform portable="no"/>`: PreTeXt's _portable HTML_ mode is off,
+    even for a project that builds portable. Portable mode would do the first
+    three as well, and earlier releases relied on it, but it also inlines
+    every latex-image and PreFigure SVG into the page. Without it those are
+    linked like every other image. The search index stays embedded in the
+    page, as portable mode had it.
 - `cssTheme: "denver"` supplies the PreTeXt HTML theme for projects that do not
   choose one, by adding `<html><css theme="…"/></html>` to the publication file
   used for the build (including the minimal one synthesized when you pass no
@@ -76,9 +88,9 @@ const { html } = await renderHtml({
   that already names a theme — `@theme`, or the deprecated `@style`/`@shell` —
   keeps it, so the preview goes on matching what `pretext build` produces. The
   themes the bundled stylesheets know are `default-modern` (PreTeXt's own
-  default), `denver`, `tacoma`, `salem`, `greeley` and `boulder`; a portable
-  build loads `theme-<name>.min.css` from the CDN, so an unrecognised name
-  gives an unstyled page. Not to be confused with `theme` below, which is the
+  default), `denver`, `tacoma`, `salem`, `greeley` and `boulder`; the preview
+  loads `theme-<name>.min.css` from the CDN, so an unrecognised name gives an
+  unstyled page. Not to be confused with `theme` below, which is the
   light/dark mode _within_ whichever css theme is in force.
 - The compiled stylesheet is cached per `xslDir` (~1s to compile, then
   ~100ms–1s per render depending on document size).
@@ -90,6 +102,65 @@ const { html } = await renderHtml({
   every re-render. Other `<details>` (footnotes, image descriptions) are left
   alone. Pass `openKnowls: false` (`--no-open-knowls` on the CLI) for the
   collapsed reading experience of a real `pretext build`.
+
+### Images and other assets
+
+Every image the page shows is an ordinary link under one of two fixed
+prefixes, exactly as in a real build. Author-supplied files are under
+`external/`, and everything `pretext generate` makes (latex-image, PreFigure,
+sageplot, asymptote, …) is under `generated/`:
+
+```html
+<img src="external/kitten.png" />
+<img src="generated/latex-image/diagram.svg" />
+```
+
+A real build copies both directories next to its pages. A preview has no such
+directory, so the host maps each URL to wherever it keeps the file:
+
+```js
+import { renderHtml } from "@pretextbook/pretext-html";
+import {
+  rewriteAssetUrls,
+  missingAssetPlaceholder,
+} from "@pretextbook/pretext-html/assets"; // dependency-free subpath
+
+const { html, assetDirs } = await renderHtml({ sourcePath: "source/main.ptx" });
+
+const page = rewriteAssetUrls(html, (kind, relPath) => {
+  // kind is "external" or "generated"; relPath is e.g. "latex-image/diagram.svg"
+  const url = lookUp(kind, relPath); // a webview URI, a blob URL, a hosted URL…
+  return url ?? missingAssetPlaceholder(kind, relPath);
+});
+```
+
+- `assetDirs` gives the absolute directories behind the two prefixes, resolved
+  the way PreTeXt resolves them. `external` comes from the document's
+  `<docinfo><directories external="…"/>`, falling back to the publication
+  file's deprecated `source/directories/@external`; it is absent when neither
+  declares one, which PreTeXt reads as "no external assets". `generated` comes
+  from the publication file's `source/directories/@generated` and defaults to
+  `generated/` beside the main source file.
+- A host without a filesystem (a browser editor) ignores `assetDirs` and
+  answers from its own store of uploaded or generated files. Nothing reads
+  image files during the render itself.
+- Give a file a new URL when it changes, for instance with a version or
+  modification-time query. A page never fetches an `<img>` again while its
+  `src` is unchanged, and a live patch leaves an unchanged element alone, so a
+  regenerated image behind the same URL keeps showing the old picture. With a
+  new URL, a live patch updates just that `src` in place and only that image
+  reloads. Re-deliver the page when the files change (the VS Code preview
+  watches the asset directories), not only when the source does.
+- `missingAssetPlaceholder` returns a data-URI SVG that names the missing file
+  and says what to do (`pretext generate latex-image`, or "check @source"),
+  which reads better than the browser's broken-image glyph. Return `undefined`
+  from the resolver instead to leave a URL as it is.
+- Only `src` attributes are rewritten. An annotated PreFigure diagram (one with
+  `<annotations>`) is drawn by a script from `data-src`/`data-cml` attributes,
+  which are left alone.
+- The CLI applies this itself when it writes a file (`--output`), linking each
+  asset relative to the output file. HTML written to stdout keeps PreTeXt's
+  own URLs.
 
 ### Previewing one division of a large document
 
@@ -483,7 +554,7 @@ through `stringParams` to link no Runestone code at all.
 | ---------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
 | No multi-file output (`exsl:document`)         | Compiled with `FILESYSTEM=0`                         | Rebuild with `FILESYSTEM=1` (files land in MEMFS)                           |
 | JSPI required (flagged on Node)                | Loader fetches resources mid-transform via JSPI      | Feature-detect with `isJspiAvailable()`; engines without it need a fallback |
-| No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT           | Out of scope; run `pretext generate` and the preview will pick the files up |
+| No generated images (latex-image, sageplot, …) | Produced by the Python toolchain, not XSLT           | Out of scope; run `pretext generate` and the page links the files it made   |
 | `xi:include` with `xpointer` unsupported       | JS resolver stands in for libxml2's                  | Rebuild adding `xmlXIncludeProcessFlags` to the JSPI export list            |
 | Renders run one at a time, never in parallel   | Shared libxslt state; the transform suspends mid-run | Inherent; `renderHtml` queues concurrent calls for you                      |
 
@@ -510,9 +581,9 @@ later call for the lifetime of the process. Once that has happened, only a
 restart (or a page reload) recovers; `renderHtml` detects the state and says so
 rather than repeating the underlying assertion.
 
-Missing generated assets degrade gracefully: the transform serves a stub for
-missing files, PreTeXt emits its usual `PTX:ERROR` advice, and the preview
-renders without the image.
+Missing generated assets cost the render nothing: the page links every image
+whether or not the file exists, and deciding what to show for a missing one is
+the host's (see [Images and other assets](#images-and-other-assets)).
 
 ## Forking libxslt-wasm
 

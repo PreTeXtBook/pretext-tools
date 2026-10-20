@@ -30,7 +30,8 @@ import {
   type PrintoutInfo,
 } from "./printout.js";
 import {
-  forcePortablePublication,
+  docinfoExternalDirectory,
+  forcePreviewPublication,
   readAssetDirectories,
   readPublicationLevels,
 } from "./publication.js";
@@ -150,8 +151,10 @@ export interface RenderOptions extends SourceOptions {
    */
   subtree?: SubtreeOptions;
   /**
-   * Path to a publication file. Its settings are respected except
-   * `<html><platform portable="yes"/></html>`, which the preview forces.
+   * Path to a publication file. Its settings are respected except the few a
+   * one-page, in-memory build cannot honour, which the preview forces: css/js
+   * from the CDN, chunk level 0, cross-references as links rather than knowls,
+   * and portable mode off. See publication.ts.
    */
   publicationPath?: string;
   /**
@@ -164,7 +167,7 @@ export interface RenderOptions extends SourceOptions {
    * ignored, and with no publication file at all it themes the synthesized
    * minimal one.
    *
-   * Portable builds load `theme-<name>.min.css` from the CDN, so an
+   * Previews load `theme-<name>.min.css` from the CDN, so an
    * unrecognised name renders an unstyled page. The themes the vendored
    * stylesheets know are default-modern (PreTeXt's own default), denver,
    * tacoma, salem, greeley and boulder; `custom` additionally needs a locally
@@ -433,15 +436,20 @@ export interface RenderResult {
   rootPrintout?: string;
   /**
    * Absolute directories that the `external/` and `generated/` URL prefixes in
-   * `html` refer to, resolved from the publication file against the main
-   * source file's directory. Feed these to `rewriteAssetUrls` to point the
-   * page at assets the host can actually serve (see assets.ts).
+   * `html` refer to, resolved against the main source file's directory the way
+   * PreTeXt resolves them (see readAssetDirectories). Feed these to
+   * `rewriteAssetUrls` to point the page at assets the host can actually
+   * serve (see assets.ts). That covers latex-image and PreFigure diagrams
+   * too, which the page links like any other image.
    *
-   * Absent for legacy projects that declare neither directory: those emit bare
-   * or `images/`-prefixed URLs that cannot be identified reliably.
+   * `generated` is always known, since an undeclared one defaults to
+   * `generated/` beside the source. `external` is absent when neither the
+   * docinfo nor the publication file declares it: the project then has no
+   * external assets, and any `external/` URL in the page is a dangling
+   * reference.
    */
-  assetDirs?: {
-    external: string;
+  assetDirs: {
+    external?: string;
     generated: string;
   };
 }
@@ -482,8 +490,10 @@ export function xpathStringLiteral(value: string): string {
 
 /**
  * Work around the MathJax loader in pretext-html.xsl prefixing `./` to what
- * is an absolute CDN URL under portable builds (pretext-html.xsl, template
- * name="mathjax", as of 2026-07). Harmless once fixed upstream.
+ * is an absolute CDN URL under CDN builds (pretext-html.xsl, template
+ * name="mathjax", as of 2026-07). Fixed upstream since (the prefix is now
+ * keyed on `$cdn-prefix`), so this matches nothing against the vendored
+ * stylesheets; kept for an `xslDir` pointing at older ones.
  */
 function fixMathJaxImport(html: string): string {
   return html.replace(
@@ -493,7 +503,8 @@ function fixMathJaxImport(html: string): string {
 }
 
 /**
- * Where PreTeXt's own static css/js live when a build is portable. Mirrors the
+ * Where PreTeXt's own static css/js live when a build takes its resources
+ * from the CDN, as every preview does. Mirrors the
  * `$cdn-prefix` variable in pretext-html.xsl, which builds this same URL from
  * the `cli.version` parameter — hence the shared constant, so the fixup below
  * cannot point at a different release from the rest of the page.
@@ -530,7 +541,7 @@ const DEFAULT_STRING_PARAMS: Record<string, string> = {
 /**
  * Point the slideshow's `_static/` stylesheet at the CDN.
  *
- * Every other reveal.js resource honours the portable build's `$cdn-prefix`,
+ * Every other reveal.js resource honours the CDN build's `$cdn-prefix`,
  * but pretext-revealjs.xsl links `pretext-reveal.css` — the stylesheet that
  * does all of PreTeXt's slide styling — at a bare relative `_static/…` path
  * (as of 2026-07). In a real build that file has been copied next to the page;
@@ -1017,26 +1028,12 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     const target = options.target ?? detectRenderTarget(mergedContent);
     const xslt = await getStylesheet(options.xslDir ?? defaultXslDir(), target);
 
-    const publicationXml = forcePortablePublication(publicationSource, {
+    const publicationXml = forcePreviewPublication(publicationSource, {
       cssTheme: options.cssTheme,
       revealTheme: options.revealTheme,
       target,
     });
     setVirtualFile(publicationUrl, publicationXml);
-
-    // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to
-    // real directories, so a host can serve what the page asks for. Anchored
-    // at the main file's directory, matching the document URL above.
-    const declaredDirs = readAssetDirectories(publicationXml);
-    const mainDir = path.dirname(path.resolve(projectDir, relBase));
-    const assetDirs =
-      declaredDirs.external !== undefined &&
-      declaredDirs.generated !== undefined
-        ? {
-            external: path.resolve(mainDir, declaredDirs.external),
-            generated: path.resolve(mainDir, declaredDirs.generated),
-          }
-        : undefined;
 
     // The PreTeXt stylesheets silently produce a near-empty page (just a
     // doctype) for anything that is not a whole document. In fragment mode,
@@ -1056,6 +1053,11 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     let mapRootFile = sourcePath;
     // The document as assembled, measured before any pruning.
     let size: DocumentSize | undefined;
+    // The `@external` the built document's docinfo declares, which is where
+    // PreTeXt now looks for the external directory first. Read from the
+    // assembled tree, except for a wrapped fragment, whose docinfo is the one
+    // it was given (below).
+    let docinfoExternal: string | undefined;
 
     /**
      * Prune `tree` to a skeleton around the division to preview — the one
@@ -1141,6 +1143,7 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         if (placement) {
           placed = true;
           mergedTree = placement.tree;
+          docinfoExternal = docinfoExternalDirectory(mergedTree);
           files = placement.files;
           bytes = placement.bytes;
           // The placed document is a complete <pretext> document, so the id
@@ -1174,17 +1177,34 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
           target,
           docinfo,
         );
+        docinfoExternal =
+          docinfo === undefined ? undefined : docinfoExternalDirectory(docinfo);
         // Mirror the wrapper's ids: <pretext> is root-1; the division element
         // is its first element child — second when a docinfo precedes it —
         // and the fragment root sits after the wrapper's empty <title/>.
         const wrapperId = docinfo?.trim() ? "root-1-2" : "root-1-1";
         mapRoot = { parentId: wrapperId, position: 2 };
       }
-    } else if (options.subtree) {
-      // A complete document, of which one division is wanted.
-      pruneToSubtree(mergedTree);
+    } else {
+      docinfoExternal = docinfoExternalDirectory(mergedTree);
+      if (options.subtree) {
+        // A complete document, of which one division is wanted.
+        pruneToSubtree(mergedTree);
+      }
     }
     size ??= { bytes, elements: countElements(mergedTree), files };
+
+    // Map PreTeXt's fixed `external/` and `generated/` URL prefixes back to
+    // real directories, so a host can serve what the page asks for. Anchored
+    // at the main file's directory, matching the document URL below.
+    const declaredDirs = readAssetDirectories(publicationXml, docinfoExternal);
+    const mainDir = path.dirname(path.resolve(projectDir, relBase));
+    const assetDirs: RenderResult["assetDirs"] = {
+      generated: path.resolve(mainDir, declaredDirs.generated),
+      ...(declaredDirs.external !== undefined
+        ? { external: path.resolve(mainDir, declaredDirs.external) }
+        : {}),
+    };
 
     const sourceMap = options.sourceMap
       ? computeSourceMap(mergedTree, mapRootFile, mapRoot)
@@ -1204,7 +1224,7 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     if (subtree) {
       // Emit only the previewed division, out of the whole assembled document.
       // "subtree-level" raises the chunk level to that division's own, which
-      // portable html otherwise pins to 0 — see SUBTREE_CHUNK_LEVEL_OVERRIDE
+      // the preview publication otherwise pins to 0 — see SUBTREE_CHUNK_LEVEL_OVERRIDE
       // in scripts/refresh-xsl.mjs. One level past it makes the division a
       // summary page: its own content and links to the divisions inside it
       // (see SUMMARY_PAGE_OVERRIDE there), which is what a collapsed skeleton
@@ -1280,9 +1300,9 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         target,
         printouts,
         size,
+        assetDirs,
         ...(subtree ? { subtree } : {}),
         ...(sourceMap ? { sourceMap } : {}),
-        ...(assetDirs ? { assetDirs } : {}),
         ...(rootPrintout ? { rootPrintout } : {}),
       };
     } catch (error) {

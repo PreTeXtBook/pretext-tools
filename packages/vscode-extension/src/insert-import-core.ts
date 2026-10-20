@@ -262,7 +262,8 @@ export function xiNamespaceInsertion(
  *
  * Read here with a regex rather than through `readAssetDirectories` in
  * `@pretextbook/pretext-html`, which is the authority on the full rules
- * (`generated` too, and the managed-directories pairing). Importing it would
+ * (`generated` too, and the docinfo's `directories/@external`, which PreTeXt
+ * now prefers to this deprecated publication-file entry). Importing it would
  * pull libxslt-wasm into the extension-host bundle, which is exactly what the
  * forked preview worker exists to avoid — and one attribute does not justify
  * that. A leading "/" is a publication-file error PreTeXt ignores, so it is

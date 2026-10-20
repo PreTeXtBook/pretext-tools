@@ -12,7 +12,12 @@ import {
   renderHtml,
   xpathStringLiteral,
 } from "./renderer.js";
-import { forcePortablePublication } from "./publication.js";
+import {
+  forcePortablePublication,
+  forcePreviewPublication,
+} from "./publication.js";
+import { fromXml } from "xast-util-from-xml";
+import type { Element, Root } from "xast";
 import { SourceCache } from "./source-cache.js";
 import {
   HTML_STATIC_VERSION,
@@ -121,38 +126,71 @@ describe("xpathStringLiteral", () => {
   });
 });
 
-describe("forcePortablePublication", () => {
-  it("synthesizes a minimal publication file", () => {
-    const xml = forcePortablePublication();
-    expect(xml).toContain("<publication>");
-    expect(xml).toContain('portable="yes"');
-  });
-  it("forces portable on an existing publication file", () => {
-    const xml = forcePortablePublication(
-      `<publication><html><platform portable="no" host="web"/></html></publication>`,
+/** The value of `attribute` on the publication-file element at `location`. */
+function setting(xml: string, location: string[], attribute: string) {
+  let node: Root | Element | undefined = fromXml(xml);
+  for (const name of ["publication", ...location]) {
+    const children: ReadonlyArray<Root["children"][number]> =
+      node?.children ?? [];
+    node = children.find(
+      (child): child is Element =>
+        child.type === "element" && child.name === name,
     );
-    expect(xml).toContain('portable="yes"');
-    expect(xml).toContain('host="web"');
+  }
+  return node?.type === "element" ? node.attributes[attribute] : undefined;
+}
+
+describe("forcePreviewPublication", () => {
+  /** Every setting the preview forces, whatever the project says. */
+  function expectPreviewSettings(xml: string) {
+    expect(setting(xml, ["html", "resources"], "host")).toBe("cdn");
+    expect(setting(xml, ["html", "platform"], "portable")).toBe("no");
+    expect(setting(xml, ["html", "cross-references"], "knowled")).toBe("never");
+    expect(setting(xml, ["common", "chunking"], "level")).toBe("0");
+  }
+
+  it("synthesizes a minimal publication file", () => {
+    const xml = forcePreviewPublication();
+    expect(xml).toContain("<publication>");
+    expectPreviewSettings(xml);
   });
-  it("adds html/platform elements when missing", () => {
-    const xml = forcePortablePublication(
+
+  it("forces the preview settings over a project's own choices", () => {
+    const xml = forcePreviewPublication(
+      `<publication>` +
+        `<common><chunking level="2"/></common>` +
+        `<html><platform portable="yes" host="web"/>` +
+        `<resources host="local"/>` +
+        `<cross-references knowled="maximum"/></html>` +
+        `</publication>`,
+    );
+    expectPreviewSettings(xml);
+    // Settings the preview has no quarrel with are kept.
+    expect(setting(xml, ["html", "platform"], "host")).toBe("web");
+  });
+
+  it("adds the elements it needs when they are missing", () => {
+    const xml = forcePreviewPublication(
       `<publication><source><directories external="ext" generated="gen"/></source></publication>`,
     );
-    expect(xml).toContain('portable="yes"');
+    expectPreviewSettings(xml);
     expect(xml).toContain('external="ext"');
+  });
+
+  it("keeps the old name as an alias", () => {
+    expect(forcePortablePublication).toBe(forcePreviewPublication);
   });
 
   describe("css theme", () => {
     it("declares the theme in a synthesized publication file", () => {
-      const xml = forcePortablePublication(undefined, { cssTheme: "denver" });
+      const xml = forcePreviewPublication(undefined, { cssTheme: "denver" });
       expect(xml).toContain('<css theme="denver"');
-      expect(xml).toContain('portable="yes"');
       // The synthesized file's asset directories must survive the rewrite.
       expect(xml).toContain('external="../assets"');
     });
 
     it("declares the theme when the publication file has no <css>", () => {
-      const xml = forcePortablePublication(
+      const xml = forcePreviewPublication(
         `<publication><html><platform host="web"/></html></publication>`,
         { cssTheme: "tacoma" },
       );
@@ -161,7 +199,7 @@ describe("forcePortablePublication", () => {
     });
 
     it("adds the theme to an existing <css> that names none", () => {
-      const xml = forcePortablePublication(
+      const xml = forcePreviewPublication(
         `<publication><html><css colors="blue_red"/></html></publication>`,
         { cssTheme: "salem" },
       );
@@ -172,7 +210,7 @@ describe("forcePortablePublication", () => {
     });
 
     it("leaves a publication file that already names a theme alone", () => {
-      const xml = forcePortablePublication(
+      const xml = forcePreviewPublication(
         `<publication><html><css theme="denver"/></html></publication>`,
         { cssTheme: "tacoma" },
       );
@@ -183,7 +221,7 @@ describe("forcePortablePublication", () => {
     it.each(["style", "shell"])(
       "leaves a legacy @%s style alone",
       (attribute) => {
-        const xml = forcePortablePublication(
+        const xml = forcePreviewPublication(
           `<publication><html><css ${attribute}="crc"/></html></publication>`,
           { cssTheme: "tacoma" },
         );
@@ -193,7 +231,7 @@ describe("forcePortablePublication", () => {
     );
 
     it("ignores a blank theme", () => {
-      const xml = forcePortablePublication(
+      const xml = forcePreviewPublication(
         `<publication><html/></publication>`,
         { cssTheme: "   " },
       );
@@ -201,25 +239,26 @@ describe("forcePortablePublication", () => {
     });
 
     it("leaves the publication file untouched when no theme is given", () => {
-      expect(forcePortablePublication()).toBe(forcePortablePublication());
-      expect(forcePortablePublication()).not.toContain("<css");
+      expect(forcePreviewPublication()).toBe(forcePreviewPublication());
+      expect(forcePreviewPublication()).not.toContain("<css");
     });
   });
 });
 
-describe("forcePortablePublication reveal.js resources", () => {
+describe("forcePreviewPublication reveal.js resources", () => {
   const slides = { target: "slides" } as const;
 
   it("declares the CDN host for a synthesized publication file", () => {
-    const xml = forcePortablePublication(undefined, slides);
-    expect(xml).toContain('host="cdn"');
-    expect(xml).toContain('portable="yes"');
+    const xml = forcePreviewPublication(undefined, slides);
+    expect(setting(xml, ["revealjs", "resources"], "host")).toBe("cdn");
+    // PreTeXt's own css/js on the slides come from the CDN too.
+    expect(setting(xml, ["html", "resources"], "host")).toBe("cdn");
   });
 
   it.each(["local", "embedded"])(
     "overrides an unusable @host of %s",
     (host) => {
-      const xml = forcePortablePublication(
+      const xml = forcePreviewPublication(
         `<publication><revealjs><resources host="${host}"/></revealjs></publication>`,
         slides,
       );
@@ -229,7 +268,7 @@ describe("forcePortablePublication reveal.js resources", () => {
   );
 
   it("forces online mathematics, which needs no prebuilt SVG", () => {
-    const xml = forcePortablePublication(
+    const xml = forcePreviewPublication(
       `<publication><revealjs><resources host="embedded" math="embedded"/></revealjs></publication>`,
       slides,
     );
@@ -238,7 +277,7 @@ describe("forcePortablePublication reveal.js resources", () => {
   });
 
   it("leaves the author's reveal theme and navigation alone", () => {
-    const xml = forcePortablePublication(
+    const xml = forcePreviewPublication(
       `<publication><revealjs><appearance theme="moon"/><navigation mode="linear"/></revealjs></publication>`,
       { ...slides, revealTheme: "black" },
     );
@@ -248,7 +287,7 @@ describe("forcePortablePublication reveal.js resources", () => {
   });
 
   it("supplies a fallback reveal theme when the project names none", () => {
-    const xml = forcePortablePublication(undefined, {
+    const xml = forcePreviewPublication(undefined, {
       ...slides,
       revealTheme: "black",
     });
@@ -256,7 +295,7 @@ describe("forcePortablePublication reveal.js resources", () => {
   });
 
   it("touches nothing reveal-related for an ordinary HTML render", () => {
-    expect(forcePortablePublication()).not.toContain("revealjs");
+    expect(forcePreviewPublication()).not.toContain("revealjs");
   });
 });
 
@@ -323,7 +362,7 @@ describe("renderHtml", () => {
       // math delegated to MathJax
       expect(html).toContain("a^2 + b^2 = c^2");
       expect(html).toContain("MathJax");
-      // portable mode: assets from CDN, page structure present
+      // css/js from the CDN, page structure present
       expect(html).toContain("cdn.jsdelivr.net");
       expect(html).toContain('id="ptx-content"');
       // MathJax import fixup applied: no `./https://` module specifiers
@@ -491,7 +530,7 @@ describe("renderHtml", () => {
       publicationPath: path.join(projectDir, "publication.xml"),
     });
     expect(html).toContain("Content from an included file");
-    // portable was forced despite the publication file saying "no"
+    // CDN resources despite the publication file not asking for them
     expect(html).toContain("cdn.jsdelivr.net");
     // no cssTheme given, so PreTeXt's own default applies
     expect(html).toContain("theme-default-modern.min.css");
@@ -505,7 +544,7 @@ describe("renderHtml", () => {
       publicationPath: path.join(projectDir, "publication.xml"),
       cssTheme: "tacoma",
     });
-    // Portable builds name the theme in the CDN stylesheet URL.
+    // CDN builds name the theme in the stylesheet URL.
     expect(html).toContain("theme-tacoma.min.css");
   });
 
@@ -782,21 +821,20 @@ describe("renderHtml", () => {
   /**
    * Builds a project whose generated SVG lives at the path a real PreTeXt
    * build would use, with the fragment nested one directory below the main
-   * file — the arrangement that used to anchor `document()` on the wrong
-   * directory and silently produce an empty <svg>.
+   * file — the arrangement in which asset paths must be anchored on the main
+   * file's directory, not the fragment's.
    */
-  function makeAssetProject(): string {
+  function makeAssetProject(
+    publication = `<publication><source>` +
+      `<directories external="../assets" generated="../generated-assets"/>` +
+      `</source></publication>\n`,
+  ): string {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-asset-"));
     fs.mkdirSync(path.join(dir, "source", "chapters"), { recursive: true });
     fs.mkdirSync(path.join(dir, "generated-assets", "latex-image"), {
       recursive: true,
     });
-    fs.writeFileSync(
-      path.join(dir, "publication.xml"),
-      `<publication><source>` +
-        `<directories external="../assets" generated="../generated-assets"/>` +
-        `</source></publication>\n`,
-    );
+    fs.writeFileSync(path.join(dir, "publication.xml"), publication);
     fs.writeFileSync(
       path.join(dir, "source", "main.ptx"),
       `<pretext><article xml:id="a"><title>A</title></article></pretext>\n`,
@@ -816,20 +854,41 @@ describe("renderHtml", () => {
     return dir;
   }
 
-  it("inlines a generated SVG for a fragment below the main source dir", async () => {
+  function renderAssetFragment(dir: string) {
+    return renderHtml({
+      sourcePath: path.join(dir, "source", "chapters", "sec.ptx"),
+      mainSourcePath: path.join(dir, "source", "main.ptx"),
+      projectDir: dir,
+      publicationPath: path.join(dir, "publication.xml"),
+      fragment: true,
+    });
+  }
+
+  it("links a generated SVG rather than inlining it", async () => {
     const dir = makeAssetProject();
     try {
-      const { html } = await renderHtml({
-        sourcePath: path.join(dir, "source", "chapters", "sec.ptx"),
-        mainSourcePath: path.join(dir, "source", "main.ptx"),
-        projectDir: dir,
-        publicationPath: path.join(dir, "publication.xml"),
-        fragment: true,
-      });
-      // The SVG's contents are copied into the page, not linked.
-      expect(html).toContain("rebeccapurple");
-      // An empty viewBox is the signature of a document() that read nothing.
-      expect(html).not.toContain(`viewBox="0 0  "`);
+      const { html } = await renderAssetFragment(dir);
+      // An ordinary image link under the fixed prefix rewriteAssetUrls keys
+      // on, which a host serves like any other asset...
+      expect(html).toContain(`src="generated/latex-image/img-one.svg"`);
+      // ...and not the file's contents copied into the page, which is what a
+      // portable build does.
+      expect(html).not.toContain("rebeccapurple");
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("links generated SVGs even for a project that builds portable", async () => {
+    const dir = makeAssetProject(
+      `<publication><source>` +
+        `<directories external="../assets" generated="../generated-assets"/>` +
+        `</source><html><platform portable="yes"/></html></publication>\n`,
+    );
+    try {
+      const { html } = await renderAssetFragment(dir);
+      expect(html).toContain(`src="generated/latex-image/img-one.svg"`);
+      expect(html).not.toContain("rebeccapurple");
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -838,28 +897,69 @@ describe("renderHtml", () => {
   it("reports the asset directories the page's URLs refer to", async () => {
     const dir = makeAssetProject();
     try {
-      const result = await renderHtml({
-        sourcePath: path.join(dir, "source", "chapters", "sec.ptx"),
-        mainSourcePath: path.join(dir, "source", "main.ptx"),
-        projectDir: dir,
-        publicationPath: path.join(dir, "publication.xml"),
-        fragment: true,
-      });
+      const result = await renderAssetFragment(dir);
       // Resolved against the *main* file's directory, so both land at the
       // project root rather than under source/chapters/.
       expect(result.assetDirs).toEqual({
         external: path.join(dir, "assets"),
         generated: path.join(dir, "generated-assets"),
       });
-      // The author-supplied image is still a link, and carries the fixed
-      // prefix rewriteAssetUrls keys on.
+      // The author-supplied image is a link too, under its own prefix.
       expect(result.html).toContain(`src="external/cat.png"`);
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   });
 
-  it("omits assetDirs for a publication with no declared directories", async () => {
+  it("takes the external directory from the docinfo first", async () => {
+    // The upstream scheme since 2026-07: external in the source's docinfo,
+    // generated in the publication file (whose @external is deprecated).
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-dinf-"));
+    try {
+      const sourcePath = path.join(dir, "source", "main.ptx");
+      fs.mkdirSync(path.dirname(sourcePath));
+      fs.writeFileSync(
+        sourcePath,
+        `<pretext><docinfo><directories external="../media"/></docinfo>` +
+          `<article xml:id="a"><title>A</title>` +
+          `<image source="cat.png"/></article></pretext>\n`,
+      );
+      fs.writeFileSync(
+        path.join(dir, "publication.xml"),
+        `<publication><source>` +
+          `<directories external="../ignored" generated="../gen"/>` +
+          `</source></publication>\n`,
+      );
+      const { assetDirs } = await renderHtml({
+        sourcePath,
+        projectDir: dir,
+        publicationPath: path.join(dir, "publication.xml"),
+      });
+      expect(assetDirs).toEqual({
+        external: path.join(dir, "media"),
+        generated: path.join(dir, "gen"),
+      });
+
+      // A fragment wrapped on its own has only the docinfo it is given.
+      const fragmentPath = path.join(dir, "source", "sec.ptx");
+      fs.writeFileSync(
+        fragmentPath,
+        `<section xml:id="s"><title>S</title><p>x</p></section>\n`,
+      );
+      const wrapped = await renderHtml({
+        sourcePath: fragmentPath,
+        mainSourcePath: sourcePath,
+        projectDir: dir,
+        fragment: true,
+        docinfo: `<docinfo><directories external="../pictures"/></docinfo>`,
+      });
+      expect(wrapped.assetDirs.external).toBe(path.join(dir, "pictures"));
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("defaults the generated directory when nothing declares one", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-nodir-"));
     try {
       const sourcePath = path.join(dir, "main.ptx");
@@ -873,10 +973,76 @@ describe("renderHtml", () => {
         projectDir: dir,
         publicationPath: path.join(dir, "publication.xml"),
       });
-      expect(result.assetDirs).toBeUndefined();
+      // "generated" beside the source, as PreTeXt defaults it; and no
+      // external directory, which PreTeXt reads as "no external assets".
+      expect(result.assetDirs).toEqual({
+        generated: path.join(dir, "generated"),
+      });
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  describe("what portable mode used to provide", () => {
+    it("keeps a whole book on one page, whatever its chunk level", async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-chunk-"));
+      try {
+        const sourcePath = path.join(dir, "main.ptx");
+        fs.writeFileSync(
+          sourcePath,
+          `<pretext><book xml:id="bk"><title>B</title>` +
+            `<chapter xml:id="ch-one"><title>One</title>` +
+            `<section xml:id="s-one"><title>S1</title><p>First body.</p></section></chapter>` +
+            `<chapter xml:id="ch-two"><title>Two</title>` +
+            `<section xml:id="s-two"><title>S2</title><p>Second body.</p></section></chapter>` +
+            `</book></pretext>\n`,
+        );
+        fs.writeFileSync(
+          path.join(dir, "publication.xml"),
+          `<publication><common><chunking level="2"/></common></publication>\n`,
+        );
+        const { html } = await renderHtml({
+          sourcePath,
+          publicationPath: path.join(dir, "publication.xml"),
+        });
+        // One page holding both chapters' sections, not a book's front page.
+        expect(html).toContain("First body.");
+        expect(html).toContain("Second body.");
+        expect(html.match(/<html\b/g)).toHaveLength(1);
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("renders cross-references as links, since no knowl files exist", async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-xref-"));
+      try {
+        const sourcePath = path.join(dir, "main.ptx");
+        // SIMPLE_ARTICLE's proof cross-references its theorem, which a real
+        // build would make a knowl, opened from a separate knowl file.
+        fs.writeFileSync(sourcePath, SIMPLE_ARTICLE);
+        const { html } = await renderHtml({ sourcePath });
+        const body = html.slice(html.indexOf('id="ptx-content"'));
+        // A link within the page, not a knowl pointing at a file.
+        expect(body).toContain('<a href="#thm-test" class="internal"');
+        expect(body).not.toContain("data-knowl=");
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it("embeds the search index in the page", async () => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-lunr-"));
+      try {
+        const sourcePath = path.join(dir, "main.ptx");
+        fs.writeFileSync(sourcePath, SIMPLE_ARTICLE);
+        const { html } = await renderHtml({ sourcePath });
+        // The index a real build writes to its own file, in a <script> here.
+        expect(html).toContain("ptx_lunr_docs");
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 
   it("renders a complete document unchanged in fragment mode", async () => {
