@@ -150,6 +150,17 @@ const SPECIAL_ENVIRONMENTS: EnvironmentSpec[] = [
       "Beamer-style slide (`slide` or `frame`). Converts to `<slide>`; title/subtitle come from " +
       "the two braced arguments (or `\\frametitle{}`/`\\framesubtitle{}` inside the body).",
   },
+  {
+    name: "block",
+    aliases: ["alertblock"],
+    requiresStatement: false,
+    titleArg: false,
+    kind: "block",
+    snippet: "{${1:Title}}\n\t$0\n",
+    documentation:
+      "Beamer-style block (`block` or `alertblock`). Converts to `<assemblage>`; the braced " +
+      "argument becomes its `<title>`. Not PreTeXt's Parsons `<block>`, which has no LaTeX spelling.",
+  },
   // Frontmatter / structural containers
   {
     name: "preface",
