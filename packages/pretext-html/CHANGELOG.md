@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.18.1
+
+### Patch Changes
+
+- eb26267: Sync PreTeXt schemas and XSL to pretext-cli v2.56.1 (core commit da19341).
+
 ## 0.18.0
 
 ### Minor Changes
