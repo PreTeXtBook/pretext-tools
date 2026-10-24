@@ -81,15 +81,15 @@ export function reindentForContext(
  * block inside a `<p>`; misfiling it the other way only leaves it alone.
  */
 const PARAGRAPH_CONTENT_TAGS: ReadonlySet<string> = new Set(
-  `abbr acro ad alert am angles articletitle attr bc c ca cd chord copyleft
-   copyright custom dataurl dblbrackets dblprime degree delete dl doubleflat
-   doublesharp eg ellipsis em email etal etc fillin flat fn foreign icon idx
-   ie init insert kbd langle latex ldblbracket line lq lsq m md mdash midpoint
-   minus n natural nb nbsp ndash obelus ol permille pf phonomark pilcrow
-   plusminus pm prime ps pubtitle q quantity rangle rdblbracket registered rq
-   rsq scaledeg section-mark servicemark sharp solidus sq stale swungdash tag
-   tage taxon term tex timeofday times timesignature today trademark ul url
-   var viz vs xelatex xetex xref`
+  `abbr acro ad alert am angles area articletitle attr bc c ca cd chord
+   copyleft copyright custom dataurl dblbrackets dblprime degree delete dl
+   doubleflat doublesharp eg ellipsis em email etal etc eval fillin flat fn
+   foreign icon idx ie init insert kbd langle latex ldblbracket line lq lsq m
+   md mdash midpoint minus n natural nb nbsp ndash obelus ol permille pf
+   phonomark pilcrow plusminus pm prime ps pubtitle q quantity rangle
+   rdblbracket registered rq rsq scaledeg section-mark servicemark sharp
+   solidus sq stale swungdash tag tage taxon term tex timeofday times
+   timesignature today trademark ul url var viz vs xelatex xetex xref`
     .trim()
     .split(/\s+/),
 );

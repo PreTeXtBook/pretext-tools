@@ -340,10 +340,11 @@ const DIVISION = group(
  * does not flag them; the converter consumes them for metadata/structure.
  *
  * `subjclass`, `email` and `keywords` convert to nothing visible on purpose —
- * they are document metadata the converter folds into `<docinfo>`.
+ * they are document metadata the converter folds into `<docinfo>`. `address`
+ * likewise: like `email`, it joins the record of the `\author` it follows.
  */
 const DOCUMENT = [
-  ...group(["email", "keywords"], "m"),
+  ...group(["address", "email", "keywords"], "m"),
   ...group(["subjclass"], "o m"),
   ...group(["title", "author", "date", "input", "include"], "m"),
   ...group(["documentclass", "usepackage"], "o m"),

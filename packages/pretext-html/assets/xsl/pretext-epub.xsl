@@ -157,6 +157,9 @@
     </xsl:choose>
 </xsl:variable>
 
+<!-- HTML sets based on theme. EPUB should always use 600 -->
+<xsl:variable name="design-width" select="'600'" />
+
 <!-- If there are footnotes, we'll build and package a "endnotes.xhtml" file -->
 <xsl:variable name="b-has-endnotes" select="boolean($document-root//fn|$document-root//aside|$document-root//biographical|$document-root//historical)"/>
 
@@ -1301,6 +1304,13 @@
                         </xsl:call-template>
                     </summary>
                     <div>
+                        <!-- 80% of the available width, however narrow    -->
+                        <!-- the image; in a "sidebyside" panel, the panel -->
+                        <xsl:if test="not(&SBS-LAYOUT-FILTER;)">
+                            <xsl:attribute name="style">
+                                <xsl:text>width: 80%; margin-left: 10%;</xsl:text>
+                            </xsl:attribute>
+                        </xsl:if>
                         <xsl:apply-templates select="description"/>
                     </div>
                 </details>

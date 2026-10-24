@@ -2300,7 +2300,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 <!-- hN, type name, serial number, title (if exists) -->
-<!-- exercise (divisional, xref-content)      -->
+<!-- exercise (divisional, xref-content)             -->
+<!-- DISCUSSION-LIKE (when born)                     -->
 <xsl:template match="*" mode="heading-divisional-exercise-typed">
     <xsl:param name="heading-level"/>
     <xsl:apply-templates select="." mode="heading-generic">
@@ -4634,10 +4635,13 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text> discussion-like</xsl:text>
 </xsl:template>
 
-<!-- When born use this heading -->
+<!-- When born use this heading: the position alone, among the -->
+<!-- appendages of the parent, as in the LaTeX conversion, and -->
+<!-- as a SOLUTION-LIKE is headed.  A cross-reference, and the -->
+<!-- knowl it opens, carry the full number.                    -->
 <xsl:template match="&DISCUSSION-LIKE;" mode="heading-birth">
     <xsl:param name="heading-level"/>
-    <xsl:apply-templates select="." mode="heading-full">
+    <xsl:apply-templates select="." mode="heading-divisional-exercise-typed">
         <xsl:with-param name="heading-level" select="$heading-level"/>
     </xsl:apply-templates>
 </xsl:template>
@@ -6412,6 +6416,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:text>%;</xsl:text>
         </xsl:attribute>
         <xsl:apply-templates select="." mode="image-inclusion"/>
+        <!-- possibly give a long description -->
+        <xsl:apply-templates select="." mode="description">
+            <xsl:with-param name="layout" select="$layout"/>
+        </xsl:apply-templates>
     </div>
 </xsl:template>
 
@@ -6429,6 +6437,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <xsl:template match="image[&SBS-LAYOUT-FILTER;]">
     <div class="image-box">
         <xsl:apply-templates select="." mode="image-inclusion" />
+        <!-- possibly give a long description -->
+        <xsl:apply-templates select="." mode="description"/>
     </div>
 </xsl:template>
 
@@ -6480,8 +6490,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:apply-templates select="." mode="archive">
                 <xsl:with-param name="base-pathname" select="$location"/>
             </xsl:apply-templates>
-            <!-- possibly give a long description -->
-            <xsl:apply-templates select="." mode="description"/>
         </xsl:when>
         <!-- with extension, just include it -->
         <xsl:otherwise>
@@ -6530,8 +6538,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                     </xsl:call-template>
                 </xsl:with-param>
             </xsl:apply-templates>
-            <!-- possibly give a long description -->
-            <xsl:apply-templates select="." mode="description"/>
         </xsl:otherwise>
     </xsl:choose>
 </xsl:template>
@@ -6599,8 +6605,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="." mode="archive">
         <xsl:with-param name="base-pathname" select="$base-pathname" />
     </xsl:apply-templates>
-    <!-- possibly give a long description -->
-    <xsl:apply-templates select="." mode="description"/>
 </xsl:template>
 
 <xsl:template match="image[sageplot]" mode="image-inclusion">
@@ -6634,8 +6638,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:apply-templates select="." mode="archive">
         <xsl:with-param name="base-pathname" select="$base-pathname" />
     </xsl:apply-templates>
-    <!-- possibly give a long description -->
-    <xsl:apply-templates select="." mode="description"/>
 </xsl:template>
 
 <!-- Asymptote graphics language -->
@@ -6737,8 +6739,6 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <a href="{$image-html-url}">Link to full-sized image</a>
       </div>
     </xsl:if>
-    <!-- possibly give a long description -->
-    <xsl:apply-templates select="." mode="description"/>
 </xsl:template>
 
 <!-- The infrastructure for an SVG or PNG image      -->
@@ -6900,7 +6900,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 </xsl:template>
 
 
+<!-- The "layout" parameter is the node-set of layout parameters an -->
+<!-- "image" template has already computed, passed along so that it -->
+<!-- is computed only once.  An "interactive" has no need of it.    -->
 <xsl:template match="image|interactive[@platform|@desmos|@calcplot3d|@circuitjs|@iframe]" mode="description">
+    <xsl:param name="layout" select="/.."/>
+
     <xsl:if test="description">
         <!-- @aria-live means screenreaders will make announcements -->
         <details class="image-description" aria-live="polite">
@@ -6913,11 +6918,66 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <xsl:attribute name="id">
                     <xsl:apply-templates select="." mode="describedby-id"/>
                 </xsl:attribute>
+                <xsl:apply-templates select="." mode="description-style">
+                    <xsl:with-param name="layout" select="$layout"/>
+                </xsl:apply-templates>
                 <xsl:apply-templates select="description"/>
             </div>
         </details>
     </xsl:if>
 </xsl:template>
+
+<!-- A revealed description spans 80% of the width available where   -->
+<!-- its image sits, however narrow the image.  An image's div is    -->
+<!-- only as wide as the image, and percentages for the description  -->
+<!-- are relative to that width, so we compute them here from the    -->
+<!-- image's layout (all percentages of the available width), which  -->
+<!-- arrives as the "layout" parameter.  The description is centered -->
+<!-- on the image, but kept within the available width, so an image  -->
+<!-- placed off-center by @margins does not push its description out -->
+<!-- of the text.                                                    -->
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;)]" mode="description-style">
+    <xsl:param name="layout" select="/.."/>
+
+    <xsl:variable name="width" select="number($layout/width)"/>
+    <xsl:variable name="left" select="number($layout/left-margin)"/>
+    <!-- left edge of the description, centered on the image -->
+    <xsl:variable name="centered" select="$left + $width div 2 - 40"/>
+    <!-- clamped to the range 0..20, so it ends within the available width -->
+    <xsl:variable name="start">
+        <xsl:choose>
+            <xsl:when test="$centered &lt; 0">
+                <xsl:value-of select="0"/>
+            </xsl:when>
+            <xsl:when test="$centered &gt; 20">
+                <xsl:value-of select="20"/>
+            </xsl:when>
+            <xsl:otherwise>
+                <xsl:value-of select="$centered"/>
+            </xsl:otherwise>
+        </xsl:choose>
+    </xsl:variable>
+    <xsl:if test="$width &gt; 0">
+        <xsl:attribute name="style">
+            <xsl:text>width: </xsl:text>
+            <xsl:value-of select="format-number(8000 div $width, '0.##')"/>
+            <xsl:text>%; margin-left: </xsl:text>
+            <xsl:value-of select="format-number(($start - $left) * 100 div $width, '0.##')"/>
+            <xsl:text>%;</xsl:text>
+        </xsl:attribute>
+    </xsl:if>
+</xsl:template>
+
+<!-- An interactive is centered in a container that spans the -->
+<!-- available width, so its description is simply centered   -->
+<xsl:template match="interactive[not(&SBS-LAYOUT-FILTER;)]" mode="description-style">
+    <xsl:attribute name="style">
+        <xsl:text>width: 80%; margin-left: 10%;</xsl:text>
+    </xsl:attribute>
+</xsl:template>
+
+<!-- In a panel of a "sidebyside" a description fills the panel -->
+<xsl:template match="image|interactive" mode="description-style"/>
 
 <!-- Utility template so "aria-describedby" values are consistent -->
 <xsl:template match="image|interactive[@platform|@desmos|@calcplot3d|@circuitjs|@iframe]" mode="describedby-id">
@@ -7388,9 +7448,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <!-- we compute pixels in the parameter value, which become   -->
                 <!-- YT-specific attributes, so we can't use general template -->
                 <!-- providing standard attributes                            -->
+                <xsl:variable name="local-design-width">
+                    <xsl:apply-templates select="." mode="get-design-width"/>
+                </xsl:variable>
                 <xsl:apply-templates select="." mode="runestone-youtube-embed">
-                    <xsl:with-param name="width" select="($layout/width * $design-width) div 100"/>
-                    <xsl:with-param name="height" select="($layout/height * $design-width) div 100"/>
+                    <xsl:with-param name="width" select="($layout/width * $local-design-width) div 100"/>
+                    <xsl:with-param name="height" select="($layout/height * $local-design-width) div 100"/>
                 </xsl:apply-templates>
             </xsl:when>
             <xsl:otherwise>
@@ -8466,6 +8529,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:attribute>
         </xsl:if>
         <xsl:if test="p">
+            <xsl:variable name="local-design-width">
+                <xsl:apply-templates select="." mode="get-design-width"/>
+            </xsl:variable>
             <xsl:attribute name="style">
                 <xsl:text>max-width:</xsl:text>
                 <xsl:choose>
@@ -8475,14 +8541,14 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                                 <xsl:with-param name="percentage" select="$left-col/@width" />
                             </xsl:call-template>
                         </xsl:variable>
-                        <xsl:value-of select="$design-width * substring-before($width, '%') div 100 * substring-before($ambient-relative-width, '%') div 100" />
+                        <xsl:value-of select="$local-design-width * substring-before($width, '%') div 100 * substring-before($ambient-relative-width, '%') div 100" />
                         <xsl:text>px;</xsl:text>
                     </xsl:when>
                     <!-- If there is no $left-col/@width, silently use 20% as default -->
                     <!-- We get some ill-formed WW exercises here, so a less-precise  -->
                     <!-- warning is given on the author's source.                     -->
                     <xsl:otherwise>
-                        <xsl:value-of select="$design-width * 0.2 * substring-before($ambient-relative-width, '%') div 100" />
+                        <xsl:value-of select="$local-design-width * 0.2 * substring-before($ambient-relative-width, '%') div 100" />
                     </xsl:otherwise>
                 </xsl:choose>
             </xsl:attribute>
@@ -11241,8 +11307,11 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         </xsl:apply-templates>
     </xsl:variable>
     <!-- these are now standardized templates -->
-    <xsl:variable name="width"  select="$design-width * $width-fraction" />
-    <xsl:variable name="height" select="$design-width * $width-fraction div $aspect-ratio" />
+    <xsl:variable name="local-design-width">
+        <xsl:apply-templates select="." mode="get-design-width" />
+    </xsl:variable>
+    <xsl:variable name="width"  select="$local-design-width * $width-fraction" />
+    <xsl:variable name="height" select="$local-design-width * $width-fraction div $aspect-ratio" />
     <!-- the div to hold the JSX output -->
     <xsl:element name="div">
         <xsl:attribute name="id">
@@ -11519,7 +11588,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:variable>
     <!-- build the iframe -->
     <!-- mimicking Mike Gage's blog post -->
-    <iframe name="{concat(@assembly-id, '-ww-inner')}" width="{$design-width}" src="{$the-url}" data-seed="{static/@seed}"/>
+    <xsl:variable name="local-design-width">
+        <xsl:apply-templates select="." mode="get-design-width"/>
+    </xsl:variable>
+    <iframe name="{concat(@assembly-id, '-ww-inner')}" width="{$local-design-width}" src="{$the-url}" data-seed="{static/@seed}"/>
     <script>
         <xsl:text>iFrameResize({log:true,inPageLinks:true,resizeFrom:'child',checkOrigin:["</xsl:text>
         <xsl:value-of select="$webwork-server" />

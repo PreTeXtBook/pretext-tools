@@ -8664,8 +8664,12 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- and a serial number from the enumitem package on the lists -->
 <!-- We compose the two LaTeX \ref{}                            -->
 <xsl:template match="task" mode="xref-number">
+    <xsl:param name="xref" select="/.." />
+
     <!-- ancestors, strip tasks, get number of next enclosure -->
-    <xsl:apply-templates select="ancestor::*[not(self::task)][1]" mode="xref-number" />
+    <xsl:apply-templates select="ancestor::*[not(self::task)][1]" mode="xref-number">
+        <xsl:with-param name="xref" select="$xref" />
+    </xsl:apply-templates>
     <xsl:text>.</xsl:text>
     <!-- task always gets a number, but we have to avoid recursion -->
     <!-- that would result by just getting a \ref from xref-number -->
@@ -8823,6 +8827,21 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:apply-templates select="." mode="location-report" />
         </xsl:otherwise>
     </xsl:choose>
+</xsl:template>
+
+<!-- A number the common routines compute as text (a serial number, or -->
+<!-- a full number shortened by a hybrid style) gets the same font as  -->
+<!-- the numbers made just above, so a style that redefines \xreffont  -->
+<!-- reaches every number in a cross-reference.  An empty number stays -->
+<!-- empty, since callers test for one.                                -->
+<xsl:template name="xref-number-text">
+    <xsl:param name="number"/>
+
+    <xsl:if test="not($number = '')">
+        <xsl:text>{\xreffont </xsl:text>
+        <xsl:value-of select="$number"/>
+        <xsl:text>}</xsl:text>
+    </xsl:if>
 </xsl:template>
 
 <!-- This template actually manufactures the link.  When the link lives in  -->
