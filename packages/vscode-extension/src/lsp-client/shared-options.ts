@@ -12,7 +12,9 @@ import type { LanguageClientOptions } from "vscode-languageclient";
  * assets are; it reads them back through `pretext/readFile` (see
  * project-sync.ts), since a Web Worker has no filesystem.
  */
-export function clientOptions(context: ExtensionContext): LanguageClientOptions {
+export function clientOptions(
+  context: ExtensionContext,
+): LanguageClientOptions {
   return {
     // Register the server for PreTeXt documents in all authoring flavors.
     documentSelector: [
