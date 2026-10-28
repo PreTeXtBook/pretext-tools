@@ -26,7 +26,6 @@ import {
   ColorThemeKind,
   ConfigurationTarget,
   Disposable,
-  FileType,
   Position,
   Range,
   RelativePattern,
@@ -52,9 +51,10 @@ import type { SourceMapEntry } from "@pretextbook/pretext-html";
 // the host, on HTML the worker rendered, so it must not drag in the renderer.
 import {
   missingAssetPlaceholder,
-  rewriteAssetUrls,
-  type AssetUrlResolver,
+  rewriteAssetUrlsAsync,
+  type AsyncAssetUrlResolver,
 } from "@pretextbook/pretext-html/assets";
+import { statFile } from "./workspace-fs";
 // The theme protocol is a dependency-free subpath (its own leaf module, no
 // WASM renderer): importing the package root here would drag libxslt-wasm's
 // top-level await into the CJS host bundle, which esbuild cannot bundle. This
@@ -368,23 +368,16 @@ function documentHead(document: TextDocument): string {
   );
 }
 
+/** True when a file (not a directory) is at this path. */
 async function fileExists(absolutePath: string): Promise<boolean> {
   return (await fileStat(absolutePath)) !== undefined;
 }
 
 /** A file's stat, or undefined when it is missing or not a file. */
-async function fileStat(
+function fileStat(
   absolutePath: string,
 ): Promise<{ mtimeMs: number; size: number } | undefined> {
-  try {
-    const stat = await workspace.fs.stat(toUri(absolutePath));
-    if (!(stat.type & FileType.File)) {
-      return undefined;
-    }
-    return { mtimeMs: stat.mtime, size: stat.size };
-  } catch {
-    return undefined;
-  }
+  return statFile(toUri(absolutePath));
 }
 
 /** Whether the toolbar can offer a full `pretext build` on this host. */
@@ -1563,8 +1556,17 @@ async function handleWorkerMessage(message: RenderResponse): Promise<void> {
     // Stale response from a superseded/relaunched render — ignore.
     return;
   }
-  pendingRequestId = undefined;
-  await handleRenderResponse(message);
+  // The request stays in flight until its page has been applied: applying it
+  // waits on asset stats (slow on a virtual file system), and a render asked
+  // for in the meantime must queue behind it rather than be sent, or two
+  // responses would be applied concurrently and the older one could win.
+  try {
+    await handleRenderResponse(message);
+  } finally {
+    if (pendingRequestId === message.id) {
+      pendingRequestId = undefined;
+    }
+  }
   if (renderQueued && activeHost) {
     renderQueued = false;
     renderToPanel(activeHost, { fromTyping: queuedFromTyping });
@@ -2332,17 +2334,17 @@ function escapeHtml(text: string): string {
  * The webview ignores the query when it reads the file, and strips it before
  * checking localResourceRoots.
  *
- * The files are looked up through `workspace.fs`, which is asynchronous
- * while the rewriter is not: a first pass over the page collects what it
- * asks for, the stats come back together, and the resolver returned here
- * answers from them. One stat per asset per rebuild, as before.
+ * The files are looked up through `workspace.fs`, which is asynchronous, so
+ * the page goes through the async rewriter, which collects what it asks for
+ * in one pass and awaits the answers together. The stats are cached for the
+ * resolver's lifetime: one stat per asset per rebuild, however many times
+ * the page shows it.
  */
-async function assetUriResolver(
+function assetUriResolver(
   webview: Webview,
   assetDirs: PreviewAssetDirs,
   projectDir: string,
-  html: string,
-): Promise<AssetUrlResolver> {
+): AsyncAssetUrlResolver {
   const root = path.resolve(projectDir);
   // Where an asset the page asks for would be, when it is in bounds.
   // Containment: a "../" in an @source must not turn into a webview URI for
@@ -2354,25 +2356,19 @@ async function assetUriResolver(
       ? filePath
       : undefined;
   };
-  const wanted = new Set<string>();
-  rewriteAssetUrls(html, (kind, relPath) => {
-    const dir = assetDirs[kind];
-    const filePath = dir === undefined ? undefined : locate(dir, relPath);
-    if (filePath !== undefined) {
-      wanted.add(filePath);
+  const stats = new Map<
+    string,
+    Promise<{ mtimeMs: number; size: number } | undefined>
+  >();
+  const statOnce = (filePath: string) => {
+    let stat = stats.get(filePath);
+    if (!stat) {
+      stat = fileStat(filePath);
+      stats.set(filePath, stat);
     }
-    return undefined;
-  });
-  const stats = new Map<string, { mtimeMs: number; size: number }>();
-  await Promise.all(
-    [...wanted].map(async (filePath) => {
-      const stat = await fileStat(filePath);
-      if (stat) {
-        stats.set(filePath, stat);
-      }
-    }),
-  );
-  return (kind, relPath) => {
+    return stat;
+  };
+  return async (kind, relPath) => {
     const dir = assetDirs[kind];
     // No external directory declared: PreTeXt reads that as "no external
     // assets", so an `external/` URL here names a file that a real build would
@@ -2390,7 +2386,7 @@ async function assetUriResolver(
     // preview exists to avoid needing. Substituting a placeholder that names
     // the missing asset beats the browser's broken-image glyph, which reads
     // as "the preview is broken".
-    const stat = stats.get(filePath);
+    const stat = await statOnce(filePath);
     if (!stat) {
       return missingAssetPlaceholder(kind, relPath);
     }
@@ -2425,9 +2421,9 @@ async function prepareWebviewHtml(
   assetDirs?: PreviewAssetDirs,
 ): Promise<string> {
   const retargeted = assetDirs
-    ? rewriteAssetUrls(
+    ? await rewriteAssetUrlsAsync(
         html,
-        await assetUriResolver(webview, assetDirs, projectDir, html),
+        assetUriResolver(webview, assetDirs, projectDir),
       )
     : html;
   const page = injectPrintPreview(retargeted, currentPrintout());

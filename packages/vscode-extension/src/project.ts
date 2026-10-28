@@ -2,6 +2,7 @@ import { Uri, window, workspace } from "vscode";
 import { Project, Target } from "./types";
 import { parseTargetsFromManifest } from "./project-manifest";
 import { uriToPath } from "./virtual-path";
+import { exists } from "./workspace-fs";
 
 // Project discovery reads through `workspace.fs` and keeps each root as a path
 // in the space virtual-path.ts defines, so the same code finds a project on
@@ -119,15 +120,6 @@ export function parentFolder(uri: Uri): Uri {
   const trimmed = uri.path.replace(/\/+$/, "");
   const slash = trimmed.lastIndexOf("/");
   return uri.with({ path: slash <= 0 ? "/" : trimmed.slice(0, slash) });
-}
-
-async function exists(uri: Uri): Promise<boolean> {
-  try {
-    await workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /** The project rooted at `root`, with the targets its manifest declares. */

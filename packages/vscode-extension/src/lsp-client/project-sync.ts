@@ -1,5 +1,6 @@
 import { Disposable, Uri, workspace } from "vscode";
 import type { BaseLanguageClient } from "vscode-languageclient";
+import { readFileText } from "../workspace-fs";
 
 /**
  * Feed the language server the files it cannot read itself.
@@ -23,33 +24,54 @@ const TEXT_GLOB = "**/*.{ptx,xml}";
 /** Files sent by name only, for path completions (`xi:include`, `<image>`, …). */
 const NAMED_GLOB =
   "**/*.{png,jpg,jpeg,gif,svg,pdf,tex,asy,py,sage,sagews,sws,css,js,md,txt}";
-/** Build output and the like: never part of the source tree. */
-const EXCLUDE = "{**/node_modules/**,**/.git/**,**/output/**,**/generated/**}";
+/**
+ * Build output and the like: never part of the source tree. The directory
+ * names are listed once and spelled into a `findFiles` exclude glob for the
+ * snapshot; the watchers cannot take an exclude, so their events are
+ * filtered against the same names ({@link isExcluded}).
+ */
+const EXCLUDED_DIRS = ["node_modules", ".git", "output", "generated"];
+const EXCLUDE = `{${EXCLUDED_DIRS.map((dir) => `**/${dir}/**`).join(",")}}`;
 /** Caps so a stray giant workspace cannot stall startup. */
 const MAX_TEXT_FILES = 4000;
 const MAX_NAMED_FILES = 10000;
+/** How many files are read at once while taking the snapshot. */
+const READ_CONCURRENCY = 32;
 
 interface ProjectFileEntry {
   uri: string;
   text?: string;
 }
 
-async function readText(uri: Uri): Promise<string | undefined> {
-  try {
-    return new TextDecoder().decode(await workspace.fs.readFile(uri));
-  } catch {
-    // No file system provider for the scheme. On the web host the
-    // extension's own assets are served over http(s), which `fetch` reads.
-    if (uri.scheme === "http" || uri.scheme === "https") {
-      try {
-        const response = await fetch(uri.toString(true));
-        return response.ok ? await response.text() : undefined;
-      } catch {
-        return undefined;
-      }
+/** True when `uri` lies under one of {@link EXCLUDED_DIRS}. */
+export function isExcluded(uri: Uri): boolean {
+  return uri.path
+    .split("/")
+    .slice(0, -1)
+    .some((segment) => EXCLUDED_DIRS.includes(segment));
+}
+
+/**
+ * `Promise.all` with at most {@link READ_CONCURRENCY} tasks in flight. A
+ * snapshot of thousands of files over a remote file system (github.dev)
+ * would otherwise issue every read at once.
+ */
+async function mapLimited<T, R>(
+  items: readonly T[],
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
     }
-    return undefined;
-  }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(READ_CONCURRENCY, items.length) }, worker),
+  );
+  return results;
 }
 
 async function collectProjectFiles(): Promise<ProjectFileEntry[]> {
@@ -57,11 +79,12 @@ async function collectProjectFiles(): Promise<ProjectFileEntry[]> {
     workspace.findFiles(TEXT_GLOB, EXCLUDE, MAX_TEXT_FILES),
     workspace.findFiles(NAMED_GLOB, EXCLUDE, MAX_NAMED_FILES),
   ]);
-  const entries: ProjectFileEntry[] = await Promise.all(
-    textFiles.map(async (uri) => ({
+  const entries: ProjectFileEntry[] = await mapLimited(
+    textFiles,
+    async (uri) => ({
       uri: uri.toString(),
-      text: await readText(uri),
-    })),
+      text: await readFileText(uri),
+    }),
   );
   for (const uri of namedFiles) {
     entries.push({ uri: uri.toString() });
@@ -74,18 +97,28 @@ export function registerProjectSync(client: BaseLanguageClient): Disposable {
   client.onRequest(
     "pretext/readFile",
     async ({ uri }: { uri: string }) =>
-      (await readText(Uri.parse(uri))) ?? null,
+      (await readFileText(Uri.parse(uri))) ?? null,
   );
 
-  const notify = (uri: Uri, change: { text?: string; deleted?: boolean }) =>
+  // A watcher has no exclude, so a `pretext build` writing under output/
+  // would otherwise push every file it makes into the snapshot.
+  const notify = (uri: Uri, change: { text?: string; deleted?: boolean }) => {
+    if (isExcluded(uri)) {
+      return;
+    }
     client.sendNotification("pretext/projectFileChanged", {
       uri: uri.toString(),
       ...change,
     });
+  };
   const textWatcher = workspace.createFileSystemWatcher(TEXT_GLOB);
   const namedWatcher = workspace.createFileSystemWatcher(NAMED_GLOB);
-  const onTextChanged = async (uri: Uri) =>
-    notify(uri, { text: await readText(uri) });
+  const onTextChanged = async (uri: Uri) => {
+    if (isExcluded(uri)) {
+      return;
+    }
+    notify(uri, { text: await readFileText(uri) });
+  };
   const onDeleted = (uri: Uri) => notify(uri, { deleted: true });
 
   return Disposable.from(

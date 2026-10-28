@@ -23,6 +23,7 @@ import {
   type WorkerToHostMessage,
 } from "./preview-protocol";
 import { pathToUri } from "./virtual-path";
+import { readFileBytes } from "./workspace-fs";
 
 // The browser extension host provides the Web Worker API; the extension's
 // tsconfig targets Node, so declare the part used here.
@@ -185,22 +186,5 @@ async function readExtensionFile(
   if (segments.some((segment) => segment === ".." || segment === "")) {
     return undefined;
   }
-  const uri = Uri.joinPath(context.extensionUri, ...segments);
-  try {
-    return await workspace.fs.readFile(uri);
-  } catch {
-    // No file system provider for the scheme: on the web host the
-    // extension's own files are served over http(s), which `fetch` reads.
-    if (uri.scheme === "http" || uri.scheme === "https") {
-      try {
-        const response = await fetch(uri.toString(true));
-        return response.ok
-          ? new Uint8Array(await response.arrayBuffer())
-          : undefined;
-      } catch {
-        return undefined;
-      }
-    }
-    return undefined;
-  }
+  return readFileBytes(Uri.joinPath(context.extensionUri, ...segments));
 }

@@ -56,7 +56,8 @@ jobs:
           if [ "${{ needs.checks.result }}" = "failure" ] || \
              [ "${{ needs.library-unit.result }}" = "failure" ] || \
              [ "${{ needs.vscode-extension-unit.result }}" = "failure" ] || \
-             [ "${{ needs.vscode-extension-integration.result }}" = "failure" ] || \n             [ "${{ needs.vscode-extension-web.result }}" = "failure" ]; then
+             [ "${{ needs.vscode-extension-integration.result }}" = "failure" ] || \
+             [ "${{ needs.vscode-extension-web.result }}" = "failure" ]; then
             echo "::error::One or more test jobs failed"
             exit 1
           fi

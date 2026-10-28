@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { rewriteAssetUrls } from "./assets.js";
+import { rewriteAssetUrls, rewriteAssetUrlsAsync } from "./assets.js";
 import { fromXml } from "xast-util-from-xml";
 import {
   docinfoExternalDirectory,
@@ -135,5 +135,58 @@ describe("rewriteAssetUrls", () => {
       () => `x://y?a=1&b="2"`,
     );
     expect(html).toBe(`<img src="x://y?a=1&amp;b=&quot;2&quot;">`);
+  });
+});
+
+describe("rewriteAssetUrlsAsync", () => {
+  const page =
+    `<img src="external/a.png"><img src="generated/latex-image/d.svg">` +
+    `<img src="external/a.png"><img src="https://cdn/external/x.png">`;
+
+  it("matches the synchronous rewriter on the same resolver", async () => {
+    const resolve = (kind: string, relPath: string) =>
+      kind === "external" ? `vscode-resource:/${relPath}?v=1` : undefined;
+    const expected = rewriteAssetUrls(page, resolve);
+    const actual = await rewriteAssetUrlsAsync(page, async (kind, relPath) =>
+      resolve(kind, relPath),
+    );
+    expect(actual).toBe(expected);
+    expect(actual).toContain(`src="vscode-resource:/a.png?v=1"`);
+    expect(actual).toContain(`src="generated/latex-image/d.svg"`);
+    expect(actual).toContain(`src="https://cdn/external/x.png"`);
+  });
+
+  it("hands every occurrence to the resolver before awaiting any", async () => {
+    const calls: string[] = [];
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const rewritten = rewriteAssetUrlsAsync(page, async (kind, relPath) => {
+      calls.push(`${kind}/${relPath}`);
+      await gate;
+      return "x";
+    });
+    expect(calls).toEqual([
+      "external/a.png",
+      "generated/latex-image/d.svg",
+      "external/a.png",
+    ]);
+    release();
+    expect(await rewritten).toBe(
+      `<img src="x"><img src="x"><img src="x"><img src="https://cdn/external/x.png">`,
+    );
+  });
+
+  it("returns the page untouched when nothing matches", async () => {
+    const html = `<p>no images</p>`;
+    expect(await rewriteAssetUrlsAsync(html, vi.fn())).toBe(html);
+  });
+
+  it("escapes the resolved URL for the attribute", async () => {
+    expect(
+      await rewriteAssetUrlsAsync(
+        `<img src="external/a.png">`,
+        async () => `u?a=1&b="2"`,
+      ),
+    ).toBe(`<img src="u?a=1&amp;b=&quot;2&quot;">`);
   });
 });

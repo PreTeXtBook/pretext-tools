@@ -190,7 +190,14 @@ export async function getAst(rngUri: string) {
   let match = importRegex.exec(rngFile);
   for (let n = 0; match !== null && n < MAX_INCLUDES; n++) {
     const importUri = resolveUri(match[1], rngUri);
-    let importContent = (await readUri(importUri)) ?? "";
+    let importContent = await readUri(importUri);
+    if (importContent === undefined) {
+      // Dropping the include would load a truncated grammar that validates
+      // and completes wrongly without a word; the caller reports this.
+      throw new Error(
+        `Could not read schema include ${importUri} (from ${rngUri})`,
+      );
+    }
     //remove first line (xml declaration):
     importContent = importContent.replace(/<\?xml.*?\?>/, "");
     rngFile = rngFile.replace(match[0], () => importContent);

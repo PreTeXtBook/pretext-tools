@@ -26,12 +26,19 @@ describe("parseTargetsFromManifest", () => {
           <target name="b" standalone="no"/>
           <target name="c"/>
           <target name="d" standalone="whatever"/>
+          <target name="e" standalone=""/>
         </targets>
       </project>`;
     const byName = Object.fromEntries(
       parseTargetsFromManifest(xml, ROOT).map((t) => [t.name, t.standalone]),
     );
-    expect(byName).toEqual({ a: true, b: false, c: false, d: true });
+    expect(byName).toEqual({
+      a: true,
+      b: false,
+      c: false,
+      d: true,
+      e: false,
+    });
   });
 
   it("captures the output format from v2 (attribute) manifests", () => {

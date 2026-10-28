@@ -98,3 +98,44 @@ export function rewriteAssetUrls(
       : `src="${escapeAttribute(resolved)}"`;
   });
 }
+
+/** {@link AssetUrlResolver} for a host that has to look the file up first. */
+export type AsyncAssetUrlResolver = (
+  kind: AssetKind,
+  relPath: string,
+) => Promise<string | undefined>;
+
+/**
+ * {@link rewriteAssetUrls} for an asynchronous resolver (one that stats the
+ * file through an async file system, say). The page is scanned once: every
+ * asset URL is handed to the resolver up front, the answers are awaited
+ * together, and the rewritten page is assembled from them. The resolver is
+ * called once per occurrence; a host wanting one lookup per file caches
+ * inside it.
+ */
+export async function rewriteAssetUrlsAsync(
+  html: string,
+  resolve: AsyncAssetUrlResolver,
+): Promise<string> {
+  const matches = [...html.matchAll(ASSET_URL)];
+  if (matches.length === 0) {
+    return html;
+  }
+  const resolved = await Promise.all(
+    matches.map((match) =>
+      resolve(match[1] as AssetKind, decodePath(match[2])),
+    ),
+  );
+  let out = "";
+  let last = 0;
+  matches.forEach((match, i) => {
+    const url = resolved[i];
+    if (url === undefined) {
+      return;
+    }
+    const start = match.index ?? 0;
+    out += html.slice(last, start) + `src="${escapeAttribute(url)}"`;
+    last = start + match[0].length;
+  });
+  return out + html.slice(last);
+}

@@ -90,12 +90,19 @@ function launchNodeWorker(extensionPath: string): PreviewWorker {
   return {
     send(request) {
       child.send(request, (err) => {
-        if (err) {
-          // The channel died between launch and send; the exit handler
-          // relaunches on the next render.
-          logListeners.forEach((listener) =>
-            listener(`Failed to send render request: ${String(err)}`),
-          );
+        if (!err) {
+          return;
+        }
+        logListeners.forEach((listener) =>
+          listener(`Failed to send render request: ${String(err)}`),
+        );
+        // The IPC channel is dead. Usually the process is on its way out and
+        // the 'exit' handler reports it; but a worker that dropped its channel
+        // without exiting would leave the caller waiting on this request
+        // forever, so make sure it exits and that report arrives.
+        const exited = child.exitCode !== null || child.signalCode !== null;
+        if (!disposed && !exited && !child.killed) {
+          child.kill();
         }
       });
     },

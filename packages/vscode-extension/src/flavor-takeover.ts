@@ -1,4 +1,5 @@
 import { Disposable, TextDocument, Uri, languages, workspace } from "vscode";
+import { exists } from "./workspace-fs";
 
 /**
  * Opt-in "takeover" of plain LaTeX/Markdown documents by the PreTeXt flavor
@@ -95,12 +96,3 @@ async function shouldTakeOver(
 
 /** URI schemes under which a document counts as a project file. */
 const FILE_SCHEMES = new Set(["file", "vscode-vfs"]);
-
-async function exists(uri: Uri): Promise<boolean> {
-  try {
-    await workspace.fs.stat(uri);
-    return true;
-  } catch {
-    return false;
-  }
-}

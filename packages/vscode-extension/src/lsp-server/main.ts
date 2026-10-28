@@ -197,10 +197,19 @@ async function loadServerState(): Promise<void> {
   // Load the precompiled RELAX NG grammars used for schema validation.
   await loadValidationGrammar(globalSettings.schema?.versionName);
 
-  await syncProjectFiles();
+  // The project snapshot can take a while on a remote file system
+  // (github.dev reads every file over the network), so it is not waited for
+  // before open documents get their first real diagnostics. Whole-book
+  // validation follows xi:includes through the snapshot, so they are
+  // validated once more when it has arrived.
+  const snapshot = syncProjectFiles();
+  revalidateOpenDocuments();
+  await snapshot;
+  revalidateOpenDocuments();
+}
 
-  // Anything opened before the grammars arrived was validated against
-  // nothing; do it for real now.
+/** Validate every open document against what the server has loaded so far. */
+function revalidateOpenDocuments(): void {
   for (const doc of documents.all()) {
     void revalidateDocument(doc);
   }
@@ -232,12 +241,22 @@ function refreshReferences(): void {
   }
 }
 
-// The client's file watchers keep the snapshot current.
+// The client's file watchers keep the snapshot current. Rebuilding the
+// xml:id index walks the whole project, so a burst of events (a checkout, a
+// build touching many files) is collapsed into one rebuild.
+const REFERENCES_REFRESH_DELAY_MS = 250;
+let referencesRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 connection.onNotification(
   "pretext/projectFileChanged",
   (change: { uri: string; text?: string; deleted?: boolean }) => {
     updateProjectFile(change.uri, change);
-    refreshReferences();
+    if (referencesRefreshTimer !== undefined) {
+      clearTimeout(referencesRefreshTimer);
+    }
+    referencesRefreshTimer = setTimeout(() => {
+      referencesRefreshTimer = undefined;
+      refreshReferences();
+    }, REFERENCES_REFRESH_DELAY_MS);
   },
 );
 

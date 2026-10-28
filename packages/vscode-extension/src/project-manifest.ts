@@ -106,8 +106,8 @@ function resolveTargetPublication(
  * targets. Separated from `project.ts` so it can be unit tested without the
  * `vscode` API.
  *
- * A target counts as `standalone` when its `standalone` attribute is present
- * and not equal to `"no"`.
+ * A target counts as `standalone` when its `standalone` attribute is present,
+ * non-empty, and not equal to `"no"`.
  */
 export function parseTargetsFromManifest(
   contents: string,
@@ -129,7 +129,7 @@ export function parseTargetsFromManifest(
     return {
       name: attr(t, "name") as string,
       path: projectRoot,
-      standalone: (standalone !== undefined && standalone !== "no") || false,
+      standalone: !!standalone && standalone !== "no",
       // v2 manifests carry the format as an attribute; legacy v1 manifests
       // use a `<format>` child element.
       format: attr(t, "format") ?? childText(t, "format") ?? "",
