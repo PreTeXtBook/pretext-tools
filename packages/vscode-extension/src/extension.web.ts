@@ -4,23 +4,15 @@
  * Declared as `"browser"` in package.json beside the Node `"main"`; VS Code
  * loads whichever matches the host. This activation registers only the pieces
  * that run without Node and without the `pretext` CLI; everything else is
- * hidden on the web by `when: "!isWeb"` clauses in the manifest. See
- * docs/web-extension-plan.md for what is here now and what is still to come
- * (the language server in a Web Worker is Phase 1).
+ * hidden on the web by `when: "!isWeb"` clauses in the manifest. The language
+ * server runs in a Web Worker (lsp-client/browser.ts). See
+ * docs/web-extension-plan.md for what is here now and what is still to come.
  *
  * Keep the import graph of this file free of `fs`, `path`, `child_process`,
  * `./cli`, `./utils`, `./ui` and `./project`: one Node import anywhere breaks
  * the whole browser bundle.
  */
-import {
-  ExtensionContext,
-  Range,
-  TextDocument,
-  TextEdit,
-  commands,
-  languages,
-  window,
-} from "vscode";
+import { ExtensionContext, commands, languages, window } from "vscode";
 
 import { pretextOutputChannel } from "./ui-core";
 import { PretextActionsProvider } from "./actionsView";
@@ -31,7 +23,11 @@ import {
   pretextPasteProviderMetadata,
   PRETEXT_LANGUAGE_ID,
 } from "./paste-convert";
-import { formatInProcess, lspFormatDocument } from "./lsp-client/shared";
+import { lspFormatDocument } from "./lsp-client/shared";
+import {
+  activate as lspActivate,
+  deactivate as lspDeactivate,
+} from "./lsp-client/browser";
 import { registerFlavorTakeover } from "./flavor-takeover";
 import { registerTypingShortcuts } from "./typing-shortcuts";
 import { registerSnippetSuggestions } from "./snippet-suggestions";
@@ -56,25 +52,6 @@ export async function activate(context: ExtensionContext) {
   context.subscriptions.push(registerSnippetSuggestions());
 
   context.subscriptions.push(
-    // Until the language server runs in a Web Worker (plan, Phase 1), Format
-    // Document is served in-process with the same library the server uses.
-    languages.registerDocumentFormattingEditProvider(
-      [
-        { language: "pretext" },
-        { language: "pretext-latex" },
-        { language: "pretext-markdown" },
-      ],
-      {
-        provideDocumentFormattingEdits(document: TextDocument): TextEdit[] {
-          const text = document.getText();
-          const whole = new Range(
-            document.positionAt(0),
-            document.positionAt(text.length),
-          );
-          return [TextEdit.replace(whole, formatInProcess(text))];
-        },
-      },
-    ),
     commands.registerCommand("pretext-tools.format", () => {
       const activeEditor = window.activeTextEditor;
       if (activeEditor) {
@@ -108,6 +85,18 @@ export async function activate(context: ExtensionContext) {
       new PretextActionsProvider({ web: true }),
     ),
   );
+
+  // Start the LSP in a Web Worker.
+  try {
+    lspActivate(context);
+  } catch (error) {
+    console.log("Error starting LSP client", error);
+    pretextOutputChannel.appendLine(
+      "Error starting language server.  Some features may not be available.",
+    );
+  }
 }
 
-export function deactivate() {}
+export function deactivate() {
+  return lspDeactivate();
+}

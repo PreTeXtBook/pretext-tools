@@ -1,5 +1,6 @@
 // Build all parts of the plugin
 import esbuild from "esbuild";
+import path from "node:path";
 
 const watch = process.argv.includes("--watch");
 const production = process.argv.includes("--production");
@@ -95,6 +96,33 @@ const buildOptionsWebTests = {
   plugins: [esbuildProblemMatcherPlugin],
 };
 
+// The language server for the web host: same source, bundled to run in a Web
+// Worker (an IIFE; workers take a classic script). Two substitutions make it
+// Node-free: the platform seam (src/lsp-server/platform.ts →
+// platform.browser.ts) and a posix `path` for the manifest/xi:include path
+// arithmetic, which on this host only ever sees virtual absolute paths.
+const lspPlatformBrowserPlugin = {
+  name: "lsp-platform-browser",
+  setup(build) {
+    build.onResolve({ filter: /^\.\.?\/platform$/ }, (args) => ({
+      path: path.resolve(args.resolveDir, `${args.path}.browser.ts`),
+    }));
+  },
+};
+
+const buildOptionsLSPWeb = {
+  entryPoints: ["./src/lsp-server/main.ts"],
+  bundle: true,
+  format: "iife",
+  minify: production,
+  sourcemap: !production,
+  sourcesContent: false,
+  ...webResolve,
+  alias: { path: "path-browserify" },
+  outfile: "../../dist/vscode-extension/out/lsp-server.web.js",
+  plugins: [lspPlatformBrowserPlugin, esbuildProblemMatcherPlugin],
+};
+
 const buildOptionsLSP = {
   entryPoints: ["./src/lsp-server/main.ts"],
   bundle: true,
@@ -152,6 +180,15 @@ if (watch) {
 } else {
   await ctxWebTests.rebuild();
   await ctxWebTests.dispose();
+}
+
+const ctxLSPWeb = await esbuild.context({ ...buildOptionsLSPWeb });
+
+if (watch) {
+  await ctxLSPWeb.watch();
+} else {
+  await ctxLSPWeb.rebuild();
+  await ctxLSPWeb.dispose();
 }
 
 const ctxLSP = await esbuild.context({ ...buildOptionsLSP });

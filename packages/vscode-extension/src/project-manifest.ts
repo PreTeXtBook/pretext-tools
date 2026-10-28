@@ -1,4 +1,6 @@
-import { parseString } from "xml2js";
+import { fromXml } from "xast-util-from-xml";
+import { toString } from "xast-util-to-string";
+import type { Element, Node, Root } from "xast";
 import * as path from "path";
 import type { Target } from "./types";
 
@@ -8,25 +10,39 @@ const DEFAULT_SOURCE_DIR = "source";
 const DEFAULT_TARGET_SOURCE = "main.ptx";
 
 /**
- * Pull the text out of an xml2js-parsed child element, which may be a bare
- * string (`["source/main.ptx"]`) or an object with attributes
- * (`[{ _: "…", $: {…} }]`). Returns undefined when the element is absent.
+ * Parse a manifest into its `<project>` element, or undefined when the text
+ * is not well-formed XML or has no `<project>` root. Uses xast (already in
+ * the language server bundle and free of Node built-ins, unlike xml2js) so
+ * the same resolver runs in the browser host.
  */
-function childText(value: any): string | undefined {
-  if (value === undefined || value === null) {
+function parseProject(contents: string): Element | undefined {
+  let tree: Root;
+  try {
+    tree = fromXml(contents);
+  } catch (err) {
+    console.error("Error parsing project.ptx XML: ", err);
     return undefined;
   }
-  const first = Array.isArray(value) ? value[0] : value;
-  if (first === undefined || first === null) {
-    return undefined;
-  }
-  if (typeof first === "string") {
-    return first.trim();
-  }
-  if (typeof first === "object" && typeof first._ === "string") {
-    return first._.trim();
-  }
-  return undefined;
+  return childElements(tree).find((el) => el.name === "project");
+}
+
+function childElements(node: Root | Element, name?: string): Element[] {
+  return (node.children as Node[]).filter(
+    (child): child is Element =>
+      child.type === "element" &&
+      (name === undefined || (child as Element).name === name),
+  );
+}
+
+/** Trimmed text of the first child element called `name`, if present. */
+function childText(parent: Element, name: string): string | undefined {
+  const child = childElements(parent, name)[0];
+  return child ? toString(child).trim() : undefined;
+}
+
+function attr(el: Element, name: string): string | undefined {
+  const value = el.attributes?.[name];
+  return value === null || value === undefined ? undefined : value;
 }
 
 /**
@@ -39,17 +55,17 @@ function childText(value: any): string | undefined {
  *  - when neither is present, the target defaults to `<sourceDir>/main.ptx`.
  */
 function resolveTargetSource(
-  target: any,
+  target: Element,
   projectRoot: string,
   sourceDir: string,
 ): string {
-  const child = childText(target.source);
+  const child = childText(target, "source");
   if (child !== undefined) {
     return path.resolve(projectRoot, child);
   }
-  const attr = target.$?.source as string | undefined;
-  if (attr !== undefined) {
-    return path.resolve(projectRoot, sourceDir, attr);
+  const attribute = attr(target, "source");
+  if (attribute !== undefined) {
+    return path.resolve(projectRoot, sourceDir, attribute);
   }
   return path.resolve(projectRoot, sourceDir, DEFAULT_TARGET_SOURCE);
 }
@@ -69,34 +85,29 @@ export function parseTargetsFromManifest(
   contents: string,
   projectRoot: string,
 ): Target[] {
-  let targets: Target[] = [];
-  // parseString invokes its callback synchronously when given a string.
-  parseString(contents, (err, result) => {
-    if (err) {
-      console.error("Error parsing project.ptx XML: ", err);
-      return;
-    }
-    if (
-      result?.project &&
-      result.project.targets &&
-      result.project.targets[0]?.target
-    ) {
-      const sourceDir =
-        (result.project.$?.source as string | undefined) ?? DEFAULT_SOURCE_DIR;
-      targets = result.project.targets[0].target.map((t: any) => ({
-        name: t.$?.name,
-        path: projectRoot,
-        standalone: (t.$?.standalone && t.$.standalone !== "no") || false,
-        // v2 manifests carry the format as an attribute; legacy v1 manifests
-        // use a `<format>` child element (xml2js exposes it as an array).
-        format: t.$?.format ?? childText(t.format) ?? "",
-        // Absolute path to the target's main source file (for the project-wide
-        // outline, which follows its xi:includes).
-        source: resolveTargetSource(t, projectRoot, sourceDir),
-      }));
-    }
+  const project = parseProject(contents);
+  if (!project) {
+    return [];
+  }
+  const sourceDir = attr(project, "source") ?? DEFAULT_SOURCE_DIR;
+  const targets = childElements(project, "targets")[0];
+  if (!targets) {
+    return [];
+  }
+  return childElements(targets, "target").map((t) => {
+    const standalone = attr(t, "standalone");
+    return {
+      name: attr(t, "name") as string,
+      path: projectRoot,
+      standalone: (standalone !== undefined && standalone !== "no") || false,
+      // v2 manifests carry the format as an attribute; legacy v1 manifests
+      // use a `<format>` child element.
+      format: attr(t, "format") ?? childText(t, "format") ?? "",
+      // Absolute path to the target's main source file (for the project-wide
+      // outline, which follows its xi:includes).
+      source: resolveTargetSource(t, projectRoot, sourceDir),
+    };
   });
-  return targets;
 }
 
 /**
@@ -119,32 +130,24 @@ export function resolveRootSourcesFromManifest(
   projectRoot: string,
 ): string[] {
   const sources = new Set<string>();
-  // parseString invokes its callback synchronously when given a string.
-  parseString(contents, (err, result) => {
-    if (err) {
-      console.error("Error parsing project.ptx XML: ", err);
-      return;
-    }
-    const project = result?.project;
-    if (!project) {
-      return;
-    }
-    const sourceDir =
-      (project.$?.source as string | undefined) ?? DEFAULT_SOURCE_DIR;
-    const targets = project.targets?.[0]?.target;
-    if (Array.isArray(targets) && targets.length > 0) {
-      for (const t of targets) {
+  const project = parseProject(contents);
+  if (project) {
+    const sourceDir = attr(project, "source") ?? DEFAULT_SOURCE_DIR;
+    const targets = childElements(project, "targets")[0];
+    const targetList = targets ? childElements(targets, "target") : [];
+    if (targetList.length > 0) {
+      for (const t of targetList) {
         sources.add(resolveTargetSource(t, projectRoot, sourceDir));
       }
-      return;
+    } else {
+      // Legacy (pre-`<targets>`) manifests: a single project-level `<source>`
+      // element, resolved directly against the project root.
+      const legacy = childText(project, "source");
+      if (legacy !== undefined) {
+        sources.add(path.resolve(projectRoot, legacy));
+      }
     }
-    // Legacy (pre-`<targets>`) manifests: a single project-level `<source>`
-    // element, resolved directly against the project root.
-    const legacy = childText(project.source);
-    if (legacy !== undefined) {
-      sources.add(path.resolve(projectRoot, legacy));
-    }
-  });
+  }
   if (sources.size === 0) {
     sources.add(
       path.resolve(projectRoot, DEFAULT_SOURCE_DIR, DEFAULT_TARGET_SOURCE),

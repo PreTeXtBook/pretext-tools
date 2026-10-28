@@ -1,9 +1,8 @@
-import path from "path";
-import fs from "fs";
 import { fromXml } from "xast-util-from-xml";
 import { CONTINUE, SKIP, visit } from "unist-util-visit";
 import deepmerge from "deepmerge";
-import { schemaDir } from "./paths";
+import { URI } from "vscode-uri";
+import { assetUri, readUri, resolveUri } from "./assets";
 
 type SchemaGroup = {
   [key: string]: {
@@ -17,39 +16,43 @@ export async function initializeSchema(schemaConfig: {
   versionName: string;
   customPath: string;
 }) {
-  let schemaPath = setSchema(schemaConfig);
-  let schemaAst = getAst(schemaPath);
+  const schemaUri = await resolveSchemaUri(schemaConfig);
+  const schemaAst = await getAst(schemaUri);
   return new Schema(schemaAst);
 }
 
-function setSchema(schemaConfig: { versionName: string; customPath: string }) {
-  let schemaPath: string = schemaConfig.customPath;
-  if (schemaPath !== "" && schemaConfig.versionName !== "Custom") {
+/**
+ * The URI of the RELAX NG schema the configuration asks for: a custom file
+ * when one is given and readable, else the bundled stable/experimental one.
+ */
+async function resolveSchemaUri(schemaConfig: {
+  versionName: string;
+  customPath: string;
+}): Promise<string> {
+  const customPath = schemaConfig.customPath;
+  if (customPath !== "" && schemaConfig.versionName !== "Custom") {
     console.warn(
       "Custom schema path provided, but version is not set to Custom.  Ignoring custom path.",
     );
   }
-  if (!fs.existsSync(schemaPath)) {
-    console.error(`Schema file not found at path: ${schemaPath}`);
-    schemaPath = "";
-  }
-  if (schemaPath === "") {
-    switch (schemaConfig.versionName) {
-      case "Stable":
-        schemaPath = path.join(schemaDir, "pretext.rng");
-        break;
-      case "Experimental":
-        schemaPath = path.join(schemaDir, "pretext-dev.rng");
-        break;
-      case "Custom":
-        console.log(
-          "Selected custom schema, but no valid path provided.  Setting to default.",
-        );
-        schemaPath = path.join(schemaDir, "pretext.rng");
-        break;
+  if (customPath !== "") {
+    const customUri = URI.file(customPath).toString();
+    if ((await readUri(customUri)) !== undefined) {
+      return customUri;
     }
+    console.error(`Schema file not found at path: ${customPath}`);
   }
-  return schemaPath;
+  switch (schemaConfig.versionName) {
+    case "Experimental":
+      return assetUri("pretext-dev.rng");
+    case "Custom":
+      console.log(
+        "Selected custom schema, but no valid path provided.  Setting to default.",
+      );
+      return assetUri("pretext.rng");
+    default:
+      return assetUri("pretext.rng");
+  }
 }
 
 //Create a class for a pretext schema:
@@ -169,18 +172,28 @@ function resolveRefs(elements: SchemaGroup, aliases: SchemaGroup) {
   return resolvedElements;
 }
 
-export function getAst(rngPath: string) {
-  let rngFile = fs.readFileSync(rngPath, "utf8");
+/** Bound on `<include>` expansions, so a self-including schema cannot spin. */
+const MAX_INCLUDES = 64;
+
+/**
+ * Parse a RELAX NG schema (read by URI through the client, see assets.ts)
+ * into a xast tree, inlining its `<include href="…"/>`s first, each resolved
+ * relative to the schema that includes it.
+ */
+export async function getAst(rngUri: string) {
+  let rngFile = await readUri(rngUri);
+  if (rngFile === undefined) {
+    throw new Error(`Could not read schema ${rngUri}`);
+  }
   //Look for an "include" statement:
-  let importRegex = /<include href=\"(.*?)\"\s*\/>/g;
+  const importRegex = /<include href=\"(.*?)\"\s*\/>/;
   let match = importRegex.exec(rngFile);
-  while (match !== null) {
-    let rngDir = path.dirname(rngPath);
-    let importPath = path.join(rngDir, match[1]);
-    let importContent = fs.readFileSync(importPath, "utf8");
+  for (let n = 0; match !== null && n < MAX_INCLUDES; n++) {
+    const importUri = resolveUri(match[1], rngUri);
+    let importContent = (await readUri(importUri)) ?? "";
     //remove first line (xml declaration):
     importContent = importContent.replace(/<\?xml.*?\?>/, "");
-    rngFile = rngFile.replace(match[0], importContent);
+    rngFile = rngFile.replace(match[0], () => importContent);
     match = importRegex.exec(rngFile);
   }
   return fromXml(rngFile);

@@ -1,7 +1,4 @@
-import * as fs from "fs";
-import * as path from "path";
-import { URI } from "vscode-uri";
-import { Diagnostic } from "vscode-languageserver/node";
+import { Diagnostic } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
   validateDocument,
@@ -9,11 +6,10 @@ import {
   defaultRuleset,
   relaxedRuleset,
   type Grammar,
-  type FileReader,
   type Ruleset,
 } from "@pretextbook/schema";
-import { schemaDir } from "./paths";
-import { documents } from "./state";
+import { readAsset } from "./assets";
+import { fromSchemaUri, readProjectFile, toSchemaUri } from "./project-files";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import { findProjectRootDocuments } from "./projectPtx/find-root-documents";
 import { isPublicationPtx } from "./completions/utils";
@@ -64,12 +60,12 @@ export function setValidationMode(mode: string | undefined): void {
   ruleset = mode === "Relaxed" ? relaxedRuleset : defaultRuleset;
 }
 
-/** Load one precompiled grammar from `schemaDir`, or undefined if unusable. */
-function loadGrammarFile(name: string): Grammar | undefined {
-  const file = path.join(schemaDir, name);
+/** Load one precompiled grammar asset, or undefined if missing/unusable. */
+async function loadGrammarFile(name: string): Promise<Grammar | undefined> {
   try {
-    if (fs.existsSync(file)) {
-      return loadGrammarFromJSON(fs.readFileSync(file, "utf8"));
+    const json = await readAsset(name);
+    if (json !== undefined) {
+      return loadGrammarFromJSON(json);
     }
   } catch (error) {
     console.error(`Failed to load validation grammar ${name}:`, error);
@@ -89,14 +85,16 @@ function loadGrammarFile(name: string): Grammar | undefined {
  * A kind whose grammar is missing is simply not validated (see
  * {@link shouldValidate}), which is the pre-existing behaviour for that file.
  */
-export function loadValidationGrammar(versionName: string | undefined): void {
+export async function loadValidationGrammar(
+  versionName: string | undefined,
+): Promise<void> {
   const candidates =
     versionName === "Experimental"
       ? ["pretext-dev.json", "pretext.json"]
       : ["pretext.json"];
   grammars.delete("pretext");
   for (const name of candidates) {
-    const loaded = loadGrammarFile(name);
+    const loaded = await loadGrammarFile(name);
     if (loaded) {
       grammars.set("pretext", loaded);
       console.log(`Loaded validation grammar: ${name}`);
@@ -104,7 +102,7 @@ export function loadValidationGrammar(versionName: string | undefined): void {
     }
   }
   if (!grammars.has("pretext")) {
-    console.warn(`No precompiled validation grammar found in ${schemaDir}`);
+    console.warn("No precompiled validation grammar found among the assets");
   }
 
   for (const [kind, name] of [
@@ -114,12 +112,12 @@ export function loadValidationGrammar(versionName: string | undefined): void {
     if (grammars.has(kind)) {
       continue;
     }
-    const loaded = loadGrammarFile(name);
+    const loaded = await loadGrammarFile(name);
     if (loaded) {
       grammars.set(kind, loaded);
       console.log(`Loaded validation grammar: ${name}`);
     } else {
-      console.warn(`No ${kind} validation grammar found in ${schemaDir}`);
+      console.warn(`No ${kind} validation grammar found among the assets`);
     }
   }
 }
@@ -152,23 +150,12 @@ export function shouldValidate(document: TextDocument): boolean {
   return /\.(ptx|xml)$/i.test(document.uri);
 }
 
-/** A file reader that prefers in-memory (open) documents over disk. */
-function makeReadFile(): FileReader {
-  return (absolutePath: string) => {
-    const uri = URI.file(absolutePath).toString();
-    const open = documents.get(uri);
-    if (open) {
-      return open.getText();
-    }
-    try {
-      return fs.readFileSync(absolutePath, "utf8");
-    } catch {
-      return undefined;
-    }
-  };
-}
-
 type PublishFn = (uri: string, diagnostics: Diagnostic[]) => void;
+
+/** The most recent validation run, for `pretext-tools.serverStatus`. */
+export let lastValidation:
+  | { uri: string; published: Record<string, number>; error?: string }
+  | undefined;
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const inflight = new Map<string, AbortController>();
@@ -221,7 +208,10 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
   inflight.set(uri, controller);
 
   try {
-    const readFile = makeReadFile();
+    // Files are read from the project snapshot (open documents first), never
+    // the disk; the schema package sees documents in its own `file:`/path
+    // space, so non-`file:` URIs are mapped on the way in and back out.
+    const readFile = readProjectFile;
     // The manifest and publication file sit outside the book's xi:include
     // graph: they declare no xml:id/label and reference none, so resolving
     // includes (and with it the book-wide id/label collection those checks
@@ -229,7 +219,7 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
     // manifest as colliding with the same id in the source it points at.
     const isSource = kind === "pretext";
     const result = validateDocument(document.getText(), grammar, {
-      uri,
+      uri: toSchemaUri(uri),
       signal: controller.signal,
       readFile,
       ruleset,
@@ -238,12 +228,17 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
         : { resolveXIncludes: false }),
     });
 
-    const currentTargets = new Set(Object.keys(result.diagnosticsByUri));
-    for (const [target, diagnostics] of Object.entries(
+    const currentTargets = new Set<string>();
+    const published: Record<string, number> = {};
+    for (const [reported, diagnostics] of Object.entries(
       result.diagnosticsByUri,
     )) {
+      const target = fromSchemaUri(reported);
+      currentTargets.add(target);
+      published[target] = diagnostics.length;
       publish(target, diagnostics);
     }
+    lastValidation = { uri, published };
 
     // Clear diagnostics from files we previously reported on but no longer do.
     const previous = publishedFor.get(uri);
@@ -257,6 +252,14 @@ function runValidation(document: TextDocument, publish: PublishFn): void {
     publishedFor.set(uri, currentTargets);
   } catch (error) {
     if ((error as Error)?.name !== "AbortError") {
+      lastValidation = {
+        uri,
+        published: {},
+        error:
+          error instanceof Error
+            ? (error.stack ?? error.message)
+            : String(error),
+      };
       console.error("Schema validation failed:", error);
     }
   } finally {

@@ -13,7 +13,7 @@ declare const mocha: BrowserMocha;
 
 export function run(): Promise<void> {
   return new Promise((resolve, reject) => {
-    mocha.setup({ ui: "tdd", reporter: undefined, timeout: 20000 });
+    mocha.setup({ ui: "tdd", reporter: undefined, timeout: 60000 });
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./activation.test");
     try {

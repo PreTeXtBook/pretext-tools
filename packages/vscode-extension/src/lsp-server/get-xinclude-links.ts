@@ -1,4 +1,4 @@
-import { DocumentLink } from "vscode-languageserver/node";
+import { DocumentLink } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 
 /**

@@ -14,6 +14,7 @@ import {
 
 import { pretextOutputChannel } from "../ui-core";
 import { clientOptions } from "./shared-options";
+import { registerProjectSync } from "./project-sync";
 import { setClient } from "./shared";
 
 export { lspFormatDocument, lspFormatText, lspProjectXmlIds } from "./shared";
@@ -51,8 +52,10 @@ export function activate(context: ExtensionContext) {
     "pretextLanguageServer",
     "PreTeXt Language Server",
     serverOptions,
-    clientOptions(),
+    clientOptions(context),
   );
+  // Project files and schema assets reach the server through the client.
+  context.subscriptions.push(registerProjectSync(client));
   setClient(client);
 
   // Start the client. This will also launch the server

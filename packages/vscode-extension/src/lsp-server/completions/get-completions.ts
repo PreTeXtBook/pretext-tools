@@ -1,12 +1,11 @@
 import {
   CompletionItem,
   TextDocumentPositionParams,
-} from "vscode-languageserver/node";
-import { glob } from "glob";
+} from "vscode-languageserver";
 import { documents, getDocumentInfo } from "../state";
 import * as path from "path";
-import { URI } from "vscode-uri";
 import { isPublicationPtx } from "./utils";
+import { projectFilePaths, uriToPath } from "../project-files";
 import {
   references,
   pretextSchema,
@@ -47,8 +46,8 @@ export async function getCompletions(
     position: pos,
     schema,
     references,
-    currentFileDir: path.dirname(URI.parse(uri).fsPath),
-    sourceFiles: glob.sync("source/**", { nodir: true, absolute: true }),
+    currentFileDir: path.dirname(uriToPath(uri)),
+    sourceFiles: projectFilePaths(),
   });
 
   if (!completionItems || completionItems.length === 0) {

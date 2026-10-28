@@ -164,10 +164,43 @@ Markdown flavors), snippets, language configuration, `$x$` → `<m>` and the
 other typing shortcuts, snippet suggestions, LaTeX/Markdown paste conversion,
 the visual editor, the walkthrough.
 
-### Phase 1 — language server in a Web Worker
+### Phase 1 — language server in a Web Worker ✅ (this branch)
 
 Deliverable: completions, schema diagnostics, formatting, document links,
 code actions on the web.
+
+Landed as designed below, with these specifics:
+
+- Server platform seam: `lsp-server/platform.ts` (Node IPC, local reads,
+  default assets dir) vs `platform.browser.ts` (worker message port, no
+  reads); the web server bundle swaps them with an esbuild resolve plugin and
+  aliases `path` to `path-browserify`. All other server modules import from
+  `vscode-languageserver` (root), which the `browser` field maps to the
+  browser build.
+- `lsp-server/project-files.ts` holds the client-pushed snapshot and the
+  **path space**: `file:` documents keep their filesystem path; any other
+  scheme maps to a virtual absolute path `/__vfs__/<scheme>/<authority>/<path>`
+  so `xi:include` arithmetic (and `@pretextbook/schema`, which thinks in
+  paths) works unchanged, and `pathToUri` maps back. The schema package is
+  given the _bare_ virtual path for a non-`file:` document, not a `file:` URI
+  of it — Node's `fileURLToPath` rejects `file:///__vfs__/…` on Windows for
+  lacking a drive letter — and `fromSchemaUri` tolerates the drive letter Node's
+  win32 `path.resolve` adds to included-file paths.
+- Assets: `initializationOptions.assetsUri` + `pretext/readFile`. On the web
+  host `workspace.fs` has no provider for the extension's `http(s):` assets, so
+  the client's handler falls back to `fetch` for those schemes.
+- `project-manifest.ts` was rewritten from `xml2js` (needs `events`,
+  `timers`, `stream`) to `xast-util-from-xml`; same API, same spec.
+- `pretext-tools.serverStatus` (an LSP `executeCommand`, callable as a VS Code
+  command) reports assets URI, schema/grammar load state, snapshot size and
+  the last validation outcome or error. It is what the web smoke test waits
+  on, and the first thing to run when a host shows no diagnostics.
+- The web smoke suite grew to seven tests: formatting, completions and schema
+  diagnostics now come from the worker server.
+
+Still desktop-only after Phase 1: `xi:include` href completions see only the
+snapshot (`.ptx`/`.xml` with text; common asset types by name), not an
+arbitrary `source/**` glob.
 
 1. **Project snapshot instead of `fs`.** New server-side module
    `lsp-server/project-files.ts`: an in-memory `Map<uri, text>` plus
