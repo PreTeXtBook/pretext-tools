@@ -9,6 +9,7 @@ import {
   buildSpellCheckIgnorePatterns,
   upsertPretextLanguageSettings,
 } from "./pure-utils";
+import { updateStatusBarItem } from "./ui-core";
 
 /**
  * Walk up the directory tree looking for a folder that contains a
@@ -351,30 +352,6 @@ function setSchema(context: vscode.ExtensionContext) {
   }
   console.log("Schema set to: ", schemaPath);
   configuration.update("fileAssociations", schemas);
-}
-
-function updateStatusBarItem(
-  ptxSBItem: vscode.StatusBarItem,
-  state?: string,
-): void {
-  ptxSBItem.show();
-  if (state === "ready" || state === undefined) {
-    ptxSBItem.text = `$(debug-run) PreTeXt`;
-    ptxSBItem.tooltip = `Run PreTeXt command`;
-    ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === "running") {
-    ptxSBItem.text = `$(loading~spin) PreTeXt`;
-    ptxSBItem.tooltip = `running pretext ... (click for log)`;
-    ptxSBItem.command = `pretext-tools.showLog`;
-  } else if (state === "success") {
-    ptxSBItem.text = `$(pass) PreTeXt`;
-    ptxSBItem.tooltip = `Success!`;
-    ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === "error") {
-    ptxSBItem.text = `$(warning) PreTeXt`;
-    ptxSBItem.tooltip = `Something went wrong; click for log`;
-    ptxSBItem.command = `pretext-tools.showLog`;
-  }
 }
 
 function setupTerminal(

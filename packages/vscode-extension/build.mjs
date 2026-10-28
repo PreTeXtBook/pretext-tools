@@ -138,11 +138,11 @@ const buildOptionsLSP = {
   plugins: [esbuildProblemMatcherPlugin],
 };
 
-// The instant-preview worker is a separate forked process (WebAssembly JSPI
-// may need a process-level flag). ESM output because the bundled
-// libxslt-wasm glue uses top-level await; the .wasm binary itself is copied
-// next to the bundle by copy-vscode-extension-assets.mjs and located at
-// runtime via `new URL("libxslt.wasm", import.meta.url)`.
+// The instant-preview worker is a separate forked process on the desktop
+// (WebAssembly JSPI may need a process-level flag). ESM output because the
+// bundled libxslt-wasm glue uses top-level await; the .wasm binary itself is
+// copied next to the bundle by copy-vscode-extension-assets.mjs and located
+// at runtime via `new URL("libxslt.wasm", import.meta.url)`.
 const buildOptionsPreviewWorker = {
   entryPoints: ["./src/instant-preview-worker.ts"],
   bundle: true,
@@ -200,6 +200,63 @@ if (watch) {
 } else {
   await ctxLSP.rebuild();
   await ctxLSP.dispose();
+}
+
+// The same renderer for the web host, as a Web Worker. A *classic* worker
+// script, like the language server's: VS Code bootstraps a web extension's
+// nested workers through `importScripts`, which cannot load a module. But
+// the renderer's top-level await rules out esbuild's IIFE format, so this is
+// ESM output with no imports or exports left in it (everything is bundled),
+// wrapped in an async IIFE by banner/footer. `import.meta.url` — a syntax
+// error in a classic script — is defined away to a fake origin, which makes
+// the Emscripten glue fetch its .wasm from there; the worker answers that
+// fetch with bytes the extension host sends it (preview-worker-bootstrap.ts).
+// `@pretextbook/pretext-html` resolves to its browser build (the package's
+// `browser` export condition), which reads files through the host.
+//
+// The Emscripten glue also carries Node-only branches that `import()` the
+// "module" and "worker_threads" built-ins; they are dead in a browser worker
+// but esbuild still has to resolve them, so they resolve to empty stubs.
+const nodeBuiltinStubPlugin = {
+  name: "node-builtin-stub",
+  setup(build) {
+    build.onResolve({ filter: /^(module|worker_threads)$/ }, (args) => ({
+      path: args.path,
+      namespace: "node-builtin-stub",
+    }));
+    build.onLoad({ filter: /.*/, namespace: "node-builtin-stub" }, () => ({
+      contents: "export default {};",
+      loader: "js",
+    }));
+  },
+};
+
+const buildOptionsPreviewWorkerWeb = {
+  entryPoints: ["./src/instant-preview-worker.web.ts"],
+  bundle: true,
+  format: "esm",
+  minify: production,
+  sourcemap: !production,
+  sourcesContent: false,
+  ...webResolve,
+  define: {
+    "import.meta.url": JSON.stringify("http://wasm.ptx.invalid/worker.js"),
+  },
+  banner: { js: "(async () => {" },
+  footer: { js: "})();" },
+  outfile: "../../dist/vscode-extension/out/instant-preview-worker.web.js",
+  plugins: [nodeBuiltinStubPlugin, esbuildProblemMatcherPlugin],
+};
+
+const ctxPreviewWorkerWeb = await esbuild.context({
+  ...buildOptionsPreviewWorkerWeb,
+});
+
+if (watch) {
+  await ctxPreviewWorkerWeb.watch();
+} else {
+  await ctxPreviewWorkerWeb.rebuild();
+  await ctxPreviewWorkerWeb.dispose();
 }
 
 const ctxPreviewWorker = await esbuild.context({

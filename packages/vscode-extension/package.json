@@ -551,18 +551,6 @@
           "when": "!isWeb"
         },
         {
-          "command": "pretext-tools.instantPreview",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.instantPreviewScope",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.togglePreviewSlidesView",
-          "when": "!isWeb"
-        },
-        {
           "command": "pretext-tools.forwardSearch",
           "when": "!isWeb"
         },
@@ -742,7 +730,7 @@
             "type": "string",
             "default": "",
             "scope": "machine",
-            "markdownDescription": "Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
+            "markdownDescription": "Desktop only. Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
           },
           "pretext-tools.latexPretext.treatTexAsPretext": {
             "order": 5,

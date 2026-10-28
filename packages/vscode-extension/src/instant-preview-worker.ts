@@ -1,8 +1,8 @@
 /**
- * Entry point for the instant-preview worker process.
+ * Entry point for the instant-preview worker process (desktop VS Code).
  *
  * Bundled by esbuild (see build.mjs) into out/instant-preview-worker.mjs and
- * launched by instantPreview.ts. The XSLT engine (libxslt-wasm) needs
+ * launched by preview-host-node.ts. The XSLT engine (libxslt-wasm) needs
  * WebAssembly JSPI, which older Node only enables behind
  * `--experimental-wasm-jspi`; the launcher picks a runtime/flags that provide
  * it. The PRETEXT_HTML_ASSETS env var points the renderer at the copied
@@ -11,142 +11,15 @@
  * Two modes:
  *
  * - Persistent "serve" mode (`--serve`): the process stays alive and answers
- *   render requests over the Node IPC channel. This is the mode the extension
- *   uses, because keeping the process alive reuses the loaded WASM module and
- *   the compiled stylesheet (the expensive ~600ms cold start), turning
- *   subsequent renders into ~100ms transforms.
+ *   render requests over the Node IPC channel (the protocol and serve loop
+ *   are in preview-protocol.ts, shared with the Web Worker twin of this file,
+ *   instant-preview-worker.web.ts).
  *
  * - One-shot CLI mode (no `--serve`): render one document to stdout and exit.
  *   Retained for standalone use and debugging.
  */
-import {
-  renderHtml,
-  runCli,
-  type PreviewBannerOptions,
-  type PreviewTheme,
-  type PrintoutInfo,
-  type PtxSourceMap,
-  type RenderOptions,
-  type RenderResult,
-  type RenderTarget,
-  type RevealView,
-  type SubtreeOptions,
-} from "@pretextbook/pretext-html";
-
-/** Request sent by the extension over IPC. */
-interface RenderRequest {
-  id: number;
-  type: "render";
-  sourcePath: string;
-  /**
-   * Unsaved editor text to render instead of reading `sourcePath` from disk
-   * (which still anchors its xi:includes); see RenderOptions.sourceContent.
-   */
-  sourceContent?: string;
-  /** The project's main source file; anchors publication-relative asset dirs. */
-  mainSourcePath?: string;
-  projectDir?: string;
-  publicationPath?: string;
-  /** HTML theme for projects whose publication file names none; see renderer. */
-  cssTheme?: string;
-  fragment?: boolean;
-  /** A <docinfo> element (as a string) injected into a fragment wrapper. */
-  docinfo?: string;
-  /** Main source file to lift <docinfo> from (fragment mode); see renderer. */
-  docinfoSourcePath?: string;
-  /**
-   * The complete document a fragment belongs to. Renders the fragment in place
-   * in it, so its numbering and cross-references match the built book rather
-   * than restarting at 1; see RenderOptions.contextSourcePath.
-   */
-  contextSourcePath?: string;
-  /** Also compute the id → file/line source map (for editor sync). */
-  sourceMap?: boolean;
-  /** Initial light/dark theme baked into the page (see @pretextbook/pretext-html). */
-  theme?: PreviewTheme;
-  /** How a slideshow opens: whole deck scrolling, or one slide at a time. */
-  revealView?: RevealView;
-  /** reveal.js theme for decks whose publication file names none. */
-  revealTheme?: string;
-  /** Fraction of the pane a slide fills in the scroll view (zoom). */
-  revealZoom?: number;
-  /** Dismissible "this is a live preview" banner; see @pretextbook/pretext-html. */
-  previewBanner?: PreviewBannerOptions;
-  /**
-   * Preview one division — the one around the cursor, or a named one — of
-   * the document rather than all of it; see RenderOptions.subtree.
-   */
-  subtree?: SubtreeOptions;
-  /**
-   * Unsaved editor buffers of other project files, by absolute path, so the
-   * context document and xi:includes see what the editor sees; see
-   * RenderOptions.files.
-   */
-  files?: Record<string, string>;
-}
-
-/** Response sent back over IPC. */
-type RenderResponse =
-  | {
-      id: number;
-      ok: true;
-      html: string;
-      elapsedMs: number;
-      /**
-       * Which conversion ran. The extension shows slideshow-only UI (the view
-       * toggle) on the strength of this, rather than re-reading the source to
-       * work out whether the page in the panel is a deck.
-       */
-      target: RenderTarget;
-      sourceMap?: PtxSourceMap;
-      /** Real directories behind the page's `external/`/`generated/` URLs. */
-      assetDirs?: { external?: string; generated: string };
-      /**
-       * The page's printouts (worksheets, handouts, and projects with a
-       * workspace), which the toolbar offers a print preview of. Entering that
-       * layout is host-side work — it only re-injects a bridge into this same
-       * HTML — so just the menu has to travel.
-       */
-      printouts: PrintoutInfo[];
-      /** The printout to open in print preview by default, if there is one. */
-      rootPrintout?: string;
-      /** The one division shown, when not the whole document. */
-      subtree?: RenderResult["subtree"];
-    }
-  | { id: number; ok: false; error: string };
-
-function isRenderRequest(value: unknown): value is RenderRequest {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as { type?: unknown }).type === "render" &&
-    typeof (value as { id?: unknown }).id === "number" &&
-    typeof (value as { sourcePath?: unknown }).sourcePath === "string"
-  );
-}
-
-/**
- * A WebAssembly out-of-bounds trap (the whole-book stack overflow) can leave
- * the libxslt instance in an undefined state, so after one the process must be
- * recycled rather than kept serving. Ordinary render errors — malformed XML
- * from a mid-edit save, a missing file — are clean libxml2/JS errors that
- * leave the instance usable, so they must NOT trigger a recycle (that would
- * throw away the warm compiled stylesheet on every typo). Match only the
- * fatal-trap signature, checking the cause chain too since the renderer wraps
- * the raw trap in a friendlier message.
- */
-function isFatalWasmError(error: unknown): boolean {
-  const pattern =
-    /out of bounds|memory access|stack overflow|too large for the current WebAssembly|unreachable|RuntimeError/i;
-  let current: unknown = error;
-  for (let depth = 0; current instanceof Error && depth < 5; depth++) {
-    if (pattern.test(current.message) || pattern.test(current.name)) {
-      return true;
-    }
-    current = (current as { cause?: unknown }).cause;
-  }
-  return false;
-}
+import { renderHtml, runCli } from "@pretextbook/pretext-html";
+import { createRenderServer, isRenderRequest } from "./preview-protocol";
 
 function serve(): void {
   const send = process.send?.bind(process);
@@ -158,79 +31,20 @@ function serve(): void {
     process.exit(1);
   }
 
-  // Process requests strictly in order. renderHtml shares module-level WASM
-  // state (the libxslt instance and stylesheet cache), so overlapping renders
-  // in one process are not safe; the chain serializes them.
-  let queue: Promise<void> = Promise.resolve();
+  const handle = createRenderServer({
+    render: renderHtml,
+    send,
+    log: (line) => console.error(`instant-preview-worker: ${line}`),
+    // The instance may be corrupted; exit so the parent relaunches a fresh
+    // worker for the next render. Delay a tick to let the reply flush over
+    // IPC first.
+    onFatal: () => setTimeout(() => process.exit(1), 50),
+  });
 
   process.on("message", (message: unknown) => {
-    if (!isRenderRequest(message)) {
-      return;
+    if (isRenderRequest(message)) {
+      handle(message);
     }
-    const request = message;
-    queue = queue.then(async () => {
-      const started = Date.now();
-      const options: RenderOptions = {
-        sourcePath: request.sourcePath,
-        sourceContent: request.sourceContent,
-        mainSourcePath: request.mainSourcePath,
-        projectDir: request.projectDir,
-        publicationPath: request.publicationPath,
-        cssTheme: request.cssTheme,
-        fragment: request.fragment,
-        docinfo: request.docinfo,
-        docinfoSourcePath: request.docinfoSourcePath,
-        contextSourcePath: request.contextSourcePath,
-        sourceMap: request.sourceMap,
-        theme: request.theme,
-        revealView: request.revealView,
-        revealTheme: request.revealTheme,
-        revealZoom: request.revealZoom,
-        previewBanner: request.previewBanner,
-        subtree: request.subtree,
-        files: request.files,
-      };
-      try {
-        const {
-          html,
-          target,
-          sourceMap,
-          assetDirs,
-          printouts,
-          rootPrintout,
-          subtree,
-        } = await renderHtml(options);
-        const response: RenderResponse = {
-          id: request.id,
-          ok: true,
-          html,
-          elapsedMs: Date.now() - started,
-          target,
-          sourceMap,
-          assetDirs,
-          printouts,
-          rootPrintout,
-          subtree,
-        };
-        send(response);
-      } catch (error) {
-        const response: RenderResponse = {
-          id: request.id,
-          ok: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-        send(response);
-        if (isFatalWasmError(error)) {
-          // The instance may be corrupted; exit so the parent relaunches a
-          // fresh worker for the next render. Delay a tick to let the reply
-          // flush over IPC first.
-          console.error(
-            "instant-preview-worker: fatal WebAssembly error; recycling process.",
-          );
-          setTimeout(() => process.exit(1), 50);
-        }
-      }
-    });
   });
 
   // A render failure is reported per-request; never let a stray async error

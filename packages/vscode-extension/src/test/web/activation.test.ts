@@ -59,12 +59,13 @@ suite("Web activation", () => {
       "pretext-tools.pasteAndConvert",
       "pretext-tools.showLog",
       "pretext-tools.gettingStarted",
+      "pretext-tools.instantPreview",
     ]) {
       assert.ok(all.has(cmd), `${cmd} should be registered on the web`);
     }
     for (const cmd of [
       "pretext-tools.buildLast",
-      "pretext-tools.instantPreview",
+      "pretext-tools.livePreview",
       "pretext-tools.new",
     ]) {
       assert.ok(

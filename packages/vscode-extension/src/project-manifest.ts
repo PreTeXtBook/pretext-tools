@@ -8,6 +8,10 @@ import type { Target } from "./types";
 const DEFAULT_SOURCE_DIR = "source";
 /** Default source file name a target assumes when it declares none. */
 const DEFAULT_TARGET_SOURCE = "main.ptx";
+/** Default publication directory the `pretext` CLI assumes when a manifest omits it. */
+const DEFAULT_PUBLICATION_DIR = "publication";
+/** Default publication file name a target assumes when it declares none. */
+const DEFAULT_TARGET_PUBLICATION = "publication.ptx";
 
 /**
  * Parse a manifest into its `<project>` element, or undefined when the text
@@ -71,6 +75,30 @@ function resolveTargetSource(
 }
 
 /**
+ * Resolve a target's publication file to an absolute path, by the same
+ * conventions as {@link resolveTargetSource}: a `<publication>` child element
+ * is relative to the project root, a `publication` attribute to the
+ * project's publication directory (project-level attribute, default
+ * `"publication"`), and a target naming neither gets
+ * `<publicationDir>/publication.ptx`. Existence is the caller's business.
+ */
+function resolveTargetPublication(
+  target: Element,
+  projectRoot: string,
+  publicationDir: string,
+): string {
+  const child = childText(target, "publication");
+  if (child !== undefined) {
+    return path.resolve(projectRoot, child);
+  }
+  const attribute = attr(target, "publication");
+  if (attribute !== undefined) {
+    return path.resolve(projectRoot, publicationDir, attribute);
+  }
+  return path.resolve(projectRoot, publicationDir, DEFAULT_TARGET_PUBLICATION);
+}
+
+/**
  * Parse the `<targets>` out of a `project.ptx` manifest.
  *
  * This is the pure, filesystem-free core of target discovery: given the raw
@@ -90,6 +118,8 @@ export function parseTargetsFromManifest(
     return [];
   }
   const sourceDir = attr(project, "source") ?? DEFAULT_SOURCE_DIR;
+  const publicationDir =
+    attr(project, "publication") ?? DEFAULT_PUBLICATION_DIR;
   const targets = childElements(project, "targets")[0];
   if (!targets) {
     return [];
@@ -106,6 +136,8 @@ export function parseTargetsFromManifest(
       // Absolute path to the target's main source file (for the project-wide
       // outline, which follows its xi:includes).
       source: resolveTargetSource(t, projectRoot, sourceDir),
+      // Likewise its publication file (for the live preview).
+      publication: resolveTargetPublication(t, projectRoot, publicationDir),
     };
   });
 }

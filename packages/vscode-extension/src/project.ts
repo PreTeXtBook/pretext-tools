@@ -115,7 +115,7 @@ export async function findProjectRoot(dir: Uri): Promise<Uri | undefined> {
 }
 
 /** The folder containing `uri` (the root is its own parent). */
-function parentFolder(uri: Uri): Uri {
+export function parentFolder(uri: Uri): Uri {
   const trimmed = uri.path.replace(/\/+$/, "");
   const slash = trimmed.lastIndexOf("/");
   return uri.with({ path: slash <= 0 ? "/" : trimmed.slice(0, slash) });

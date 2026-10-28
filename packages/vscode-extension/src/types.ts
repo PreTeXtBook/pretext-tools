@@ -33,6 +33,12 @@ export type Target = {
   format?: string;
   /** Absolute path to the target's main source file, resolved from project.ptx. */
   source?: string;
+  /**
+   * Absolute path to the target's publication file, resolved from project.ptx
+   * the way the CLI would (`<publicationDir>/publication.ptx` when the
+   * target names none). The file need not exist.
+   */
+  publication?: string;
 };
 // Types for snippets
 type Snippet = {

@@ -9,14 +9,14 @@
  * docs/web-extension-plan.md for what is here now and what is still to come.
  *
  * Keep the import graph of this file free of `fs`, `child_process`, `./cli`,
- * `./utils`, `./ui` and `./pandoc`: one Node import anywhere breaks the whole
- * browser bundle. (`path` is fine — the web build aliases it to
- * path-browserify, and the paths this host sees are the virtual ones of
- * virtual-path.ts.)
+ * `./utils`, `./ui`, `./pandoc` and `./cliPreviewServer`: one Node import
+ * anywhere breaks the whole browser bundle. (`path` is fine — the web build
+ * aliases it to path-browserify, and the paths this host sees are the virtual
+ * ones of virtual-path.ts.)
  */
 import { ExtensionContext, commands, languages, window } from "vscode";
 
-import { pretextOutputChannel } from "./ui-core";
+import { pretextOutputChannel, setStatusBarReadyCommand } from "./ui-core";
 import { PretextActionsProvider } from "./actionsView";
 import { cmdConvertText } from "./commands/convert";
 import {
@@ -37,12 +37,25 @@ import { PretextVisualEditorProvider } from "./visualEditor";
 import { registerProjectViews } from "./project-views";
 import { cmdImport } from "./importWizardPanel";
 import { cmdInsertFileAsDivision } from "./insert-import";
+import {
+  cmdInstantPreview,
+  cmdInstantPreviewScope,
+  cmdTogglePreviewSlidesView,
+  disposeInstantPreview,
+  previewTestHooks,
+} from "./instantPreview";
+import { browserPreviewHost } from "./preview-host-browser";
 
 export async function activate(context: ExtensionContext) {
   pretextOutputChannel.appendLine(
     "Welcome to the pretext-tools extension (web). Building, previewing and other commands that need the PreTeXt CLI are available on desktop VS Code or in a Codespace.",
   );
   console.log('Extension "pretext-tools" (web) is now active!');
+
+  // The status-bar item's idle click opens the command menu on the desktop;
+  // there is no such menu here, so send it to the log.
+  setStatusBarReadyCommand("pretext-tools.showLog");
+  const previewHost = browserPreviewHost(context);
 
   // Visual editor
   context.subscriptions.push(PretextVisualEditorProvider.register(context));
@@ -85,6 +98,18 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand("pretext-tools.insertFileAsDivision", () =>
       cmdInsertFileAsDivision(),
     ),
+    // The live preview renders in a Web Worker (Chromium-based browsers only:
+    // the renderer needs WebAssembly JSPI); see preview-host-browser.ts.
+    commands.registerCommand("pretext-tools.instantPreview", () =>
+      cmdInstantPreview(previewHost),
+    ),
+    commands.registerCommand("pretext-tools.instantPreviewScope", () =>
+      cmdInstantPreviewScope(previewHost),
+    ),
+    commands.registerCommand(
+      "pretext-tools.togglePreviewSlidesView",
+      cmdTogglePreviewSlidesView,
+    ),
     commands.registerCommand("pretext-tools.showLog", () =>
       pretextOutputChannel.show(),
     ),
@@ -102,6 +127,7 @@ export async function activate(context: ExtensionContext) {
 
   // Outline and Targets views, reading the project through workspace.fs.
   const views = registerProjectViews(context);
+  const exports = { ...views, preview: previewTestHooks };
 
   // Start the LSP in a Web Worker.
   try {
@@ -113,9 +139,10 @@ export async function activate(context: ExtensionContext) {
     );
   }
 
-  return views;
+  return exports;
 }
 
 export function deactivate() {
+  disposeInstantPreview();
   return lspDeactivate();
 }

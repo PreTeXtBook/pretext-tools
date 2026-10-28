@@ -29,7 +29,9 @@ import {
   cmdInstantPreviewScope,
   cmdTogglePreviewSlidesView,
   disposeInstantPreview,
+  previewTestHooks,
 } from "./instantPreview";
+import { nodePreviewHost } from "./preview-host-node";
 import { PretextActionsProvider } from "./actionsView";
 import { TargetNode } from "./targetsView";
 import { registerProjectViews } from "./project-views";
@@ -115,6 +117,8 @@ export async function activate(context: ExtensionContext) {
     console.log("Error setting schema");
   }
 
+  const previewHost = nodePreviewHost(context.extensionPath);
+
   context.subscriptions.push(ptxSBItem);
   utils.updateStatusBarItem(ptxSBItem);
 
@@ -162,11 +166,13 @@ export async function activate(context: ExtensionContext) {
       cmdViewVisualEditor,
     ),
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    // The live preview renders in a forked Node process here, and can show
+    // a full `pretext build` too; see preview-host-node.ts.
     commands.registerCommand("pretext-tools.instantPreview", () =>
-      cmdInstantPreview(context.extensionPath),
+      cmdInstantPreview(previewHost),
     ),
     commands.registerCommand("pretext-tools.instantPreviewScope", () =>
-      cmdInstantPreviewScope(context.extensionPath),
+      cmdInstantPreviewScope(previewHost),
     ),
     commands.registerCommand(
       "pretext-tools.togglePreviewSlidesView",
@@ -234,6 +240,7 @@ export async function activate(context: ExtensionContext) {
   // CLI's ~/.ptx templates added as a project of their own.
   addProjectProvider(systemDefaultProjects);
   const views = registerProjectViews(context);
+  const exports = { ...views, preview: previewTestHooks };
 
   // Start the LSP
   try {
@@ -249,7 +256,7 @@ export async function activate(context: ExtensionContext) {
     "PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P).",
   );
 
-  return views;
+  return exports;
 }
 
 // this method is called when your extension is deactivated

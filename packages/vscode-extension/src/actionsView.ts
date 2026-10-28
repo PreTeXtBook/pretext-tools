@@ -50,6 +50,7 @@ const ACTIONS: Action[] = [
     command: "pretext-tools.instantPreview",
     icon: "zap",
     tooltip: "Open a live side-by-side HTML preview that refreshes on save",
+    web: true,
   },
   {
     label: "Format document",

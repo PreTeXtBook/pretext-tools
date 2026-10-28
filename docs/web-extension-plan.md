@@ -95,10 +95,11 @@ A web extension runs in a **browser Web Worker**, not Node. The rules
 ### Host modules that stay desktop-only (CLI / process / local FS)
 
 `cli.ts`, `cliPreviewServer.ts`, `commands/{build,view,new,deploy,update,
-installSage,runPtx,select}.ts`, `livePreview.ts`, `instantPreview.ts` (forks
-a worker process), `pandoc.ts`, `importWizardPanel.ts` (writes project files
-with `fs`), `insert-import.ts`, `utils.ts` (spell check / schema config /
-status bar menu).
+installSage,runPtx,select}.ts`, `livePreview.ts`, `preview-host-node.ts`
+(forks the render worker, wraps the CLI server), `pandoc.ts`,
+`project-system-default.ts`, `utils.ts` (spell check / schema config /
+status bar menu). `instantPreview.ts`, `importWizardPanel.ts` and
+`insert-import.ts` were ported in Phases 2–3 behind injected hosts.
 
 ### LSP server: the real work
 
@@ -289,15 +290,72 @@ Landed with these specifics:
 Still desktop-only after Phase 2: build/view buttons on target rows, the
 status-bar quick pick, and everything in the "stay desktop-only" list above.
 
-### Phase 3 — instant preview on the web (optional)
+### Phase 3 — instant preview on the web ✅ (this branch)
 
-`@pretextbook/pretext-html` runs in a browser (pretext-plus does it) but
-requires WebAssembly JSPI — Chromium only today. Replace the forked
-`instant-preview-worker.mjs` with a Web Worker, gate on
-`WebAssembly.Suspending !== undefined` (mirror pretext-plus
-`isLocalPreviewAvailable()`), and show the "needs Chromium" notice otherwise.
-The preview already fetches its static assets from the CDN host, so nothing
-local is needed beyond the WASM binary shipped in `out/`.
+Deliverable: "View Live Preview" on github.dev / vscode.dev — the same
+`@pretextbook/pretext-html` renderer, in a Web Worker beside the extension.
+Needs WebAssembly JSPI, which Chromium ships (Chrome/Edge 137+); elsewhere the
+command says so and points at desktop VS Code or a Codespace.
+
+Landed with these specifics:
+
+- **Host seam.** `preview-host.ts` declares `PreviewHost`: `launchWorker()`
+  returning a `PreviewWorker` (`send`/`onMessage`/`onExit`/`onLog`/
+  `dispose`) and an optional `fullBuild` bridge. `preview-host-node.ts` forks
+  `out/instant-preview-worker.mjs` with JSPI (the runtime probing moved there
+  from instantPreview.ts) and wraps `cliPreviewServer.ts`;
+  `preview-host-browser.ts` starts `out/instant-preview-worker.web.js` as a
+  Web Worker and has no full-build bridge, so the toolbar shows no mode
+  switch and no rebuild/browser buttons there. `cmdInstantPreview(host)`
+  replaced `cmdInstantPreview(extensionPath)`.
+- **One protocol.** `preview-protocol.ts`: `RenderRequest`/`RenderResponse`,
+  the `createRenderServer` serve loop both workers run (strictly in order;
+  a fatal WebAssembly trap recycles the worker), and the web transport's
+  `init`/`read`/`readResult`/`log`/`exit` messages.
+- **instantPreview.ts is host-neutral.** `resolveSource` is async:
+  `findProjectRoot` + `workspace.fs.readFile(project.ptx)` +
+  `parseTargetsFromManifest` (which now also resolves each target's
+  `publication`, so v2 manifests' `<source>`/`<publication>` elements are
+  honoured); the active document's root element comes from the editor text
+  rather than a 4KB `fs.read`. Asset URLs are versioned from
+  `workspace.fs.stat` — a first pass over the page collects the files it
+  asks for, the stats come back together, then the rewrite runs — so
+  `prepareWebviewHtml`, `handleRenderResponse` and `redeliverPreview` are
+  async. Every path is in the virtual-path space (`toUri` maps back;
+  `document.fileName` became `docPath(document)`); `fileKey` no longer
+  touches `process`. The status-bar helper moved to `ui-core.ts`
+  (`setStatusBarReadyCommand` lets the web entry point its idle click at the
+  log, since there is no command menu there).
+- **The Web Worker.** It must be a _classic_ script — VS Code's
+  nested-worker polyfill bootstraps with `importScripts` — but the renderer
+  has a module-level `await`, which esbuild's IIFE format refuses. So the
+  bundle is ESM output with nothing left to import or export, wrapped in an
+  async IIFE by banner/footer, with `import.meta.url` defined to
+  `http://wasm.ptx.invalid/worker.js` and the Emscripten glue's Node-only
+  `module`/`worker_threads` imports stubbed. `preview-worker-bootstrap.ts`
+  (the entry's first import) wraps `fetch`: the glue's request for
+  `…/libxslt.wasm` is answered with bytes the host posts in `init` (read from
+  `out/libxslt.wasm` with `workspace.fs`, or `fetch` on hosts that serve the
+  extension over http(s)); anything under `http://assets.ptx.invalid/` is
+  answered from the extension's `assets/pretext-html/` through the host. The
+  worker sets `setAssetsBase` to that origin — it has to be a URL, because
+  the renderer reads the wrapper stylesheet through its own platform reader,
+  which `setMountReader` does not cover — and a mount reader that serves the
+  stylesheet tree from the shipped `xsl-bundle.json` (one read instead of
+  ~30) and the project directory mount through the same `read` RPC;
+  `readSource` covers xi:includes, the publication file, docinfo and the
+  context document.
+- **Tests.** `preview-protocol.spec.ts` (guards, option mapping, trap
+  detection, serve-loop ordering and recycling); `test/web/preview.test.ts`
+  renders `main.ptx` in the worker and `with-includes.ptx` (whose `ch1.ptx`
+  the worker has to read through the host); a desktop twin
+  `test/suite/preview.test.ts` skips with the message when the machine has
+  no JSPI runtime. Both `activate`s export a `preview.nextRender()` hook
+  beside the view providers for these.
+
+Still desktop-only after Phase 3: full-build mode (`pretext build`/`view`
+behind the toolbar), the `instantPreview.nodePath` setting, and the "stay
+desktop-only" list above.
 
 ---
 

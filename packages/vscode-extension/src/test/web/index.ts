@@ -18,6 +18,8 @@ export function run(): Promise<void> {
     require("./activation.test");
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./project-views.test");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./preview.test");
     try {
       mocha.run((failures) =>
         failures > 0

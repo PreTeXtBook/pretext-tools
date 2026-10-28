@@ -8,21 +8,29 @@
  * compiled to WebAssembly). No PreTeXt installation is required and rebuilds
  * take well under a second for article-sized documents.
  *
- * The transform runs in a separate worker process
- * (out/instant-preview-worker.mjs) because WebAssembly JSPI may need to be
- * enabled with a process-level flag; see launchWorker for how the runtime is
- * chosen. The worker prints the rendered standalone HTML page on stdout; we
- * hand it to a WebviewPanel. Assets (theme css/js, MathJax) come from public
- * CDNs, so the preview needs network access but no local build artifacts.
+ * The transform runs in a render worker the host provides (preview-host.ts):
+ * a forked Node process on the desktop, where WebAssembly JSPI may need a
+ * process-level flag (preview-host-node.ts); a Web Worker on github.dev /
+ * vscode.dev (preview-host-browser.ts). Both answer the same render request
+ * (preview-protocol.ts) with a standalone HTML page, which goes into a
+ * WebviewPanel. Assets (theme css/js, MathJax) come from public CDNs, so the
+ * preview needs network access but no local build artifacts.
+ *
+ * This module itself is host-neutral and ships in both bundles: it reads the
+ * project through `workspace.fs`, and every path it handles is in the space
+ * of virtual-path.ts (a real path for a `file:` document, a virtual one
+ * otherwise) — `toUri` turns one back into a Uri; never `Uri.file`.
  */
 
 import {
   ColorThemeKind,
   ConfigurationTarget,
   Disposable,
+  FileType,
   Position,
   Range,
   RelativePattern,
+  TextDocument,
   TextEditor,
   TextEditorSelectionChangeKind,
   Uri,
@@ -34,10 +42,9 @@ import {
   window,
   workspace,
 } from "vscode";
-import { ChildProcess, fork, spawn, spawnSync } from "child_process";
-import * as fs from "fs";
+// Aliased to path-browserify in the web bundle; only ever applied to the
+// absolute paths of virtual-path.ts there.
 import * as path from "path";
-import { parseString } from "xml2js";
 // Type-only: the runtime package is ESM and lives in the worker process; the
 // extension host only ever sees the JSON-serialized map.
 import type { SourceMapEntry } from "@pretextbook/pretext-html";
@@ -81,13 +88,19 @@ import {
   TOOLBAR_STATUS_BRANCH,
   liveBootstrapScript,
 } from "./preview-bootstrap";
-import {
-  ensureCliServer,
-  runCliBuild,
-  servedUrl,
-  stopCliServer,
-  type CliTarget,
-} from "./cliPreviewServer";
+import type {
+  FullBuildTarget,
+  PreviewHost,
+  PreviewWorker,
+} from "./preview-host";
+import type {
+  RenderRequest,
+  RenderResponse,
+  RenderedSubtree,
+} from "./preview-protocol";
+import { findProjectRoot, parentFolder } from "./project";
+import { parseTargetsFromManifest } from "./project-manifest";
+import { pathToUri, uriToPath } from "./virtual-path";
 import {
   assetVersion,
   assetWatchGlob,
@@ -95,8 +108,11 @@ import {
   watchedAssetDirs,
   type PreviewAssetDirs,
 } from "./preview-assets";
-import { pretextOutputChannel, ptxSBItem } from "./ui";
-import * as utils from "./utils";
+import {
+  pretextOutputChannel,
+  ptxSBItem,
+  updateStatusBarItem,
+} from "./ui-core";
 
 let currentPanel: WebviewPanel | undefined;
 let panelHasContent = false;
@@ -157,7 +173,7 @@ let lastRender:
       /** The file rendered, which the preview may have moved on from since. */
       renderPath: string;
       /** The one division shown, when not the whole document. */
-      subtree?: RenderResponse["subtree"];
+      subtree?: RenderedSubtree;
     }
   | undefined;
 
@@ -196,8 +212,9 @@ let assetRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 // The persistent render worker. Kept alive across renders so the loaded WASM
 // module and compiled stylesheet (the ~600ms cold start) are reused; each
 // subsequent render is just a ~100ms transform.
-let worker: ChildProcess | undefined;
-let workerExtensionPath: string | undefined;
+let worker: PreviewWorker | undefined;
+/** The host the open panel runs on; set when it opens, cleared on dispose. */
+let activeHost: PreviewHost | undefined;
 let nextRequestId = 1;
 // Id of the render we are currently waiting on (undefined when idle). Only one
 // render is in flight at a time; the worker serializes internally too.
@@ -242,6 +259,33 @@ let fullBuildTimer: ReturnType<typeof setTimeout> | undefined;
  */
 let fullBuildPath: string | undefined;
 
+/** What a render came to, for {@link previewTestHooks}. */
+export type PreviewRenderOutcome =
+  | { ok: true; html: string; elapsedMs: number }
+  | { ok: false; error: string };
+
+let renderWaiters: ((outcome: PreviewRenderOutcome) => void)[] = [];
+
+function settleRenderWaiters(outcome: PreviewRenderOutcome): void {
+  const waiters = renderWaiters;
+  renderWaiters = [];
+  waiters.forEach((resolve) => resolve(outcome));
+}
+
+/**
+ * Observation points for the integration suites (both hosts' `activate`
+ * return them); no part of the preview's own behaviour depends on them.
+ */
+export const previewTestHooks = {
+  /**
+   * The outcome of the next render to finish — or of the attempt to start
+   * the render worker, when that is what fails.
+   */
+  nextRender(): Promise<PreviewRenderOutcome> {
+    return new Promise((resolve) => renderWaiters.push(resolve));
+  },
+};
+
 const DEBOUNCE_MS = 400;
 /** Pause in typing before the preview renders the unsaved document. */
 const TYPING_DEBOUNCE_MS = 300;
@@ -266,46 +310,6 @@ const ASSET_REFRESH_DEBOUNCE_MS = 400;
 const PREVIEW_BANNER_MESSAGE =
   "This live preview does not use your project's publication file — your " +
   "built version may have different styles and options.";
-
-interface RenderResponse {
-  id: number;
-  ok: boolean;
-  html?: string;
-  error?: string;
-  elapsedMs?: number;
-  sourceMap?: SourceMapEntry[];
-  /**
-   * Which conversion the worker ran: "slides" for a reveal.js deck, "html"
-   * otherwise. Decides whether the slideshow view toggle applies to what the
-   * panel is currently showing. Optional so a response from an older worker
-   * (mid-upgrade, before a restart) still parses.
-   */
-  target?: "html" | "slides";
-  /**
-   * Real directories behind the `external/`/`generated/` URLs in `html`.
-   * `external` is absent when the project declares no external directory.
-   * The whole field is absent only in a response from an older worker.
-   */
-  assetDirs?: PreviewAssetDirs;
-  /**
-   * The page's printouts, for the toolbar's print-preview menu. Optional so a
-   * response from an older worker (mid-upgrade, before a restart) still parses.
-   */
-  printouts?: PrintoutInfo[];
-  /** The printout to open in print preview by default, if the page has one. */
-  rootPrintout?: string;
-  /**
-   * The one division the page shows, when not the whole document: its id,
-   * and — when it is a summary page — the ids of the divisions it lists.
-   * Both are source-map ids, which is how the cursor is matched against them.
-   */
-  subtree?: {
-    id: string;
-    level: number;
-    collapsed: boolean;
-    children: string[];
-  };
-}
 
 interface SourceInfo {
   /**
@@ -341,6 +345,52 @@ interface SourceInfo {
  * has nothing to follow.
  */
 type PreviewScope = "file" | "division" | "project";
+
+/** A path of the preview's path space (virtual-path.ts) back as a Uri. */
+function toUri(absolutePath: string): Uri {
+  return Uri.parse(pathToUri(absolutePath));
+}
+
+/** An editor document's path in that space (its fsPath for a `file:` one). */
+function docPath(document: TextDocument): string {
+  return uriToPath(document.uri.toString());
+}
+
+/** Whether a document is PreTeXt source the preview can follow. */
+function isPretextDocument(document: TextDocument | undefined): boolean {
+  return !!document && /\.(ptx|xml)$/.test(document.uri.path);
+}
+
+/** The first 4KB of a document: enough to see its root element. */
+function documentHead(document: TextDocument): string {
+  return document.getText(
+    new Range(new Position(0, 0), document.positionAt(4096)),
+  );
+}
+
+async function fileExists(absolutePath: string): Promise<boolean> {
+  return (await fileStat(absolutePath)) !== undefined;
+}
+
+/** A file's stat, or undefined when it is missing or not a file. */
+async function fileStat(
+  absolutePath: string,
+): Promise<{ mtimeMs: number; size: number } | undefined> {
+  try {
+    const stat = await workspace.fs.stat(toUri(absolutePath));
+    if (!(stat.type & FileType.File)) {
+      return undefined;
+    }
+    return { mtimeMs: stat.mtime, size: stat.size };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Whether the toolbar can offer a full `pretext build` on this host. */
+function fullBuildAvailable(): boolean {
+  return activeHost?.fullBuild !== undefined;
+}
 
 function previewScope(): PreviewScope {
   const scope = workspace
@@ -549,7 +599,7 @@ function lockPreviewGroupOnce(): void {
  * css theme changes, since that is baked into the publication file the
  * transform reads.
  */
-function setupConfigWatcher(extensionPath: string): void {
+function setupConfigWatcher(host: PreviewHost): void {
   configWatcher?.dispose();
   configWatcher = workspace.onDidChangeConfiguration((event) => {
     if (
@@ -563,7 +613,7 @@ function setupConfigWatcher(extensionPath: string): void {
       });
     }
     if (event.affectsConfiguration("pretext-tools.instantPreview.cssTheme")) {
-      renderToPanel(extensionPath);
+      renderToPanel(host);
     }
     // The reveal theme is baked into the publication file, so it genuinely
     // needs the document rebuilding; the view and zoom only change what reveal
@@ -572,7 +622,7 @@ function setupConfigWatcher(extensionPath: string): void {
     if (
       event.affectsConfiguration("pretext-tools.instantPreview.slidesTheme")
     ) {
-      renderToPanel(extensionPath);
+      renderToPanel(host);
     } else if (
       event.affectsConfiguration("pretext-tools.instantPreview.slidesZoom") ||
       event.affectsConfiguration("pretext-tools.instantPreview.slidesView")
@@ -586,7 +636,7 @@ function setupConfigWatcher(extensionPath: string): void {
         revealViewOverride = undefined;
       }
       if (isSlideshowPreview()) {
-        redeliverPreview({ fresh: true });
+        void redeliverPreview({ fresh: true });
       }
     }
   });
@@ -643,7 +693,7 @@ function isProjectFile(file: string): boolean {
  */
 function cursorSelection(renderPath: string): { file: string; line: number } {
   const editor = lastActiveEditor;
-  const file = editor?.document.fileName;
+  const file = editor ? docPath(editor.document) : undefined;
   if (editor && file && fileKey(file) === fileKey(renderPath)) {
     return { file, line: editor.selection.active.line + 1 };
   }
@@ -658,7 +708,7 @@ function cursorSelection(renderPath: string): { file: string; line: number } {
 function dirtyProjectFiles(renderPath: string): Record<string, string> {
   const files: Record<string, string> = {};
   for (const document of workspace.textDocuments) {
-    const file = document.fileName;
+    const file = docPath(document);
     if (
       document.isDirty &&
       isProjectFile(file) &&
@@ -728,7 +778,7 @@ function patchableKey(): string | undefined {
  * rendered count; in project scope, so does an edit anywhere in the project,
  * since every open file's buffer reaches the render.
  */
-function setupTypingWatcher(extensionPath: string): void {
+function setupTypingWatcher(host: PreviewHost): void {
   typingWatcher?.dispose();
   typingWatcher = workspace.onDidChangeTextDocument((event) => {
     if (
@@ -745,8 +795,8 @@ function setupTypingWatcher(extensionPath: string): void {
     }
     const counts =
       previewScope() === "project"
-        ? isProjectFile(event.document.fileName)
-        : fileKey(event.document.fileName) === fileKey(renderPath);
+        ? isProjectFile(docPath(event.document))
+        : fileKey(docPath(event.document)) === fileKey(renderPath);
     if (!counts) {
       return;
     }
@@ -755,7 +805,7 @@ function setupTypingWatcher(extensionPath: string): void {
     }
     typingTimer = setTimeout(() => {
       typingTimer = undefined;
-      renderToPanel(extensionPath, { fromTyping: true });
+      renderToPanel(host, { fromTyping: true });
     }, TYPING_DEBOUNCE_MS);
   });
 }
@@ -770,14 +820,14 @@ function setupTypingWatcher(extensionPath: string): void {
  * "go to definition" that passes through several files) would otherwise queue
  * a render per file passed.
  */
-function setupEditorTracker(extensionPath: string): void {
+function setupEditorTracker(host: PreviewHost): void {
   editorTracker?.dispose();
   const active = window.activeTextEditor;
-  if (active?.document.fileName.match(/\.(ptx|xml)$/)) {
+  if (isPretextDocument(active?.document)) {
     lastActiveEditor = active;
   }
   editorTracker = window.onDidChangeActiveTextEditor((editor) => {
-    if (!editor?.document.fileName.match(/\.(ptx|xml)$/)) {
+    if (!editor || !isPretextDocument(editor.document)) {
       return;
     }
     lastActiveEditor = editor;
@@ -792,9 +842,9 @@ function setupEditorTracker(extensionPath: string): void {
     if (followTimer) {
       clearTimeout(followTimer);
     }
-    followTimer = setTimeout(() => {
+    followTimer = setTimeout(async () => {
       followTimer = undefined;
-      const next = resolveSource();
+      const next = await resolveSource();
       // Nothing to do when the newly focused file resolves to what is already
       // on screen — notably project.ptx and publication files, which are not
       // renderable content and leave the preview on its current source.
@@ -806,7 +856,7 @@ function setupEditorTracker(extensionPath: string): void {
         return;
       }
       currentSource = next;
-      renderToPanel(extensionPath);
+      renderToPanel(host);
     }, FOLLOW_DEBOUNCE_MS);
   });
 }
@@ -830,8 +880,9 @@ function setupThemeWatcher(): void {
  * Command handler: open (or reveal) the instant preview for the current
  * document's project.
  */
-export async function cmdInstantPreview(extensionPath: string): Promise<void> {
-  const source = resolveSource();
+export async function cmdInstantPreview(host: PreviewHost): Promise<void> {
+  activeHost = host;
+  const source = await resolveSource();
   if (!source) {
     window.showErrorMessage(
       "Open a PreTeXt (.ptx) file to use the live preview.",
@@ -851,7 +902,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
         // The page loads images and media straight out of the project's asset
         // directories (see prepareWebviewHtml). The project root is the same
         // boundary the renderer's own mount enforces.
-        localResourceRoots: [Uri.file(source.projectDir)],
+        localResourceRoots: [toUri(source.projectDir)],
       },
     );
     panelHasContent = false;
@@ -903,8 +954,11 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
             }
             return;
           case "setMode":
-            if (msg.mode === "live" || msg.mode === "full") {
-              void setPreviewMode(msg.mode, extensionPath);
+            if (
+              msg.mode === "live" ||
+              (msg.mode === "full" && fullBuildAvailable())
+            ) {
+              void setPreviewMode(msg.mode, host);
             }
             return;
           case "rebuild":
@@ -948,7 +1002,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
             return;
           case "openExternal": {
             const target = fullBuildTarget();
-            const url = target && servedUrl(target);
+            const url = target && activeHost?.fullBuild?.servedUrl(target);
             if (url) {
               void env.openExternal(Uri.parse(url));
             }
@@ -957,17 +1011,17 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
         }
       },
     );
-    setupSaveWatcher(extensionPath);
-    setupTypingWatcher(extensionPath);
+    setupSaveWatcher(host);
+    setupTypingWatcher(host);
     setupSelectionWatcher();
     setupThemeWatcher();
-    setupEditorTracker(extensionPath);
-    setupConfigWatcher(extensionPath);
+    setupEditorTracker(host);
+    setupConfigWatcher(host);
   } else {
     currentPanel.reveal(ViewColumn.Beside, true);
   }
 
-  renderToPanel(extensionPath);
+  renderToPanel(host);
 }
 
 /**
@@ -975,9 +1029,7 @@ export async function cmdInstantPreview(extensionPath: string): Promise<void> {
  * file (wrapped as a standalone preview when it is a fragment) or the whole
  * project. Re-renders immediately when the preview panel is open.
  */
-export async function cmdInstantPreviewScope(
-  extensionPath: string,
-): Promise<void> {
+export async function cmdInstantPreviewScope(host: PreviewHost): Promise<void> {
   const current = previewScope();
   const picked = await window.showQuickPick(
     [
@@ -1019,8 +1071,8 @@ export async function cmdInstantPreviewScope(
         : ConfigurationTarget.Global,
     );
   if (currentPanel) {
-    currentSource = resolveSource() ?? currentSource;
-    renderToPanel(extensionPath);
+    currentSource = (await resolveSource()) ?? currentSource;
+    renderToPanel(host);
   }
 }
 
@@ -1085,7 +1137,7 @@ function cmdStepPreviewSlidesZoom(delta: number): void {
  * that from a DOMContentLoaded handler, which a `document.write` fires just as a
  * reload does, and the in-place path keeps the CDN assets already loaded.
  */
-function redeliverPreview({ fresh = false } = {}): void {
+async function redeliverPreview({ fresh = false } = {}): Promise<void> {
   if (!currentPanel || !lastRender) {
     return;
   }
@@ -1095,20 +1147,22 @@ function redeliverPreview({ fresh = false } = {}): void {
           zoom: previewSlidesZoom(),
         })
       : lastRender.html;
+  const prepared = await prepareWebviewHtml(
+    html,
+    currentPanel.webview,
+    currentSource?.projectDir ?? "",
+    lastRender.assetDirs,
+  );
+  if (!currentPanel) {
+    return; // closed meanwhile
+  }
   if (fresh) {
     panelHasContent = false;
   }
   // Never patched: every caller is changing how the page presents itself, and
   // both the slideshow view and the print layout are set up only as a page
   // loads. The page it leaves behind may be patched into again, though.
-  updatePanelContent(
-    prepareWebviewHtml(
-      html,
-      currentPanel.webview,
-      currentSource?.projectDir ?? "",
-      lastRender.assetDirs,
-    ),
-  );
+  updatePanelContent(prepared);
   deliveredKey = patchableKey();
 }
 
@@ -1140,9 +1194,9 @@ function watchAssetDirs(
   }
   // Anchored at the project directory, so a directory that does not exist yet
   // is picked up when it is created; see assetWatchGlob.
-  const base = Uri.file(path.resolve(projectDir));
+  const base = toUri(path.resolve(projectDir));
   const onEvent = (uri: Uri) => {
-    if (isInsideAny(uri.fsPath, watchedAssetPaths)) {
+    if (isInsideAny(uriToPath(uri.toString()), watchedAssetPaths)) {
       scheduleAssetRefresh();
     }
   };
@@ -1179,7 +1233,7 @@ function scheduleAssetRefresh(): void {
     clearTimeout(assetRefreshTimer);
   }
   assetRefreshTimer = setTimeout(
-    refreshPreviewAssets,
+    () => void refreshPreviewAssets(),
     ASSET_REFRESH_DEBOUNCE_MS,
   );
 }
@@ -1197,7 +1251,7 @@ function scheduleAssetRefresh(): void {
  * while a render is in flight, since its page will resolve the URLs afresh
  * when it arrives.
  */
-function refreshPreviewAssets(): void {
+async function refreshPreviewAssets(): Promise<void> {
   assetRefreshTimer = undefined;
   if (
     !currentPanel ||
@@ -1214,13 +1268,13 @@ function refreshPreviewAssets(): void {
           zoom: previewSlidesZoom(),
         })
       : lastRender.html;
-  const prepared = prepareWebviewHtml(
+  const prepared = await prepareWebviewHtml(
     html,
     currentPanel.webview,
     currentSource?.projectDir ?? "",
     lastRender.assetDirs,
   );
-  if (prepared === deliveredHtml) {
+  if (prepared === deliveredHtml || !currentPanel) {
     return;
   }
   const key = patchableKey();
@@ -1265,7 +1319,7 @@ function setPreviewSlidesView(view: RevealView): void {
     return;
   }
   revealViewOverride = view;
-  redeliverPreview({ fresh: true });
+  void redeliverPreview({ fresh: true });
   pretextOutputChannel.appendLine(
     `[Instant Preview] Slideshow view: ${view === "scroll" ? "scrolling deck" : "presentation"}`,
   );
@@ -1293,7 +1347,7 @@ function setPreviewPrintout(id: string | undefined): void {
   }
   printoutChoice = id ?? null;
   printoutChoicePath = currentRenderPath();
-  redeliverPreview();
+  void redeliverPreview();
   const printout = lastRender.printouts.find((entry) => entry.id === id);
   pretextOutputChannel.appendLine(
     `[Instant Preview] Print preview: ${printout ? printout.label : "off"}`,
@@ -1306,79 +1360,74 @@ function setPreviewPrintout(id: string | undefined): void {
  * pretext-cli defaults as fallback). The active file itself is kept as
  * `activePath` for current-file scope; the worker's --fragment mode makes
  * xi:included fragments renderable on their own.
+ *
+ * Reads through `workspace.fs`, so it works on a virtual workspace too; the
+ * active document's own text comes from the editor rather than disk.
  */
-function resolveSource(): SourceInfo | undefined {
+async function resolveSource(): Promise<SourceInfo | undefined> {
   // Falling back to the tracked editor matters whenever the webview holds
   // focus — clicking the mode toolbar, for one — because that leaves
   // activeTextEditor undefined even though the reader plainly means "the file
   // I was just editing".
   const active = window.activeTextEditor;
-  const editor = active?.document.fileName.match(/\.(ptx|xml)$/)
+  const editor = isPretextDocument(active?.document)
     ? active
     : lastActiveEditor;
   if (!editor) {
     return currentSource; // keep previewing the last known project
   }
-  const filePath = editor.document.fileName;
+  const document = editor.document;
+  const filePath = docPath(document);
   // Manifest-ish files (project.ptx, publication files) are not renderable
   // content — keep following the previously active content file (their save
   // still triggers a rebuild through the save watcher).
-  const activeRoot = rootElementOf(filePath);
+  const head = documentHead(document);
+  const activeRoot = rootElementOf(head);
   const isContent = activeRoot !== "project" && activeRoot !== "publication";
 
-  const projectDir = utils.getProjectFolder(path.dirname(filePath));
-  if (!projectDir) {
+  const projectRoot = await findProjectRoot(parentFolder(document.uri));
+  if (!projectRoot) {
     if (!isContent) {
       return currentSource;
     }
     return { activePath: filePath, projectDir: path.dirname(filePath) };
   }
+  const projectDir = uriToPath(projectRoot.toString());
 
   let mainSourcePath: string | undefined;
   let publicationPath: string | undefined;
   let htmlTargetName: string | undefined;
   try {
-    const manifest = fs.readFileSync(
-      path.join(projectDir, "project.ptx"),
-      "utf8",
+    const manifest = new TextDecoder().decode(
+      await workspace.fs.readFile(Uri.joinPath(projectRoot, "project.ptx")),
     );
-    // parseString invokes its callback synchronously for a string input.
-    parseString(manifest, (err, result) => {
-      if (err || !result?.project) {
-        return;
-      }
-      const project = result.project;
-      const sourceDir = project.$?.source ?? "source";
-      const publicationDir = project.$?.publication ?? "publication";
-      // Prefer an html-format target's explicit source/publication.
-      const targets = project.targets?.[0]?.target ?? [];
-      const htmlTarget =
-        targets.find((t: any) => t.$?.format === "html") ?? targets[0];
-      const targetSource = htmlTarget?.$?.source ?? "main.ptx";
-      const targetPublication = htmlTarget?.$?.publication ?? "publication.ptx";
-      htmlTargetName = htmlTarget?.$?.name;
-      mainSourcePath = path.resolve(projectDir, sourceDir, targetSource);
-      publicationPath = path.resolve(
-        projectDir,
-        publicationDir,
-        targetPublication,
-      );
-    });
+    const targets = parseTargetsFromManifest(manifest, projectDir);
+    // Prefer an html target's explicit source/publication. A target naming
+    // no format is html by the CLI's default.
+    const htmlTarget =
+      targets.find((target) => target.format === "html") ??
+      targets.find((target) => !target.format) ??
+      targets[0];
+    if (htmlTarget) {
+      htmlTargetName = htmlTarget.name;
+      mainSourcePath = htmlTarget.source;
+      publicationPath = htmlTarget.publication;
+    }
   } catch {
     // fall through to defaults below
   }
 
-  if (!mainSourcePath || !fs.existsSync(mainSourcePath)) {
+  if (!mainSourcePath || !(await fileExists(mainSourcePath))) {
     const fallback = path.join(projectDir, "source", "main.ptx");
-    if (fs.existsSync(fallback)) {
+    if (await fileExists(fallback)) {
       mainSourcePath = fallback;
-    } else if (isContent && isCompleteDocument(filePath)) {
+    } else if (isContent && isCompleteDocument(head)) {
       mainSourcePath = filePath;
     } else {
       mainSourcePath = undefined;
     }
   }
-  if (!publicationPath || !fs.existsSync(publicationPath)) {
+  if (!publicationPath || !(await fileExists(publicationPath))) {
     publicationPath = undefined;
   }
 
@@ -1398,7 +1447,7 @@ function resolveSource(): SourceInfo | undefined {
 }
 
 /** The build full-build mode should serve, when the project declares one. */
-function fullBuildTarget(): CliTarget | undefined {
+function fullBuildTarget(): FullBuildTarget | undefined {
   if (!currentSource?.htmlTargetName) {
     return undefined;
   }
@@ -1409,24 +1458,11 @@ function fullBuildTarget(): CliTarget | undefined {
 }
 
 /**
- * Name of the root element of an XML file, or undefined when unreadable.
- * Reads only the first 4KB; a prolog comment longer than that gives
- * undefined, which callers treat conservatively.
+ * Name of the root element of an XML document, given its head (see
+ * documentHead), or undefined when there is none in it. A prolog comment
+ * longer than the head gives undefined, which callers treat conservatively.
  */
-function rootElementOf(filePath: string): string | undefined {
-  let head: string;
-  try {
-    const fd = fs.openSync(filePath, "r");
-    try {
-      const buf = Buffer.alloc(4096);
-      const bytes = fs.readSync(fd, buf, 0, buf.length, 0);
-      head = buf.toString("utf8", 0, bytes);
-    } finally {
-      fs.closeSync(fd);
-    }
-  } catch {
-    return undefined;
-  }
+function rootElementOf(head: string): string | undefined {
   // Strip the prolog (xml declaration, PIs, comments, doctype) and look at
   // the first real element.
   const prolog = head
@@ -1437,75 +1473,12 @@ function rootElementOf(filePath: string): string | undefined {
 }
 
 /**
- * True when the file is a complete PreTeXt document (<pretext> or legacy
+ * True when the document is a complete PreTeXt document (<pretext> or legacy
  * <mathbook> root element) rather than an xi:included fragment.
  */
-function isCompleteDocument(filePath: string): boolean {
-  const root = rootElementOf(filePath);
+function isCompleteDocument(head: string): boolean {
+  const root = rootElementOf(head);
   return root === "pretext" || root === "mathbook";
-}
-
-/** A runtime that can host the render worker, and how to invoke it. */
-type NodeLaunch = {
-  command: string;
-  flags: string[];
-  /** Extra environment this runtime needs (Electron's run-as-node switch). */
-  env: NodeJS.ProcessEnv;
-};
-
-/** Cached result of probing which runtime/flags give us WebAssembly JSPI. */
-let nodeLaunch: NodeLaunch | undefined;
-
-/**
- * Flag spellings that have enabled JSPI across the V8 versions we may meet.
- * V8 renamed the flag mid-stream (--experimental-wasm-stack-switching became
- * --experimental-wasm-jspi), and the empty entry covers runtimes new enough to
- * have JSPI on by default. Node exits with "bad option" on a flag its V8 does
- * not know, so an unsupported spelling simply fails its probe and we move on.
- *
- * Note a runtime can accept the flag and still lack the API we need: V8 12.4
- * (all of Node 22) has only the older Suspender-era JSPI, so it takes the flag
- * and still reports no WebAssembly.Suspending. Probing for the API rather than
- * sniffing a version number is what keeps that case honest.
- */
-const JSPI_FLAG_CANDIDATES: string[][] = [
-  ["--experimental-wasm-jspi"],
-  ["--experimental-wasm-stack-switching"],
-  [],
-];
-
-/**
- * Launch the render worker in a process where WebAssembly JSPI is available.
- *
- * Almost no runtime we meet has JSPI on by default -- even V8 13.6 (Node 24)
- * still needs --experimental-wasm-jspi -- so this fast path, forking with the
- * flags already in effect, is mostly reserved for future runtimes that enable
- * it unconditionally. Everything else goes through resolveNodeLaunch, which
- * finds a runtime/flag pair that does expose WebAssembly.Suspending.
- *
- * Note the fallback is not "a system Node": resolveNodeLaunch prefers the
- * runtime already hosting this extension, so the common case needs no separate
- * Node installation at all.
- */
-function launchWorker(
-  workerPath: string,
-  args: string[],
-  env: NodeJS.ProcessEnv,
-): ChildProcess {
-  // The extension's ts lib has no WebAssembly declarations; go via globalThis.
-  const wasm = (globalThis as { WebAssembly?: object }).WebAssembly;
-  if (wasm && "Suspending" in wasm) {
-    // fork() always sets up an IPC channel; silent pipes stdio so we can read
-    // the worker's stderr for diagnostics.
-    return fork(workerPath, args, { execArgv: [], silent: true, env });
-  }
-  const { command, flags, env: runtimeEnv } = resolveNodeLaunch();
-  // The 'ipc' stdio slot gives the spawned Node the same message channel a
-  // fork would, so the serve protocol works identically on either path.
-  return spawn(command, [...flags, workerPath, ...args], {
-    stdio: ["ignore", "pipe", "pipe", "ipc"],
-    env: { ...env, ...runtimeEnv },
-  });
 }
 
 /**
@@ -1513,65 +1486,45 @@ function launchWorker(
  * needed and wiring its message/exit handlers exactly once. Returns undefined
  * if the worker could not be started (an error is surfaced to the user).
  */
-function ensureWorker(extensionPath: string): ChildProcess | undefined {
+function ensureWorker(host: PreviewHost): PreviewWorker | undefined {
   if (worker) {
     return worker;
   }
-  workerExtensionPath = extensionPath;
-  const workerPath = path.join(
-    extensionPath,
-    "out",
-    "instant-preview-worker.mjs",
-  );
-  let child: ChildProcess;
+  let child: PreviewWorker;
   try {
-    child = launchWorker(workerPath, ["--serve"], {
-      ...process.env,
-      PRETEXT_HTML_ASSETS: path.join(extensionPath, "assets", "pretext-html"),
-    });
+    child = host.launchWorker();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    utils.updateStatusBarItem(ptxSBItem, "ready");
+    updateStatusBarItem(ptxSBItem, "ready");
     pretextOutputChannel.appendLine(`[Instant Preview] ${message}`);
     window.showErrorMessage(message);
+    settleRenderWaiters({ ok: false, error: message });
     return undefined;
   }
 
-  child.stderr?.on("data", (data: Buffer) => {
-    const text = data.toString().trim();
-    if (text) {
-      pretextOutputChannel.appendLine(`[Instant Preview] ${text}`);
-    }
-  });
-
-  child.on("message", (message: unknown) =>
-    handleWorkerMessage(message as RenderResponse),
+  child.onLog((line) =>
+    pretextOutputChannel.appendLine(`[Instant Preview] ${line}`),
   );
-
-  child.on("error", (err) => {
-    pretextOutputChannel.appendLine(`[Instant Preview] ${String(err)}`);
-    if (worker === child) {
-      worker = undefined;
-    }
-    pendingRequestId = undefined;
-    utils.updateStatusBarItem(ptxSBItem, "ready");
-    window.showErrorMessage(
-      "Instant preview could not start its Node.js worker. Check the PreTeXt output log.",
-    );
-  });
-
-  child.on("exit", (code, signal) => {
+  child.onMessage((message) => void handleWorkerMessage(message));
+  child.onExit(({ description, failedToStart }) => {
     if (worker === child) {
       worker = undefined;
     }
     if (disposing) {
       return;
     }
+    if (failedToStart) {
+      pendingRequestId = undefined;
+      renderQueued = false;
+      updateStatusBarItem(ptxSBItem, "ready");
+      window.showErrorMessage(description);
+      settleRenderWaiters({ ok: false, error: description });
+      return;
+    }
     // Unexpected death (crash, OOM). If it took a render down with it, retry a
     // bounded number of times; otherwise the next render simply relaunches.
     pretextOutputChannel.appendLine(
-      `[Instant Preview] Worker exited unexpectedly ` +
-        `(code=${code ?? "null"}, signal=${signal ?? "null"}).`,
+      `[Instant Preview] Worker exited unexpectedly (${description}).`,
     );
     const wasRendering = pendingRequestId !== undefined;
     pendingRequestId = undefined;
@@ -1581,12 +1534,12 @@ function ensureWorker(extensionPath: string): ChildProcess | undefined {
       pretextOutputChannel.appendLine(
         `[Instant Preview] Restarting worker (attempt ${crashRetries}).`,
       );
-      if (workerExtensionPath) {
-        renderToPanel(workerExtensionPath);
+      if (activeHost) {
+        renderToPanel(activeHost);
       }
     } else if (wasRendering || renderQueued) {
       renderQueued = false;
-      utils.updateStatusBarItem(ptxSBItem, "ready");
+      updateStatusBarItem(ptxSBItem, "ready");
       window
         .showErrorMessage(
           "Instant preview worker keeps crashing. Check the PreTeXt output log.",
@@ -1605,126 +1558,17 @@ function ensureWorker(extensionPath: string): ChildProcess | undefined {
 }
 
 /** Handle a render response from the worker (see handleRenderResponse). */
-function handleWorkerMessage(message: RenderResponse): void {
-  if (
-    !message ||
-    typeof message.id !== "number" ||
-    message.id !== pendingRequestId
-  ) {
+async function handleWorkerMessage(message: RenderResponse): Promise<void> {
+  if (message.id !== pendingRequestId) {
     // Stale response from a superseded/relaunched render — ignore.
     return;
   }
   pendingRequestId = undefined;
-  handleRenderResponse(message);
-  if (renderQueued && workerExtensionPath) {
+  await handleRenderResponse(message);
+  if (renderQueued && activeHost) {
     renderQueued = false;
-    renderToPanel(workerExtensionPath, { fromTyping: queuedFromTyping });
+    renderToPanel(activeHost, { fromTyping: queuedFromTyping });
   }
-}
-
-/**
- * Ask a candidate runtime whether it exposes JSPI under the given flags.
- * Returns a human-readable reason when it does not, for the output log.
- */
-function probeJspi(
-  command: string,
-  flags: string[],
-  env: NodeJS.ProcessEnv,
-): { ok: boolean; detail: string } {
-  const probe = spawnSync(
-    command,
-    [...flags, "-p", "'Suspending' in WebAssembly"],
-    { encoding: "utf8", timeout: 10000, env: { ...process.env, ...env } },
-  );
-  if (probe.error) {
-    // Typically ENOENT (no such binary on this process's PATH).
-    return { ok: false, detail: probe.error.message };
-  }
-  if (probe.status === 0 && probe.stdout.trim() === "true") {
-    return { ok: true, detail: "ok" };
-  }
-  const reason = (probe.stderr || probe.stdout).trim() || "no JSPI";
-  return { ok: false, detail: `exit ${probe.status}: ${reason}` };
-}
-
-/**
- * Find a Node runtime with JSPI support for the render worker.
- *
- * Tries, in order: an explicitly configured nodePath, the runtime already
- * hosting this extension (VS Code Server's bundled Node in a remote/Codespaces
- * window, Electron on the desktop — which runs as plain Node when
- * ELECTRON_RUN_AS_NODE is set), then `node` from PATH. Each is probed against
- * every flag spelling in JSPI_FLAG_CANDIDATES. Using the extension host's own
- * runtime mirrors what pretext-html's CLI does with process.execPath, and lets
- * the preview work with no separate Node installation at all.
- *
- * Throws with install/configuration advice, having logged every attempt.
- */
-function resolveNodeLaunch(): NodeLaunch {
-  if (nodeLaunch) {
-    return nodeLaunch;
-  }
-  const configured = workspace
-    .getConfiguration("pretext-tools")
-    .get<string>("instantPreview.nodePath")
-    ?.trim();
-
-  const candidates: {
-    command: string;
-    env: NodeJS.ProcessEnv;
-    label: string;
-  }[] = [];
-  if (configured) {
-    candidates.push({ command: configured, env: {}, label: configured });
-  }
-  candidates.push({
-    command: process.execPath,
-    // Harmless on a plain Node; required for Electron to behave as Node.
-    env: { ELECTRON_RUN_AS_NODE: "1" },
-    label: `extension host runtime (${process.execPath})`,
-  });
-  candidates.push({ command: "node", env: {}, label: '"node" on PATH' });
-
-  const attempts: string[] = [];
-  const seen = new Set<string>();
-  for (const candidate of candidates) {
-    if (seen.has(candidate.command)) {
-      continue;
-    }
-    seen.add(candidate.command);
-    for (const flags of JSPI_FLAG_CANDIDATES) {
-      const shown = flags.join(" ") || "(no flags)";
-      const result = probeJspi(candidate.command, flags, candidate.env);
-      if (result.ok) {
-        pretextOutputChannel.appendLine(
-          `[Instant Preview] Render worker will use ${candidate.label} ${shown}.`,
-        );
-        nodeLaunch = {
-          command: candidate.command,
-          flags,
-          env: candidate.env,
-        };
-        return nodeLaunch;
-      }
-      attempts.push(`${candidate.label} ${shown} -> ${result.detail}`);
-    }
-  }
-
-  pretextOutputChannel.appendLine(
-    `[Instant Preview] No runtime with WebAssembly JSPI found. Attempts:\n  ` +
-      attempts.join("\n  "),
-  );
-  throw new Error(
-    `The live preview needs a Node.js runtime with WebAssembly JSPI, and none ` +
-      `of the ${attempts.length} runtime/flag combinations tried provided one. ` +
-      `See the PreTeXt output log for what each attempt reported. Updating VS ` +
-      `Code is usually the easiest fix, since it supplies the runtime this ` +
-      `preview prefers. Otherwise install Node.js 24 or later (Node 22 cannot ` +
-      `do this -- its V8 predates the WebAssembly.Suspending API) and, if it ` +
-      `is not on PATH, set "pretext-tools.instantPreview.nodePath" to its ` +
-      `absolute path (that setting is machine-scoped, so in a remote or ` +
-      `Codespaces window set it under the "Remote" tab, not "User").`,
-  );
 }
 
 /**
@@ -1733,7 +1577,7 @@ function resolveNodeLaunch(): NodeLaunch {
  * a single rebuild).
  */
 function renderToPanel(
-  extensionPath: string,
+  host: PreviewHost,
   { fromTyping = false }: { fromTyping?: boolean } = {},
 ): void {
   if (!currentSource || !currentPanel || previewMode !== "live") {
@@ -1747,7 +1591,7 @@ function renderToPanel(
     return;
   }
 
-  const child = ensureWorker(extensionPath);
+  const child = ensureWorker(host);
   if (!child) {
     return;
   }
@@ -1767,7 +1611,7 @@ function renderToPanel(
       ? "PreTeXt Preview: project"
       : `PreTeXt Preview: ${path.basename(renderPath)}`;
 
-  utils.updateStatusBarItem(ptxSBItem, "building");
+  updateStatusBarItem(ptxSBItem, "building");
   pretextOutputChannel.appendLine(
     `[Instant Preview] Rendering ${renderPath} (scope: ${scope})` +
       (currentSource.publicationPath
@@ -1777,17 +1621,17 @@ function renderToPanel(
 
   // Rendering as you type means rendering what is in the editor, saved or
   // not. Only the rendered file itself: the worker reads everything else it
-  // needs (included files, the main file's docinfo) from disk.
+  // needs (included files, the main file's docinfo) from the project.
   let sourceContent: string | undefined;
   lastRenderedVersion = undefined;
   if (updateWhileTyping()) {
     const open = workspace.textDocuments.find(
-      (doc) => fileKey(doc.fileName) === fileKey(renderPath),
+      (doc) => fileKey(docPath(doc)) === fileKey(renderPath),
     );
     if (open) {
       sourceContent = open.isDirty ? open.getText() : undefined;
       lastRenderedVersion = {
-        file: fileKey(open.fileName),
+        file: fileKey(docPath(open)),
         version: open.version,
       };
     }
@@ -1800,7 +1644,7 @@ function renderToPanel(
   pendingRenderPath = renderPath;
   // --fragment behaviour: a lone chapter/section renders as a wrapped preview
   // document; complete documents are unaffected.
-  const request = {
+  const request: RenderRequest = {
     id,
     type: "render" as const,
     sourcePath: renderPath,
@@ -1858,33 +1702,38 @@ function renderToPanel(
     revealZoom: previewSlidesZoom(),
     previewBanner: { message: PREVIEW_BANNER_MESSAGE },
   };
-  child.send(request, (err) => {
-    if (err && pendingRequestId === id) {
-      // The channel died between ensureWorker and send; the exit handler will
-      // relaunch/retry. Just clear this in-flight marker.
-      pendingRequestId = undefined;
-      pretextOutputChannel.appendLine(
-        `[Instant Preview] Failed to send render request: ${String(err)}`,
-      );
-    }
-  });
+  child.send(request);
 }
 
 /** Apply a worker render response to the panel and status bar. */
-function handleRenderResponse(message: RenderResponse): void {
+async function handleRenderResponse(message: RenderResponse): Promise<void> {
+  try {
+    await applyRenderResponse(message);
+  } finally {
+    settleRenderWaiters(
+      message.ok
+        ? { ok: true, html: message.html, elapsedMs: message.elapsedMs }
+        : { ok: false, error: message.error },
+    );
+  }
+}
+
+async function applyRenderResponse(message: RenderResponse): Promise<void> {
   if (previewMode !== "live") {
     // The user switched to the full build while this render was in flight;
     // applying it now would tear down the page they asked for. The source map
     // is still worth keeping for when they switch back.
-    applySourceMap(message.sourceMap);
-    utils.updateStatusBarItem(ptxSBItem, "ready");
+    if (message.ok) {
+      applySourceMap(message.sourceMap);
+    }
+    updateStatusBarItem(ptxSBItem, "ready");
     return;
   }
-  if (message.ok && message.html && currentPanel) {
+  if (message.ok && currentPanel) {
     const html = message.html;
     if (!html.includes("</html>")) {
       // Defensive: never blank the panel on incomplete output.
-      utils.updateStatusBarItem(ptxSBItem, "ready");
+      updateStatusBarItem(ptxSBItem, "ready");
       pretextOutputChannel.appendLine(
         `[Instant Preview] Worker returned incomplete HTML ` +
           `(${html.length} bytes); keeping previous preview.`,
@@ -1922,15 +1771,18 @@ function handleRenderResponse(message: RenderResponse): void {
     // keeps the reader's place and only re-typesets what changed; the page
     // itself falls back to rewriting when a patch cannot be applied.
     const key = patchableKey();
-    updatePanelContent(
-      prepareWebviewHtml(
-        html,
-        currentPanel.webview,
-        currentSource?.projectDir ?? "",
-        message.assetDirs,
-      ),
-      { patch: key !== undefined && key === deliveredKey },
+    const prepared = await prepareWebviewHtml(
+      html,
+      currentPanel.webview,
+      currentSource?.projectDir ?? "",
+      message.assetDirs,
     );
+    if (!currentPanel) {
+      return; // closed while the asset files were being looked up
+    }
+    updatePanelContent(prepared, {
+      patch: key !== undefined && key === deliveredKey,
+    });
     deliveredKey = key;
     // The page's images change on disk independently of the source (a
     // background build regenerating them, say), so watch where they live.
@@ -1938,15 +1790,15 @@ function handleRenderResponse(message: RenderResponse): void {
     // A patch leaves the toolbar as it was, so clear anything a failed render
     // or mode switch left in the status text.
     postStatus(liveStatusText());
-    utils.updateStatusBarItem(ptxSBItem, "success");
+    updateStatusBarItem(ptxSBItem, "success");
     pretextOutputChannel.appendLine(
       `[Instant Preview] Rebuilt in ${message.elapsedMs ?? Date.now() - pendingStarted}ms`,
     );
     return;
   }
 
-  utils.updateStatusBarItem(ptxSBItem, "ready");
-  if (message.error) {
+  updateStatusBarItem(ptxSBItem, "ready");
+  if (!message.ok) {
     pretextOutputChannel.appendLine(`[Instant Preview] ${message.error}`);
   }
   if (pendingFromTyping) {
@@ -2032,7 +1884,7 @@ function postStatus(text: string): void {
  */
 async function setPreviewMode(
   mode: PreviewMode,
-  extensionPath: string,
+  host: PreviewHost,
 ): Promise<void> {
   if (mode === previewMode || switchingMode || !currentPanel) {
     return;
@@ -2042,17 +1894,21 @@ async function setPreviewMode(
     previewMode = "live";
     // Catch up with wherever the reader has moved since full-build mode took
     // over — the editor may well be on a different file by now.
-    currentSource = resolveSource() ?? currentSource;
+    currentSource = (await resolveSource()) ?? currentSource;
     // Force the next delivery through webview.html rather than an in-place
     // rewrite. Beyond being a genuinely different document, this gives it a
     // fresh CSP list — see previewCsp on why writing a second policy into a
     // live document is a one-way ratchet.
     panelHasContent = false;
-    renderToPanel(extensionPath);
+    renderToPanel(host);
     return;
   }
 
+  const bridge = host.fullBuild;
   const target = fullBuildTarget();
+  if (!bridge) {
+    return; // no PreTeXt CLI on this host; the toolbar does not offer it
+  }
   if (!target) {
     window.showErrorMessage(
       "Full-build mode needs an html target in the project's project.ptx, " +
@@ -2062,10 +1918,10 @@ async function setPreviewMode(
   }
 
   switchingMode = true;
-  utils.updateStatusBarItem(ptxSBItem, "building");
+  updateStatusBarItem(ptxSBItem, "building");
   postStatus(`Starting the PreTeXt server for "${target.target}"…`);
   try {
-    const url = await ensureCliServer(target);
+    const url = await bridge.ensureServer(target);
     if (!currentPanel) {
       return; // panel closed while the server was starting
     }
@@ -2076,11 +1932,11 @@ async function setPreviewMode(
     updatePanelContent(
       fullBuildWrapperHtml(currentPanel.webview, url, target.target),
     );
-    utils.updateStatusBarItem(ptxSBItem, "success");
+    updateStatusBarItem(ptxSBItem, "success");
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     pretextOutputChannel.appendLine(`[Full Build] ${message}`);
-    utils.updateStatusBarItem(ptxSBItem, "ready");
+    updateStatusBarItem(ptxSBItem, "ready");
     postStatus("Full build unavailable — staying on the live preview.");
     window.showErrorMessage(message, "Show Log").then((choice) => {
       if (choice === "Show Log") {
@@ -2102,17 +1958,18 @@ async function setPreviewMode(
  * out so the page ends up reflecting the newest source.
  */
 async function rebuildFullBuild(): Promise<void> {
+  const bridge = activeHost?.fullBuild;
   const target = fullBuildTarget();
-  if (!target || previewMode !== "full" || fullBuildInProgress) {
+  if (!bridge || !target || previewMode !== "full" || fullBuildInProgress) {
     return;
   }
   fullBuildInProgress = true;
   fullBuildStale = false;
-  utils.updateStatusBarItem(ptxSBItem, "building");
+  updateStatusBarItem(ptxSBItem, "building");
   postStatus(`Building "${target.target}"…`);
   try {
-    const built = await runCliBuild(target);
-    utils.updateStatusBarItem(ptxSBItem, built ? "success" : "ready");
+    const built = await bridge.build(target);
+    updateStatusBarItem(ptxSBItem, built ? "success" : "ready");
     if (built) {
       postStatus(target.target);
       void currentPanel?.webview.postMessage({ command: "reloadFrame" });
@@ -2388,21 +2245,38 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
   // PreTeXt emits the paper-size and print-options controls for such pages
   // alone.
   const printouts = (lastRender?.printouts ?? []).length > 0;
+  // The mode switch only where there is a PreTeXt CLI to build with; on the
+  // web host the live render is the only mode, and a one-button switch would
+  // just be noise.
+  const modeSwitch = fullBuildAvailable()
+    ? [
+        '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
+        '    <button type="button" data-ptx-mode="live"',
+        `      aria-pressed="${pressed("live")}"`,
+        '      title="Fast, partial render of current source file with two-way sync' +
+          ` (updates ${updateWhileTyping() ? "as you type" : "on save"}).">`,
+        "      Division preview</button>",
+        '    <button type="button" data-ptx-mode="full"',
+        `      aria-pressed="${pressed("full")}"`,
+        '      title="The full output of `pretext build`, served by the PreTeXt-CLI">',
+        "      Full build</button>",
+        "  </div>",
+      ]
+    : [];
+  const fullBuildButtons = fullBuildAvailable()
+    ? [
+        '  <button type="button" class="ptx-tools-full-only" data-ptx-action="rebuild"',
+        '    title="Run `pretext build` and reload">Rebuild</button>',
+        '  <button type="button" class="ptx-tools-full-only"',
+        '    data-ptx-action="openExternal"',
+        '    title="Open this build in your browser">Browser</button>',
+      ]
+    : [];
   return [
     `<div id="ptx-tools-bar" data-mode="${mode}" data-scope="${previewScope()}"` +
       ` data-slides="${slides ? "yes" : "no"}" data-slides-view="${view}"` +
       ` data-printouts="${printouts ? "yes" : "no"}">`,
-    '  <div class="ptx-tools-seg" role="group" aria-label="Preview mode">',
-    '    <button type="button" data-ptx-mode="live"',
-    `      aria-pressed="${pressed("live")}"`,
-    '      title="Fast, partial render of current source file with two-way sync' +
-      ` (updates ${updateWhileTyping() ? "as you type" : "on save"}).">`,
-    "      Division preview</button>",
-    '    <button type="button" data-ptx-mode="full"',
-    `      aria-pressed="${pressed("full")}"`,
-    '      title="The full output of `pretext build`, served by the PreTeXt-CLI">',
-    "      Full build</button>",
-    "  </div>",
+    ...modeSwitch,
     `  <span id="ptx-tools-status">${escapeHtml(status)}</span>`,
     '  <span class="ptx-tools-spacer"></span>',
     '  <span class="ptx-tools-zoom ptx-tools-slides-only ptx-tools-live-only">',
@@ -2429,11 +2303,7 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
     `    aria-pressed="${followActiveEditor() ? "true" : "false"}"`,
     '    title="Re-render when you switch to another source file">',
     "    Follow editor</button>",
-    '  <button type="button" class="ptx-tools-full-only" data-ptx-action="rebuild"',
-    '    title="Run `pretext build` and reload">Rebuild</button>',
-    '  <button type="button" class="ptx-tools-full-only"',
-    '    data-ptx-action="openExternal"',
-    '    title="Open this build in your browser">Browser</button>',
+    ...fullBuildButtons,
     "</div>",
   ].join("\n");
 }
@@ -2461,12 +2331,47 @@ function escapeHtml(text: string): string {
  * disk gets a new URL and the page fetches it again (see preview-assets.ts).
  * The webview ignores the query when it reads the file, and strips it before
  * checking localResourceRoots.
+ *
+ * The files are looked up through `workspace.fs`, which is asynchronous
+ * while the rewriter is not: a first pass over the page collects what it
+ * asks for, the stats come back together, and the resolver returned here
+ * answers from them. One stat per asset per rebuild, as before.
  */
-function assetUriResolver(
+async function assetUriResolver(
   webview: Webview,
   assetDirs: PreviewAssetDirs,
   projectDir: string,
-): AssetUrlResolver {
+  html: string,
+): Promise<AssetUrlResolver> {
+  const root = path.resolve(projectDir);
+  // Where an asset the page asks for would be, when it is in bounds.
+  // Containment: a "../" in an @source must not turn into a webview URI for
+  // an arbitrary file. localResourceRoots would refuse it anyway; failing
+  // here keeps the page honest about what it asked for.
+  const locate = (dir: string, relPath: string): string | undefined => {
+    const filePath = path.resolve(dir, relPath);
+    return filePath === root || filePath.startsWith(root + path.sep)
+      ? filePath
+      : undefined;
+  };
+  const wanted = new Set<string>();
+  rewriteAssetUrls(html, (kind, relPath) => {
+    const dir = assetDirs[kind];
+    const filePath = dir === undefined ? undefined : locate(dir, relPath);
+    if (filePath !== undefined) {
+      wanted.add(filePath);
+    }
+    return undefined;
+  });
+  const stats = new Map<string, { mtimeMs: number; size: number }>();
+  await Promise.all(
+    [...wanted].map(async (filePath) => {
+      const stat = await fileStat(filePath);
+      if (stat) {
+        stats.set(filePath, stat);
+      }
+    }),
+  );
   return (kind, relPath) => {
     const dir = assetDirs[kind];
     // No external directory declared: PreTeXt reads that as "no external
@@ -2476,25 +2381,21 @@ function assetUriResolver(
     if (dir === undefined) {
       return missingAssetPlaceholder(kind, relPath);
     }
-    const filePath = path.resolve(dir, relPath);
-    // Containment: a "../" in an @source must not turn into a webview URI for
-    // an arbitrary file. localResourceRoots would refuse it anyway; failing
-    // here keeps the page honest about what it asked for.
-    const root = path.resolve(projectDir);
-    if (filePath !== root && !filePath.startsWith(root + path.sep)) {
+    const filePath = locate(dir, relPath);
+    if (filePath === undefined) {
       return undefined;
     }
     // A project whose images have never been built is the normal case here,
     // not an error: `pretext generate` is a separate Python-side step this
     // preview exists to avoid needing. Substituting a placeholder that names
     // the missing asset beats the browser's broken-image glyph, which reads
-    // as "the preview is broken". One stat per asset per rebuild.
-    const stat = fs.statSync(filePath, { throwIfNoEntry: false });
-    if (!stat?.isFile()) {
+    // as "the preview is broken".
+    const stat = stats.get(filePath);
+    if (!stat) {
       return missingAssetPlaceholder(kind, relPath);
     }
     return webview
-      .asWebviewUri(Uri.file(filePath))
+      .asWebviewUri(toUri(filePath))
       .with({ query: assetVersion(stat) })
       .toString();
   };
@@ -2517,14 +2418,17 @@ function assetUriResolver(
  * same Window, where a bridge from the previous page is still installed: a page
  * that said nothing would inherit that stale answer rather than its own.
  */
-function prepareWebviewHtml(
+async function prepareWebviewHtml(
   html: string,
   webview: Webview,
   projectDir: string,
   assetDirs?: PreviewAssetDirs,
-): string {
+): Promise<string> {
   const retargeted = assetDirs
-    ? rewriteAssetUrls(html, assetUriResolver(webview, assetDirs, projectDir))
+    ? rewriteAssetUrls(
+        html,
+        await assetUriResolver(webview, assetDirs, projectDir, html),
+      )
     : html;
   const page = injectPrintPreview(retargeted, currentPrintout());
   const cspTag = cspMetaTag(webview);
@@ -2668,10 +2572,10 @@ function fullBuildWrapperHtml(
 }
 
 /** Rebuild on save of any .ptx/.xml file (debounced), unless disabled. */
-function setupSaveWatcher(extensionPath: string): void {
+function setupSaveWatcher(host: PreviewHost): void {
   saveWatcher?.dispose();
   saveWatcher = workspace.onDidSaveTextDocument((document) => {
-    if (!document.fileName.match(/\.(ptx|xml)$/) || !currentPanel) {
+    if (!isPretextDocument(document) || !currentPanel) {
       return;
     }
     if (previewMode === "full") {
@@ -2690,7 +2594,7 @@ function setupSaveWatcher(extensionPath: string): void {
     // the file just saved along with everything else.
     if (
       typingTimer !== undefined ||
-      (lastRenderedVersion?.file === fileKey(document.fileName) &&
+      (lastRenderedVersion?.file === fileKey(docPath(document)) &&
         lastRenderedVersion.version === document.version)
     ) {
       return;
@@ -2698,10 +2602,10 @@ function setupSaveWatcher(extensionPath: string): void {
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
-    debounceTimer = setTimeout(() => {
+    debounceTimer = setTimeout(async () => {
       // Re-resolve in case the user switched projects since opening the panel
-      currentSource = resolveSource() ?? currentSource;
-      renderToPanel(extensionPath);
+      currentSource = (await resolveSource()) ?? currentSource;
+      renderToPanel(host);
     }, DEBOUNCE_MS);
   });
 }
@@ -2713,8 +2617,12 @@ function setupSaveWatcher(extensionPath: string): void {
  */
 function fileKey(filePath: string): string {
   const normalized = path.normalize(filePath);
-  return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  return CASE_INSENSITIVE_PATHS ? normalized.toLowerCase() : normalized;
 }
+
+/** Windows compares paths case-insensitively; `process` is absent on the web. */
+const CASE_INSENSITIVE_PATHS =
+  typeof process !== "undefined" && process.platform === "win32";
 
 /** Index a freshly received source map for both sync directions. */
 function applySourceMap(map: SourceMapEntry[] | undefined): void {
@@ -2752,10 +2660,10 @@ function setupSelectionWatcher(): void {
     ) {
       return;
     }
-    const fileName = event.textEditor.document.fileName;
-    if (!fileName.match(/\.(ptx|xml)$/)) {
+    if (!isPretextDocument(event.textEditor.document)) {
       return;
     }
+    const fileName = docPath(event.textEditor.document);
     const line = (event.selections[0]?.active.line ?? 0) + 1;
     if (syncTimer) {
       clearTimeout(syncTimer);
@@ -2768,17 +2676,17 @@ function setupSelectionWatcher(): void {
     // leads, and a division picked from a summary page stops being pinned.
     if (
       previewMode === "live" &&
-      workerExtensionPath &&
+      activeHost &&
       cursorLeftRenderedDivision(fileName, line)
     ) {
       pinnedDivision = undefined;
-      const extensionPath = workerExtensionPath;
+      const host = activeHost;
       if (divisionTimer) {
         clearTimeout(divisionTimer);
       }
       divisionTimer = setTimeout(() => {
         divisionTimer = undefined;
-        renderToPanel(extensionPath);
+        renderToPanel(host);
       }, FOLLOW_DEBOUNCE_MS);
     }
   });
@@ -2790,15 +2698,11 @@ function setupSelectionWatcher(): void {
  * division stays pinned until the cursor moves into another one.
  */
 function showDivision(id: string): void {
-  if (
-    !workerExtensionPath ||
-    previewMode !== "live" ||
-    previewScope() !== "division"
-  ) {
+  if (!activeHost || previewMode !== "live" || previewScope() !== "division") {
     return;
   }
   pinnedDivision = id;
-  renderToPanel(workerExtensionPath);
+  renderToPanel(activeHost);
 }
 
 /**
@@ -2854,7 +2758,7 @@ async function revealSource(ids: string[]): Promise<void> {
     return;
   }
   try {
-    const document = await workspace.openTextDocument(entry.file);
+    const document = await workspace.openTextDocument(toUri(entry.file));
     const position = new Position(
       entry.line - 1,
       Math.max(0, entry.column - 1),
@@ -2928,10 +2832,10 @@ export function disposeInstantPreview(): void {
     "pretext-tools.previewIsSlideshow",
     false,
   );
-  // The CLI server outlives our child process, so it needs an explicit stop.
-  // Kept running while the panel is open (even in live mode) so toggling back
-  // to the full build is instant.
-  stopCliServer();
+  // The CLI server outlives our worker, so it needs an explicit stop. Kept
+  // running while the panel is open (even in live mode) so toggling back to
+  // the full build is instant.
+  activeHost?.fullBuild?.stop();
   if (fullBuildTimer) {
     clearTimeout(fullBuildTimer);
     fullBuildTimer = undefined;
@@ -2942,12 +2846,7 @@ export function disposeInstantPreview(): void {
   fullBuildStale = false;
   disposing = true;
   if (worker) {
-    // disconnect() lets the worker exit cleanly on its 'disconnect' handler;
-    // kill() is the backstop if it is wedged.
-    worker.disconnect?.();
-    if (!worker.killed) {
-      worker.kill();
-    }
+    worker.dispose();
     worker = undefined;
   }
   pendingRequestId = undefined;
@@ -2960,6 +2859,6 @@ export function disposeInstantPreview(): void {
   deliveredHtml = undefined;
   webviewHasPage = false;
   deliveredKey = undefined;
-  workerExtensionPath = undefined;
+  activeHost = undefined;
   disposing = false;
 }
