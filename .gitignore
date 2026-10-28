@@ -1,5 +1,6 @@
 .vscode/**
 packages/vscode-extension/.vscode-test/**
+packages/vscode-extension/.vscode-test-web/**
 out/test/**
 
 .gitignore

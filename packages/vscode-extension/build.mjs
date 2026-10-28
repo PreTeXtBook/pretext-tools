@@ -56,6 +56,45 @@ const buildOptions = {
   plugins: [esbuildProblemMatcherPlugin],
 };
 
+// Browser entry point (package.json "browser"): the same extension loaded by
+// github.dev / vscode.dev, where extensions run in a Web Worker. No Node
+// built-ins may reach this bundle; `src/extension.web.ts` imports only the
+// modules that stay clear of them. CommonJS output is what the web extension
+// host expects. The `worker` export condition matters: packages such as
+// decode-named-character-reference resolve their `browser` entry to a DOM
+// implementation (`document.createElement` at module scope), which throws in
+// a worker; `worker` selects their DOM-free entry.
+const webResolve = {
+  platform: "browser",
+  conditions: ["worker"],
+  external: ["vscode"],
+};
+
+const buildOptionsWeb = {
+  entryPoints: ["./src/extension.web.ts"],
+  bundle: true,
+  format: "cjs",
+  minify: production,
+  sourcemap: !production,
+  sourcesContent: false,
+  ...webResolve,
+  outfile: "../../dist/vscode-extension/out/extension.web.js",
+  plugins: [esbuildProblemMatcherPlugin],
+};
+
+// Browser smoke tests, run in the same Web Worker host by `@vscode/test-web`
+// (`npm run test:web`). Not shipped: out/test-web is in .vscodeignore.
+const buildOptionsWebTests = {
+  entryPoints: ["./src/test/web/index.ts"],
+  bundle: true,
+  format: "cjs",
+  sourcemap: !production,
+  sourcesContent: false,
+  ...webResolve,
+  outfile: "../../dist/vscode-extension/out/test-web/index.js",
+  plugins: [esbuildProblemMatcherPlugin],
+};
+
 const buildOptionsLSP = {
   entryPoints: ["./src/lsp-server/main.ts"],
   bundle: true,
@@ -95,6 +134,24 @@ if (watch) {
 } else {
   await ctx.rebuild();
   await ctx.dispose();
+}
+
+const ctxWeb = await esbuild.context({ ...buildOptionsWeb });
+
+if (watch) {
+  await ctxWeb.watch();
+} else {
+  await ctxWeb.rebuild();
+  await ctxWeb.dispose();
+}
+
+const ctxWebTests = await esbuild.context({ ...buildOptionsWebTests });
+
+if (watch) {
+  await ctxWebTests.watch();
+} else {
+  await ctxWebTests.rebuild();
+  await ctxWebTests.dispose();
 }
 
 const ctxLSP = await esbuild.context({ ...buildOptionsLSP });

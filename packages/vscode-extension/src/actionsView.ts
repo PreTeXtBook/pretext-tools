@@ -18,6 +18,12 @@ interface Action {
   command: string;
   icon: string; // codicon name
   tooltip?: string;
+  /**
+   * Available in the browser host (github.dev / vscode.dev). Defaults to
+   * false: most actions drive the `pretext` CLI, which only exists on desktop
+   * and in Codespaces.
+   */
+  web?: boolean;
 }
 
 const ACTIONS: Action[] = [
@@ -50,6 +56,7 @@ const ACTIONS: Action[] = [
     command: "pretext-tools.format",
     icon: "pencil",
     tooltip: "Formats the PreTeXt source file using the PreTeXt formatter",
+    web: true,
   },
   {
     label: "Generate assets",
@@ -75,6 +82,7 @@ const ACTIONS: Action[] = [
     label: "Convert to PreTeXt…",
     command: "pretext-tools.convertText",
     icon: "replace",
+    web: true,
   },
   {
     label: "Update PreTeXt",
@@ -85,15 +93,24 @@ const ACTIONS: Action[] = [
     label: "Getting started",
     command: "pretext-tools.gettingStarted",
     icon: "mortar-board",
+    web: true,
   },
   {
     label: "Show log",
     command: "pretext-tools.showLog",
     icon: "output",
+    web: true,
   },
 ];
 
 export class PretextActionsProvider implements TreeDataProvider<Action> {
+  private readonly actions: Action[];
+
+  /** `web: true` lists only the actions that work in the browser host. */
+  constructor({ web = false }: { web?: boolean } = {}) {
+    this.actions = web ? ACTIONS.filter((a) => a.web) : ACTIONS;
+  }
+
   getTreeItem(action: Action): TreeItem {
     const item = new TreeItem(action.label, TreeItemCollapsibleState.None);
     item.iconPath = new ThemeIcon(action.icon);
@@ -103,6 +120,6 @@ export class PretextActionsProvider implements TreeDataProvider<Action> {
   }
 
   getChildren(action?: Action): Action[] {
-    return action ? [] : ACTIONS;
+    return action ? [] : this.actions;
   }
 }

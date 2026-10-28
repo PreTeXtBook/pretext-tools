@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getNonce } from "./utils";
+import { getNonce } from "./nonce";
 import { formatPretext } from "@pretextbook/format";
 
 // Based on the example at https://github.com/microsoft/vscode-extension-samples/tree/main/custom-editor-sample.

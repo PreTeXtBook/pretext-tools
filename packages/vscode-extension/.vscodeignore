@@ -3,3 +3,6 @@
 
 # Exclude source maps
 **/*.map
+
+# Exclude the browser smoke-test bundle (npm run test:web)
+out/test-web/**

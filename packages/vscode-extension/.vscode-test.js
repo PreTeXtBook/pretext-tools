@@ -10,7 +10,9 @@ const extensionDevelopmentPath = path.resolve(
 );
 
 module.exports = defineConfig({
-  files: "out/test/**/*.test.js",
+  // Only the desktop suite: src/test/web compiles into out/test/web too, but
+  // those run in the browser host via `npm run test:web`.
+  files: "out/test/suite/**/*.test.js",
   version: "stable",
   extensionDevelopmentPath,
   // Open the fixture project so the `workspaceContains:project.ptx` activation

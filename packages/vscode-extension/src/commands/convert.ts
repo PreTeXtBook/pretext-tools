@@ -1,9 +1,9 @@
 import { Range, window, workspace } from "vscode";
 import { markdownToPretext as md2ptx } from "md2ptx";
-import { pretextOutputChannel } from "../ui";
+import { pretextOutputChannel } from "../ui-core";
 // @ts-expect-error frankenmarkup does not publish types.
 import { FlexTeXtConvert } from "frankenmarkup";
-import { lspFormatText } from "../lsp-client/main";
+import { lspFormatText } from "../lsp-client/shared";
 import { fromXml } from "xast-util-from-xml";
 import { toXml } from "xast-util-to-xml";
 import { SKIP, visit } from "unist-util-visit";
