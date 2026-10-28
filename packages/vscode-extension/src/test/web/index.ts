@@ -16,6 +16,8 @@ export function run(): Promise<void> {
     mocha.setup({ ui: "tdd", reporter: undefined, timeout: 60000 });
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require("./activation.test");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("./project-views.test");
     try {
       mocha.run((failures) =>
         failures > 0

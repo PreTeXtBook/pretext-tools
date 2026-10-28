@@ -33,11 +33,11 @@ import {
   workspace,
   Disposable,
 } from "vscode";
-import * as fs from "fs";
 import * as path from "path";
 import { ELEMENT_CONFIG, OutlineItem, parseOutline } from "./outline-parser";
 import { FileOutlineItem, parseProjectOutline } from "./project-outline";
 import { ensureProjectList, projects } from "./project";
+import { pathToUri } from "./virtual-path";
 
 type OutlineScope = "file" | "project";
 
@@ -53,16 +53,27 @@ function isPretextFile(fileName: string): boolean {
 }
 
 /**
+ * The `Uri` of a file the project outline names. Paths are in the space of
+ * virtual-path.ts, so this works for the virtual workspaces of github.dev as
+ * well as files on disk.
+ */
+function toUri(absPath: string): Uri {
+  return Uri.parse(pathToUri(absPath));
+}
+
+/**
  * Read a file's text, preferring an open editor's (possibly unsaved) content
- * over what's on disk. Returns undefined if the file can't be read.
+ * over what `workspace.fs` holds. Returns undefined if the file can't be read.
  */
 async function readProjectFile(absPath: string): Promise<string | undefined> {
-  const open = workspace.textDocuments.find((d) => d.uri.fsPath === absPath);
+  const uri = toUri(absPath);
+  const key = uri.toString();
+  const open = workspace.textDocuments.find((d) => d.uri.toString() === key);
   if (open) {
     return open.getText();
   }
   try {
-    return await fs.promises.readFile(absPath, "utf8");
+    return new TextDecoder().decode(await workspace.fs.readFile(uri));
   } catch {
     return undefined;
   }
@@ -330,23 +341,24 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
 
     if (sources.length === 1) {
       const items = await parseProjectOutline(sources[0], readProjectFile);
-      return items.map((item) => this.toNode(item, Uri.file(sources[0])));
+      return items.map((item) => this.toNode(item, toUri(sources[0])));
     }
 
     // Multiple distinct sources → group each under a header row.
     const groups: OutlineNode[] = [];
     for (const source of sources) {
       const items = await parseProjectOutline(source, readProjectFile);
-      const children = items.map((item) => this.toNode(item, Uri.file(source)));
+      const sourceUri = toUri(source);
+      const children = items.map((item) => this.toNode(item, sourceUri));
       groups.push(
         new OutlineNode(
           "project-source",
-          workspace.asRelativePath(source),
+          workspace.asRelativePath(sourceUri),
           "",
           0,
           0,
           children,
-          Uri.file(source),
+          sourceUri,
           "group",
           (bySource.get(source) ?? []).join(", "),
         ),
@@ -362,7 +374,7 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
    */
   private toNode(item: OutlineItem, uri: Uri): OutlineNode {
     const file = (item as FileOutlineItem).file;
-    const itemUri = file ? Uri.file(file) : uri;
+    const itemUri = file ? toUri(file) : uri;
     const kind: NodeKind = item.tag === "missing" ? "missing" : "element";
     const detail = item.tag === "missing" ? (item.href ?? "") : "";
     return new OutlineNode(

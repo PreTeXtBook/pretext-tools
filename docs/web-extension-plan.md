@@ -90,6 +90,8 @@ A web extension runs in a **browser Web Worker**, not Node. The rules
 | `ui.ts`              | imports `utils` → `child_process`                        | split output channel / status bar into `ui-core.ts`                    |
 | `utils.ts`           | `execSync`, `fs`                                         | leave as desktop-only; move `getNonce` to `nonce.ts`                   |
 
+(All of these were ported in Phases 0–2; see the phase notes below for how.)
+
 ### Host modules that stay desktop-only (CLI / process / local FS)
 
 `cli.ts`, `cliPreviewServer.ts`, `commands/{build,view,new,deploy,update,
@@ -236,15 +238,56 @@ arbitrary `source/**` glob.
 Risks: `salve-annos` grammar JSON is a few MB — measure worker start time;
 lazy-load the Experimental grammar. `xregexp` and `saxes` are fine.
 
-### Phase 2 — read-only project views on the web
+### Phase 2 — project views and import on the web ✅ (this branch)
 
-- `documentOutline.ts` / `project-outline.ts`: project scope through
-  `workspace.fs.readFile` so the project-wide outline works.
-- `project.ts`: manifest discovery via `workspace.findFiles("**/project.ptx")`
-  - `workspace.fs.readFile`; the Targets view lists targets (reveal definition
-    works; build/view buttons already hidden by `!isWeb`).
-- `importWizardPanel.ts`: port file writes to `workspace.fs` so Import works
-  in the browser (the conversion itself is pure).
+Deliverable: the Outline (file and project scope) and Targets views, Import
+and "Insert file as division" on the web.
+
+Landed with these specifics:
+
+- **One path space for both hosts.** The `/__vfs__/<scheme>/<authority>/…`
+  mapping moved out of the server into `src/virtual-path.ts` (depends on
+  `vscode-uri` only; `lsp-server/project-files.ts` re-exports it). `Project.root`
+  and `Target.path`/`source` stay strings, but are now paths in that space:
+  a real path on disk, a virtual one on github.dev. The manifest resolver and
+  `project-outline.ts` keep their `path` arithmetic — the web build aliases
+  `path` to `path-browserify` for every web bundle (`webResolve`), and
+  `path-browserify` only reaches `process.cwd()` when no argument is absolute,
+  which never happens here. The host turns a path back into a `Uri` with
+  `Uri.parse(pathToUri(p))` (never `Uri.file`).
+- **`project.ts` is host-neutral.** Discovery walks up from each workspace
+  folder with `workspace.fs.stat` (same upward semantics as the old
+  `getProjectFolder`), reads `project.ptx` with `workspace.fs.readFile`, and no
+  longer imports `./cli` or `./utils`. The `~/.ptx/<version>` templates
+  became a `ProjectProvider` (`project-system-default.ts`) that extension.ts
+  registers with `addProjectProvider`; the browser entry registers none.
+  `getProjectFolder` (sync `fs`) moved from `pure-utils.ts` to `utils.ts` so
+  `pure-utils` is actually pure — the import wizard needs its
+  `isSafeRelativePath`.
+- **Shared view wiring.** `project-views.ts` registers both tree providers,
+  their commands and the `project.ptx` watcher for both entry points, and
+  returns the providers; both `activate`s return them as the extension's
+  exports so the integration suites can read the trees back. Only the
+  build/view buttons (`buildTreeTarget`, `viewTreeTarget`) stay in
+  extension.ts and behind `!isWeb`.
+- **Pandoc behind an interface.** `pandoc-bridge.ts` declares `PandocBridge`
+  (`installed`, `convertUpload`, `convertFile`); `pandoc.ts` implements it as
+  `desktopPandoc` (temp files, `--extract-media`), and extension.ts passes it
+  to `cmdImport` / `cmdInsertFileAsDivision`. The browser entry passes
+  nothing: the wizard reports pandoc unavailable and both flows read what
+  `@pretextbook/import` converts itself. `Buffer.from(base64)` became an
+  `atob` loop; `path.basename(fileName)` became `Utils.basename(uri)`.
+- The manifest's `viewsWelcome`/`view/title`/`commandPalette` gating from
+  Phase 0 was lifted for the outline, targets, import and insert commands.
+- Tests: `src/test/web/project-views.test.ts` (targets listed from the
+  virtual workspace, reveal-definition, project outline spliced across
+  `xi:include` through `workspace.fs`, file outline, import panel opens) and a
+  desktop twin in `src/test/suite/`. The fixture manifest gained a third
+  target on `source/with-includes.ptx` so the project outline has an include
+  to follow.
+
+Still desktop-only after Phase 2: build/view buttons on target rows, the
+status-bar quick pick, and everything in the "stay desktop-only" list above.
 
 ### Phase 3 — instant preview on the web (optional)
 

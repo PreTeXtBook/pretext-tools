@@ -1,15 +1,15 @@
-import * as path from "path";
 import * as vscode from "vscode";
+import { Utils } from "vscode-uri";
 import {
   PANDOC_ACCEPT_EXTENSIONS,
   fileExtension,
   importProjectFromFiles,
   type ImportedProjectSuccess,
 } from "@pretextbook/import";
-import { lspProjectXmlIds } from "./lsp-client/main";
-import { pandocInstalled, pandocToPretextWithMedia } from "./pandoc";
+import { lspProjectXmlIds } from "./lsp-client/shared";
+import type { PandocBridge } from "./pandoc-bridge";
 import { isSafeRelativePath } from "./pure-utils";
-import { pretextOutputChannel } from "./ui";
+import { pretextOutputChannel } from "./ui-core";
 import {
   hrefBaseFor,
   includeBlock,
@@ -30,8 +30,8 @@ import {
 const NATIVE_EXTENSIONS = [".tex", ".md", ".markdown", ".ptx", ".xml"];
 
 /** File-picker filters, widened to whatever pandoc can read when it is present. */
-function openFilters(): Record<string, string[]> {
-  const pandocExtensions = pandocInstalled() ? PANDOC_ACCEPT_EXTENSIONS : [];
+function openFilters(pandoc?: PandocBridge): Record<string, string[]> {
+  const pandocExtensions = pandoc?.installed() ? PANDOC_ACCEPT_EXTENSIONS : [];
   const all = [...new Set([...NATIVE_EXTENSIONS, ...pandocExtensions])].map(
     (ext) => ext.replace(/^\./, ""),
   );
@@ -54,13 +54,16 @@ interface SourceText {
 }
 
 /** Read the chosen file, routing anything the package cannot read through pandoc. */
-async function readSourceFile(uri: vscode.Uri): Promise<SourceText> {
-  const name = path.basename(uri.fsPath);
+async function readSourceFile(
+  uri: vscode.Uri,
+  pandoc?: PandocBridge,
+): Promise<SourceText> {
+  const name = Utils.basename(uri);
   if (NATIVE_EXTENSIONS.includes(fileExtension(name))) {
     const bytes = await vscode.workspace.fs.readFile(uri);
     return { text: new TextDecoder().decode(bytes), virtualName: name };
   }
-  if (!pandocInstalled()) {
+  if (!pandoc?.installed()) {
     throw new Error(
       `Reading ${fileExtension(name) || "this kind of"} files needs pandoc, which was not found on your PATH.`,
     );
@@ -68,7 +71,7 @@ async function readSourceFile(uri: vscode.Uri): Promise<SourceText> {
   // A Word document carries its figures inside it; pandoc will hand them over,
   // but only if asked, and only the local binary can do it (the remote endpoint
   // answers text/plain — see packages/import/SPEC.md §9.7).
-  const converted = await pandocToPretextWithMedia(uri.fsPath);
+  const converted = await pandoc.convertFile(uri);
   return {
     text: converted.pretext,
     media: converted.media,
@@ -86,7 +89,7 @@ function workspaceRelativePath(uri: vscode.Uri): string | undefined {
   if (!folder) {
     return undefined;
   }
-  return path.relative(folder.uri.fsPath, uri.fsPath).split(path.sep).join("/");
+  return vscode.workspace.asRelativePath(uri, false);
 }
 
 /**
@@ -200,7 +203,7 @@ export async function insertOfferForContext(
   context: InsertContext,
 ): Promise<InsertTargetOffer> {
   return {
-    documentLabel: path.basename(context.document.fileName),
+    documentLabel: Utils.basename(context.document.uri),
     defaultTargetTag: context.attachment.targetTag,
     targetTags: offeredTargetTags(context.attachment.targetTag),
     takenIds: await lspProjectXmlIds(),
@@ -209,7 +212,14 @@ export async function insertOfferForContext(
   };
 }
 
-export async function cmdInsertFileAsDivision(): Promise<void> {
+/**
+ * `pandoc` is the desktop host's bridge to the local binary (pandoc.ts); the
+ * browser host passes none and can insert only what the import package reads
+ * itself.
+ */
+export async function cmdInsertFileAsDivision(
+  pandoc?: PandocBridge,
+): Promise<void> {
   const context = insertContextForActiveEditor();
   if (!context) {
     return;
@@ -220,16 +230,19 @@ export async function cmdInsertFileAsDivision(): Promise<void> {
     title: `Insert a file as a <${attachment.targetTag}>`,
     openLabel: "Insert",
     canSelectMany: false,
-    filters: openFilters(),
+    filters: openFilters(pandoc),
   });
   if (!picked || !picked[0]) {
     return;
   }
   const sourceUri = picked[0];
-  const sourceName = path.basename(sourceUri.fsPath);
+  const sourceName = Utils.basename(sourceUri);
 
   try {
-    const { text, virtualName, media } = await readSourceFile(sourceUri);
+    const { text, virtualName, media } = await readSourceFile(
+      sourceUri,
+      pandoc,
+    );
     const takenIds = new Set(await lspProjectXmlIds());
 
     const result = importProjectFromFiles(

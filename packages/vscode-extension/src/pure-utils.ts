@@ -1,27 +1,10 @@
-import * as path from "path";
-import * as fs from "fs";
 import { SpellCheckScope } from "./types";
 
 /**
- * Pure, `vscode`-free helpers extracted from `utils.ts` so they can be unit
- * tested in plain Node. `utils.ts` re-exports these for existing callers.
+ * Pure, `vscode`-free and Node-free helpers extracted from `utils.ts` so they
+ * can be unit tested in plain Node and bundled for the browser host.
+ * `utils.ts` re-exports these for existing callers.
  */
-
-/**
- * Walk up the directory tree looking for a folder that contains a
- * `project.ptx` manifest.
- * @returns the first ancestor directory (inclusive) containing `project.ptx`,
- * or `null` if the filesystem root is reached without finding one.
- */
-export function getProjectFolder(dirPath: string): string | null {
-  if (dirPath === path.dirname(dirPath)) {
-    return null;
-  } else if (fs.existsSync(path.join(dirPath, "project.ptx"))) {
-    return dirPath;
-  } else {
-    return getProjectFolder(path.dirname(dirPath));
-  }
-}
 
 /** Strip ANSI color/escape codes from a string (e.g. from CLI output). */
 export function stripColorCodes(input: string): string {

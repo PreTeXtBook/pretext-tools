@@ -25,6 +25,7 @@ import {
 import * as path from "path";
 import { ensureProjectList, projects } from "./project";
 import { Target } from "./types";
+import { pathToUri } from "./virtual-path";
 
 /** Wraps a {@link Target} so tree rows carry a stable object identity. */
 export class TargetNode {
@@ -79,7 +80,11 @@ export async function cmdRevealTargetDefinition(node: TargetNode) {
   if (!node) {
     return;
   }
-  const manifest = Uri.file(path.join(node.target.path, "project.ptx"));
+  // `target.path` is in the space of virtual-path.ts (a real path on disk, a
+  // virtual one on github.dev), so map it back to a Uri rather than Uri.file.
+  const manifest = Uri.parse(
+    pathToUri(path.join(node.target.path, "project.ptx")),
+  );
   const doc = await workspace.openTextDocument(manifest);
   const editor = await window.showTextDocument(doc);
   const offset = doc.getText().indexOf(`name="${node.target.name}"`);

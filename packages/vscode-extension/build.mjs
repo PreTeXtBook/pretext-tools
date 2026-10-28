@@ -64,11 +64,15 @@ const buildOptions = {
 // host expects. The `worker` export condition matters: packages such as
 // decode-named-character-reference resolve their `browser` entry to a DOM
 // implementation (`document.createElement` at module scope), which throws in
-// a worker; `worker` selects their DOM-free entry.
+// a worker; `worker` selects their DOM-free entry. `path` becomes the posix
+// path-browserify: the manifest resolver, project outline and xi:include
+// arithmetic use it, and on this host only ever on the virtual absolute
+// paths of src/virtual-path.ts.
 const webResolve = {
   platform: "browser",
   conditions: ["worker"],
   external: ["vscode"],
+  alias: { path: "path-browserify" },
 };
 
 const buildOptionsWeb = {
@@ -97,10 +101,9 @@ const buildOptionsWebTests = {
 };
 
 // The language server for the web host: same source, bundled to run in a Web
-// Worker (an IIFE; workers take a classic script). Two substitutions make it
-// Node-free: the platform seam (src/lsp-server/platform.ts →
-// platform.browser.ts) and a posix `path` for the manifest/xi:include path
-// arithmetic, which on this host only ever sees virtual absolute paths.
+// Worker (an IIFE; workers take a classic script). Beyond the shared
+// `webResolve` substitutions, the platform seam (src/lsp-server/platform.ts →
+// platform.browser.ts) makes it Node-free.
 const lspPlatformBrowserPlugin = {
   name: "lsp-platform-browser",
   setup(build) {
@@ -118,7 +121,6 @@ const buildOptionsLSPWeb = {
   sourcemap: !production,
   sourcesContent: false,
   ...webResolve,
-  alias: { path: "path-browserify" },
   outfile: "../../dist/vscode-extension/out/lsp-server.web.js",
   plugins: [lspPlatformBrowserPlugin, esbuildProblemMatcherPlugin],
 };

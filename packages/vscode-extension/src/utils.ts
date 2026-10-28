@@ -5,16 +5,31 @@ import * as fs from "fs";
 import { SpellCheckScope } from "./types";
 import { cli } from "./cli";
 import {
-  getProjectFolder,
   stripColorCodes,
   buildSpellCheckIgnorePatterns,
   upsertPretextLanguageSettings,
 } from "./pure-utils";
 
+/**
+ * Walk up the directory tree looking for a folder that contains a
+ * `project.ptx` manifest. Desktop only (sync `fs`); the project list in
+ * project.ts does the same through `workspace.fs` on both hosts.
+ * @returns the first ancestor directory (inclusive) containing `project.ptx`,
+ * or `null` if the filesystem root is reached without finding one.
+ */
+export function getProjectFolder(dirPath: string): string | null {
+  if (dirPath === path.dirname(dirPath)) {
+    return null;
+  } else if (fs.existsSync(path.join(dirPath, "project.ptx"))) {
+    return dirPath;
+  } else {
+    return getProjectFolder(path.dirname(dirPath));
+  }
+}
+
 export let currentPanel: vscode.WebviewPanel | undefined;
 
 export {
-  getProjectFolder,
   installPretext,
   setSchema,
   setSpellCheckConfig,

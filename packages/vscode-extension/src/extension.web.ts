@@ -8,9 +8,11 @@
  * server runs in a Web Worker (lsp-client/browser.ts). See
  * docs/web-extension-plan.md for what is here now and what is still to come.
  *
- * Keep the import graph of this file free of `fs`, `path`, `child_process`,
- * `./cli`, `./utils`, `./ui` and `./project`: one Node import anywhere breaks
- * the whole browser bundle.
+ * Keep the import graph of this file free of `fs`, `child_process`, `./cli`,
+ * `./utils`, `./ui` and `./pandoc`: one Node import anywhere breaks the whole
+ * browser bundle. (`path` is fine — the web build aliases it to
+ * path-browserify, and the paths this host sees are the virtual ones of
+ * virtual-path.ts.)
  */
 import { ExtensionContext, commands, languages, window } from "vscode";
 
@@ -32,6 +34,9 @@ import { registerFlavorTakeover } from "./flavor-takeover";
 import { registerTypingShortcuts } from "./typing-shortcuts";
 import { registerSnippetSuggestions } from "./snippet-suggestions";
 import { PretextVisualEditorProvider } from "./visualEditor";
+import { registerProjectViews } from "./project-views";
+import { cmdImport } from "./importWizardPanel";
+import { cmdInsertFileAsDivision } from "./insert-import";
 
 export async function activate(context: ExtensionContext) {
   pretextOutputChannel.appendLine(
@@ -71,6 +76,15 @@ export async function activate(context: ExtensionContext) {
       pretextPasteEditProvider,
       pretextPasteProviderMetadata,
     ),
+    // Import and insert convert in the webview / the import package. With no
+    // pandoc on this host they read the formats the package converts itself
+    // (LaTeX, Markdown, PreTeXt) and write through workspace.fs.
+    commands.registerCommand("pretext-tools.importProject", () =>
+      cmdImport(context),
+    ),
+    commands.registerCommand("pretext-tools.insertFileAsDivision", () =>
+      cmdInsertFileAsDivision(),
+    ),
     commands.registerCommand("pretext-tools.showLog", () =>
       pretextOutputChannel.show(),
     ),
@@ -86,6 +100,9 @@ export async function activate(context: ExtensionContext) {
     ),
   );
 
+  // Outline and Targets views, reading the project through workspace.fs.
+  const views = registerProjectViews(context);
+
   // Start the LSP in a Web Worker.
   try {
     lspActivate(context);
@@ -95,6 +112,8 @@ export async function activate(context: ExtensionContext) {
       "Error starting language server.  Some features may not be available.",
     );
   }
+
+  return views;
 }
 
 export function deactivate() {

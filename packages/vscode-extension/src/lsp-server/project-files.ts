@@ -2,6 +2,7 @@ import type { FileReader } from "@pretextbook/schema";
 import { URI } from "vscode-uri";
 import { documents } from "./state";
 import { readLocalFile } from "./platform";
+import { pathToUri, uriToPath, VFS_PREFIX } from "../virtual-path";
 
 /**
  * The project's files as the server knows them, without a filesystem.
@@ -15,7 +16,13 @@ import { readLocalFile } from "./platform";
  *
  * Reads prefer the live text of an open document, then the snapshot, then
  * (Node host only) the local filesystem for anything the snapshot missed.
+ *
+ * Paths are in the space `virtual-path.ts` defines (re-exported here for the
+ * server's other modules): real filesystem paths for `file:` documents,
+ * virtual absolute paths for everything else.
  */
+
+export { pathToUri, uriToPath };
 
 /** One file the client told us about. `text` is absent for files only listed by name. */
 export interface ProjectFileEntry {
@@ -73,46 +80,6 @@ export function readProjectText(uri: string): string | undefined {
 /** {@link readProjectText} keyed by path, in the shape `@pretextbook/schema` wants. */
 export const readProjectFile: FileReader = (absolutePath) =>
   readProjectText(pathToUri(absolutePath));
-
-/*
- * Path space.
- *
- * `@pretextbook/schema`, `@pretextbook/completions` and the manifest resolver
- * all think in absolute paths and `file:` URIs. A `file:` document maps to its
- * ordinary filesystem path. A document under any other scheme — `vscode-vfs:`
- * on github.dev, for instance — maps to a virtual absolute path that encodes
- * the scheme and authority, so relative `xi:include` hrefs resolve with plain
- * path arithmetic and the result maps back to the right URI.
- */
-
-const VFS_PREFIX = "/__vfs__/";
-
-export function uriToPath(uri: string): string {
-  const parsed = URI.parse(uri);
-  if (parsed.scheme === "file") {
-    return parsed.fsPath;
-  }
-  return `${VFS_PREFIX}${parsed.scheme}/${parsed.authority}${parsed.path}`;
-}
-
-export function pathToUri(absolutePath: string): string {
-  // Node's win32 `path.resolve` prefixes a virtual path with the current
-  // drive; a virtual path never has one, so strip it before looking.
-  const posix = absolutePath
-    .replace(/\\/g, "/")
-    .replace(/^[A-Za-z]:(?=\/__vfs__\/)/, "");
-  if (posix.startsWith(VFS_PREFIX)) {
-    const [scheme, authority, ...segments] = posix
-      .slice(VFS_PREFIX.length)
-      .split("/");
-    return URI.from({
-      scheme,
-      authority,
-      path: `/${segments.join("/")}`,
-    }).toString();
-  }
-  return URI.file(absolutePath).toString();
-}
 
 /**
  * The document identifier to hand `@pretextbook/schema`: `file:` documents

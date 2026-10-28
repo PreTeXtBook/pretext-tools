@@ -1,9 +1,7 @@
 import * as vscode from "vscode";
-import * as os from "os";
-import * as path from "path";
-import * as fs from "fs";
+import { Utils } from "vscode-uri";
 import { importProjectFromFiles } from "@pretextbook/import";
-import { getNonce } from "./utils";
+import { getNonce } from "./nonce";
 import { isSafeRelativePath } from "./pure-utils";
 import {
   applyInsertToDocument,
@@ -13,8 +11,8 @@ import {
   type InsertContext,
   type InsertTargetOffer,
 } from "./insert-import";
-import { pretextOutputChannel } from "./ui";
-import { pandocInstalled, pandocToPretext } from "./pandoc";
+import { pretextOutputChannel } from "./ui-core";
+import type { PandocBridge } from "./pandoc-bridge";
 
 // Hosts the shared ImportWizard React component (from @pretextbook/import)
 // in a webview panel. The whole import pipeline runs inside the webview; the
@@ -59,11 +57,12 @@ interface PandocConvertMessage {
 export function cmdImportProject(
   context: vscode.ExtensionContext,
   insertInto?: InsertContext,
+  pandoc?: PandocBridge,
 ) {
   const panel = vscode.window.createWebviewPanel(
     "pretext.importWizard",
     insertInto
-      ? `Insert into ${path.basename(insertInto.document.fileName)}`
+      ? `Insert into ${Utils.basename(insertInto.document.uri)}`
       : "Import to PreTeXt",
     vscode.ViewColumn.One,
     {
@@ -81,7 +80,7 @@ export function cmdImportProject(
     panel.webview.html = getHtmlForWebview(
       panel.webview,
       context.extensionUri,
-      pandocInstalled(),
+      pandoc?.installed() ?? false,
       defaultImportMode(),
       insertTarget,
     );
@@ -94,7 +93,11 @@ export function cmdImportProject(
         return;
       }
       if (message?.type === "pandoc-convert") {
-        await handlePandocConvert(panel, message as PandocConvertMessage);
+        await handlePandocConvert(
+          panel,
+          message as PandocConvertMessage,
+          pandoc,
+        );
         return;
       }
       if (message?.type === "import-confirm") {
@@ -127,17 +130,17 @@ export function cmdImportProject(
 async function handlePandocConvert(
   panel: vscode.WebviewPanel,
   message: PandocConvertMessage,
+  pandoc: PandocBridge | undefined,
 ): Promise<void> {
   const { requestId, fileName, dataBase64, options } = message;
-  let tempFile: string | undefined;
   try {
-    const bytes = Buffer.from(dataBase64, "base64");
-    // pandoc infers the input format from the file extension, so preserve it.
-    const ext = path.extname(fileName);
-    tempFile = path.join(os.tmpdir(), `ptx-import-${Date.now()}${ext}`);
-    await fs.promises.writeFile(tempFile, bytes);
-
-    const pretext = await pandocToPretext(tempFile);
+    if (!pandoc) {
+      throw new Error("pandoc is not available on this host.");
+    }
+    const pretext = await pandoc.convertUpload(
+      fileName,
+      base64ToBytes(dataBase64),
+    );
     const result = importProjectFromFiles(
       { "source.ptx": pretext },
       {
@@ -159,10 +162,6 @@ async function handlePandocConvert(
       requestId,
       error: detail,
     });
-  } finally {
-    if (tempFile) {
-      void fs.promises.rm(tempFile, { force: true }).catch(() => undefined);
-    }
   }
 }
 
@@ -183,7 +182,7 @@ async function insertConfirmedImport(
       assets: Object.fromEntries(
         Object.entries(message.assetsBase64).map(([relPath, base64]) => [
           relPath,
-          new Uint8Array(Buffer.from(base64, "base64")),
+          base64ToBytes(base64),
         ]),
       ),
       includes: message.insert?.includes ?? [],
@@ -273,7 +272,7 @@ async function writeImportedProject(
     ...Object.entries(message.assetsBase64).map(
       ([relPath, base64]): [string, Uint8Array] => [
         relPath,
-        new Uint8Array(Buffer.from(base64, "base64")),
+        base64ToBytes(base64),
       ],
     ),
   ];
@@ -347,6 +346,16 @@ function defaultImportMode(): "converted" | "native" {
     .get<string>("import.defaultMode") === "native"
     ? "native"
     : "converted";
+}
+
+/** Decode what the webview posts as base64. `atob` exists on both hosts; `Buffer` only on Node. */
+function base64ToBytes(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
 }
 
 function getHtmlForWebview(
@@ -497,15 +506,14 @@ function hasInsertTarget(): boolean {
  */
 export async function cmdImport(
   context: vscode.ExtensionContext,
+  pandoc?: PandocBridge,
 ): Promise<void> {
   if (!hasInsertTarget()) {
-    cmdImportProject(context);
+    cmdImportProject(context, undefined, pandoc);
     return;
   }
 
-  const fileName = path.basename(
-    vscode.window.activeTextEditor!.document.fileName,
-  );
+  const fileName = Utils.basename(vscode.window.activeTextEditor!.document.uri);
   const choice = await vscode.window.showQuickPick(
     [
       {
@@ -531,7 +539,7 @@ export async function cmdImport(
   }
 
   if (choice.mode === "project") {
-    cmdImportProject(context);
+    cmdImportProject(context, undefined, pandoc);
     return;
   }
 
@@ -539,6 +547,6 @@ export async function cmdImport(
   // what the author meant by it.
   const insertInto = insertContextForActiveEditor();
   if (insertInto) {
-    cmdImportProject(context, insertInto);
+    cmdImportProject(context, insertInto, pandoc);
   }
 }

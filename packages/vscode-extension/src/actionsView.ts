@@ -77,6 +77,7 @@ const ACTIONS: Action[] = [
     label: "Import project…",
     command: "pretext-tools.importProject",
     icon: "package",
+    web: true,
   },
   {
     label: "Convert to PreTeXt…",

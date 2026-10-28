@@ -1,7 +1,6 @@
 import { Terminal } from "vscode";
 import { updateStatusBarItem } from "./utils";
 import { ptxCommandList } from "./constants";
-import { resetProjectList } from "./project";
 import { Target } from "./types";
 import { pretextOutputChannel, ptxSBItem } from "./ui-core";
 
@@ -12,13 +11,6 @@ export { pretextOutputChannel, ptxSBItem };
 export function showLog() {
   pretextOutputChannel.show();
   updateStatusBarItem(ptxSBItem);
-}
-
-export async function refreshProjects() {
-  pretextOutputChannel.append("Refreshing project/target list.");
-  console.log("Refreshing project/target list.");
-  //reset projects:
-  await resetProjectList();
 }
 
 export let pretextTerminal: Terminal;

@@ -99,18 +99,12 @@
       },
       {
         "view": "pretextTargets",
-        "when": "isWeb",
-        "contents": "Building and viewing targets needs the PreTeXt CLI, which is not available in the browser. Open this repository in a Codespace or on your desktop to build."
+        "contents": "No PreTeXt project found in this workspace.\n[Import Project](command:pretext-tools.importProject)",
+        "when": "isWeb"
       },
       {
         "view": "pretextDocumentOutline",
-        "contents": "Open a PreTeXt (.ptx) file to see its outline.",
-        "when": "!isWeb"
-      },
-      {
-        "view": "pretextDocumentOutline",
-        "when": "isWeb",
-        "contents": "The document outline is not yet available in the browser."
+        "contents": "Open a PreTeXt (.ptx) file to see its outline."
       }
     ],
     "grammars": [
@@ -464,22 +458,22 @@
       "view/title": [
         {
           "command": "pretext-tools.outlineScopeProject",
-          "when": "!isWeb && view == pretextDocumentOutline && pretextOutline.scope == 'file'",
+          "when": "view == pretextDocumentOutline && pretextOutline.scope == 'file'",
           "group": "navigation@1"
         },
         {
           "command": "pretext-tools.outlineScopeFile",
-          "when": "!isWeb && view == pretextDocumentOutline && pretextOutline.scope == 'project'",
+          "when": "view == pretextDocumentOutline && pretextOutline.scope == 'project'",
           "group": "navigation@1"
         },
         {
           "command": "pretext-tools.refreshOutline",
-          "when": "!isWeb && view == pretextDocumentOutline",
+          "when": "view == pretextDocumentOutline",
           "group": "navigation@2"
         },
         {
           "command": "pretext-tools.refreshTargets",
-          "when": "!isWeb && view == pretextTargets",
+          "when": "view == pretextTargets",
           "group": "navigation"
         }
       ],
@@ -525,10 +519,6 @@
           "when": "!isWeb"
         },
         {
-          "command": "pretext-tools.refreshTargets",
-          "when": "!isWeb"
-        },
-        {
           "command": "pretext-tools.selectPretextCommand",
           "when": "!isWeb"
         },
@@ -546,14 +536,6 @@
         },
         {
           "command": "pretext-tools.new",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.importProject",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.insertFileAsDivision",
           "when": "!isWeb"
         },
         {
@@ -582,22 +564,6 @@
         },
         {
           "command": "pretext-tools.forwardSearch",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.outlineJumpToLine",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.refreshOutline",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.outlineScopeProject",
-          "when": "!isWeb"
-        },
-        {
-          "command": "pretext-tools.outlineScopeFile",
           "when": "!isWeb"
         },
         {
@@ -1163,6 +1129,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "@vscode/test-web": "^0.0.81",
     "concurrently": "^9.2.5",
+    "path-browserify": "^1.0.1",
     "vite": "^7.3.7"
   },
   "prettier": {
