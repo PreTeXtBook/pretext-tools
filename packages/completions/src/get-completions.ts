@@ -2,6 +2,7 @@ import {
   CompletionItem,
   CompletionItemKind,
   InsertTextFormat,
+  Range,
 } from "vscode-languageserver-types";
 import {
   CompletionSchema,
@@ -10,7 +11,12 @@ import {
   ReferenceEntry,
 } from "./types";
 import { defaultDevSchema } from "./default-dev-schema";
-import { ATTRIBUTES, ELEMENTS, EXTRA_ELEMENT_SNIPPETS } from "./constants";
+import {
+  ATTRIBUTES,
+  DOCUMENT_TEMPLATES,
+  ELEMENTS,
+  EXTRA_ELEMENT_SNIPPETS,
+} from "./constants";
 import {
   getCurrentTag,
   getTextInRange,
@@ -92,6 +98,12 @@ const TAG_NAME_BEFORE = /<([A-Za-z_][\w.:-]*)?$/;
 /** The rest of a start tag's name, then the end of the tag. */
 const TAG_NAME_AFTER = /^[\w.:-]*>/;
 
+/**
+ * A document template's label up to the caret: `<!` and whatever of the name
+ * is typed, as in `<!ptx-art`. A comment's `<!-` is not one.
+ */
+const TEMPLATE_BEFORE = /<!(?!-)[\w-]*$/;
+
 export function getCompletionType(
   text: string,
   position: GetPretextCompletionsParams["position"],
@@ -104,6 +116,9 @@ export function getCompletionType(
     TAG_NAME_AFTER.test(lineSuffix(text, position))
   ) {
     return "tagName";
+  }
+  if (TEMPLATE_BEFORE.test(prefix)) {
+    return "template";
   }
   const match = prefix.match(/<[^>/]+$/);
   if (match) {
@@ -153,6 +168,10 @@ export async function getPretextCompletions(
 
   if (completionType === "tagName") {
     return getTagNameCompletions(params, schema);
+  }
+
+  if (completionType === "template") {
+    return getTemplateCompletions(params, schema);
   }
 
   // No completions in the middle of a word. The start of the line counts as
@@ -271,47 +290,21 @@ function getElementCompletions(
   const { text, position } = params;
   const element = getCurrentTag(text, position);
 
-  if (!element || !schema.elementChildren[element]?.elements) {
-    return [];
-  }
-
   const range =
     getTextInRange(text, rangeInLine(position, -1, 0)) === "<"
       ? rangeInLine(position, -1, 0)
       : rangeInLine(position);
 
+  if (!element) {
+    return getRootCompletions(range, schema);
+  }
+  if (!schema.elementChildren[element]?.elements) {
+    return [];
+  }
+
   const completionItems: CompletionItem[] = [];
   for (const elem of schema.elementChildren[element].elements) {
-    if (elem in ELEMENTS) {
-      const base = ELEMENTS[elem];
-      const insertText = base.insertText || elem;
-      completionItems.push({
-        ...base,
-        insertText,
-        insertTextFormat: InsertTextFormat.Snippet,
-        textEdit: {
-          newText: insertText,
-          range,
-        },
-        kind: CompletionItemKind.TypeParameter,
-        sortText: base.sortText || elem,
-      });
-    } else {
-      completionItems.push({
-        label: "<" + elem,
-        kind: CompletionItemKind.TypeParameter,
-        insertTextFormat: InsertTextFormat.Snippet,
-        textEdit: {
-          newText: `<${elem}>$1</${elem}>$0`,
-          range,
-        },
-        documentation: "Generic implementation for element " + elem,
-        // Editors fall back to the label ("<elem") when sortText is missing,
-        // and "<" sorts before every letter, which would rank all generic
-        // elements above the curated ones (`<quantity` above `<q>`).
-        sortText: elem,
-      });
-    }
+    completionItems.push(elementItem(elem, range, ELEMENTS[elem]));
   }
 
   completionItems.push({
@@ -326,6 +319,109 @@ function getElementCompletions(
 
   completionItems.push(...getExtraCompletions(element, range, schema));
   return completionItems;
+}
+
+/**
+ * The completion for one element: its curated snippet when there is one
+ * (`base`), else a generic start tag, end tag, and caret in between.
+ */
+function elementItem(
+  elem: string,
+  range: Range,
+  base: CompletionItem | undefined,
+): CompletionItem {
+  if (base) {
+    const insertText = base.insertText || elem;
+    return {
+      ...base,
+      insertText,
+      insertTextFormat: InsertTextFormat.Snippet,
+      textEdit: {
+        newText: insertText,
+        range,
+      },
+      kind: CompletionItemKind.TypeParameter,
+      sortText: base.sortText || elem,
+    };
+  }
+  return {
+    label: "<" + elem,
+    kind: CompletionItemKind.TypeParameter,
+    insertTextFormat: InsertTextFormat.Snippet,
+    textEdit: {
+      newText: `<${elem}>$1</${elem}>$0`,
+      range,
+    },
+    documentation: "Generic implementation for element " + elem,
+    // Editors fall back to the label ("<elem") when sortText is missing,
+    // and "<" sorts before every letter, which would rank all generic
+    // elements above the curated ones (`<quantity` above `<q>`).
+    sortText: elem,
+  };
+}
+
+/**
+ * The elements the schema allows as a document's root. Schemas recorded
+ * before roots were, and hand-made ones, name none; then every element is one.
+ */
+function rootElements(schema: CompletionSchema): string[] {
+  return schema.rootElements ?? Object.keys(schema.elementChildren);
+}
+
+/**
+ * Completions outside every element: at the top of an empty file, or after
+ * the XML declaration. Whole-file templates (`<!ptx-article`, ...) come first,
+ * then the elements the schema lets a file begin with.
+ */
+function getRootCompletions(
+  range: Range,
+  schema: CompletionSchema,
+): CompletionItem[] {
+  const roots = rootElements(schema);
+  const items = templateItems(range, roots);
+  for (const elem of roots) {
+    // The curated `<pretext/>` is the inline logo, not the document root.
+    items.push(
+      elementItem(elem, range, elem === "pretext" ? undefined : ELEMENTS[elem]),
+    );
+  }
+  return items;
+}
+
+/**
+ * The templates typed as `<!ptx-...`. Only at the document root: inside an
+ * element there is nothing to offer for `<!`, so the host's fallback applies.
+ */
+function getTemplateCompletions(
+  params: GetPretextCompletionsParams,
+  schema: CompletionSchema,
+): CompletionItem[] {
+  const { text, position } = params;
+  const typed = TEMPLATE_BEFORE.exec(linePrefix(text, position))![0];
+  const start = {
+    line: position.line,
+    character: position.character - typed.length,
+  };
+  if (getCurrentTag(text, start)) {
+    return [];
+  }
+  return templateItems({ start, end: position }, rootElements(schema));
+}
+
+function templateItems(range: Range, roots: string[]): CompletionItem[] {
+  return DOCUMENT_TEMPLATES.filter((t) => roots.includes(t.root)).map((t) => ({
+    label: t.label,
+    // Not `Snippet`: VS Code drops every item of that kind, a language
+    // server's too, when `editor.snippetSuggestions` is "none", which the
+    // extension makes the default for PreTeXt files.
+    kind: CompletionItemKind.File,
+    documentation: t.documentation,
+    insertText: t.insertText,
+    insertTextFormat: InsertTextFormat.Snippet,
+    textEdit: { newText: t.insertText, range },
+    // Ahead of the root elements: "!" sorts before every digit and letter.
+    sortText: "!" + t.label,
+  }));
 }
 
 function getExtraCompletions(

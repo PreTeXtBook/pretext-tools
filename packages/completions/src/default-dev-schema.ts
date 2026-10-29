@@ -11499,5 +11499,35 @@ export const defaultDevSchema: CompletionSchema = {
     ],
     "attributes": []
   }
-}
+},
+  rootElements: [
+  "acknowledgement",
+  "appendix",
+  "backmatter",
+  "chapter",
+  "docinfo",
+  "exercises",
+  "figure",
+  "frontmatter",
+  "glossary",
+  "handout",
+  "index",
+  "list",
+  "listing",
+  "paragraphs",
+  "part",
+  "preface",
+  "pretext",
+  "reading-questions",
+  "references",
+  "section",
+  "slideshow",
+  "solutions",
+  "subexercises",
+  "subsection",
+  "subsubsection",
+  "table",
+  "webwork",
+  "worksheet"
+]
 };

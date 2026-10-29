@@ -1182,3 +1182,80 @@ export const EXTRA_ELEMENT_SNIPPETS: ExtraSnippets = {
     documentation: "url (empty)",
   },
 };
+
+export type DocumentTemplate = {
+  label: string;
+  /** The template's outermost element; offered only where the schema has it. */
+  root: string;
+  insertText: string;
+  documentation: string;
+};
+
+// Scaffolds for a whole file, offered at the document root (an empty file, or
+// after the XML declaration). The `<!ptx-` labels keep the prefixes of the
+// snippets these replace, so typing `<!ptx-` still finds them.
+export const DOCUMENT_TEMPLATES: DocumentTemplate[] = [
+  {
+    label: "<!ptx-article",
+    root: "pretext",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<pretext>\n\t<article xml:id="$1">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</article>\n</pretext>',
+    documentation: "article template for an empty/new PreTeXt document",
+  },
+  {
+    label: "<!ptx-book",
+    root: "pretext",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<pretext xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<book xml:id="${1:$TM_FILENAME_BASE}">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</book>\n</pretext>',
+    documentation: "book template for an empty/new PreTeXt document",
+  },
+  {
+    label: "<!ptx-slideshow",
+    root: "pretext",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<pretext xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<slideshow xml:id="${1:$TM_FILENAME_BASE}">\n\t\t<title>$2</title>\n\n\t\t$0\n\n\t</slideshow>\n</pretext>',
+    documentation: "slideshow template for an empty/new PreTeXt document",
+  },
+  {
+    label: "<!ptx-part",
+    root: "part",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<part xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</part>',
+    documentation: "part of a book, in a file of its own (to xi:include)",
+  },
+  {
+    label: "<!ptx-chapter",
+    root: "chapter",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<chapter xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</chapter>',
+    documentation: "chapter of a book, in a file of its own (to xi:include)",
+  },
+  {
+    label: "<!ptx-section",
+    root: "section",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<section xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</section>',
+    documentation: "section, in a file of its own (to xi:include)",
+  },
+  {
+    label: "<!ptx-exercises",
+    root: "exercises",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<exercises xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</exercises>',
+    documentation: "exercises division, in a file of its own (to xi:include)",
+  },
+  {
+    label: "<!ptx-worksheet",
+    root: "worksheet",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<worksheet xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</worksheet>',
+    documentation: "worksheet division, in a file of its own (to xi:include)",
+  },
+  {
+    label: "<!ptx-handout",
+    root: "handout",
+    insertText:
+      '<?xml version="1.0" encoding="UTF-8"?>\n\n<handout xml:id="${1:$TM_FILENAME_BASE}" xmlns:xi="http://www.w3.org/2001/XInclude">\n\t<title>$2</title>\n\n\t$0\n\n</handout>',
+    documentation: "handout division, in a file of its own (to xi:include)",
+  },
+];

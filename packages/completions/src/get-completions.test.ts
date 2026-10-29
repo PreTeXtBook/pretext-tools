@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CompletionItemKind } from "vscode-languageserver-types";
 import { getPretextCompletions } from "./get-completions";
 import type { CompletionSchema } from "./types";
 
@@ -140,5 +141,135 @@ describe("getPretextCompletions in a start tag's name", () => {
   it("still offers element snippets for a `<` just typed", async () => {
     const items = await wrapped("<p>Let <| be.</p>");
     expect(items?.some((item) => item.label === "<em>")).toBe(true);
+  });
+});
+
+describe("getPretextCompletions at the document root", () => {
+  const at = (text: string) => {
+    const lines = text.split("\n");
+    return getPretextCompletions({
+      text,
+      position: {
+        line: lines.length - 1,
+        character: lines[lines.length - 1].length,
+      },
+    });
+  };
+  const labels = async (text: string) =>
+    (await at(text))?.map((item) => item.label) ?? [];
+  const templates = async (text: string) =>
+    (await labels(text)).filter((label) => label.startsWith("<!ptx-"));
+
+  it("offers the whole-file templates in an empty document", async () => {
+    const found = await templates("");
+    expect(found).toContain("<!ptx-article");
+    expect(found).toContain("<!ptx-book");
+    expect(found).toContain("<!ptx-slideshow");
+    expect(found).toContain("<!ptx-chapter");
+    expect(found).toContain("<!ptx-section");
+    expect(found).toContain("<!ptx-worksheet");
+    expect(found).toContain("<!ptx-handout");
+  });
+
+  it("offers them after the XML declaration, for a `<` just typed", async () => {
+    const text = '<?xml version="1.0" encoding="UTF-8"?>\n\n<';
+    expect(await templates(text)).toContain("<!ptx-article");
+    const article = (await at(text))?.find(
+      (item) => item.label === "<!ptx-article",
+    );
+    // The edit replaces the `<` so the template is not left with two.
+    expect(article?.textEdit?.range).toEqual({
+      start: { line: 2, character: 0 },
+      end: { line: 2, character: 1 },
+    });
+    expect(article?.textEdit?.newText).toMatch(/^<\?xml .*\n\n<pretext>/);
+  });
+
+  it("offers the elements a file may start with, alongside", async () => {
+    const found = await labels("<");
+    expect(found).toContain("<chapter>");
+    expect(found).toContain("<section>");
+    expect(found).toContain("<pretext");
+    // Only roots: `<p>` belongs inside a division.
+    expect(found).not.toContain("<p>");
+    expect(found.some((label) => label.startsWith("</"))).toBe(false);
+  });
+
+  it("ranks the templates ahead of the root elements", async () => {
+    const items = await at("<");
+    const sortKey = (label: string) =>
+      items?.find((item) => item.label === label)?.sortText ?? label;
+    expect(sortKey("<!ptx-chapter") < sortKey("<chapter>")).toBe(true);
+  });
+
+  it("keeps matching while `<!ptx-` is being typed, replacing it all", async () => {
+    const items = await at("<!ptx-art");
+    const found = items?.map((item) => item.label);
+    expect(found).toContain("<!ptx-article");
+    expect(found?.every((label) => label.startsWith("<!ptx-"))).toBe(true);
+    expect(
+      items?.find((item) => item.label === "<!ptx-article")?.textEdit?.range,
+    ).toEqual({
+      start: { line: 0, character: 0 },
+      end: { line: 0, character: 9 },
+    });
+  });
+
+  it("does not give the templates the Snippet kind", async () => {
+    // VS Code hides that kind under `editor.snippetSuggestions: "none"`.
+    const items = await at("");
+    const found = items?.filter((item) => item.label.startsWith("<!ptx-"));
+    expect(found?.length).toBeGreaterThan(0);
+    expect(
+      found?.some((item) => item.kind === CompletionItemKind.Snippet),
+    ).toBe(false);
+  });
+
+  it("does not take a comment's `<!-` for a template", async () => {
+    expect(await templates("<!-")).toEqual([]);
+  });
+
+  it("offers no templates inside an element", async () => {
+    expect(await templates("<book>\n <")).toEqual([]);
+    expect(await templates("<book>\n <!ptx")).toEqual([]);
+    expect(await at("<book>\n <!ptx")).toEqual([]);
+  });
+
+  it("offers a template only where the schema has its root element", async () => {
+    const schema: CompletionSchema = {
+      elementChildren: {
+        project: { elements: ["targets"], attributes: [] },
+        targets: { elements: [], attributes: [] },
+      },
+      rootElements: ["project"],
+    };
+    const items = await getPretextCompletions({
+      text: "",
+      position: { line: 0, character: 0 },
+      schema,
+    });
+    const found = items?.map((item) => item.label);
+    // The curated `<project>` (a project-like block) is the one root; no
+    // template has `project` as its root.
+    expect(found).toEqual(["<project>"]);
+  });
+
+  it("takes every element for a root when the schema names none", async () => {
+    const schema: CompletionSchema = {
+      elementChildren: {
+        chapter: { elements: ["p"], attributes: [] },
+        p: { elements: [], attributes: [] },
+      },
+    };
+    const items = await getPretextCompletions({
+      text: "",
+      position: { line: 0, character: 0 },
+      schema,
+    });
+    const found = items?.map((item) => item.label);
+    expect(found).toContain("<!ptx-chapter");
+    expect(found).not.toContain("<!ptx-article");
+    expect(found).toContain("<chapter>");
+    expect(found).toContain("<p>");
   });
 });

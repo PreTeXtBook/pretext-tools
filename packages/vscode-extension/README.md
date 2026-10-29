@@ -48,7 +48,7 @@ To wrap selected content in a tag, select it and type `<`, then the tag name (or
 
 Attributes are available if you start typing with "@".
 
-If you open a new empty document that you will include via `xi:include`, save it with a `.ptx` extension and then fill in the structure with **Snippets: Insert Snippet** from the Command Palette, choosing one of the `<!ptx-` templates.
+To start a new file, save it with a `.ptx` extension and type `<!ptx-` (or press Ctrl+Space) in the empty document: the completions offer templates for a whole article, book or slideshow (`<!ptx-article`, `<!ptx-book`, `<!ptx-slideshow`), and for the divisions a file you `xi:include` can hold (`<!ptx-chapter`, `<!ptx-section`, `<!ptx-exercises`, `<!ptx-worksheet`, ...). Each puts the XML declaration, the root element and a title in place and leaves your cursor where the content goes. Typing `<` there also lists the plain elements a file may start with.
 
 Here are some options that I find make snippets more useful. For each of these, open settings in VS code and search for them.
 

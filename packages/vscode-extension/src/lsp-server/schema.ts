@@ -58,10 +58,13 @@ async function resolveSchemaUri(schemaConfig: {
 //Create a class for a pretext schema:
 export class Schema {
   elementChildren: SchemaGroup;
+  /** The elements the grammar's `<start>` allows as a document's root. */
+  rootElements: string[];
   schema: any;
   constructor(schemaAst: any) {
     let tmpElementChildren: SchemaGroup = {};
     let aliasMap: SchemaGroup = {};
+    let start: SchemaGroup[string] = { elements: [], attributes: [] };
     // For some reason, removing the "text" nodes causes some elements to be skipped.  So even though it is slightly faster, commenting it out for now.
     //remove(schemaAst, { type: "text" });
     this.schema = schemaAst;
@@ -75,6 +78,7 @@ export class Schema {
       }
       if (node.type === "element") {
         if (node.name === "start") {
+          start = deepmerge(start, getChildren(node));
           return SKIP;
         }
         if (node.name === "define") {
@@ -99,6 +103,7 @@ export class Schema {
     //console.timeEnd("visit");
     //console.time("resolve");
     this.elementChildren = resolveRefs(tmpElementChildren, aliasMap);
+    this.rootElements = resolveRefs({ start }, aliasMap).start?.elements ?? [];
     //console.timeEnd("resolve");
   }
   getSchema() {
