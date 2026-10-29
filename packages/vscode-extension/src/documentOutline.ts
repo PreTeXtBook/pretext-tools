@@ -7,9 +7,10 @@
  * glossary, …).
  *
  * The view has two scopes, toggled from its title bar:
- *  - **file** (default): the active `.ptx` file only, updated as you type.
- *  - **project**: the whole project, following `xi:include`s from every
- *    target's source file declared in `project.ptx`, updated on save.
+ *  - **project** (default): the whole project, following `xi:include`s from
+ *    every target's source file declared in `project.ptx`, updated on save.
+ *    Without a project (a lone `.ptx` file) it shows the file scope instead.
+ *  - **file**: the active `.ptx` file only, updated as you type.
  *
  * Each item is clickable and jumps to the corresponding line in its source
  * file (which, in project scope, may be a different file than the active one).
@@ -115,13 +116,15 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
   private disposables: Disposable[] = [];
   private refreshTimer: ReturnType<typeof setTimeout> | undefined;
   private scope: OutlineScope;
+  /** Project scope found no project, so the active file's outline is shown instead. */
+  private noProject = false;
   /** Bumped on each rebuild so a slow async (project) rebuild can't overwrite a newer one. */
   private rebuildToken = 0;
 
   constructor(private readonly context: ExtensionContext) {
     this.scope = context.workspaceState.get<OutlineScope>(
       SCOPE_STATE_KEY,
-      "file",
+      "project",
     );
     void commands.executeCommand("setContext", SCOPE_CONTEXT_KEY, this.scope);
 
@@ -132,7 +135,7 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
     this.disposables.push(
       window.onDidChangeActiveTextEditor((editor) => {
         if (
-          this.scope === "file" &&
+          this.followsActiveFile() &&
           editor &&
           isPretextFile(editor.document.fileName)
         ) {
@@ -145,7 +148,7 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
     this.disposables.push(
       workspace.onDidChangeTextDocument((e) => {
         if (
-          this.scope === "file" &&
+          this.followsActiveFile() &&
           window.activeTextEditor &&
           e.document === window.activeTextEditor.document &&
           isPretextFile(e.document.fileName)
@@ -192,20 +195,32 @@ export class PretextDocumentOutlineProvider implements TreeDataProvider<OutlineN
 
   private async rebuild(): Promise<void> {
     const token = ++this.rebuildToken;
+    this.noProject = false;
     if (this.scope === "project") {
       const roots = await this.buildProjectRoots();
       if (token !== this.rebuildToken) {
         return; // a newer refresh started while we were reading files
       }
-      this.roots = roots;
-    } else {
-      const editor = window.activeTextEditor;
-      if (editor && isPretextFile(editor.document.fileName)) {
-        this.roots = this.parseDocument(editor.document);
+      this.noProject = roots.length === 0;
+      if (!this.noProject) {
+        this.roots = roots;
+        this._onDidChangeTreeData.fire(undefined);
+        return;
       }
-      // else: keep the previous outline rather than blanking it.
     }
+    const editor = window.activeTextEditor;
+    if (editor && isPretextFile(editor.document.fileName)) {
+      this.roots = this.parseDocument(editor.document);
+    } else if (this.noProject) {
+      this.roots = []; // don't leave a stale project outline behind
+    }
+    // else: keep the previous outline rather than blanking it.
     this._onDidChangeTreeData.fire(undefined);
+  }
+
+  /** Whether the tree shows (and so must track) the active editor's file. */
+  private followsActiveFile(): boolean {
+    return this.scope === "file" || this.noProject;
   }
 
   getTreeItem(element: OutlineNode): TreeItem {

@@ -100,17 +100,18 @@ const TAG_NAMES = [...OUTLINE_TAGS].join("|");
 const XI_TAG_NAMES = `${TAG_NAMES}|xi:include`;
 
 // One regex that matches an opening or closing outline tag; the (/?) group
-// tells us which. The trailing (?=[\s>/]) ensures `<section>` does not also
-// match `<sectionfoo>`. Global so we can walk every tag on a line in order.
-// Two variants: divisions only (single-file outline), and divisions plus
-// `xi:include` (project-wide outline).
-const TAG_TOKEN = new RegExp(`<(\\/?)(${TAG_NAMES})(?=[\\s>/])`, "g");
-const TAG_TOKEN_XI = new RegExp(`<(\\/?)(${XI_TAG_NAMES})(?=[\\s>/])`, "g");
+// tells us which. The trailing (?=[\s>/]|$) ensures `<section>` does not also
+// match `<sectionfoo>`; end of line counts as a boundary because a tag may
+// carry its attributes on the following lines. Global so we can walk every tag
+// on a line in order. Two variants: divisions only (single-file outline), and
+// divisions plus `xi:include` (project-wide outline).
+const TAG_TOKEN = new RegExp(`<(\\/?)(${TAG_NAMES})(?=[\\s>/]|$)`, "g");
+const TAG_TOKEN_XI = new RegExp(`<(\\/?)(${XI_TAG_NAMES})(?=[\\s>/]|$)`, "g");
 
 // Matches only an opening outline tag; used to stop the title look-ahead at the
 // next division so an untitled section can't steal the following section's title.
-const TAG_OPEN = new RegExp(`<(${TAG_NAMES})(?=[\\s>/])`);
-const TAG_OPEN_XI = new RegExp(`<(${XI_TAG_NAMES})(?=[\\s>/])`);
+const TAG_OPEN = new RegExp(`<(${TAG_NAMES})(?=[\\s>/]|$)`);
+const TAG_OPEN_XI = new RegExp(`<(${XI_TAG_NAMES})(?=[\\s>/]|$)`);
 
 /**
  * Replace the contents of XML comments with spaces, preserving every character
@@ -187,13 +188,44 @@ export function parseOutline(
       (stack.length ? stack[stack.length - 1].node.children : roots).push(node);
       // `xi:include` is a leaf (never a container), so it attaches to the
       // enclosing division at the right position for later splicing.
-      if (CONTAINER_TAGS.has(tag)) {
+      if (!CONTAINER_TAGS.has(tag)) {
+        continue;
+      }
+      // A self-closing container (e.g. docinfo's `<worksheet margin="…"/>`)
+      // has no content, so it must not stay open and swallow what follows.
+      const selfClose = selfClosingEnd(lines, lineNum, m.index);
+      if (selfClose) {
+        node.endLine = selfClose.line;
+        node.endCharacter = selfClose.character;
+      } else {
         stack.push({ tag, node });
       }
     }
   }
 
   return roots;
+}
+
+/**
+ * If the opening tag starting at (`startLine`, `start`) is self-closing
+ * (`<tag …/>`), the position of its `/>`; otherwise undefined. The tag may span
+ * several lines, as attribute-heavy tags often do.
+ */
+function selfClosingEnd(
+  lines: string[],
+  startLine: number,
+  start: number,
+): { line: number; character: number } | undefined {
+  for (let i = startLine; i < lines.length; i++) {
+    const from = i === startLine ? start : 0;
+    const close = lines[i].indexOf(">", from);
+    if (close !== -1) {
+      return lines[i][close - 1] === "/"
+        ? { line: i, character: close - 1 }
+        : undefined;
+    }
+  }
+  return undefined;
 }
 
 /**

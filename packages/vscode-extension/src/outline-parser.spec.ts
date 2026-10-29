@@ -155,6 +155,37 @@ describe("parseOutline", () => {
     const roots = parseOutline(src);
     expect(roots.map((r) => r.title)).toEqual(["After"]);
   });
+
+  it("does not keep a self-closing container open", () => {
+    const src = [
+      "<pretext>",
+      "  <docinfo>",
+      '    <worksheet left="13mm" right="13mm"/>',
+      "  </docinfo>",
+      "  <book>",
+      "    <chapter><title>One</title></chapter>",
+      "  </book>",
+      "</pretext>",
+    ].join("\n");
+
+    const roots = parseOutline(src);
+    expect(roots.map((r) => r.tag)).toEqual(["worksheet", "book"]);
+    expect(roots[0].children).toEqual([]);
+    expect(roots[0].endLine).toBe(2);
+    expect(roots[1].children.map((c) => c.title)).toEqual(["One"]);
+  });
+
+  it("recognizes a self-closing tag that spans several lines", () => {
+    const src = [
+      "<worksheet",
+      '  left="13mm"',
+      "/>",
+      "<chapter><title>After</title></chapter>",
+    ].join("\n");
+
+    const roots = parseOutline(src);
+    expect(roots.map((r) => r.tag)).toEqual(["worksheet", "chapter"]);
+  });
 });
 
 describe("extractTitle", () => {
