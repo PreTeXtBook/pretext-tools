@@ -1,5 +1,11 @@
 # @pretextbook/pretext-html
 
+## 0.19.0
+
+### Minor Changes
+
+- dfd5c08: Add `rewriteAssetUrlsAsync` to the `assets` subpath: the same asset-URL retargeting as `rewriteAssetUrls`, for a resolver that has to look the file up asynchronously first. The page is scanned once rather than twice.
+
 ## 0.18.1
 
 ### Patch Changes

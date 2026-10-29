@@ -1,5 +1,12 @@
 # @pretextbook/typing-shortcuts
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [6469c32]
+  - @pretextbook/completions@0.6.0
+
 ## 0.4.0
 
 ### Minor Changes
