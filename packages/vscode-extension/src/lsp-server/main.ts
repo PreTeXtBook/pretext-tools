@@ -12,7 +12,7 @@ import {
   CodeActionKind,
   TextDocumentPositionParams,
   Diagnostic,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver";
 import { isProjectPtx } from "./projectPtx/is-project-ptx";
 import {
   clearAllDocumentInfo,
@@ -33,10 +33,16 @@ import {
 import { clearCompletionCache } from "@pretextbook/schema";
 //import { formatDocument, formatRange } from "./formatter";
 import { formatDocument, formatRange, formatText } from "./formatter-ptx";
-import { getReferences, updateReferences } from "./completions/utils";
+import { getReferences } from "./completions/utils";
 import { getAst, initializeSchema, Schema } from "./schema";
-import path from "path";
-import { schemaDir } from "./paths";
+import { assetUri, getAssetsUri, setAssetsUri } from "./assets";
+import {
+  projectFileUris,
+  replaceProjectFiles,
+  updateProjectFile,
+  type ProjectFileEntry,
+} from "./project-files";
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 import {
   scheduleValidation,
@@ -45,6 +51,8 @@ import {
   shouldValidate,
   loadValidationGrammar,
   setValidationMode,
+  isValidationGrammarLoaded,
+  lastValidation,
 } from "./validation";
 import {
   cleanScopeFor,
@@ -74,6 +82,12 @@ export let publicationSchema: Schema;
 
 connection.onInitialize((params: InitializeParams) => {
   const capabilities = params.capabilities;
+
+  // Where the client put the bundled schema assets (see assets.ts).
+  setAssetsUri(
+    (params.initializationOptions as { assetsUri?: string } | undefined)
+      ?.assetsUri,
+  );
 
   // Does the client support the `workspace/configuration` request?
   // If not, we fall back using global settings.
@@ -111,7 +125,12 @@ connection.onInitialize((params: InitializeParams) => {
         codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.SourceFixAll],
       },
       executeCommandProvider: {
-        commands: ["formatDocument", "formatText", "projectXmlIds"],
+        commands: [
+          "formatDocument",
+          "formatText",
+          "projectXmlIds",
+          "pretext-tools.serverStatus",
+        ],
       },
       documentFormattingProvider: true,
       documentRangeFormattingProvider: true,
@@ -135,50 +154,111 @@ connection.onInitialized(() => {
       DidChangeConfigurationNotification.type,
       undefined,
     );
-    //Set schema based on configuration:
-    connection.workspace
-      .getConfiguration(schemaConfigSection)
-      .then(async (schemaConfig) => {
-        if (schemaConfig) {
-          pretextSchema = await initializeSchema(schemaConfig);
-          globalSettings.schema = schemaConfig;
-          setValidationMode(schemaConfig.validationMode);
-          console.log("Schema set to: ", schemaConfig);
-          // Use the schemaConfig as needed
-        } else {
-          pretextSchema = await initializeSchema(globalSettings.schema);
-          console.log("Schema set to: ", globalSettings.schema);
-        }
-      });
-  } else {
-    async () => {
-      pretextSchema = await initializeSchema(globalSettings.schema);
-      console.log("Schema set to: ", globalSettings.schema);
-    };
   }
 
-  publicationSchema = new Schema(
-    getAst(path.join(schemaDir, "publication-schema.rng")),
-  );
-  projectSchema = new Schema(getAst(path.join(schemaDir, "project-ptx.rng")));
-
-  // Load the precompiled RELAX NG grammar used for schema validation.
-  loadValidationGrammar(globalSettings.schema?.versionName);
+  // Schemas, grammars and the project snapshot all arrive through the client
+  // (see assets.ts, project-files.ts), so loading is asynchronous on every
+  // host; documents opened in the meantime are validated once it completes.
+  void loadServerState();
 
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders((_event) => {
       connection.console.log("Workspace folder change event received.");
     });
   }
+});
 
-  ///////////////// Completion Items //////////////////////
-  references = [];
+/** What `pretext-tools.serverStatus` reports; for diagnosing a host where the
+ * assets or the project snapshot did not arrive (see project-sync.ts). */
+let loadError: string | undefined;
+
+async function loadServerState(): Promise<void> {
+  if (hasConfigurationCapability) {
+    //Set schema based on configuration:
+    const schemaConfig =
+      await connection.workspace.getConfiguration(schemaConfigSection);
+    if (schemaConfig) {
+      globalSettings.schema = schemaConfig;
+      setValidationMode(schemaConfig.validationMode);
+    }
+  }
+  try {
+    pretextSchema = await initializeSchema(globalSettings.schema);
+    console.log("Schema set to: ", globalSettings.schema);
+    publicationSchema = new Schema(
+      await getAst(assetUri("publication-schema.rng")),
+    );
+    projectSchema = new Schema(await getAst(assetUri("project-ptx.rng")));
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : String(error);
+    console.error("Could not load the PreTeXt schemas:", error);
+  }
+
+  // Load the precompiled RELAX NG grammars used for schema validation.
+  await loadValidationGrammar(globalSettings.schema?.versionName);
+
+  // The project snapshot can take a while on a remote file system
+  // (github.dev reads every file over the network), so it is not waited for
+  // before open documents get their first real diagnostics. Whole-book
+  // validation follows xi:includes through the snapshot, so they are
+  // validated once more when it has arrived.
+  const snapshot = syncProjectFiles();
+  revalidateOpenDocuments();
+  await snapshot;
+  revalidateOpenDocuments();
+}
+
+/** Validate every open document against what the server has loaded so far. */
+function revalidateOpenDocuments(): void {
+  for (const doc of documents.all()) {
+    void revalidateDocument(doc);
+  }
+}
+
+/**
+ * Ask the client for the project's source files (see project-files.ts) and
+ * rebuild the xml:id index from them. A client that does not answer — an
+ * editor other than VS Code — leaves the server with open documents only.
+ */
+async function syncProjectFiles(): Promise<void> {
+  try {
+    const entries = await connection.sendRequest<ProjectFileEntry[] | null>(
+      "pretext/projectFiles",
+    );
+    replaceProjectFiles(entries ?? []);
+  } catch (error) {
+    console.warn("The client did not provide a project snapshot:", error);
+  }
+  refreshReferences();
+}
+
+///////////////// Completion Items //////////////////////
+function refreshReferences(): void {
   try {
     references = getReferences();
-  } catch {
-    console.log("Error getting references");
+  } catch (error) {
+    console.log("Error getting references", error);
   }
-});
+}
+
+// The client's file watchers keep the snapshot current. Rebuilding the
+// xml:id index walks the whole project, so a burst of events (a checkout, a
+// build touching many files) is collapsed into one rebuild.
+const REFERENCES_REFRESH_DELAY_MS = 250;
+let referencesRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+connection.onNotification(
+  "pretext/projectFileChanged",
+  (change: { uri: string; text?: string; deleted?: boolean }) => {
+    updateProjectFile(change.uri, change);
+    if (referencesRefreshTimer !== undefined) {
+      clearTimeout(referencesRefreshTimer);
+    }
+    referencesRefreshTimer = setTimeout(() => {
+      referencesRefreshTimer = undefined;
+      refreshReferences();
+    }, REFERENCES_REFRESH_DELAY_MS);
+  },
+);
 
 ///////////////// Configuration //////////////////////
 
@@ -290,7 +370,7 @@ connection.onDidChangeConfiguration((change) => {
         if (versionChanged) {
           pretextSchema = await initializeSchema(schemaConfig);
           // Reload the validation grammar for the new schema version.
-          loadValidationGrammar(schemaConfig.versionName);
+          await loadValidationGrammar(schemaConfig.versionName);
         }
         globalSettings.schema = schemaConfig;
         setValidationMode(schemaConfig.validationMode);
@@ -324,26 +404,29 @@ documents.onDidClose((e) => {
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
-documents.onDidChangeContent(async (change) => {
-  updateDocument(change.document);
-  //console.log("changed content", change.document.uri);
-  const flavor = getFlavorLanguage(change.document.languageId);
+documents.onDidChangeContent((change) => revalidateDocument(change.document));
+
+/** Re-parse a document and publish its diagnostics. */
+async function revalidateDocument(document: TextDocument): Promise<void> {
+  updateDocument(document);
+  //console.log("changed content", document.uri);
+  const flavor = getFlavorLanguage(document.languageId);
   if (flavor) {
     // Flavor documents (LaTeX/Markdown-style PreTeXt) get their own linear
     // scanner-based lint; the RNG schema pipeline below does not apply.
-    const text = change.document.getText();
+    const text = document.getText();
     const diagnostics = await flavor.getDiagnostics(text);
     // Cleanup findings ride the same publish but carry their own `source`, so a
     // user can filter them out in the Problems panel without losing conversion
     // errors. They are opt-out because a document mid-import is full of them.
     if (globalSettings.cleanup.diagnostics && flavor.getCleanFixes) {
       diagnostics.push(
-        ...flavorCleanDiagnostics(flavor, text, change.document.languageId),
+        ...flavorCleanDiagnostics(flavor, text, document.languageId),
       );
     }
-    connection.sendDiagnostics({ uri: change.document.uri, diagnostics });
-  } else if (isProjectPtx(change.document)) {
-    const info = await getDocumentInfo(change.document.uri);
+    connection.sendDiagnostics({ uri: document.uri, diagnostics });
+  } else if (isProjectPtx(document)) {
+    const info = await getDocumentInfo(document.uri);
     if (!info) {
       return;
     }
@@ -353,28 +436,28 @@ documents.onDidChangeContent(async (change) => {
       // Malformed XML: report that alone. Schema errors from a document that
       // does not parse are cascading noise, and a schema run already queued
       // for this file would otherwise overwrite these a moment later.
-      cancelValidation(change.document.uri);
+      cancelValidation(document.uri);
       connection.sendDiagnostics({
-        uri: change.document.uri,
+        uri: document.uri,
         diagnostics: parseErrors,
       });
     } else {
       // Well-formed: validate against the project.ptx manifest grammar. This
       // also clears the parse errors published above once they are fixed —
       // including when no manifest grammar is loaded, see runValidation.
-      scheduleValidation(change.document, publishDiagnostics);
+      scheduleValidation(document, publishDiagnostics);
     }
-  } else if (shouldValidate(change.document)) {
+  } else if (shouldValidate(document)) {
     // Ordinary source files against the PreTeXt schema; publication files
     // against the publication schema (see documentSchemaKind).
-    scheduleValidation(change.document, publishDiagnostics);
+    scheduleValidation(document, publishDiagnostics);
   }
-});
+}
 
 documents.onDidSave((e) => {
   // update references for the saved document
   // TODO: this should just update references instead of finding all of them again.
-  references = getReferences();
+  refreshReferences();
 });
 
 connection.onDidChangeWatchedFiles((_change) => {
@@ -433,6 +516,16 @@ connection.onCodeAction((params) => {
 });
 connection.onExecuteCommand(async (params) => {
   // Handle commands sent from the client
+  if (params.command === "pretext-tools.serverStatus") {
+    return {
+      assetsUri: getAssetsUri(),
+      schemaLoaded: pretextSchema !== undefined,
+      grammarLoaded: isValidationGrammarLoaded(),
+      projectFiles: projectFileUris().length,
+      loadError,
+      lastValidation,
+    };
+  }
   if (params.command === "projectXmlIds") {
     // Every xml:id live in the project, for an import that has to avoid
     // colliding with them (see packages/import/SPEC.md §9.3). Re-walked rather

@@ -47,6 +47,7 @@ jobs:
         library-unit,
         vscode-extension-unit,
         vscode-extension-integration,
+        vscode-extension-web,
       ]
     if: always()
     steps:
@@ -55,7 +56,8 @@ jobs:
           if [ "${{ needs.checks.result }}" = "failure" ] || \
              [ "${{ needs.library-unit.result }}" = "failure" ] || \
              [ "${{ needs.vscode-extension-unit.result }}" = "failure" ] || \
-             [ "${{ needs.vscode-extension-integration.result }}" = "failure" ]; then
+             [ "${{ needs.vscode-extension-integration.result }}" = "failure" ] || \
+             [ "${{ needs.vscode-extension-web.result }}" = "failure" ]; then
             echo "::error::One or more test jobs failed"
             exit 1
           fi
@@ -123,3 +125,26 @@ jobs:
       # VS Code needs a display; xvfb-run provides a headless one.
       - name: Run extension integration tests (VS Code)
         run: xvfb-run -a npm run test:integration -w pretext-tools
+
+  vscode-extension-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: npm install
+
+      # Assemble the runnable extension under dist/vscode-extension, including
+      # the browser bundle (out/extension.web.js) and the web smoke tests.
+      - name: Build extension
+        run: npm run build
+
+      # Loads the extension in the real Web Worker host (vscode.dev served
+      # locally, headless Chromium via @vscode/test-web); see
+      # docs/web-extension-plan.md.
+      - name: Run extension web smoke tests (vscode.dev)
+        run: npm run test:web -w pretext-tools

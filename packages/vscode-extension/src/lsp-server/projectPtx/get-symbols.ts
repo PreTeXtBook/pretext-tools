@@ -1,5 +1,5 @@
 import { visit, EXIT } from "unist-util-visit";
-import { DocumentSymbol, SymbolKind } from "vscode-languageserver/node";
+import { DocumentSymbol, SymbolKind } from "vscode-languageserver";
 import { toString } from "xast-util-to-string";
 import { isElement, unifiedPositionToLspPosition } from "../../parse/utils";
 import { getDocumentInfo } from "../state";

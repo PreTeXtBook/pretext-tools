@@ -7,5 +7,8 @@
     <target name="print" format="pdf">
       <source>source/main.ptx</source>
     </target>
+    <target name="includes" format="html">
+      <source>source/with-includes.ptx</source>
+    </target>
   </targets>
 </project>

@@ -4,7 +4,7 @@ import {
   DocumentRangeFormattingParams,
   Range,
   TextEdit,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver";
 import { documents } from "./state";
 import { globalSettings } from "./main";
 import { formatPretext } from "@pretextbook/format";

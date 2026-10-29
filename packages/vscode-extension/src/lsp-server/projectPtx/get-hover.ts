@@ -1,4 +1,4 @@
-import { Hover, HoverParams, MarkupKind } from "vscode-languageserver/node";
+import { Hover, HoverParams, MarkupKind } from "vscode-languageserver";
 import { elementAtOffset } from "../../parse/utils";
 import { documents, getDocumentInfo } from "../state";
 

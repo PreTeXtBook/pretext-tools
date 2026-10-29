@@ -1,5 +1,5 @@
 import { SaxesParser } from "saxes";
-import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver/node";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 
 /**
  * Attemps to parse `source` as an xml document. Any parse

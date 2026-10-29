@@ -1,4 +1,4 @@
-import * as fs from "fs";
+import * as path from "path";
 import { Snippets } from "../../types";
 import { elementChildren } from "../../constants";
 import {
@@ -8,21 +8,17 @@ import {
   InsertTextFormat,
   Range,
   Position,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver";
 import { documents } from "../state";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import path from "path";
-
-export async function readJsonFile(relativePath: string): Promise<any> {
-  try {
-    // Set the absolute path to the snippets file:
-    const data = fs.readFileSync(relativePath, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error(`Error reading file from disk: ${error}`);
-    return null;
-  }
-}
+import { resolveRootSourcesFromManifest } from "../../project-manifest";
+import {
+  projectFileUris,
+  readProjectFile,
+  readProjectText,
+  uriToPath,
+} from "../project-files";
+import { isProjectPtx } from "../projectPtx/is-project-ptx";
 
 /**
  * Returns a position in the same line shifted by a given number of characters.  If a the number of characters would shift the position beyond the end of the line, or before the start of the line, the end or start of the line position is returned.
@@ -207,117 +203,78 @@ export async function getSnippetCompletionItems(
   return completionItems;
 }
 
-function getMainFile() {
-  const pwd = "./";
-  // Default source directory is ./source
-  let sourceDir = path.join(pwd, "source");
-  // Set default main file to main.ptx
-  let mainFile = path.join(sourceDir, "main.ptx");
-  // Check if project.ptx exists and if so, use that to find main file
-  let project = path.join(pwd, "project.ptx");
-  if (fs.existsSync(project)) {
-    console.log("Found project.ptx");
-    const text = fs.readFileSync(project).toString();
-    // Determine whether v1 or v2:
-    let regexVersion = /<project\s(.*?)ptx-version="2"/;
-    if (regexVersion.test(text)) {
-      console.log("project.ptx is version 2");
-      let regexProject = /<project\s(.*?)source="(.*?)"/;
-      let regexTarget = /<target\s(.*?)source="(.*?)"/;
-      let projectSourceMatch = regexProject.exec(text);
-      let targetSourceMatch = regexTarget.exec(text);
-      if (projectSourceMatch) {
-        sourceDir = path.join(pwd, projectSourceMatch[2]);
-        if (targetSourceMatch) {
-          mainFile = path.join(sourceDir, targetSourceMatch[2]);
-        } else {
-          mainFile = path.join(sourceDir, "main.ptx"); // default
-        }
-      } else if (targetSourceMatch) {
-        // No project source, so use default set above.
-        mainFile = path.join(sourceDir, targetSourceMatch[2]);
-      }
-    } else {
-      console.log("project.ptx is legacy version");
-      let regexTarget = /<source>(.*?)<\/source>/;
-      let targetSourceMatch = regexTarget.exec(text);
-      if (targetSourceMatch) {
-        mainFile = path.join(pwd, targetSourceMatch[1]);
+/**
+ * The root source files of every project in the snapshot: each `project.ptx`
+ * resolved through the shared manifest resolver (so this agrees with
+ * validation and the outline on where a book starts). A workspace with no
+ * manifest falls back to every `main.ptx` it contains.
+ */
+function getRootDocuments(): string[] {
+  const roots = new Set<string>();
+  const uris = projectFileUris();
+  for (const uri of uris) {
+    if (!isProjectPtx(uri)) {
+      continue;
+    }
+    const manifest = readProjectText(uri);
+    if (manifest === undefined) {
+      continue;
+    }
+    const projectRoot = path.dirname(uriToPath(uri));
+    for (const root of resolveRootSourcesFromManifest(manifest, projectRoot)) {
+      roots.add(root);
+    }
+  }
+  if (roots.size === 0) {
+    for (const uri of uris) {
+      if (/\/main\.ptx$/.test(uri)) {
+        roots.add(uriToPath(uri));
       }
     }
   }
-  console.log("Checking for main source file: ", mainFile);
-  if (fs.existsSync(mainFile)) {
-    console.log("Found main source file", mainFile);
-    return mainFile;
-  } else {
-    console.log("main source file not found");
-    return "";
-  }
+  return [...roots];
 }
 
 // define a type for the array of labels:
 type LabelArray = [string, string, string][];
 
 /**
- * Search through a project to find all xml:id's.  Start with main.ptx and include any fine that is xi:included up to a depth of 5.
+ * Search through a project to find all xml:id's.  Start with each root source
+ * file and include any file that is xi:included up to a depth of 5. Reads go
+ * through the project snapshot, never the filesystem.
  */
 export function getReferences(): LabelArray {
-  // Look through all files in project directory and collect all labels contained as xml:id attributes.
-  let baseFile = getMainFile();
   let references: LabelArray = [];
-  let files = [baseFile];
+  let files = getRootDocuments();
+  const visited = new Set<string>();
   let depth = 0;
-  // const uri = vscode.Uri.file(sourceDir);
-  // let files = await vscode.workspace.fs.readDirectory(uri);
   while (depth < 5 && files.length > 0) {
     let newFiles: string[] = [];
     for (const file of files) {
-      if (fs.existsSync(file)) {
-        let text = fs.readFileSync(file).toString();
-        let regex = /<xi:include\s+href="([^"]+)"/g;
-        let matches = [...text.matchAll(regex)];
-        newFiles = newFiles.concat(
-          matches.map((match) => path.join(file, "..", match[1])),
-        );
-        regex = /<(\w*?)\s(.*?)xml:id="([^"]+?)"/g;
-        matches = [...text.matchAll(regex)];
-        const posixFile = file.replace(/\\/g, "/");
-        references = references.concat(
-          matches.map((match) => [match[3], match[1], posixFile]),
-        );
+      if (visited.has(file)) {
+        continue;
       }
+      visited.add(file);
+      const text = readProjectFile(file);
+      if (text === undefined) {
+        continue;
+      }
+      let regex = /<xi:include\s+href="([^"]+)"/g;
+      let matches = [...text.matchAll(regex)];
+      newFiles = newFiles.concat(
+        matches.map((match) => path.resolve(path.dirname(file), match[1])),
+      );
+      regex = /<(\w*?)\s(.*?)xml:id="([^"]+?)"/g;
+      matches = [...text.matchAll(regex)];
+      const posixFile = file.replace(/\\/g, "/");
+      references = references.concat(
+        matches.map((match) => [match[3], match[1], posixFile]),
+      );
     }
     files = newFiles;
     depth++;
   }
   console.log("Finished collecting references, reached depth of ", depth);
-  return references;
-}
-
-export function updateReferences(
-  document: TextDocument,
-  references: LabelArray = [],
-) {
-  console.log("Updating references");
-  // Look through the specified file collect all labels contained as xml:id attributes.
-  // This can then be used to update the current list of references every time a file is saved.
-  let fileContents = document.getText();
-  let regex = /<(\w*?)\s(.*?)xml:id="([^"]+)"/g;
-  let matches = [...fileContents.matchAll(regex)];
-  const rootDir = fs.realpathSync(".");
-  console.log("Root directory: ", rootDir);
-  const currentFile = document.uri;
-  console.log("Current file: ", currentFile);
-  const posixFile = path.posix.relative(rootDir, currentFile);
-  console.log("Current file: ", posixFile);
-  // Remove all (old) labels from the current file:
-  references = references.filter((label) => label[2] !== posixFile);
-  // Add all (new) labels from the current file:
-  references = references.concat(
-    matches.map((match) => [match[3], match[1], posixFile]),
-  );
-  console.log("Done updating labels");
   return references;
 }
 

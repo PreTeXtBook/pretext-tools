@@ -4,75 +4,28 @@
  * ------------------------------------------------------------------------------------------ */
 
 import * as path from "path";
-import { ExtensionContext, TextEditor, workspace } from "vscode";
+import { ExtensionContext } from "vscode";
 
 import {
   LanguageClient,
-  LanguageClientOptions,
   ServerOptions,
   TransportKind,
 } from "vscode-languageclient/node";
 
-import { pretextOutputChannel } from "../ui";
+import { pretextOutputChannel } from "../ui-core";
+import { clientOptions } from "./shared-options";
+import { registerProjectSync } from "./project-sync";
+import { setClient } from "./shared";
 
-let client: LanguageClient;
+export { lspFormatDocument, lspFormatText, lspProjectXmlIds } from "./shared";
 
-export function lspFormatDocument(editor: TextEditor) {
-  if (editor) {
-    client.sendRequest("workspace/executeCommand", {
-      command: "formatDocument",
-      arguments: [{ uri: editor.document.uri.toString() }],
-    });
-  } else {
-    console.log("No active editor found to format document.");
-  }
-}
-
-export async function lspFormatText(text: string): Promise<string> {
-  const result = await client.sendRequest("workspace/executeCommand", {
-    command: "formatText",
-    arguments: [{ text: text }],
-  });
-  if (typeof result === "string") {
-    return result;
-  } else {
-    throw new Error(
-      "Expected string result from formatText, got: " + typeof result,
-    );
-  }
-}
+let client: LanguageClient | undefined;
 
 /**
- * Every `xml:id` the project currently uses, walked from its main source
- * through every `xi:include`. An import inserting into the project needs these
- * so it can rename anything that would collide (packages/import/SPEC.md §9.3).
- *
- * Returns an empty list when the server is not running or answers with
- * something unexpected: a missing id list makes the import rename nothing,
- * which is the same risk the author already runs when pasting by hand.
+ * Node host: the server runs as a forked Node process talking over IPC. The
+ * browser host (`extension.web.ts`) will instead host the same server source
+ * in a Web Worker — see docs/web-extension-plan.md, Phase 1.
  */
-export async function lspProjectXmlIds(): Promise<string[]> {
-  if (!client) {
-    return [];
-  }
-  try {
-    const result = await client.sendRequest("workspace/executeCommand", {
-      command: "projectXmlIds",
-      arguments: [],
-    });
-    return Array.isArray(result)
-      ? result.filter((id): id is string => typeof id === "string")
-      : [];
-  } catch (error) {
-    pretextOutputChannel.appendLine(
-      `Could not read project xml:ids from the language server: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-    return [];
-  }
-}
-
 export function activate(context: ExtensionContext) {
   // The server is implemented in node
   const serverModule = context.asAbsolutePath(
@@ -94,28 +47,16 @@ export function activate(context: ExtensionContext) {
     },
   };
 
-  // Options to control the language client
-  const clientOptions: LanguageClientOptions = {
-    // Register the server for PreTeXt documents in all authoring flavors.
-    documentSelector: [
-      { scheme: "file", language: "pretext" },
-      { scheme: "file", language: "pretext-latex" },
-      { scheme: "file", language: "pretext-markdown" },
-    ],
-    synchronize: {
-      // Notify the server about file changes to '.clientrc files contained in the workspace
-      fileEvents: workspace.createFileSystemWatcher("**/project.ptx"),
-    },
-    //markdown: { isTrusted: true },
-  };
-
   // Create the language client and start the client.
   client = new LanguageClient(
     "pretextLanguageServer",
     "PreTeXt Language Server",
     serverOptions,
-    clientOptions,
+    clientOptions(context),
   );
+  // Project files and schema assets reach the server through the client.
+  context.subscriptions.push(registerProjectSync(client));
+  setClient(client);
 
   // Start the client. This will also launch the server
   client.start();
@@ -127,5 +68,8 @@ export function deactivate(): Thenable<void> | undefined {
   if (!client) {
     return undefined;
   }
-  return client.stop();
+  const stopping = client.stop();
+  client = undefined;
+  setClient(undefined);
+  return stopping;
 }

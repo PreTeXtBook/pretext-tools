@@ -1,6 +1,6 @@
-// Create a connection for the server, using Node's IPC as a transport.
+// Create a connection for the server: Node IPC on the desktop host, the
+// worker's message port on the web host (see platform.ts).
 
-import { createConnection, ProposedFeatures } from "vscode-languageserver/node";
+import { createServerConnection } from "./platform";
 
-// Also include all preview / proposed LSP features.
-export const connection = createConnection(ProposedFeatures.all);
+export const connection = createServerConnection();

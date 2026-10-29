@@ -1,6 +1,6 @@
 import * as path from "path";
-import { URI } from "vscode-uri";
 import { resolveRootSourcesFromManifest } from "../../project-manifest";
+import { uriToPath } from "../project-files";
 
 /** Bound on how far up the directory tree to search for a `project.ptx`. */
 const MAX_UPWARD_SEARCH = 32;
@@ -17,8 +17,12 @@ export type ReadFile = (absolutePath: string) => string | undefined;
  * one exists.
  *
  * Manifest parsing is delegated to `resolveRootSourcesFromManifest` — the same
- * `xml2js`-based resolver the extension-host outline uses — so validation and
- * the outline can never disagree on where a project's book root lives.
+ * resolver the extension-host outline uses — so validation and the outline can
+ * never disagree on where a project's book root lives.
+ *
+ * Paths are in the space `uriToPath` defines (a real path for `file:`
+ * documents, a virtual one otherwise), and `readFile` is expected to resolve
+ * them the same way — pass `readProjectFile` from project-files.ts.
  *
  * Returns `undefined` when no manifest is found above the document (the schema
  * package's own `main.ptx`-next-to-the-document default then applies).
@@ -27,7 +31,7 @@ export function findProjectRootDocuments(
   documentUri: string,
   readFile: ReadFile,
 ): string[] | undefined {
-  let dir = path.dirname(URI.parse(documentUri).fsPath);
+  let dir = path.dirname(uriToPath(documentUri));
   for (let i = 0; i < MAX_UPWARD_SEARCH; i++) {
     const manifest = readFile(path.join(dir, "project.ptx"));
     if (manifest !== undefined) {

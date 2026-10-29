@@ -3,7 +3,7 @@ import {
   DocumentLink,
   DocumentSymbol,
   SymbolKind,
-} from "vscode-languageserver/node";
+} from "vscode-languageserver";
 import { toString } from "xast-util-to-string";
 import {
   isElement,

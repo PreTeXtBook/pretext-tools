@@ -11,6 +11,12 @@
   "engines": {
     "vscode": "^1.97.0"
   },
+  "capabilities": {
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "Editing support (highlighting, snippets, typing shortcuts, conversion, the visual editor) works in virtual workspaces and on the web. Building, previewing and other commands that run the PreTeXt CLI need a local or Codespaces install."
+    }
+  },
   "categories": [
     "Programming Languages",
     "Snippets",
@@ -21,6 +27,7 @@
     "onLanguage:pretext"
   ],
   "main": "./out/extension.js",
+  "browser": "./out/extension.web.js",
   "contributes": {
     "languages": [
       {
@@ -87,7 +94,13 @@
     "viewsWelcome": [
       {
         "view": "pretextTargets",
-        "contents": "No PreTeXt project found in this workspace.\n[New Project](command:pretext-tools.new)\n[Import Project](command:pretext-tools.importProject)"
+        "contents": "No PreTeXt project found in this workspace.\n[New Project](command:pretext-tools.new)\n[Import Project](command:pretext-tools.importProject)",
+        "when": "!isWeb"
+      },
+      {
+        "view": "pretextTargets",
+        "contents": "No PreTeXt project found in this workspace.\n[Import Project](command:pretext-tools.importProject)",
+        "when": "isWeb"
       },
       {
         "view": "pretextDocumentOutline",
@@ -467,12 +480,12 @@
       "view/item/context": [
         {
           "command": "pretext-tools.buildTreeTarget",
-          "when": "view == pretextTargets && viewItem == target",
+          "when": "!isWeb && view == pretextTargets && viewItem == target",
           "group": "inline@1"
         },
         {
           "command": "pretext-tools.viewTreeTarget",
-          "when": "view == pretextTargets && viewItem == target",
+          "when": "!isWeb && view == pretextTargets && viewItem == target",
           "group": "inline@2"
         }
       ],
@@ -496,6 +509,70 @@
         {
           "command": "pretext-tools.wrapSelection",
           "when": "editorLangId == 'pretext'"
+        },
+        {
+          "command": "pretext-tools.experiment",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.experimentConvert",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.selectPretextCommand",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.buildAny",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.buildLast",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.buildFile",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.new",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.view",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.viewVisualEditor",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.livePreview",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.forwardSearch",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.viewCLI",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.generate",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.deploy",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.updatePTX",
+          "when": "!isWeb"
+        },
+        {
+          "command": "pretext-tools.spellCheck",
+          "when": "!isWeb"
         }
       ],
       "editor/context": [
@@ -653,7 +730,7 @@
             "type": "string",
             "default": "",
             "scope": "machine",
-            "markdownDescription": "Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
+            "markdownDescription": "Desktop only. Path to a Node.js (version 24+) executable for the live preview worker. Node 22 will not work: its V8 predates the `WebAssembly.Suspending` API the renderer needs. Usually unnecessary — leave empty and the extension will use VS Code's own Node runtime, falling back to `node` from your PATH."
           },
           "pretext-tools.latexPretext.treatTexAsPretext": {
             "order": 5,
@@ -1008,6 +1085,8 @@
     "compile-tests": "tsc -p tsconfig.test.json",
     "pretest:integration": "npm run esbuild && npm run copy-assets && npm run compile-tests && npm run lint",
     "test:integration": "vscode-test",
+    "open:web": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=../../dist/vscode-extension ./src/test/fixtures/sample-project",
+    "test:web": "vscode-test-web --browserType=chromium --headless --extensionDevelopmentPath=../../dist/vscode-extension --extensionTestsPath=../../dist/vscode-extension/out/test-web/index.js ./src/test/fixtures/sample-project",
     "test:unit": "vitest run",
     "lint": "eslint src --ext ts",
     "test": "npm run test:unit",
@@ -1036,7 +1115,9 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.4",
+    "@vscode/test-web": "^0.0.81",
     "concurrently": "^9.2.5",
+    "path-browserify": "^1.0.1",
     "vite": "^7.3.7"
   },
   "prettier": {

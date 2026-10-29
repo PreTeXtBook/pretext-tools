@@ -1,6 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
-import { Disposable, TextDocument, languages, workspace } from "vscode";
+import { Disposable, TextDocument, Uri, languages, workspace } from "vscode";
+import { exists } from "./workspace-fs";
 
 /**
  * Opt-in "takeover" of plain LaTeX/Markdown documents by the PreTeXt flavor
@@ -63,21 +62,23 @@ async function maybeTakeOver(document: TextDocument): Promise<void> {
  * Decide whether `document` should be switched to `rule.targetLanguage`.
  *
  * Policy: take over only when
- *   1. the document is a real file on disk (not untitled, git:, output:, ...),
+ *   1. the document is a real file (local `file:` or a virtual workspace's
+ *      `vscode-vfs:` on the web host; not untitled, git:, output:, ...),
  *   2. the `pretext-tools.<rule.setting>` setting is enabled, and
  *   3. the document lives in a workspace folder whose **root** contains a
  *      `project.ptx` manifest — a deliberately strict check so ordinary LaTeX
  *      or Markdown files in unrelated folders are never hijacked.
  *
- * The check is a single `fs.existsSync` per opened document, cheap enough to
- * run each time (avoiding a cache that could go stale when a `project.ptx` is
- * added or removed mid-session).
+ * The check is a single `workspace.fs.stat` per opened document, cheap enough
+ * to run each time (avoiding a cache that could go stale when a `project.ptx`
+ * is added or removed mid-session). It goes through `workspace.fs` rather than
+ * Node's `fs` so the same code runs in the browser bundle.
  */
 async function shouldTakeOver(
   document: TextDocument,
   rule: TakeoverRule,
 ): Promise<boolean> {
-  if (document.uri.scheme !== "file") {
+  if (!FILE_SCHEMES.has(document.uri.scheme)) {
     return false;
   }
   const enabled = workspace
@@ -90,5 +91,8 @@ async function shouldTakeOver(
   if (!folder) {
     return false;
   }
-  return fs.existsSync(path.join(folder.uri.fsPath, "project.ptx"));
+  return exists(Uri.joinPath(folder.uri, "project.ptx"));
 }
+
+/** URI schemes under which a document counts as a project file. */
+const FILE_SCHEMES = new Set(["file", "vscode-vfs"]);

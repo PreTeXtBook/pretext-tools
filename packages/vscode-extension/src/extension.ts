@@ -11,7 +11,6 @@ import {
   pretextOutputChannel,
   pretextTerminal,
   ptxSBItem,
-  refreshProjects,
   showLog,
 } from "./ui";
 import {
@@ -30,17 +29,12 @@ import {
   cmdInstantPreviewScope,
   cmdTogglePreviewSlidesView,
   disposeInstantPreview,
+  previewTestHooks,
 } from "./instantPreview";
-import {
-  PretextDocumentOutlineProvider,
-  cmdOutlineJumpToLine,
-} from "./documentOutline";
+import { nodePreviewHost } from "./preview-host-node";
 import { PretextActionsProvider } from "./actionsView";
-import {
-  PretextTargetsProvider,
-  TargetNode,
-  cmdRevealTargetDefinition,
-} from "./targetsView";
+import { TargetNode } from "./targetsView";
+import { registerProjectViews } from "./project-views";
 import { cmdNew } from "./commands/new";
 import { cmdDeploy } from "./commands/deploy";
 import { cmdUpdate } from "./commands/update";
@@ -67,7 +61,9 @@ import {
   lspFormatDocument,
   lspFormatText,
 } from "./lsp-client/main";
-import { projects, resetProjectList } from "./project";
+import { addProjectProvider } from "./project";
+import { systemDefaultProjects } from "./project-system-default";
+import { desktopPandoc } from "./pandoc";
 import { registerFlavorTakeover } from "./flavor-takeover";
 import { registerTypingShortcuts } from "./typing-shortcuts";
 import { registerSnippetSuggestions } from "./snippet-suggestions";
@@ -121,6 +117,8 @@ export async function activate(context: ExtensionContext) {
     console.log("Error setting schema");
   }
 
+  const previewHost = nodePreviewHost(context.extensionPath);
+
   context.subscriptions.push(ptxSBItem);
   utils.updateStatusBarItem(ptxSBItem);
 
@@ -139,9 +137,6 @@ export async function activate(context: ExtensionContext) {
   ///////////////// Commands //////////////////////
 
   // Import or define the client instance for LSP communication
-
-  // Targets tree view — declared here so the target/refresh commands can drive it.
-  const targetsProvider = new PretextTargetsProvider();
 
   context.subscriptions.push(
     commands.registerCommand("pretext-tools.experiment", () => {
@@ -171,28 +166,25 @@ export async function activate(context: ExtensionContext) {
       cmdViewVisualEditor,
     ),
     commands.registerCommand("pretext-tools.livePreview", cmdLivePreview),
+    // The live preview renders in a forked Node process here, and can show
+    // a full `pretext build` too; see preview-host-node.ts.
     commands.registerCommand("pretext-tools.instantPreview", () =>
-      cmdInstantPreview(context.extensionPath),
+      cmdInstantPreview(previewHost),
     ),
     commands.registerCommand("pretext-tools.instantPreviewScope", () =>
-      cmdInstantPreviewScope(context.extensionPath),
+      cmdInstantPreviewScope(previewHost),
     ),
     commands.registerCommand(
       "pretext-tools.togglePreviewSlidesView",
       cmdTogglePreviewSlidesView,
     ),
     commands.registerCommand("pretext-tools.forwardSearch", cmdForwardSearch),
-    commands.registerCommand(
-      "pretext-tools.outlineJumpToLine",
-      cmdOutlineJumpToLine,
-    ),
     commands.registerCommand("pretext-tools.new", cmdNew),
     commands.registerCommand("pretext-tools.importProject", () =>
-      cmdImport(context),
+      cmdImport(context, desktopPandoc),
     ),
-    commands.registerCommand(
-      "pretext-tools.insertFileAsDivision",
-      cmdInsertFileAsDivision,
+    commands.registerCommand("pretext-tools.insertFileAsDivision", () =>
+      cmdInsertFileAsDivision(desktopPandoc),
     ),
     commands.registerCommand("pretext-tools.deploy", cmdDeploy),
     commands.registerCommand("pretext-tools.updatePTX", cmdUpdate),
@@ -217,10 +209,6 @@ export async function activate(context: ExtensionContext) {
     ),
     commands.registerCommand("pretext-tools.spellCheck", utils.cmdSpellCheck),
     commands.registerCommand("pretext-tools.showLog", showLog),
-    commands.registerCommand("pretext-tools.refreshTargets", async () => {
-      await refreshProjects();
-      targetsProvider.refresh();
-    }),
     commands.registerCommand(
       "pretext-tools.buildTreeTarget",
       (node: TargetNode) => buildTarget(node.target),
@@ -228,10 +216,6 @@ export async function activate(context: ExtensionContext) {
     commands.registerCommand(
       "pretext-tools.viewTreeTarget",
       (node: TargetNode) => viewTarget(node.target),
-    ),
-    commands.registerCommand(
-      "pretext-tools.revealTargetDefinition",
-      cmdRevealTargetDefinition,
     ),
     //commands.registerCommand("pretext-tools.installSage", cmdInstallSage),
     commands.registerCommand("pretext-tools.gettingStarted", () => {
@@ -252,39 +236,11 @@ export async function activate(context: ExtensionContext) {
     ),
   );
 
-  // Register the document outline tree view
-  const outlineProvider = new PretextDocumentOutlineProvider(context);
-  context.subscriptions.push(
-    outlineProvider,
-    window.registerTreeDataProvider("pretextDocumentOutline", outlineProvider),
-    commands.registerCommand("pretext-tools.refreshOutline", () =>
-      outlineProvider.refresh(),
-    ),
-    commands.registerCommand("pretext-tools.outlineScopeProject", () =>
-      outlineProvider.setScope("project"),
-    ),
-    commands.registerCommand("pretext-tools.outlineScopeFile", () =>
-      outlineProvider.setScope("file"),
-    ),
-  );
-
-  // Register the targets tree view and keep both it and the project outline in
-  // sync with project.ptx.
-  const manifestWatcher = workspace.createFileSystemWatcher("**/project.ptx");
-  const onManifestChange = async () => {
-    await resetProjectList({ silent: true });
-    targetsProvider.refresh();
-    outlineProvider.refresh();
-  };
-  context.subscriptions.push(
-    window.registerTreeDataProvider("pretextTargets", targetsProvider),
-    manifestWatcher,
-    manifestWatcher.onDidChange(onManifestChange),
-    manifestWatcher.onDidCreate(onManifestChange),
-    manifestWatcher.onDidDelete(onManifestChange),
-  );
-
-  console.log("Current projects: ", projects);
+  // Outline and Targets views (shared with the browser entry point), with the
+  // CLI's ~/.ptx templates added as a project of their own.
+  addProjectProvider(systemDefaultProjects);
+  const views = registerProjectViews(context);
+  const exports = { ...views, preview: previewTestHooks };
 
   // Start the LSP
   try {
@@ -299,6 +255,8 @@ export async function activate(context: ExtensionContext) {
   pretextOutputChannel.appendLine(
     "PreTeXt related commands are available through the PreTeXt status bar menu or the command pallet (CTRL+SHIFT+P).",
   );
+
+  return exports;
 }
 
 // this method is called when your extension is deactivated

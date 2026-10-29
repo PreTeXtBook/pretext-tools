@@ -5,16 +5,32 @@ import * as fs from "fs";
 import { SpellCheckScope } from "./types";
 import { cli } from "./cli";
 import {
-  getProjectFolder,
   stripColorCodes,
   buildSpellCheckIgnorePatterns,
   upsertPretextLanguageSettings,
 } from "./pure-utils";
+import { updateStatusBarItem } from "./ui-core";
+
+/**
+ * Walk up the directory tree looking for a folder that contains a
+ * `project.ptx` manifest. Desktop only (sync `fs`); the project list in
+ * project.ts does the same through `workspace.fs` on both hosts.
+ * @returns the first ancestor directory (inclusive) containing `project.ptx`,
+ * or `null` if the filesystem root is reached without finding one.
+ */
+export function getProjectFolder(dirPath: string): string | null {
+  if (dirPath === path.dirname(dirPath)) {
+    return null;
+  } else if (fs.existsSync(path.join(dirPath, "project.ptx"))) {
+    return dirPath;
+  } else {
+    return getProjectFolder(path.dirname(dirPath));
+  }
+}
 
 export let currentPanel: vscode.WebviewPanel | undefined;
 
 export {
-  getProjectFolder,
   installPretext,
   setSchema,
   setSpellCheckConfig,
@@ -338,30 +354,6 @@ function setSchema(context: vscode.ExtensionContext) {
   configuration.update("fileAssociations", schemas);
 }
 
-function updateStatusBarItem(
-  ptxSBItem: vscode.StatusBarItem,
-  state?: string,
-): void {
-  ptxSBItem.show();
-  if (state === "ready" || state === undefined) {
-    ptxSBItem.text = `$(debug-run) PreTeXt`;
-    ptxSBItem.tooltip = `Run PreTeXt command`;
-    ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === "running") {
-    ptxSBItem.text = `$(loading~spin) PreTeXt`;
-    ptxSBItem.tooltip = `running pretext ... (click for log)`;
-    ptxSBItem.command = `pretext-tools.showLog`;
-  } else if (state === "success") {
-    ptxSBItem.text = `$(pass) PreTeXt`;
-    ptxSBItem.tooltip = `Success!`;
-    ptxSBItem.command = `pretext-tools.selectPretextCommand`;
-  } else if (state === "error") {
-    ptxSBItem.text = `$(warning) PreTeXt`;
-    ptxSBItem.tooltip = `Something went wrong; click for log`;
-    ptxSBItem.command = `pretext-tools.showLog`;
-  }
-}
-
 function setupTerminal(
   terminal: vscode.Terminal | null,
   projectPath?: string,
@@ -373,16 +365,4 @@ function setupTerminal(
   return terminal;
 }
 
-/**
- * Generate a random nonce for use in webview content security policy.
- * @returns A random nonce string.
- */
-export function getNonce() {
-  let text = "";
-  const possible =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
-}
+export { getNonce } from "./nonce";

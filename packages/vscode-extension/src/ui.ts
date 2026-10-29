@@ -1,34 +1,16 @@
-import {
-  OutputChannel,
-  StatusBarAlignment,
-  StatusBarItem,
-  Terminal,
-  window,
-} from "vscode";
+import { Terminal } from "vscode";
 import { updateStatusBarItem } from "./utils";
 import { ptxCommandList } from "./constants";
-import { resetProjectList } from "./project";
 import { Target } from "./types";
+import { pretextOutputChannel, ptxSBItem } from "./ui-core";
 
-export const pretextOutputChannel: OutputChannel = window.createOutputChannel(
-  "PreTeXt Tools",
-  "log",
-);
-export const ptxSBItem: StatusBarItem = window.createStatusBarItem(
-  StatusBarAlignment.Left,
-  -100,
-);
+// The output channel and status-bar item live in ui-core.ts so the browser
+// bundle can share them without importing the CLI wrapper below.
+export { pretextOutputChannel, ptxSBItem };
 
 export function showLog() {
   pretextOutputChannel.show();
   updateStatusBarItem(ptxSBItem);
-}
-
-export async function refreshProjects() {
-  pretextOutputChannel.append("Refreshing project/target list.");
-  console.log("Refreshing project/target list.");
-  //reset projects:
-  await resetProjectList();
 }
 
 export let pretextTerminal: Terminal;

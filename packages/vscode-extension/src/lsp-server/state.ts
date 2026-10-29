@@ -1,4 +1,4 @@
-import { Diagnostic, TextDocuments } from "vscode-languageserver/node";
+import { Diagnostic, TextDocuments } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { Root, Node } from "xast";
 import { validateXml } from "../parse/validate-xml";

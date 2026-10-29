@@ -31,7 +31,7 @@ import {
   type PlacementContext,
   type SnippetFormat,
 } from "@pretextbook/import";
-import { pretextOutputChannel } from "./ui";
+import { pretextOutputChannel } from "./ui-core";
 import { convertSnippetToPretext } from "./commands/convert";
 import { describeDetection } from "./paste-convert-core";
 

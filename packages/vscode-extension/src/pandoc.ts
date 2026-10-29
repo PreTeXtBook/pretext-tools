@@ -5,6 +5,7 @@ import * as path from "path";
 import * as fs from "fs";
 import * as https from "https";
 import { promisify } from "util";
+import type { PandocBridge, PandocConversion } from "./pandoc-bridge";
 
 const execFileAsync = promisify(execFile);
 
@@ -144,11 +145,7 @@ export async function pandocToPretext(inputPath: string): Promise<string> {
   return stdout;
 }
 
-export interface PandocConversion {
-  pretext: string;
-  /** Extracted media, keyed by a path relative to the extraction directory. */
-  media: Record<string, Uint8Array>;
-}
+export type { PandocConversion };
 
 /** Every file under `dir`, keyed by its path relative to `dir`. */
 async function readTree(
@@ -205,3 +202,22 @@ export async function pandocToPretextWithMedia(
       .catch(() => undefined);
   }
 }
+
+/** The import flows' view of the local pandoc binary (see pandoc-bridge.ts). */
+export const desktopPandoc: PandocBridge = {
+  installed: pandocInstalled,
+  async convertUpload(fileName, bytes) {
+    // pandoc infers the input format from the file extension, so preserve it.
+    const tempFile = path.join(
+      os.tmpdir(),
+      `ptx-import-${Date.now()}${path.extname(fileName)}`,
+    );
+    await fs.promises.writeFile(tempFile, bytes);
+    try {
+      return await pandocToPretext(tempFile);
+    } finally {
+      await fs.promises.rm(tempFile, { force: true }).catch(() => undefined);
+    }
+  },
+  convertFile: (uri) => pandocToPretextWithMedia(uri.fsPath),
+};
