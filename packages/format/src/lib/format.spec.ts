@@ -173,6 +173,256 @@ describe("format", () => {
   });
 });
 
+describe("whitespace around inline elements", () => {
+  const body = (input: string) =>
+    formatPretext(`<p>${input}</p>`).split("\n")[1].trim();
+
+  it.each([
+    ["closing paren", `(for example, <m>x</m>)`],
+    ["opening paren", `(<m>x</m>) and (<xref ref="a"/>)`],
+    ["brackets and braces", `[<m>x</m>] and {<m>y</m>}`],
+    ["quotes", `"<em>quoted</em>"`],
+    ["possessive and plural", `the <m>x</m>'s and <m>y</m>s`],
+    ["a word split by markup", `un<em>believ</em>able`],
+    ["hyphenated compounds", `<m>L</m>-functions and pre-<m>x</m>`],
+    ["touching elements", `<em>a</em><m>b</m>`],
+    ["a comment inside a word", `a<!-- c -->b`],
+  ])("adds no whitespace: %s", (_, input) => {
+    expect(body(input)).toBe(input);
+  });
+
+  it.each([
+    ["between elements", `<m>a</m> <m>b</m>`],
+    ["a spaced hyphen", `<m>x</m> - y`],
+    ["around a comment", `a <!-- c --> b`],
+  ])("removes no whitespace: %s", (_, input) => {
+    expect(body(input)).toBe(input);
+  });
+
+  it("keeps separated elements apart in a <p> with a block child", () => {
+    const input = `<p><m>a</m> <m>b</m><md><mrow>x</mrow></md><m>c</m> <m>d</m></p>`;
+    const result = formatPretext(input);
+
+    expect(result).toContain("<m>a</m> <m>b</m>");
+    expect(result).toContain("<m>c</m> <m>d</m>");
+  });
+
+  it("keeps separated elements apart at the top level of a fragment", () => {
+    expect(formatPretext(`<m>a</m> <m>b</m>`)).toBe(`<m>a</m> <m>b</m>`);
+  });
+
+  it("applies to smart paragraphs and unwrapped fragments", () => {
+    expect(formatPretext(`<title>Foo (<m>x</m>)</title>`)).toBe(
+      `<title>Foo (<m>x</m>)</title>`,
+    );
+    expect(formatPretext(`(<m>x</m>)`)).toBe(`(<m>x</m>)`);
+  });
+
+  it("still pulls sentence punctuation back across whitespace", () => {
+    expect(body(`<m>x</m>\n, we have`)).toBe(`<m>x</m>, we have`);
+  });
+
+  it("does not wrap between a closing tag and its punctuation", () => {
+    const filler = "word ".repeat(14).trim();
+    const lines = formatPretext(`<p>${filler} (see <m>x + y</m>).</p>`, {
+      printWidth: 80,
+    }).split("\n");
+
+    expect(lines).toContain("  <m>x + y</m>).");
+  });
+
+  it("fuses closing punctuation onto display math", () => {
+    const input = `<p>Note (see<md><mrow>x</mrow></md>). Next.</p>`;
+    const result = formatPretext(input);
+
+    expect(result).toContain("</md>).\n  Next.");
+    expect(formatPretext(result)).toBe(result);
+  });
+
+  it("is idempotent", () => {
+    const once = formatPretext(
+      `<p>(<m>x</m>) the <m>y</m>'s, <em>a</em><m>b</m> <m>c</m> - d</p>`,
+    );
+
+    expect(formatPretext(once)).toBe(once);
+  });
+});
+
+describe("content the serializer must not drop", () => {
+  it.each([
+    ["between inline runs", `<p>a <?pi x?> b</p>`],
+    ["inside an inline element", `<p>a <em>b <?pi x?> c</em> d</p>`],
+    ["inside a <title>", `<title>A <?pi x?> B</title>`],
+    ["inside a verbatim block", `<program><?pi x?>code</program>`],
+  ])("keeps a processing instruction %s", (_, input) => {
+    const result = formatPretext(input);
+
+    expect(result).toContain("<?pi x?>");
+    expect(formatPretext(result)).toBe(result);
+  });
+
+  it("keeps <?xml-model?> after the XML declaration", () => {
+    const input = `<?xml version="1.0"?>\n<?xml-model href="x.rng"?>\n<pretext><p>hi</p></pretext>`;
+
+    expect(formatPretext(input)).toBe(
+      `<?xml version="1.0"?>\n\n<?xml-model href="x.rng"?>\n<pretext>\n  <p>\n    hi\n  </p>\n</pretext>`,
+    );
+  });
+
+  it("indents a processing instruction between blocks", () => {
+    const result = formatPretext(`<section><?pi x?><p>a</p></section>`);
+
+    expect(result).toContain("\n  <?pi x?>\n");
+  });
+
+  it.each([
+    ["in a <p>", `<p>a <![CDATA[x<y]]> b</p>`],
+    ["touching text", `<p>a<![CDATA[x<y]]>b</p>`],
+    ["in a <title>", `<title>a <![CDATA[x<y]]> b</title>`],
+  ])("keeps CDATA %s", (_, input) => {
+    const result = formatPretext(input);
+
+    expect(result).toContain("<![CDATA[x<y]]>");
+    expect(formatPretext(result)).toBe(result);
+  });
+
+  it("keeps CDATA from gaining whitespace against its neighbors", () => {
+    expect(formatPretext(`<p>a<![CDATA[x<y]]>b</p>`)).toContain(
+      "a<![CDATA[x<y]]>b",
+    );
+  });
+});
+
+describe("top-level comments", () => {
+  const doc = `<pretext><p>hi</p></pretext>`;
+
+  it("keeps consecutive comments before the root on their own lines", () => {
+    const result = formatPretext(`<!-- a -->\n<!-- b -->\n${doc}`);
+
+    expect(result.split("\n").slice(0, 3)).toEqual([
+      "<!-- a -->",
+      "<!-- b -->",
+      "<pretext>",
+    ]);
+  });
+
+  it("keeps comments and instructions apart after an XML declaration", () => {
+    const result = formatPretext(
+      `<?xml version="1.0"?>\n<!-- a -->\n<?pi x?>\n<!-- b -->\n${doc}`,
+    );
+
+    expect(result.split("\n").slice(2, 5)).toEqual([
+      "<!-- a -->",
+      "<?pi x?>",
+      "<!-- b -->",
+    ]);
+    expect(formatPretext(result)).toBe(result);
+  });
+
+  it("keeps a comment after the root on its own line", () => {
+    expect(formatPretext(`${doc}\n<!-- end -->`)).toMatch(
+      /<\/pretext>\n<!-- end -->$/,
+    );
+  });
+
+  it("still flows a comment beside loose prose in a fragment", () => {
+    const input = `loose text <!-- c --> more text`;
+
+    expect(formatPretext(input)).toBe(input);
+  });
+});
+
+describe("mixed content outside paragraphs", () => {
+  const raw = (body: string) => `<biblio type="raw">${body}</biblio>`;
+
+  it("keeps a raw <biblio> flowing as prose", () => {
+    const input = raw(
+      `Knuth, D. <title>TAOCP</title>. 3rd ed. (<year>1997</year>)`,
+    );
+
+    expect(formatPretext(input)).toBe(
+      `<biblio type="raw">\n  Knuth, D. <title>TAOCP</title>. 3rd ed. (<year>1997</year>)\n</biblio>`,
+    );
+  });
+
+  it("repairs a raw <biblio> laid out by an earlier version", () => {
+    const input = `<biblio type="raw">
+  Knuth, D.
+  <title>
+    A very long title
+    that used to wrap
+  </title>
+  . 3rd ed.
+</biblio>`;
+
+    expect(formatPretext(input)).toBe(
+      `<biblio type="raw">\n  Knuth, D. <title>A very long title that used to wrap</title>. 3rd ed.\n</biblio>`,
+    );
+  });
+
+  it("keeps a <note> in a raw <biblio> as a block", () => {
+    const result = formatPretext(
+      raw(`Knuth, D. <title>T</title>.<note><p>Classic.</p></note>`),
+    );
+
+    expect(result).toContain("<title>T</title>.\n  <note>\n");
+  });
+
+  it("leaves an element-only <biblio> in block layout", () => {
+    const input = `<biblio type="bibtex"><title>T</title><year>1997</year></biblio>`;
+
+    expect(formatPretext(input)).toBe(
+      `<biblio type="bibtex">\n  <title>T</title>\n\n  <year>1997</year>\n</biblio>`,
+    );
+  });
+
+  it.each([
+    ["intertext", `<md><intertext>so (<m>x</m>)</intertext></md>`],
+    ["feedback", `<choice><feedback>so (<m>x</m>)</feedback></choice>`],
+    ["author", `<biblio><author>so (<m>x</m>)</author></biblio>`],
+    ["pubnote", `<biblio><pubnote>so (<m>x</m>)</pubnote></biblio>`],
+  ])("does not split <%s> at inline boundaries", (_, input) => {
+    const result = formatPretext(input);
+
+    expect(result).toContain("so (<m>x</m>)");
+    expect(formatPretext(result)).toBe(result);
+  });
+
+  it("removes the padding an earlier version added inside <m>", () => {
+    const input = `<choice><feedback>so\n  <m>\n    x\n  </m>\n  )</feedback></choice>`;
+
+    expect(formatPretext(input)).toContain("so <m>x</m> )");
+  });
+
+  it("does not reflow display math mixed with markup", () => {
+    const input = `<me>a % comment\nb <fillin/></me>`;
+
+    expect(formatPretext(input)).toContain("a % comment\nb");
+  });
+
+  it("keeps the line breaks in <m> when unexpanding", () => {
+    const input = `<feedback>so <m>\n  a % comment\n  b\n</m></feedback>`;
+
+    expect(formatPretext(`<choice>${input}</choice>`)).toMatch(
+      /<m>a % comment\n\s*b<\/m>/,
+    );
+  });
+
+  it("leaves a <section> with stray text in block layout", () => {
+    const result = formatPretext(
+      `<section><title>T</title>stray <m>x</m><p>a</p></section>`,
+    );
+
+    expect(result).toContain("  <title>T</title>\n");
+  });
+
+  it("does not touch verbatim content in mixed content", () => {
+    const input = `<note>see <c>a\n  b</c></note>`;
+
+    expect(formatPretext(input)).toContain("<c>a\n  b</c>");
+  });
+});
+
 describe("verbatim content preservation", () => {
   it("preserves trailing space in single-line verbatim (e.g. <prompt>$ </prompt>)", () => {
     const input = `<console><prompt>$ </prompt><input>ls</input></console>`;

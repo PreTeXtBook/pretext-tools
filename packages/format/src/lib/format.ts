@@ -1,9 +1,17 @@
 import { fromXml } from "xast-util-from-xml";
-import type { Root, Element, ElementContent, RootContent } from "xast";
+import type {
+  Root,
+  Element,
+  ElementContent,
+  Instruction,
+  RootContent,
+} from "xast";
 import type { Plugin } from "unified";
 import {
   blockTags,
+  headingTags,
   lineEndTags,
+  mathDisplay,
   newlineTags,
   parTags,
   smartParTags,
@@ -68,10 +76,22 @@ export function serializeXast(tree: Root, options?: FormatOptions): string {
   // Uses isTopLevelBlock (not the narrower isBlockChild used inside a real <p>)
   // so genuine structural elements like a bare top-level <title> still get
   // their normal dispatch instead of being flattened as an inline token.
-  const children = tree.children.filter(
-    (c) => !(c.type === "text" && c.value.trim() === ""),
+  // Nothing flows in a whole document or a list of blocks, so comments and
+  // processing instructions there each keep their own line; beside loose prose
+  // they flow along with it, as they would inside a <p>.
+  const flowing = tree.children.some(
+    (c) =>
+      c.type === "cdata" ||
+      (c.type === "text" && c.value.trim() !== "") ||
+      (c.type === "element" && !isTopLevelBlock(c)),
   );
-  appendMixedContent(children, lines, 0, ctx, isTopLevelBlock);
+  appendMixedContent(
+    tree.children,
+    lines,
+    0,
+    ctx,
+    flowing ? isTopLevelBlock : (c) => c.type !== "text",
+  );
   const result = applyBlankLines(lines, ctx);
   while (result.length > 0 && result[result.length - 1] === "") result.pop();
   return result.join("\n");
@@ -138,7 +158,7 @@ function appendNode(
 ): void {
   switch (node.type) {
     case "instruction":
-      out.push(`<?${node.name}${node.value ? " " + node.value : ""}?>`);
+      out.push(`${ctx.ind.repeat(depth)}${instructionStr(node)}`);
       break;
     case "doctype":
       out.push(`<!DOCTYPE ${node.name}>`);
@@ -171,6 +191,8 @@ function appendElement(
   // that also appear in blockTags. smartParTags is checked before lineEndTags so
   // it takes precedence for tags that appear in both lists (e.g. title, caption).
   // parTags are split by whether they contain structural block children.
+  // Text mixed with markup flows like a paragraph whatever the tag, since block
+  // layout would put whitespace at every boundary between the two.
   // Everything else falls through to appendBlock.
   const name = node.name;
   if (verbatimTags.includes(name)) {
@@ -183,6 +205,9 @@ function appendElement(
     appendPar(node, out, depth, ctx);
   } else if (parTags.includes(name)) {
     appendMixedPar(node, out, depth, ctx);
+  } else if (hasMixedContent(node)) {
+    const children = node.children.map(unexpand);
+    appendMixedPar({ ...node, children }, out, depth, ctx);
   } else {
     appendBlock(node, out, depth, ctx);
   }
@@ -210,16 +235,7 @@ function appendVerbatim(
 
   // Preserve verbatim inner content exactly as parsed (including newlines and
   // trailing spaces), while still escaping text-node XML entities.
-  const raw = node.children
-    .map((c) => {
-      if (c.type === "text") return escText(c.value);
-      if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
-      // Comments are part of the authored content here; dropping them would
-      // silently delete text from the document.
-      if (c.type === "comment") return `<!--${c.value}-->`;
-      return "";
-    })
-    .join("");
+  const raw = inlineSerialize(node.children);
   const trailingNewlineWithWhitespace = /\n[ \t]*$/.test(raw);
   if (trailingNewlineWithWhitespace) {
     // Strip any trailing whitespace after the final newline so the closing tag
@@ -333,6 +349,9 @@ function appendPar(
  * selection formatted on its own) — in both cases loose text and inline
  * elements are logically one flowing run and must reflow together rather than
  * each becoming an isolated top-level node.
+ *
+ * `children` must keep whitespace-only text nodes: they are what separates
+ * neighboring inline elements (see collectTokens).
  */
 function appendMixedContent(
   children: (RootContent | ElementContent)[],
@@ -345,16 +364,16 @@ function appendMixedContent(
   let i = 0;
   while (i < children.length) {
     if (isBlock(children[i])) {
-      const child = children[i] as Element;
+      const child = children[i];
       i++;
 
-      // Fuse any immediately-following punctuation (e.g. the "." after </md>) onto
-      // the closing tag line rather than letting it appear as a dangling token on
-      // the next line.
+      // Fuse any immediately-following punctuation (e.g. the "." after </md>, or
+      // the ")." closing a parenthetical) onto the closing tag line rather than
+      // letting it appear as a dangling token on the next line.
       let punctuation = "";
       if (i < children.length && children[i].type === "text") {
         const textVal: string = (children[i] as any).value;
-        const m = /^(\s*)([.,;:!?])/.exec(textVal);
+        const m = /^(\s*)([.,;:!?)\]}]+)/.exec(textVal);
         if (m) {
           punctuation = m[2];
           const remaining = textVal.slice(m[0].length);
@@ -365,7 +384,7 @@ function appendMixedContent(
       }
 
       const blockLines: string[] = [];
-      appendElement(child, blockLines, depth, ctx);
+      appendNode(child, blockLines, depth, ctx);
       if (punctuation && blockLines.length > 0) {
         blockLines[blockLines.length - 1] += punctuation;
       }
@@ -405,13 +424,7 @@ function appendMixedPar(
     return;
   }
   out.push(`${ind}${openTag(node)}`);
-  appendMixedContent(
-    meaningfulChildren(node),
-    out,
-    depth + 1,
-    ctx,
-    isBlockChild,
-  );
+  appendMixedContent(node.children, out, depth + 1, ctx, isBlockChild);
   out.push(`${ind}</${node.name}>`);
 }
 
@@ -516,9 +529,14 @@ function inlineSerialize(children: ElementContent[]): string {
       if (c.type === "element") return inlineEl(c);
       if (c.type === "comment") return `<!--${c.value}-->`;
       if (c.type === "cdata") return `<![CDATA[${c.value}]]>`;
+      if (c.type === "instruction") return instructionStr(c);
       return "";
     })
     .join("");
+}
+
+function instructionStr(node: Instruction): string {
+  return `<?${node.name}${node.value ? " " + node.value : ""}?>`;
 }
 
 function inlineEl(node: Element): string {
@@ -530,8 +548,17 @@ function inlineEl(node: Element): string {
 
 function collectTokens(children: (RootContent | ElementContent)[]): string[] {
   // Produces a flat list of reflow tokens: words from text nodes, and serialized
-  // inline elements treated as opaque single tokens.
+  // inline elements treated as opaque single tokens. Whether two neighbors are
+  // separated is significant to the rendered text, so anything with no whitespace
+  // between it in the source stays in one token (and so can't gain a space or a
+  // line break): "(<m>x</m>)" must not become "( <m>x</m> )".
   const tokens: string[] = [];
+  // True when the previous node ended with no trailing whitespace.
+  let touching = false;
+  const add = (tok: string, merge: boolean) => {
+    if (merge && tokens.length > 0) tokens[tokens.length - 1] += tok;
+    else tokens.push(tok);
+  };
   for (const c of children) {
     if (c.type === "text") {
       const words: string[] = c.value
@@ -539,19 +566,17 @@ function collectTokens(children: (RootContent | ElementContent)[]): string[] {
         .filter((w: string) => w.length > 0);
       for (let j = 0; j < words.length; j++) {
         const w = escText(words[j]);
-        // If this text node begins with punctuation or a hyphen immediately after an
-        // element (e.g. ", we have" or "-functions"), merge onto the previous token.
-        // Covers: "<m>x</m>, we" → "<m>x</m>," and "<m>L</m>-functions" → "<m>L</m>-functions".
-        if (j === 0 && tokens.length > 0 && /^[.,;:!?\-]/.test(w)) {
-          tokens[tokens.length - 1] += w;
-        } else {
-          tokens.push(w);
-        }
+        // Sentence punctuation merges onto the previous token even across
+        // whitespace, so it never dangles at the start of a line.
+        const merge =
+          j === 0 &&
+          ((touching && !/^\s/.test(c.value)) || /^[.,;:!?]/.test(w));
+        add(w, merge);
       }
-    } else if (c.type === "element") {
-      tokens.push(inlineEl(c));
-    } else if (c.type === "comment") {
-      tokens.push(`<!--${c.value}-->`);
+      touching = !/\s$/.test(c.value);
+    } else if (c.type !== "doctype") {
+      add(inlineSerialize([c]), touching);
+      touching = true;
     }
   }
   return tokens;
@@ -707,6 +732,53 @@ function isTopLevelBlock(child: RootContent | ElementContent): boolean {
 
 function hasBlockChildren(node: Element): boolean {
   return node.children.some((c) => isBlockChild(c));
+}
+
+/**
+ * Whether an element with no dedicated layout is prose: text alongside markup,
+ * like a raw <biblio>, <intertext>, or <feedback>. Display math is excluded
+ * because its line breaks matter (reflowing would pull the next line into a
+ * LaTeX `%` comment), and so is anything with a heading, which is a structural
+ * element holding stray text. The <title> of a raw <biblio> is part of the
+ * citation, not a heading.
+ */
+function hasMixedContent(node: Element): boolean {
+  const children = meaningfulChildren(node);
+  return (
+    !mathDisplay.includes(node.name) &&
+    children.some((c) => c.type === "text") &&
+    children.some((c) => c.type !== "text") &&
+    (node.name === "biblio" ||
+      !children.some(
+        (c) => c.type === "element" && headingTags.includes(c.name),
+      ))
+  );
+}
+
+/**
+ * Removes the line breaks an inline child picked up when its parent was laid out
+ * as a block (<m>\n  x\n</m>, which is how such files were previously formatted),
+ * so they don't get carried into the flowing text. Inside <m> only the padding
+ * goes, for the same reason display math doesn't reflow.
+ */
+function unexpand(child: ElementContent): ElementContent {
+  if (
+    child.type !== "element" ||
+    isBlockChild(child) ||
+    verbatimTags.includes(child.name)
+  ) {
+    return child;
+  }
+  const last = child.children.length - 1;
+  const children = child.children.map((c, i) => {
+    if (c.type !== "text") return c;
+    let value = c.value;
+    if (i === 0) value = value.replace(/^\s*\n\s*/, "");
+    if (i === last) value = value.replace(/\s*\n\s*$/, "");
+    if (child.name !== "m") value = value.replace(/\s*\n\s*/g, " ");
+    return { ...c, value };
+  });
+  return { ...child, children };
 }
 
 // ─── Text escaping ────────────────────────────────────────────────────────────

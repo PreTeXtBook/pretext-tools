@@ -177,7 +177,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       Runestone server where the code can be compiled and run. Those languages
       can specify <attr>compiler-args</attr> and <attr>linker-args</attr> or
       <attr>interpreter-args</attr> as appropriate to the language. Default
-      values for those options can be set in <tag>docinfo/programs</tag>- any
+      values for those options can be set in <tag>docinfo/programs</tag> - any
       defaults set there will be used for any program that lacks the
       corresponding attribute.
     </p>
@@ -415,7 +415,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       <em>including</em> program whose value is the <attr>xml:id</attr> of the
       <em>included</em> program. So by running the next program, it should pass
       all of its three tests (for example another example using unit tests, see
-      <xref ref="unit-test-example"/> ). Now reload the page, do not run the
+      <xref ref="unit-test-example"/>). Now reload the page, do not run the
       program in the listing, and then see that the program in the exercise
       still runs correctly.
     </p>
@@ -430,7 +430,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
 
     <p>
       This program also makes use of <attr>autorun</attr> to execute on page
-      load and the <attr>codelens</attr> to disable the codelens feature.
+      load and the <attr>codelens</attr>to disable the codelens feature.
     </p>
 
     <exercise xml:id="exercise-python-including" include-source="yes">
@@ -553,10 +553,10 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       <attr>filename</attr> is used to indicate what to name to use when the
       contents of the element are written to a file on the server - other
       program code and/or tools on the server can look for it using this name.
-      The <attr>filename</attr> need not be unique <mdash/> we could have
-      multiple programs with <attr>filename="add.h"</attr>. As we will see
-      below, the author specifies which <q>version</q> of a file should be used
-      in any given location with its unique xml:id.
+      The <attr>filename</attr> need not be unique<mdash/>we could have multiple
+      programs with <attr>filename="add.h"</attr>. As we will see below, the
+      author specifies which <q>version</q> of a file should be used in any
+      given location with its unique xml:id.
     </p>
 
     <p>
@@ -613,7 +613,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
       xml:id) the files that need to be added to the program directory.
       <attr>compile-also</attr> specifies files that must be compiled with this
       source file (they will be assumed to be also part of
-      <attr>add-files</attr> ). Notice that when using <attr>add-files</attr> to
+      <attr>add-files</attr>). Notice that when using <attr>add-files</attr> to
       reference code we want to include, we use the xml:id of the target program
       - it has the contents we want to include. When making a textual reference
       with an <tag>xref</tag> we can't link to the program, as it lacks the
@@ -723,16 +723,13 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
           </prompt>
 
           <feedback>
-            <c>//</c>
-            does integer division
+            <c>//</c> does integer division
           </feedback>
         </checkpoint>
         <checkpoint line="3" answer-variable="current_frame.n">
           <prompt>What value will be returned?</prompt>
           <feedback>
-            What is
-            <c>n</c>
-            right now?
+            What is <c>n</c> right now?
           </feedback>
         </checkpoint>
       </program>
@@ -774,9 +771,7 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
           </prompt>
 
           <feedback>
-            <c>++</c>
-            has precedence over
-            <c>=</c>
+            <c>++</c> has precedence over <c>=</c>
           </feedback>
         </checkpoint>
         <checkpoint line="9" answer-variable="current_frame.x">
@@ -975,9 +970,9 @@ along with MathBook XML.  If not, see <http://www.gnu.org/licenses/>.
         <p>
           Similar to above, but now as a complete Python program inside an
           <tag>activity</tag>. This demonstrates the possibility to use any
-          <q>project-like</q> block ( <tag>project</tag>, <tag>activity</tag>,
-          <tag>exploration</tag>, <tag>investigation</tag> ), but not in the
-          case when structured with <tag>task</tag>. (There is an empty
+          <q>project-like</q> block (<tag>project</tag>, <tag>activity</tag>,
+          <tag>exploration</tag>, <tag>investigation</tag>), but not in the case
+          when structured with <tag>task</tag>. (There is an empty
           <tag>tests</tag> element here, designed to test relief for an error
           this will cause on a Runestone server.)
         </p>
@@ -2905,10 +2900,10 @@ TEST_CASE( "Test the add function" ) {
       Runestone uses a YouTube API that broadcasts events when a reader
       interacts with a video. In this way, Runestone can record video-watching
       as an activity. As <pretext/> output we concede better behavior on small
-      screens ( <q>responsiveness</q> ) to enable this feature in a Runestone
+      screens (<q>responsiveness</q>) to enable this feature in a Runestone
       version. A <attr>label</attr> attribute is necessary for persistence in
       the Runestone database. Various <pretext/> features, such as playlists,
-      are not yet supported <mdash/> make a request.
+      are not yet supported<mdash/>make a request.
     </p>
 
     <video xml:id="yt-list-vars" label="youtube-list-vars" youtube="X1-UNHUajfk" width="60%" margins="5% 35%" preview="yt-list-variables.png">
@@ -2931,9 +2926,9 @@ TEST_CASE( "Test the add function" ) {
         <tag>subsection</tag> which each contain a PROJECT-LIKE item that
         includes a <tag>program</tag> element, and thus is a coding exercise.
         This tests migration to the Runestone assignment area, though Runestone
-        only has divisions two-deep ( <q>chapter</q> and <q>subchapter</q>, so
-        both will show up associated with the same <tag>section</tag> <mdash/>
-        this one.
+        only has divisions two-deep (<q>chapter</q> and <q>subchapter</q>, so
+        both will show up associated with the same
+        <tag>section</tag><mdash/>this one.
       </p>
 
       <p>
@@ -3281,7 +3276,7 @@ TEST_CASE( "Test the add function" ) {
 
           <feedback>
             <p>
-              Remember the acronym <ellipsis/> <acro>ROY G BIV</acro>. <q>B</q>
+              Remember the acronym<ellipsis/><acro>ROY G BIV</acro>. <q>B</q>
               stands for blue.
             </p>
           </feedback>
@@ -3304,7 +3299,7 @@ TEST_CASE( "Test the add function" ) {
 
       <hint>
         <p>
-          Do you know the acronym <ellipsis/> <acro>ROY G BIV</acro> for the
+          Do you know the acronym<ellipsis/><acro>ROY G BIV</acro> for the
           colors of a rainbow, and their order?
         </p>
       </hint>
@@ -3498,7 +3493,7 @@ TEST_CASE( "Test the add function" ) {
 
           <feedback>
             <p>
-              Remember the acronym <ellipsis/> <acro>ROY G BIV</acro>. <q>B</q>
+              Remember the acronym<ellipsis/><acro>ROY G BIV</acro>. <q>B</q>
               stands for blue.
             </p>
           </feedback>
@@ -3521,7 +3516,7 @@ TEST_CASE( "Test the add function" ) {
 
       <hint>
         <p>
-          Do you know the acronym <ellipsis/> <acro>ROY G BIV</acro> for the
+          Do you know the acronym<ellipsis/><acro>ROY G BIV</acro> for the
           colors of a rainbow, and their order?
         </p>
       </hint>
@@ -3812,8 +3807,8 @@ TEST_CASE( "Test the add function" ) {
         </p>
 
         <p>
-          Try putting the blocks in a valid order to calculate and print
-          <c>c</c> Only use the required blocks. There are many valid orderings.
+          Try putting the blocks in a valid order to calculate and print<c>c</c>
+          Only use the required blocks. There are many valid orderings.
         </p>
       </statement>
       <blocks>
@@ -4436,8 +4431,8 @@ TEST_CASE( "Test the add function" ) {
             <p>
               A <tag>cardsort</tag> asks users to match items in a 1-1 or many-1
               fashion. The interactive version of these involves dragging
-              <q>card</q> s from the left column (the <tag>premise</tag> s) into
-              containers on the right (the <tag>response</tag> s).
+              <q>card</q>s from the left column (the <tag>premise</tag>s) into
+              containers on the right (the <tag>response</tag>s).
             </p>
           </li>
 
@@ -4446,8 +4441,8 @@ TEST_CASE( "Test the add function" ) {
 
             <p>
               A <tag>matching</tag> interactive asks users to form connections
-              between the <tag>premise</tag> s in the left column and the
-              <tag>response</tag> s on the right. This format supports many-many
+              between the <tag>premise</tag>s in the left column and the
+              <tag>response</tag>s on the right. This format supports many-many
               matches.
             </p>
           </li>
@@ -4468,8 +4463,7 @@ TEST_CASE( "Test the add function" ) {
       <feedback>
         <p>
           Review
-          <url href="https://www.britannica.com/list/25-decade-defining-events-in-us-history" visual="www.britannica.com/list/25-decade-defining-events-in-us-history">Encyclopedia Brittania, 25 Decade-Defining Events in U.S. History</url>
-          url.
+          <url href="https://www.britannica.com/list/25-decade-defining-events-in-us-history" visual="www.britannica.com/list/25-decade-defining-events-in-us-history">Encyclopedia Brittania, 25 Decade-Defining Events in U.S. History</url>url.
         </p>
       </feedback>
       <cardsort>
@@ -4844,7 +4838,7 @@ TEST_CASE( "Test the add function" ) {
         These <term>select</term> questions specify a list of extant questions,
         and the reader, or Runestone, selects questions from the list to be
         graded (in different ways). They are only really functional with a
-        database of students in a course, i.e. <nbsp/> when hosted on Runestone.
+        database of students in a course, i.e.<nbsp/>when hosted on Runestone.
       </p>
     </introduction>
     <!-- Select one at random -->
@@ -5087,7 +5081,7 @@ TEST_CASE( "Test the add function" ) {
 
     <introduction>
       <p>
-        This section has <term>fill-in-the-blank</term> ( <init>FITB</init> )
+        This section has <term>fill-in-the-blank</term> (<init>FITB</init>)
         exercises that use an old syntax. They were designed for projects
         transitioning from Runestone's ReST syntax to <pretext/>. So they are
         really only here for testing, and not for any sort of documentation.
@@ -5145,7 +5139,7 @@ TEST_CASE( "Test the add function" ) {
         </p>
 
         <p>
-          <var width="2"/> <c>age = </c> <var width="3"/> <c>;</c>
+          <var width="2"/> <c>age = </c> <var width="3"/><c>;</c>
         </p>
       </statement>
       <setup>
@@ -5218,9 +5212,8 @@ TEST_CASE( "Test the add function" ) {
       <statement>
         <p>
           The decimal number <var/> is an approximation of <m>\sfrac{1}{3}</m>
-          to within three significant figures. (
-          <url href="https://en.wikipedia.org/wiki/Significant_figures" visual="en.wikipedia.org/wiki/Significant_figures">Wikipedia</url>
-          ).
+          to within three significant figures.
+          (<url href="https://en.wikipedia.org/wiki/Significant_figures" visual="en.wikipedia.org/wiki/Significant_figures">Wikipedia</url>).
         </p>
       </statement>
       <setup>
@@ -5250,7 +5243,7 @@ TEST_CASE( "Test the add function" ) {
 
     <introduction>
       <p>
-        This section has <term>fill-in-the-blank</term> ( <init>FITB</init> )
+        This section has <term>fill-in-the-blank</term> (<init>FITB</init>)
         exercises using newer syntax, and the subject of active development.
       </p>
     </introduction>
@@ -5475,8 +5468,8 @@ TEST_CASE( "Test the add function" ) {
 
       <statement>
         <p>
-          What is the square of <m>x=<eval obj="myNum"/></m>? <m>x^2=</m>
-          <fillin width="5" mode="number" ansobj="mySquare"/>
+          What is the square of <m>x=<eval obj="myNum"/></m>?
+          <m>x^2=</m><fillin width="5" mode="number" ansobj="mySquare"/>
         </p>
       </statement>
       <setup seed="1234">
@@ -5564,11 +5557,7 @@ TEST_CASE( "Test the add function" ) {
             </de-expression>
 
             <feedback>
-              Check for a sign error while isolating
-              <m>
-                x
-              </m>
-              .
+              Check for a sign error while isolating <m>x</m>.
             </feedback>
           </test>
         </evaluate>
@@ -5797,10 +5786,7 @@ TEST_CASE( "Test the add function" ) {
           <test>
             <eval obj="identityFunction"/>
             <feedback>
-              <m>
-                g(x)=x
-              </m>
-              is not allowed for nontrivial compositions.
+              <m>g(x)=x</m> is not allowed for nontrivial compositions.
             </feedback>
           </test>
         </evaluate>
@@ -6144,7 +6130,7 @@ TEST_CASE( "Test the add function" ) {
 
           <feedback>
             <p>
-              Remember the acronym <ellipsis/> <acro>ROY G BIV</acro>. <q>B</q>
+              Remember the acronym<ellipsis/><acro>ROY G BIV</acro>. <q>B</q>
               stands for blue.
             </p>
           </feedback>
@@ -6167,7 +6153,7 @@ TEST_CASE( "Test the add function" ) {
 
       <hint>
         <p>
-          Do you know the acronym <ellipsis/> <acro>ROY G BIV</acro> for the
+          Do you know the acronym<ellipsis/><acro>ROY G BIV</acro> for the
           colors of a rainbow, and their order?
         </p>
       </hint>
@@ -6879,7 +6865,7 @@ TEST_CASE( "Test the add function" ) {
         <li>
           inside a <tag>figure</tag> inside a <tag>sidebyside</tag> inside a
           <tag>figure</tag>, with size and layout configured, with a number and
-          caption, but now sub-numbered ((a), (b), (c), <ellipsis/> ).
+          caption, but now sub-numbered ((a), (b), (c),<ellipsis/>).
         </li>
       </ol>
       Examples of each, and more.
@@ -7003,7 +6989,7 @@ TEST_CASE( "Test the add function" ) {
         <statement>
           <p>
             This is an <tag>exercises</tag> division (at the level of a
-            <tag>subsection</tag> ) which is not being numbered. We've hijacked
+            <tag>subsection</tag>) which is not being numbered. We've hijacked
             this first exercise to say so, and to precede the
             <tag>exercisegroup</tag> following, which is the real test right
             now. What is <m>0+0</m>?
@@ -7616,7 +7602,7 @@ TEST_CASE( "Test the add function" ) {
         <statement>
           <p>
             Work this following problem. Note that this is really just a test to
-            see if additional text (beyond an <tag>interactive</tag> ) will show
+            see if additional text (beyond an <tag>interactive</tag>) will show
             up.
           </p>
 
@@ -7692,8 +7678,8 @@ TEST_CASE( "Test the add function" ) {
         <tag>section</tag> in this <tag>chapter</tag> of a <tag>book</tag>. It
         is also setup as a Runestone timed exam. So it is an example of how you
         might have a per-chapter exam. This contrasts with an earlier timed exam
-        which is constructed as a per-section exam (
-        <xref ref="timing-exercises"/> ). The exercises are the same here, but
+        which is constructed as a per-section exam
+        (<xref ref="timing-exercises"/>). The exercises are the same here, but
         in a different order. As a test, this exam is <q>pauseable</q> and has a
         15 minute time limit.
       </p>

@@ -201,7 +201,7 @@ const docEmpty = [
   "webwork",
 ];
 const listLike = ["ol", "ul", "dl"];
-const mathDisplay = ["me", "men", "md", "mdn"]; // me, men, and mdn are deprecated but still used in some documents
+export const mathDisplay = ["me", "men", "md", "mdn"]; // me, men, and mdn are deprecated but still used in some documents
 const nestableTags = [
   "ul",
   "ol",
@@ -271,6 +271,9 @@ export const blockTags = [
 
 // Elements with flowing text content that always expand to multiple lines.
 export const parTags = ["p", "li", "fn"];
+
+// Children that mark their parent as a structural element rather than prose.
+export const headingTags = ["title", "shorttitle", "subtitle", "caption"];
 
 // Elements that prefer single-line when content fits within printWidth, but reflow
 // like parTags when the line would be too long. Checked before lineEndTags in dispatch.
