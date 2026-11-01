@@ -21,6 +21,7 @@ import type {
   Emphasis,
   Strong,
   InlineCode,
+  Link,
   List,
   ListItem,
   Code,
@@ -246,15 +247,14 @@ function flattenDivision(
     (c) => !(c.type === "element" && (c as Element).name === "title"),
   );
 
+  const { "xml:id": id, ...attributes } = attrs;
   const heading: Heading = {
     type: "heading",
     depth,
     children: titleNode
       ? titleNode.children.map(convertInlineNode).filter(notNull)
       : [],
-    ...(attrs["xml:id"]
-      ? { data: { id: attrs["xml:id"], hProperties: { id: attrs["xml:id"] } } }
-      : {}),
+    ...(id ? { data: { id, attributes, hProperties: { id } } } : {}),
   };
   result.push(heading);
 
@@ -464,9 +464,26 @@ function convertInlineNode(node: ElementContent): PhrasingContent | null {
       return { type: "inlineCode", value: getPtxTextContent(el) } as InlineCode;
     case "m":
       return { type: "inlineMath", value: getPtxTextContent(el) } as InlineMath;
+    case "xref":
+      return convertXref(el);
     default:
       return null;
   }
+}
+
+/**
+ * A plain reference to one id is the link `[text](#id)`. Anything else an
+ * `<xref>` can say (`text=`, `first`/`last`, a list of ids) has no Markdown form.
+ */
+function convertXref(el: Element): Link | null {
+  const attrs = el.attributes ?? {};
+  const ref = attrs["ref"];
+  if (!ref || /[\s,]/.test(ref) || Object.keys(attrs).length > 1) return null;
+  return {
+    type: "link",
+    url: `#${ref}`,
+    children: el.children.map(convertInlineNode).filter(notNull),
+  };
 }
 
 // ---------------------------------------------------------------------------

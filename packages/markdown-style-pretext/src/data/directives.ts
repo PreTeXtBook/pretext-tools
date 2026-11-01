@@ -11,8 +11,8 @@
 //   - LEAF directives (`::name{…}`) are the PreTeXt Plus *include* syntax; the
 //     converter turns any `::name` into `<plus:name/>`, so no leaf name is ever
 //     "unknown". `LEAF_DIRECTIVES` below is only a convenience completion list.
-//   - TEXT directives (`:name[…]`) have no converter handler yet (they become
-//     `<TODO>` placeholders), so this package neither completes nor lints them.
+//   - TEXT directives (`:name[…]`) have no converter handler yet (they stay
+//     text), so this package neither completes nor lints them.
 
 import { PLUS_TYPES, PLUS_TYPE_KIND } from "@pretextbook/latex-style-pretext";
 import type { DirectiveSpec, DirectiveCategory } from "../types";

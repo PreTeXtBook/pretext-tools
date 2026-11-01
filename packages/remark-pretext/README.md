@@ -197,6 +197,29 @@ when both are present.
 - Titles take the same inline elements, whether they come from a heading, a
   directive label, or frontmatter `title:`.
 
+### Ids and cross-references
+
+A heading takes an id the way a directive does, in braces at the end of the
+line. It becomes the division's `xml:id`, and any other attributes follow it:
+
+```markdown
+## My Title {#sec-a}
+
+## Another Title {#sec-b label="sec-another"}
+```
+
+The braces must come last and start with the `#id`. Write `\{` for a title that
+really does end in `{#id}`.
+
+A link to an id is a cross-reference:
+
+- `[](#sec-a)` → `<xref ref="sec-a"/>`, which PreTeXt fills in with the target's
+  own name
+- `[this section](#sec-a)` → `<xref ref="sec-a">this section</xref>`
+
+Inline directives (`:name[...]`) aren't read, so a colon in prose like `f:X`
+stays text.
+
 ### Raw PreTeXt
 
 PreTeXt can be written directly in the Markdown, for anything without Markdown

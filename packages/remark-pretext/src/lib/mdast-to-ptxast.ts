@@ -40,6 +40,8 @@ import type {
   Code,
 } from "mdast";
 import type { ContainerDirective, LeafDirective } from "mdast-util-directive";
+import { applyHeadingAttributes } from "./heading-attributes.js";
+import type { HeadingAttributes } from "./heading-attributes.js";
 import type { Math as CustomMath } from "./math-parser.js";
 import { parseInlineMarkdown } from "./parse-markdown.js";
 import { directiveToPlusInclude } from "./plus-include.js";
@@ -214,6 +216,7 @@ export function mdastToPtxastWithDiagnostics(
   const messages: ConversionMessage[] = [];
   const restoreSource = options?.restoreSource ?? ((text: string) => text);
   collectRawBlocks(tree, source, restoreSource);
+  applyHeadingAttributes(tree, source);
   const ctx: VisitContext = {
     ancestors: [],
     depth: 0,
@@ -594,16 +597,16 @@ function splitDivisionIntroduction(
 }
 
 function getHeadingAttrs(heading: Heading): Record<string, string> | undefined {
-  const data = heading.data as { id?: string } | undefined;
-  return data?.id ? { "xml:id": data.id } : undefined;
+  const data = heading.data as HeadingAttributes | undefined;
+  return data?.id ? { ...data.attributes, "xml:id": data.id } : undefined;
 }
 
 /**
- * Combine a heading's own `{#id}` attribute with the document's
+ * Combine a heading's own `{#id}` attributes with the document's
  * `topLevelAttributes` (e.g. from frontmatter `xmlid`/`label`/`component`).
  * The frontmatter attributes are consumed at most once, on the first
- * root-level division built from the document; the heading's own `{#id}`
- * takes precedence if both set `xml:id`.
+ * root-level division built from the document; the heading's own attributes
+ * take precedence if both set the same one.
  */
 function getDivisionAttrs(
   heading: Heading,
@@ -738,9 +741,16 @@ function convertMathNode(node: CustomMath, ctx: VisitContext): Element | null {
   return convertDisplayMath(node, ctx);
 }
 
-/** Convert a markdown link (`[text](url)`) to a PreTeXt `<url href="...">text</url>`. */
+/**
+ * Convert a markdown link (`[text](url)`) to a PreTeXt `<url href="...">text</url>`.
+ * A link to an id (`[text](#id)`) is a cross-reference, `<xref ref="id">text</xref>`,
+ * and with no text (`[](#id)`) PreTeXt fills in the target's own name.
+ */
 function convertLink(node: Link, ctx: VisitContext): Element {
-  return el("url", convertInlineNodes(node.children, ctx), { href: node.url });
+  const children = convertInlineNodes(node.children, ctx);
+  return /^#./.test(node.url)
+    ? el("xref", children, { ref: node.url.slice(1) })
+    : el("url", children, { href: node.url });
 }
 
 // ---------------------------------------------------------------------------

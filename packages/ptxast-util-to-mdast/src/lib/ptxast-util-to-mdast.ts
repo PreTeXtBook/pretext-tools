@@ -4,14 +4,37 @@
  * Public API for converting an xast Root (PreTeXt document) to mdast and markdown.
  */
 
-import { toMarkdown } from "mdast-util-to-markdown";
+import { defaultHandlers, toMarkdown } from "mdast-util-to-markdown";
+import type { Handle } from "mdast-util-to-markdown";
 import { directiveToMarkdown } from "mdast-util-directive";
 import { mathToMarkdown } from "mdast-util-math";
-import type { Root as MdastRoot } from "mdast";
+import type { Heading, Root as MdastRoot } from "mdast";
 import type { ElementContent, Root } from "@pretextbook/ptxast";
 import { ptxastToMdast, findTopLevelDivisionInfo } from "./ptxast-to-mdast.js";
 
 export { ptxastToMdast } from "./ptxast-to-mdast.js";
+
+interface HeadingAttributes {
+  id?: string;
+  attributes?: Record<string, string>;
+}
+
+/**
+ * The default heading handler, plus the heading's attributes:
+ * `## Title {#id label="x"}`. The outermost division is left out, since its
+ * attributes go in the frontmatter instead.
+ */
+function headingWithAttributes(outermost: Heading | undefined): Handle {
+  return (node, parent, state, info) => {
+    const heading = defaultHandlers.heading(node, parent, state, info);
+    const data = (node as Heading).data as HeadingAttributes | undefined;
+    if (!data?.id || node === outermost) return heading;
+    const rest = Object.entries(data.attributes ?? {}).map(
+      ([name, value]) => ` ${name}="${value}"`,
+    );
+    return `${heading} {#${data.id}${rest.join("")}}`;
+  };
+}
 
 /**
  * Convert an xast Root (PreTeXt document) to a markdown string using the directive
@@ -25,8 +48,10 @@ export { ptxastToMdast } from "./ptxast-to-mdast.js";
  */
 export function ptxastToMarkdown(root: Root): string {
   const mdast: MdastRoot = ptxastToMdast(root);
+  const outermost = mdast.children.find((node) => node.type === "heading");
   const body = toMarkdown(mdast, {
     extensions: [directiveToMarkdown(), mathToMarkdown()],
+    handlers: { heading: headingWithAttributes(outermost as Heading) },
   });
 
   const topLevel = findTopLevelDivisionInfo(root.children as ElementContent[]);

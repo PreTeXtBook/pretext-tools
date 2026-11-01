@@ -284,6 +284,105 @@ describe("inline content in titles", () => {
   });
 });
 
+describe("attributes on headings", () => {
+  it.each([
+    ["an id", "## My Title {#sec-a}", 'xml:id="sec-a"', "My Title"],
+    [
+      "a colon in the id",
+      "## Intro {#sec:intro}",
+      'xml:id="sec:intro"',
+      "Intro",
+    ],
+    [
+      "other attributes",
+      '## My Title {#a label="x" component=y}',
+      'label="x" component="y" xml:id="a"',
+      "My Title",
+    ],
+    [
+      "math before it",
+      "## Limits of $x$ {#a}",
+      'xml:id="a"',
+      "Limits of <m>x</m>",
+    ],
+    ["code before it", "## The `map` {#a}", 'xml:id="a"', "The <c>map</c>"],
+    ["a closed heading", "## My Title {#a} ##", 'xml:id="a"', "My Title"],
+    ["a setext heading", "My Title {#a}\n---", 'xml:id="a"', "My Title"],
+  ])("reads %s", (_name, markdown, attributes, title) => {
+    expect(markdownToPretext(markdown)).toBe(
+      `<section ${attributes}><title>${title}</title></section>`,
+    );
+  });
+
+  it.each([
+    ["no id", "## The set {x=1}"],
+    ["what isn't at the end", "## Ids {#a} are great"],
+    ["what isn't an attribute", "## Ids {#a b}"],
+  ])("leaves %s in the title: %s", (_name, markdown) => {
+    expect(markdownToPretext(markdown)).toBe(
+      `<section><title>${markdown.slice(3)}</title></section>`,
+    );
+  });
+
+  it("reads them on a heading with no title", () => {
+    expect(markdownToPretext("## {#a}")).toBe(
+      '<section xml:id="a"><title/></section>',
+    );
+  });
+
+  it("leaves an escaped brace in the title", () => {
+    expect(markdownToPretext("## Ids look like \\{#a}")).toBe(
+      "<section><title>Ids look like {#a}</title></section>",
+    );
+  });
+
+  it("takes precedence over frontmatter", () => {
+    expect(
+      markdownToPretext("---\nxmlid: b\nlabel: l\n---\n\n# Title {#a}"),
+    ).toBe('<chapter xml:id="a" label="l"><title>Title</title></chapter>');
+  });
+});
+
+describe("cross-references", () => {
+  it.each([
+    ["[](#a)", '<xref ref="a"/>'],
+    ["[the theorem](#a)", '<xref ref="a">the theorem</xref>'],
+    ["[](#thm:main)", '<xref ref="thm:main"/>'],
+    ["[*it* and $x$](#a)", '<xref ref="a"><em>it</em> and <m>x</m></xref>'],
+  ])("reads %s as an xref", (markdown, xml) => {
+    expect(markdownToPretext(markdown)).toBe(`<p>${xml}</p>`);
+  });
+
+  it("works in a title", () => {
+    expect(markdownToPretext("## About [](#a) {#b}")).toBe(
+      '<section xml:id="b"><title>About <xref ref="a"/></title></section>',
+    );
+  });
+
+  it.each([
+    ["[a](https://ex.com/#b)", '<url href="https://ex.com/#b">a</url>'],
+    ["[a](#)", '<url href="#">a</url>'],
+    ["[](https://ex.com)", '<url href="https://ex.com"/>'],
+  ])("leaves %s a url", (markdown, xml) => {
+    expect(markdownToPretext(markdown)).toBe(`<p>${xml}</p>`);
+  });
+});
+
+describe("colons in prose", () => {
+  it.each(["Let f:X be it.", "See a:b[c] and d:e{f}."])(
+    "aren't directives: %s",
+    (markdown) => {
+      expect(markdownToPretext(markdown)).toBe(`<p>${markdown}</p>`);
+    },
+  );
+
+  it("still reads block directives", () => {
+    expect(markdownToPretext(":::theorem\nLet f:X.\n:::")).toBe(
+      "<theorem><statement><p>Let f:X.</p></statement></theorem>",
+    );
+  });
+});
+
 describe("math beyond paragraphs", () => {
   it.each([
     [

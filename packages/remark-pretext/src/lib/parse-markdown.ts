@@ -6,6 +6,7 @@
  */
 
 import type { Paragraph, PhrasingContent, Root } from "mdast";
+import type { Processor } from "unified";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkDirective from "remark-directive";
@@ -28,6 +29,18 @@ const FLOW_CONSTRUCTS = [
   "thematicBreak",
 ];
 
+/**
+ * Turn off inline directives, keeping the block ones. They have no PreTeXt
+ * meaning yet, and `f:X` in prose or `{#sec:intro}` shouldn't start one. They
+ * can't go through `disable` above, since that construct has no name.
+ */
+function noInlineDirectives(this: Processor): void {
+  const data = this.data();
+  data.micromarkExtensions = data.micromarkExtensions?.map(
+    ({ text, ...extension }) => extension,
+  );
+}
+
 export interface ParsedMarkdown<T> {
   tree: T;
   /** The text that was parsed, which node positions are offsets into. */
@@ -46,7 +59,8 @@ export function parseMarkdown(markdown: string): ParsedMarkdown<Root> {
   const parser = unified()
     .data("micromarkExtensions", [{ disable: { null: ["codeIndented"] } }])
     .use(remarkParse)
-    .use(remarkDirective);
+    .use(remarkDirective)
+    .use(noInlineDirectives);
   const tree = parser.parse(source) as Root;
   applyMathTokens(tree, tokens);
   return {

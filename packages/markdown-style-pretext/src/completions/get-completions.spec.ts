@@ -106,6 +106,11 @@ describe("cross-reference completions", () => {
     const items = complete(":::theorem{#thm:main}\nHi\n:::\n\nSee [it](#thm|");
     expect(labels(items)).toContain("thm:main");
   });
+
+  it("completes an empty `[](#…` link, and ids on headings", () => {
+    const items = complete("## Intro {#sec:intro}\n\nSee [](#sec|");
+    expect(labels(items)).toContain("sec:intro");
+  });
 });
 
 describe("suppression", () => {

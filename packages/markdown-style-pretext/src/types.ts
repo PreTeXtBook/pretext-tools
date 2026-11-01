@@ -14,9 +14,9 @@ export type { PretextFlavorLanguage, GetCompletionsParams };
  * - `container` — `:::name` … `:::` (block), the workhorse (theorem, exercise…)
  * - `leaf`      — `::name{…}` (a self-closing block; the PreTeXt Plus include
  *   syntax, so *any* name is accepted and none is ever "unknown")
- * - `text`      — `:name[…]{…}` (inline). The converter has no `textDirective`
- *   handler yet, so these are recognized by the scanner but neither completed
- *   nor linted (see the note in ./data/directives.ts).
+ * - `text`      — `:name[…]{…}` (inline). The converter doesn't read these yet
+ *   and leaves them as text, so they are recognized by the scanner but neither
+ *   completed nor linted (see the note in ./data/directives.ts).
  */
 export type DirectiveKind = "container" | "leaf" | "text";
 

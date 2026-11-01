@@ -541,18 +541,112 @@ describe("unknown node handling", () => {
   });
 
   it("skips unknown inline element names", () => {
-    const xref = {
+    const unknown = {
       type: "element" as const,
-      name: "xref",
-      attributes: { ref: "sec-1" },
+      name: "kbd",
+      attributes: { name: "enter" },
       children: [],
     } as Element;
-    const xast = root(p([text("before "), xref, text(" after")]));
+    const xast = root(p([text("before "), unknown, text(" after")]));
     const result = ptxastToMdast(xast);
     const para = result.children[0] as { children: { value: string }[] };
     expect(para.children).toHaveLength(2);
     expect(para.children[0].value).toBe("before ");
     expect(para.children[1].value).toBe(" after");
+  });
+});
+
+describe("heading attributes and cross-references", () => {
+  const xref = (
+    attributes: Record<string, string>,
+    children: Element["children"] = [],
+  ) =>
+    ({
+      type: "element" as const,
+      name: "xref",
+      attributes,
+      children,
+    }) as Element;
+
+  const nested = (
+    attributes: Record<string, string>,
+    ...content: Element["children"]
+  ) =>
+    root(
+      chapter([
+        title([text("Top")]),
+        section([title([text("Sub")]), ...content], attributes),
+      ]),
+    );
+
+  it("writes an id on a heading", () => {
+    expect(ptxastToMarkdown(nested({ "xml:id": "sec_a:b" }))).toContain(
+      "## Sub {#sec_a:b}\n",
+    );
+  });
+
+  it("writes other attributes after the id", () => {
+    expect(
+      ptxastToMarkdown(nested({ "xml:id": "a", label: "x", component: "y" })),
+    ).toContain('## Sub {#a label="x" component="y"}\n');
+  });
+
+  it("leaves the outermost division's attributes to the frontmatter", () => {
+    const xast = root(
+      section([title([text("Top")])], { "xml:id": "a", label: "x" }),
+    );
+    expect(ptxastToMarkdown(xast)).toBe(
+      "---\ndivision: section\nxmlid: a\nlabel: x\n---\n\n# Top\n",
+    );
+  });
+
+  it("writes an xref as a link to its id", () => {
+    const xast = root(
+      p([
+        xref({ ref: "a" }),
+        text(" and "),
+        xref({ ref: "b" }, [text("this")]),
+      ]),
+    );
+    expect(ptxastToMarkdown(xast)).toBe("[](#a) and [this](#b)\n");
+  });
+
+  it.each([
+    ["a text style", { ref: "a", text: "global" }],
+    ["a list of ids", { ref: "a b" }],
+    ["a comma-separated list", { ref: "a,b" }],
+    ["a range", { first: "a", last: "b" }],
+  ])("drops an xref with %s", (_name, attributes) => {
+    const xast = root(p([text("a"), xref(attributes), text("b")]));
+    expect(ptxastToMarkdown(xast)).toBe("ab\n");
+  });
+
+  it("round-trips through markdown and back", () => {
+    const xast = nested(
+      { "xml:id": "sec:a", label: "x" },
+      p([
+        xref({ ref: "sec:a" }),
+        text(" and "),
+        xref({ ref: "b" }, [text("c")]),
+      ]),
+    );
+
+    const reparsed = parseMarkdownToXast(ptxastToMarkdown(xast));
+    const sec = (reparsed.children[0] as Element).children.find(
+      (child) => (child as Element).name === "section",
+    ) as Element;
+    expect(sec.attributes).toEqual({ "xml:id": "sec:a", label: "x" });
+
+    const para = sec.children[1] as Element;
+    expect(para.children).toMatchObject([
+      { name: "xref", attributes: { ref: "sec:a" }, children: [] },
+      { type: "text", value: " and " },
+      {
+        name: "xref",
+        attributes: { ref: "b" },
+        children: [{ type: "text", value: "c" }],
+      },
+    ]);
   });
 });
 
