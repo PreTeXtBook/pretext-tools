@@ -29,15 +29,9 @@ import type {
   RootDivisionType,
   TopLevelDivisionType,
 } from "@pretextbook/ptxast";
-import { unified } from "unified";
-import remarkParse from "remark-parse";
-import remarkDirective from "remark-directive";
 import { mdastToPtxast } from "./mdast-to-ptxast.js";
-import {
-  applyMathDelimiters,
-  applyMathTokens,
-  tokenizeMathInMarkdown,
-} from "./math-parser.js";
+import { applyMathDelimiters } from "./math-parser.js";
+import { parseMarkdown } from "./parse-markdown.js";
 import { normalizeDirectiveColons } from "./directive-normalizer.js";
 import { normalizeIndentationDirectives } from "./indentation-normalizer.js";
 import { extractFrontmatter } from "./frontmatter.js";
@@ -66,10 +60,10 @@ export interface RemarkPretextOptions {
   topLevelAttributes?: Record<string, string>;
   /**
    * Title of the document's top-level division (or, when `documentRoot` is
-   * set, the root's own title). Overrides any `title:` field declared in the
-   * markdown's frontmatter. When set for a non-root document, a depth-1
-   * heading (`#`) no longer supplies that title — it starts the first
-   * subdivision instead.
+   * set, the root's own title), written as inline markdown. Overrides any
+   * `title:` field declared in the markdown's frontmatter. When set for a
+   * non-root document, a depth-1 heading (`#`) no longer supplies that title —
+   * it starts the first subdivision instead.
    */
   topLevelTitle?: string;
 }
@@ -98,25 +92,14 @@ const remarkPretext: Plugin<[RemarkPretextOptions?], MdastRoot, Root> =
           frontmatter.body,
         );
         const normalized = normalizeDirectiveColons(indentNormalized);
-        const tokenized = tokenizeMathInMarkdown(normalized);
-        // Disable indented code blocks: this markdown dialect uses indentation
-        // for Python-style directives, not for code blocks (use fenced ``` instead).
-        // Must use processor.data('micromarkExtensions') — remark-parse v11 ignores
-        // 'extensions' passed directly as plugin options and only reads from data().
-        const parser = unified()
-          .data("micromarkExtensions", [
-            { disable: { null: ["codeIndented"] } },
-          ])
-          .use(remarkParse)
-          .use(remarkDirective);
-        const reparsed = parser.parse(tokenized.markdown) as MdastRoot;
-        applyMathTokens(reparsed, tokenized.tokens);
+        const parsed = parseMarkdown(normalized);
         // pass tokenized source for delimiter detection
-        return mdastToPtxast(reparsed, tokenized.markdown, {
+        return mdastToPtxast(parsed.tree, parsed.source, {
           topLevelDivision,
           documentRoot,
           topLevelAttributes,
           topLevelTitle,
+          restoreSource: parsed.restoreSource,
         });
       }
 

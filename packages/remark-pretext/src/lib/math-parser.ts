@@ -45,14 +45,22 @@ const DELIMITERS: DelimiterPattern[] = [
   { open: "\\(", close: "\\)", isDisplay: false },
 ];
 
-const TOKEN_PREFIX = "PTX_MATH_TOKEN_";
-const TOKEN_RE = new RegExp(`${TOKEN_PREFIX}(\\d+)`, "g");
+// A token is an id between two private-use characters, so Markdown treats it as
+// a word and the text after it can't run into the id (`$$x$$2`).
+const TOKEN_OPEN = "";
+const TOKEN_CLOSE = "";
+const TOKEN_RE = new RegExp(`${TOKEN_OPEN}\\d+${TOKEN_CLOSE}`, "g");
 
 const WORD = /[\p{L}\p{N}]/u;
 
+/** A math node standing in for a token, plus the source it replaced. */
+export interface MathToken extends Math {
+  source: string;
+}
+
 export interface MathTokenizationResult {
   markdown: string;
-  tokens: Map<string, Math>;
+  tokens: Map<string, MathToken>;
 }
 
 /** Whether the character at `index` is backslash-escaped. */
@@ -180,7 +188,7 @@ function findNextCodeRegion(
 export function tokenizeMathInMarkdown(
   markdown: string,
 ): MathTokenizationResult {
-  const tokens = new Map<string, Math>();
+  const tokens = new Map<string, MathToken>();
   let out = "";
   let pos = 0;
   let id = 0;
@@ -204,19 +212,21 @@ export function tokenizeMathInMarkdown(
     }
 
     out += markdown.substring(pos, next.index);
-    const token = `${TOKEN_PREFIX}${id}`;
+    const token = `${TOKEN_OPEN}${id}${TOKEN_CLOSE}`;
     out += token;
-    tokens.set(token, {
-      type: "math",
-      value: next.content,
-      meta: next.pattern.isDisplay ? "display" : "inline",
-    });
-
-    pos =
+    const end =
       next.index +
       next.pattern.open.length +
       next.content.length +
       next.pattern.close.length;
+    tokens.set(token, {
+      type: "math",
+      value: next.content,
+      meta: next.pattern.isDisplay ? "display" : "inline",
+      source: markdown.substring(next.index, end),
+    });
+
+    pos = end;
     id += 1;
   }
 
@@ -271,7 +281,7 @@ export function splitTextWithMath(text: string): (Text | Math)[] {
 
 function splitTextWithMathTokens(
   text: string,
-  tokens: Map<string, Math>,
+  tokens: Map<string, MathToken>,
 ): (Text | Math)[] {
   const result: (Text | Math)[] = [];
   let lastIndex = 0;
@@ -305,41 +315,64 @@ function splitTextWithMathTokens(
 }
 
 /**
- * Remark plugin that detects and parses math delimiters in text nodes.
+ * Replace every text node with the nodes `split` makes of it. Display math is
+ * only valid directly in a paragraph, so anywhere else (a title, emphasis, a
+ * link) it comes out as inline math.
  */
-export function applyMathDelimiters(tree: Root): void {
-  visit(tree, "paragraph", (node: any) => {
-    const children = (node.children || []) as (Text | Math)[];
-    const newChildren: (Text | Math)[] = [];
-
-    for (const child of children) {
-      if (child.type === "text") {
-        const nodes = splitTextWithMath(child.value);
-        newChildren.push(...nodes);
-      } else {
-        newChildren.push(child);
-      }
-    }
-
-    node.children = newChildren;
+function splitTextNodes(
+  tree: Root,
+  split: (text: string) => (Text | Math)[],
+): void {
+  visit(tree, "text", (node: Text, index, parent: any) => {
+    if (!parent || index === undefined) return;
+    const displayAllowed =
+      parent.type === "paragraph" && !parent.data?.directiveLabel;
+    const nodes = split(node.value).map((child) =>
+      child.type === "math" && !displayAllowed
+        ? { ...child, meta: "inline" }
+        : child,
+    );
+    parent.children.splice(index, 1, ...nodes);
+    return index + nodes.length;
   });
 }
 
-export function applyMathTokens(tree: Root, tokens: Map<string, Math>): void {
-  visit(tree, "paragraph", (node: any) => {
-    const children = (node.children || []) as (Text | Math)[];
-    const newChildren: (Text | Math)[] = [];
+/**
+ * Remark plugin that detects and parses math delimiters in text nodes.
+ */
+export function applyMathDelimiters(tree: Root): void {
+  splitTextNodes(tree, splitTextWithMath);
+}
 
-    for (const child of children) {
-      if (child.type === "text") {
-        const nodes = splitTextWithMathTokens(child.value, tokens);
-        newChildren.push(...nodes);
-      } else {
-        newChildren.push(child);
+/** The node fields besides text where a token can end up. */
+const LITERAL_FIELDS = ["value", "url", "title", "alt"];
+
+/** Put back the source of any tokens in `text`. */
+export function restoreMathTokens(
+  text: string,
+  tokens: Map<string, MathToken>,
+): string {
+  return text.replace(TOKEN_RE, (token) => tokens.get(token)?.source ?? token);
+}
+
+export function applyMathTokens(
+  tree: Root,
+  tokens: Map<string, MathToken>,
+): void {
+  splitTextNodes(tree, (text) => splitTextWithMathTokens(text, tokens));
+
+  // A token anywhere else was never math: it's a `$` in a URL, a raw tag, etc.
+  visit(tree, (node: any) => {
+    for (const field of LITERAL_FIELDS) {
+      if (typeof node[field] === "string") {
+        node[field] = restoreMathTokens(node[field], tokens);
       }
     }
-
-    node.children = newChildren;
+    for (const [name, value] of Object.entries(node.attributes ?? {})) {
+      if (typeof value === "string") {
+        node.attributes[name] = restoreMathTokens(value, tokens);
+      }
+    }
   });
 }
 

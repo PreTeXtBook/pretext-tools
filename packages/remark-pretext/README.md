@@ -192,7 +192,27 @@ when both are present.
   - `**text**` → `<alert>` (semantic emphasis in PreTeXt)
   - `` `code` `` → `<c>`
   - `$...$` and `\(...\)` → `<m>`
-  - `$$...$$` and `\[...\]` → display math (`<md>`)
+  - `$$...$$` and `\[...\]` → display math (`<md>`), or `<m>` where display
+    math can't go (titles, emphasis, link text)
+- Titles take the same inline elements, whether they come from a heading, a
+  directive label, or frontmatter `title:`.
+
+### Raw PreTeXt
+
+PreTeXt can be written directly in the Markdown, for anything without Markdown
+syntax of its own. It follows CommonMark's rules for HTML:
+
+- **Tags within a paragraph, heading or title** become elements, and what's
+  between them is still Markdown: `<fn>about *this* and $x$</fn>`. The exceptions
+  are `<m>`, `<c>` and the other elements holding LaTeX or code, which are left
+  as written.
+- **A block**, meaning a tag that starts a line and stands alone there, or a
+  block-level element like `<figure>`, stays PreTeXt through to its closing tag,
+  even past blank lines. Markdown and `$` aren't read inside it. Anything that
+  can only be in a paragraph, like a lone `<xref>` line, gets a `<p>`.
+
+Comments (`<!-- ... -->`) are dropped. Tags that don't balance, don't parse, or
+aren't PreTeXt (`<br>`, `<div>`) come out as a `<TODO>` holding the source.
 
 ## Supported Directives
 

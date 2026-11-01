@@ -22,6 +22,8 @@ export interface VisitContext {
   messages?: ConversionMessage[];
   /** Raw source markdown (optional, used for delimiter detection). */
   source?: string;
+  /** Turns a slice of `source` back into what the author wrote. */
+  restoreSource: (text: string) => string;
   /** The division type that a depth-1 heading (`#`) maps to. */
   topLevelDivision: TopLevelDivisionType;
   /** When set, the whole document is wrapped in this root element

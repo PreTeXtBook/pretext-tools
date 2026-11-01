@@ -17,6 +17,7 @@
  *   - Display math (custom parser or mdast `math` nodes)  md elements
  *   - Container directives (remark-directive)  theorem/proof/example/... elements
  *   - Inline: text, emphasis, strong, inlineCode, custom `math` nodes
+ *   - Raw PreTeXt tags (block and inline), via `raw-pretext.ts`
  */
 
 import type {
@@ -30,6 +31,7 @@ import type {
   Text,
   Strong,
   Emphasis,
+  Html,
   InlineCode,
   Link,
   List,
@@ -39,7 +41,16 @@ import type {
 } from "mdast";
 import type { ContainerDirective, LeafDirective } from "mdast-util-directive";
 import type { Math as CustomMath } from "./math-parser.js";
+import { parseInlineMarkdown } from "./parse-markdown.js";
 import { directiveToPlusInclude } from "./plus-include.js";
+import {
+  collectRawBlocks,
+  findClosingTag,
+  parseRawInlineTag,
+  parseRawXml,
+  VERBATIM_ELEMENTS,
+} from "./raw-pretext.js";
+import type { RawBlock } from "./raw-pretext.js";
 import type { Root } from "xast";
 import type { Element } from "xast";
 import { getDirectiveSpec, DIRECTIVE_MAP } from "./directive-map.js";
@@ -102,7 +113,7 @@ function nodeSource(node: unknown, ctx: VisitContext): string {
   const start: number | undefined = pos?.start?.offset;
   const end: number | undefined = pos?.end?.offset;
   if (ctx.source && start != null && end != null) {
-    return ctx.source.slice(start, end);
+    return ctx.restoreSource(ctx.source.slice(start, end));
   }
   return "";
 }
@@ -172,10 +183,13 @@ export interface MdastToPtxastOptions {
    * root-level division built from the document, e.g. from frontmatter. */
   topLevelAttributes?: Record<string, string>;
   /** Title of the document's top-level division (or document root), e.g.
-   * from frontmatter `title`. When set for a non-root document, a depth-1
-   * heading (`#`) no longer supplies that title — it starts the first
-   * subdivision instead. */
+   * from frontmatter `title`, written as inline markdown. When set for a
+   * non-root document, a depth-1 heading (`#`) no longer supplies that title —
+   * it starts the first subdivision instead. */
   topLevelTitle?: string;
+  /** Turns a slice of `source` back into what the author wrote, if `source`
+   * isn't already that (math is tokenized before parsing). */
+  restoreSource?: (text: string) => string;
 }
 
 /** Transform an mdast Root node into an xast Root node (backwards compatible). */
@@ -198,11 +212,14 @@ export function mdastToPtxastWithDiagnostics(
   options?: MdastToPtxastOptions,
 ): ConversionResult {
   const messages: ConversionMessage[] = [];
+  const restoreSource = options?.restoreSource ?? ((text: string) => text);
+  collectRawBlocks(tree, source, restoreSource);
   const ctx: VisitContext = {
     ancestors: [],
     depth: 0,
     messages,
     source,
+    restoreSource,
     topLevelDivision: options?.topLevelDivision ?? "chapter",
     documentRoot: options?.documentRoot,
     topLevelAttributes: options?.topLevelAttributes,
@@ -222,7 +239,7 @@ export function mdastToPtxastWithDiagnostics(
   if (ctx.documentRoot) {
     const attrs = takeTopLevelAttributes(ctx);
     const titleEl = ctx.topLevelTitle
-      ? el("title", [text(ctx.topLevelTitle)])
+      ? buildTopLevelTitle(ctx.topLevelTitle, ctx)
       : null;
     // Content before the first depth-1 heading has no division of its own
     // (the root's own <title>, if any, isn't a division boundary), so it's
@@ -274,7 +291,7 @@ export function mdastToPtxastWithDiagnostics(
   // deeper than usual (`headingDepthOffset`).
   if (ctx.topLevelTitle) {
     const attrs = takeTopLevelAttributes(ctx);
-    const titleEl = el("title", [text(ctx.topLevelTitle)]);
+    const titleEl = buildTopLevelTitle(ctx.topLevelTitle, ctx);
     const childCtx: VisitContext = {
       ...ctx,
       depth: ctx.depth + 1,
@@ -305,6 +322,15 @@ export function mdastToPtxastWithDiagnostics(
     tree: { type: "root", children: allChildren as Root["children"] },
     messages,
   };
+}
+
+/** Build the `<title>` for `topLevelTitle`, which isn't part of the body. */
+function buildTopLevelTitle(title: string, ctx: VisitContext): Element {
+  const { tree, source, restoreSource } = parseInlineMarkdown(title);
+  return el(
+    "title",
+    convertInlineNodes(tree, { ...ctx, source, restoreSource }),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -616,6 +642,7 @@ const blockHandlers: Record<
     convertContainerDirective(node as ContainerDirective, ctx),
   leafDirective: (node, ctx) =>
     convertLeafDirective(node as LeafDirective, ctx),
+  ptxRaw: (node) => (node as unknown as RawBlock).element,
 };
 
 function convertBlock(
@@ -647,8 +674,8 @@ function convertParagraph(node: Paragraph, ctx: VisitContext): Element {
 }
 
 function convertBlockquote(node: MdastBlockquote, ctx: VisitContext): Element {
-  const paragraphs = (node.children as Array<BlockContent | DefinitionContent>)
-    .filter((n): n is Paragraph => n.type === "paragraph")
+  const blocks = (node.children as Array<BlockContent | DefinitionContent>)
+    .filter((n) => n.type === "paragraph" || (n.type as string) === "ptxRaw")
     .map((n) => {
       // Pass blockquote as parent context for its paragraph children
       const childCtx = {
@@ -656,9 +683,9 @@ function convertBlockquote(node: MdastBlockquote, ctx: VisitContext): Element {
         ancestors: [...ctx.ancestors, node],
         depth: ctx.depth + 1,
       };
-      return convertParagraph(n, childCtx);
+      return convertBlock(n, childCtx) as Element;
     });
-  return el("blockquote", paragraphs);
+  return el("blockquote", blocks);
 }
 
 function convertList(node: List, ctx: VisitContext): Element {
@@ -883,9 +910,56 @@ function convertInlineNodes(
   nodes: PhrasingContent[],
   ctx: VisitContext,
 ): XastChild[] {
-  return nodes
-    .flatMap((node) => convertInline(node, ctx))
-    .filter((n): n is XastChild => n !== null);
+  const result: XastChild[] = [];
+
+  for (let i = 0; i < nodes.length; i += 1) {
+    const raw = convertRawInline(nodes, i, ctx);
+    if (raw) {
+      result.push(...raw.children);
+      i = raw.end;
+      continue;
+    }
+    const converted = convertInline(nodes[i], ctx);
+    if (converted !== null) result.push(converted);
+  }
+
+  return result;
+}
+
+/**
+ * Convert the raw PreTeXt tag at `nodes[start]`, along with everything up to
+ * its closing tag, returning the index of the last node used. Returns null if
+ * it's not a tag or has nothing to close it, leaving it to be flagged.
+ */
+function convertRawInline(
+  nodes: PhrasingContent[],
+  start: number,
+  ctx: VisitContext,
+): { children: XastChild[]; end: number } | null {
+  const node = nodes[start];
+  if (node.type !== "html") return null;
+  const tag = parseRawInlineTag((node as Html).value);
+  if (!tag) return null;
+  const { opens } = tag;
+  if (!opens) {
+    return { children: tag.children as XastChild[], end: start };
+  }
+
+  const end = findClosingTag(nodes, start, opens.name);
+  if (end === -1) return null;
+
+  if (VERBATIM_ELEMENTS.has(opens.name)) {
+    const position = {
+      start: node.position?.start,
+      end: (nodes[end] as Html).position?.end,
+    };
+    const children = parseRawXml(nodeSource({ position }, ctx));
+    return children && { children: children as XastChild[], end };
+  }
+
+  const children = convertInlineNodes(nodes.slice(start + 1, end), ctx);
+  const element = { ...opens, children: children as Element["children"] };
+  return { children: [element], end };
 }
 
 function convertInline(

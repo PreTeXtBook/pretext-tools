@@ -219,6 +219,103 @@ describe("dollar signs that aren't math", () => {
   });
 });
 
+describe("inline content in titles", () => {
+  it.each([
+    ["math", "# Title $x$ here", "Title <m>x</m> here"],
+    ["\\(math\\)", "# Title \\(x\\) here", "Title <m>x</m> here"],
+    [
+      "emphasis",
+      "# Title *em* and **bold**",
+      "Title <em>em</em> and <alert>bold</alert>",
+    ],
+    ["terms", "# Title _term_", "Title <term>term</term>"],
+    ["code", "# Title `code`", "Title <c>code</c>"],
+    ["math in emphasis", "# Title *$x$*", "Title <em><m>x</m></em>"],
+    ["display math", "# Title $$x$$ here", "Title <m>x</m> here"],
+    ["a setext heading", "Title $x$\n=====", "Title <m>x</m>"],
+    [
+      "raw tags",
+      "# Title <m>x</m> <xref ref='a'/>",
+      'Title <m>x</m> <xref ref="a"/>',
+    ],
+  ])("heading with %s", (_name, markdown, title) => {
+    expect(markdownToPretext(markdown)).toBe(
+      `<chapter><title>${title}</title></chapter>`,
+    );
+  });
+
+  it("directive label with display math", () => {
+    expect(markdownToPretext(":::theorem[A $$x$$ b]\nBody.\n:::")).toBe(
+      "<theorem><title>A <m>x</m> b</title><statement><p>Body.</p></statement></theorem>",
+    );
+  });
+
+  it.each([
+    ["math", "Limits of $x$", "Limits of <m>x</m>"],
+    ["display math", "A $$x$$ b", "A <m>x</m> b"],
+    ["emphasis", "*Em* and **bold**", "<em>Em</em> and <alert>bold</alert>"],
+    ["terms", "_Term_", "<term>Term</term>"],
+    ["code", "The `map`", "The <c>map</c>"],
+    ["raw tags", "Using <m>y</m>", "Using <m>y</m>"],
+    ["a dollar amount", "Costs $5 to $10", "Costs $5 to $10"],
+    ["what looks like a list", "1. Intro", "1. Intro"],
+    ["what looks like a heading", '"# Hash"', "# Hash"],
+    ["what looks like a directive", "Groups:Rings", "Groups:Rings"],
+  ])("frontmatter title with %s", (_name, value, title) => {
+    expect(markdownToPretext(`---\ntitle: ${value}\n---\n\nText.`)).toBe(
+      `<chapter><title>${title}</title><p>Text.</p></chapter>`,
+    );
+  });
+
+  it("frontmatter title on a document root", () => {
+    expect(
+      markdownToPretext(
+        "---\ndivision: book\ntitle: Book of $x$\n---\n\nText.",
+      ),
+    ).toContain("<book><title>Book of <m>x</m></title>");
+  });
+
+  it("topLevelTitle option", () => {
+    expect(
+      markdownToPretext("Text.", { topLevelTitle: "The *best* $x$" }),
+    ).toBe(
+      "<chapter><title>The <em>best</em> <m>x</m></title><p>Text.</p></chapter>",
+    );
+  });
+});
+
+describe("math beyond paragraphs", () => {
+  it.each([
+    [
+      "Some *em $x$* and **bold $y$** and _term $z$_.",
+      "<p>Some <em>em <m>x</m></em> and <alert>bold <m>y</m></alert> and <term>term <m>z</m></term>.</p>",
+    ],
+    [
+      "See [a $x$](https://ex.com).",
+      '<p>See <url href="https://ex.com">a <m>x</m></url>.</p>',
+    ],
+    ["Some *a $$x$$ b* c.", "<p>Some <em>a <m>x</m> b</em> c.</p>"],
+    ["- *em $y$*", "<ul><li><p><em>em <m>y</m></em></p></li></ul>"],
+    ["> *$y$*", "<blockquote><p><em><m>y</m></em></p></blockquote>"],
+  ])("converts math in: %s", (markdown, xml) => {
+    expect(markdownToPretext(markdown)).toBe(xml);
+  });
+
+  it("doesn't run a token into the digit after it", () => {
+    expect(markdownToPretext("Value $$x$$2 here.")).toBe(
+      "<p>Value <md>x</md>2 here.</p>",
+    );
+  });
+
+  it("restores what the author wrote where math can't be", () => {
+    expect(markdownToPretext("~~~\n$x$\n~~~")).toBe("<program>$x$</program>");
+    expect(markdownToPretext(':::theorem{title="$x$"}\nBody\n:::')).toBe(
+      '<theorem title="$x$"><statement><p>Body</p></statement></theorem>',
+    );
+    expect(markdownToPretext(":::foo\n$x$\n:::")).toContain("$x$");
+  });
+});
+
 describe("display math", () => {
   it("display math is placed in a paragraph as md", () => {
     const tree = parse("$$\na^2 + b^2 = c^2\n$$");
