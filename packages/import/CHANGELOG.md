@@ -1,5 +1,18 @@
 # @pretextbook/import
 
+## 0.17.3
+
+### Patch Changes
+
+- Updated dependencies [38cfd1c]
+- Updated dependencies [4344fc4]
+- Updated dependencies [a3a4000]
+- Updated dependencies [be5549b]
+- Updated dependencies [0426a2b]
+  - @pretextbook/latex-style-pretext@0.6.0
+  - @pretextbook/remark-pretext@0.3.0
+  - @pretextbook/format@0.6.2
+
 ## 0.17.2
 
 ### Patch Changes
