@@ -195,6 +195,12 @@ function toMonacoCompletion(
         ? { value: item.documentation.value }
         : (item.documentation as string | undefined),
     sortText: item.sortText,
+    filterText: item.filterText,
+    command: item.command && {
+      id: item.command.command,
+      title: item.command.title,
+      arguments: item.command.arguments,
+    },
   };
 }
 

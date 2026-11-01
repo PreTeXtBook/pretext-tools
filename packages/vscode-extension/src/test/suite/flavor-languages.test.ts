@@ -114,6 +114,46 @@ suite("Flavor languages", () => {
     );
   });
 
+  test("the \\begin{...} completion walks through name and body", async () => {
+    const doc = await vscode.workspace.openTextDocument({
+      language: "pretext-latex",
+      content: "",
+    });
+    const editor = await vscode.window.showTextDocument(doc);
+    editor.options = { insertSpaces: true, tabSize: 2 };
+    const typeText = (text: string) =>
+      vscode.commands.executeCommand("type", { text });
+    // The suggestion list opens asynchronously, and accepting does nothing
+    // until it is up, so keep accepting until the document says it landed.
+    const text = () => doc.getText().replace(/\r\n/g, "\n");
+    const acceptUntil = async (expected: string) => {
+      const start = Date.now();
+      while (text() !== expected && Date.now() - start < 20000) {
+        await vscode.commands.executeCommand("acceptSelectedSuggestion");
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.strictEqual(text(), expected);
+    };
+
+    try {
+      await typeText("\\");
+      await acceptUntil("\\begin{}\n  \n\\end{}");
+      // The name list opened by itself; typing narrows it, at both ends.
+      await typeText("theo");
+      await acceptUntil("\\begin{theorem}\n  \n\\end{theorem}");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      assert.deepStrictEqual(
+        editor.selections.map((s) => [s.active.line, s.active.character]),
+        [[1, 2]],
+        "The cursor should end up alone in the body",
+      );
+    } finally {
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+    }
+  });
+
   test("pretext-latex flags an unknown environment", async () => {
     const uri = fixtureUri("source", "sample.ptx.tex");
     const doc = await vscode.workspace.openTextDocument(uri);

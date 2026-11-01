@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { getLatexCompletions } from "./get-completions";
-import type { CompletionItem } from "vscode-languageserver-types";
+import {
+  InsertTextFormat,
+  type CompletionItem,
+} from "vscode-languageserver-types";
 
 /** Run completions at the "|" marker in a fixture. */
 function complete(fixture: string): CompletionItem[] {
@@ -57,6 +60,98 @@ describe("environment completions", () => {
     expect(items[0].label).toBe("theorem");
     expect(items[0].textEdit?.newText).toBe("theorem}");
   });
+
+  it("offers only math environments inside math", () => {
+    const items = complete("\\[\n\\begin{|\n\\]");
+    expect(labels(items)).toContain("pmatrix");
+    expect(labels(items)).not.toContain("theorem");
+  });
+
+  it("writes the whole environment for a math environment", () => {
+    const item = byLabel(complete("\\[\\begin{pm|\\]"), "pmatrix");
+    expect(item?.textEdit?.newText).toBe("pmatrix}\n\t$0\n\\end{pmatrix}");
+  });
+
+  it("offers display math, but not inner math, in text mode", () => {
+    const items = labels(complete("\\begin{|"));
+    expect(items).toContain("align");
+    expect(items).not.toContain("pmatrix");
+  });
+});
+
+describe("\\begin{...} snippet", () => {
+  const skeleton = (name: string) => `\\begin{${name}|}\n\t\n\\end{${name}}\n`;
+
+  it("offers the whole environment after a backslash", () => {
+    const item = byLabel(complete("\\|"), "\\begin{...}");
+    expect(item?.textEdit?.newText).toBe("begin{$1}\n\t$0\n\\end{$1}");
+    expect(item?.insertTextFormat).toBe(InsertTextFormat.Snippet);
+  });
+
+  it("is first, and matches on the macro name", () => {
+    const items = complete("\\beg|");
+    const sorted = [...items].sort((a, b) =>
+      a.sortText!.localeCompare(b.sortText!),
+    );
+    expect(sorted[0].label).toBe("\\begin{...}");
+    expect(sorted[0].filterText).toBe("begin");
+  });
+
+  it("opens the list of names straight away", () => {
+    expect(byLabel(complete("\\|"), "\\begin{...}")?.command?.command).toBe(
+      "editor.action.triggerSuggest",
+    );
+  });
+
+  it("is offered in math too, in place of the plain macro", () => {
+    const items = labels(complete("$\\beg|$"));
+    expect(items).toContain("\\begin{...}");
+    expect(items).not.toContain("begin");
+  });
+
+  it("completes only the name, since the rest is already written", () => {
+    const item = byLabel(complete(skeleton("")), "theorem");
+    expect(item?.textEdit?.newText).toBe("theorem");
+    expect(item?.insertTextFormat).toBe(InsertTextFormat.PlainText);
+  });
+
+  it("leaves the closing brace alone, which a full skeleton would consume", () => {
+    const item = byLabel(complete(skeleton("theo")), "theorem");
+    const { start, end } = item!.textEdit!.range;
+    expect(end.character - start.character).toBe("theo".length);
+  });
+
+  it("moves into the body once a name is chosen", () => {
+    expect(
+      byLabel(complete(skeleton("theo")), "theorem")?.command?.command,
+    ).toBe("jumpToNextSnippetPlaceholder");
+  });
+
+  it("offers names for the place it was inserted", () => {
+    const items = complete(
+      `\\begin{theorem}\n${skeleton("pro")}\\end{theorem}\n`,
+    );
+    expect(byLabel(items, "proof")?.sortText?.startsWith("0")).toBe(true);
+  });
+
+  it("does not mistake an enclosing \\end for its own", () => {
+    // `\begin{}` typed by hand as the last line of a theorem: the `\end{theorem}`
+    // that follows closes the theorem, so a chosen name needs its own `\end`.
+    const item = byLabel(
+      complete("\\begin{theorem}\n\\begin{pro|}\n\\end{theorem}"),
+      "proof",
+    );
+    expect(item?.textEdit?.newText).toBe("proof}\n\t$0\n\\end{proof}");
+    expect(item?.command).toBeUndefined();
+  });
+
+  it("completes only the name when a filled-in pair already exists", () => {
+    const item = byLabel(
+      complete("\\begin{theorem|}\n\\end{theorem}"),
+      "theorem",
+    );
+    expect(item?.textEdit?.newText).toBe("theorem");
+  });
 });
 
 describe("macro completions", () => {
@@ -64,10 +159,6 @@ describe("macro completions", () => {
     const items = complete("Some \\ter|");
     const term = byLabel(items, "term");
     expect(term?.textEdit?.newText).toBe("term{$1}");
-  });
-
-  it("offers \\begin as a synthetic keyword entry", () => {
-    expect(labels(complete("\\beg|"))).toContain("begin");
   });
 
   it("switches to KaTeX macros inside math mode", () => {

@@ -10,10 +10,21 @@ import type { EnvironmentSpec, MacroSpec } from "../types";
  * override is the body only — the `\begin`/`\end` framing is always supplied
  * here so the two can never drift out of sync.
  */
-export function environmentInsertText(spec: EnvironmentSpec): string {
+export function environmentInsertText(
+  spec: Pick<EnvironmentSpec, "name" | "snippet">,
+): string {
   const body = spec.snippet ?? "\n\t$0\n";
   return `${spec.name}}${body}\\end{${spec.name}}`;
 }
+
+/**
+ * The whole environment, assuming the caller has already typed the leading `\`.
+ * The name is a mirrored tab stop, so `\end{...}` follows whatever is picked or
+ * typed in `\begin{...}`. Unlike `environmentInsertText` the name isn't known
+ * yet, so there is no per-environment body here: a mirrored tab stop is one
+ * edit applied at both ends and can't reach the space between them.
+ */
+export const ENVIRONMENT_SKELETON = "begin{$1}\n\t$0\n\\end{$1}";
 
 /** The `\end{...}` completion body, assuming `\end{` is already typed. */
 export function endInsertText(name: string): string {

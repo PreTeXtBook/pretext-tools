@@ -19,6 +19,20 @@ export const KATEX_ENVIRONMENTS: ReadonlySet<string> = new Set(
 );
 
 /**
+ * The KaTeX environments that open display math, so can begin in text mode.
+ * The rest (aligned, cases, pmatrix, ...) only make sense already inside math.
+ */
+export const DISPLAY_MATH_ENVIRONMENTS: readonly string[] = [
+  "align",
+  "align*",
+  "alignat",
+  "alignat*",
+  "equation",
+  "equation*",
+  "gather",
+];
+
+/**
  * Extra math macros the converter special-cases beyond the KaTeX list
  * (mirrors `mathjaxSpecificMacroReplacements`).
  */

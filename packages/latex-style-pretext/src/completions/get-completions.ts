@@ -1,17 +1,28 @@
 import {
+  Command,
   CompletionItem,
   CompletionItemKind,
   InsertTextFormat,
   MarkupKind,
 } from "vscode-languageserver-types";
-import type { GetCompletionsParams } from "../types";
-import { scanDocument, contextAt } from "../scan/scan-document";
+import type { EnvironmentSpec, GetCompletionsParams } from "../types";
+import {
+  scanDocument,
+  contextAt,
+  type ScanContext,
+} from "../scan/scan-document";
 import { ENVIRONMENTS } from "../data/environments";
 import { MACROS } from "../data/macros";
-import { KATEX_MACROS, EXTRA_MATH_MACROS } from "../data/math";
+import {
+  DISPLAY_MATH_ENVIRONMENTS,
+  EXTRA_MATH_MACROS,
+  KATEX_ENVIRONMENTS,
+  KATEX_MACROS,
+} from "../data/math";
 import { PLUS_TYPES, PLUS_TYPE_KIND } from "../data/plus";
 import { rangeFromOffsets } from "../util/position";
 import {
+  ENVIRONMENT_SKELETON,
   environmentInsertText,
   endInsertText,
   macroInsertText,
@@ -19,6 +30,17 @@ import {
 
 /** Ref-style macros that resolve against `\label{}` targets, keyed by delimiter. */
 const REF_MACROS_BRACE = ["ref", "eqref", "cref", "Cref", "autoref", "nameref"];
+
+// Both are editor commands, so they work in VS Code and Monaco alike. A host
+// that drops them only loses the automation: the skeleton still works by hand.
+const OPEN_SUGGESTIONS: Command = {
+  title: "Suggest",
+  command: "editor.action.triggerSuggest",
+};
+const NEXT_TAB_STOP: Command = {
+  title: "Next tab stop",
+  command: "jumpToNextSnippetPlaceholder",
+};
 
 interface CursorEdit {
   /** Offset where the replaced text begins. */
@@ -48,9 +70,13 @@ export function getLatexCompletions(
   if (envMatch) {
     const which = envMatch[1] as "begin" | "end";
     const prefix = envMatch[2];
+    if (which === "begin" && inEnvironmentSkeleton(text, offset, prefix)) {
+      const edit = { start: offset - prefix.length, end: offset };
+      return environmentBeginItems(text, edit, ctx, true);
+    }
     const edit = braceEdit(text, offset, prefix.length);
     return which === "begin"
-      ? environmentBeginItems(text, edit, ctx.currentEnvironment)
+      ? environmentBeginItems(text, edit, ctx, false)
       : environmentEndItems(text, edit, ctx.envStack);
   }
 
@@ -89,11 +115,42 @@ export function getLatexCompletions(
 
 // --- context-specific item builders ---------------------------------------
 
+/**
+ * The environments that can begin at the cursor. In a skeleton the rest of the
+ * environment is already written, so choosing one supplies just the name and
+ * moves on to the body; otherwise it writes the whole environment.
+ */
 function environmentBeginItems(
   text: string,
   edit: CursorEdit,
-  currentEnvironment: string | undefined,
+  ctx: ScanContext,
+  inSkeleton: boolean,
 ): CompletionItem[] {
+  const item = (
+    spec: Pick<EnvironmentSpec, "name" | "snippet" | "documentation">,
+    detail: string,
+    sortText: string,
+  ) =>
+    makeItem({
+      text,
+      edit,
+      label: spec.name,
+      kind: CompletionItemKind.Class,
+      detail,
+      documentation: spec.documentation,
+      sortText,
+      ...(inSkeleton
+        ? { insert: spec.name, plainText: true, command: NEXT_TAB_STOP }
+        : { insert: environmentInsertText(spec) }),
+    });
+
+  if (ctx.mode === "math") {
+    return [...KATEX_ENVIRONMENTS].map((name) =>
+      item({ name }, "environment · math", `1${name}`),
+    );
+  }
+
+  const { currentEnvironment } = ctx;
   const boosted = new Set(
     (currentEnvironment &&
       ENVIRONMENTS.find((e) => e.name === currentEnvironment)
@@ -103,27 +160,49 @@ function environmentBeginItems(
 
   const items: CompletionItem[] = [];
   for (const spec of ENVIRONMENTS) {
-    const insert = environmentInsertText(spec);
     const detailBits: string[] = [spec.kind];
     if (spec.requiresStatement) detailBits.push("statement");
     const boost = boosted.has(spec.name);
     // Only the canonical name is suggested; aliases remain valid input (and are
     // still recognized by validation) but are kept out of the suggestion list.
     items.push(
-      makeItem({
-        text,
-        edit,
-        label: spec.name,
-        kind: CompletionItemKind.Class,
-        detail: `environment · ${detailBits.join(", ")}`,
-        documentation: spec.documentation,
-        insert,
+      item(
+        spec,
+        `environment · ${detailBits.join(", ")}`,
         // Boosted children sort first, then everything alphabetically.
-        sortText: `${boost ? "0" : "1"}${spec.name}`,
-      }),
+        `${boost ? "0" : "1"}${spec.name}`,
+      ),
     );
   }
+  for (const name of DISPLAY_MATH_ENVIRONMENTS) {
+    items.push(item({ name }, "environment · display math", `1${name}`));
+  }
   return items;
+}
+
+/**
+ * `\begin{...}`: the whole environment, then straight on to choosing its name.
+ * Sorts first because it is the usual reason to type a bare `\`.
+ */
+function beginKeywordItems(
+  text: string,
+  edit: CursorEdit,
+  prefix: string,
+): CompletionItem[] {
+  if (!"begin".startsWith(prefix)) return [];
+  return [
+    makeItem({
+      text,
+      edit,
+      label: "\\begin{...}",
+      filterText: "begin",
+      kind: CompletionItemKind.Keyword,
+      detail: "begin an environment",
+      insert: ENVIRONMENT_SKELETON,
+      sortText: "0begin",
+      command: OPEN_SUGGESTIONS,
+    }),
+  ];
 }
 
 function environmentEndItems(
@@ -224,22 +303,19 @@ function textMacroItems(
   edit: CursorEdit,
   prefix: string,
 ): CompletionItem[] {
-  const items: CompletionItem[] = [];
-  // Synthetic entries so `\beg` expands into a full environment.
-  for (const kw of ["begin", "end"] as const) {
-    if (kw.startsWith(prefix)) {
-      items.push(
-        makeItem({
-          text,
-          edit,
-          label: kw,
-          kind: CompletionItemKind.Keyword,
-          detail: `${kw} an environment`,
-          insert: `${kw}{$1}`,
-          sortText: `0${kw}`,
-        }),
-      );
-    }
+  const items = beginKeywordItems(text, edit, prefix);
+  if ("end".startsWith(prefix)) {
+    items.push(
+      makeItem({
+        text,
+        edit,
+        label: "end",
+        kind: CompletionItemKind.Keyword,
+        detail: "end an environment",
+        insert: "end{$1}",
+        sortText: "0end",
+      }),
+    );
   }
   for (const spec of MACROS) {
     if (prefix && !spec.name.startsWith(prefix)) continue;
@@ -266,12 +342,13 @@ function mathMacroItems(
   edit: CursorEdit,
   prefix: string,
 ): CompletionItem[] {
-  const items: CompletionItem[] = [];
+  const items = beginKeywordItems(text, edit, prefix);
   const push = (name: string, detail: string) => {
     if (prefix && !name.startsWith(prefix)) return;
     // KaTeX's list includes single-symbol control words (e.g. `\,`); only offer
     // letter-named macros through the `\word` completion path.
     if (!/^[a-zA-Z]/.test(name)) return;
+    if (name === "begin") return;
     items.push(
       makeItem({
         text,
@@ -290,6 +367,21 @@ function mathMacroItems(
 }
 
 // --- edit-range helpers ----------------------------------------------------
+
+/**
+ * Whether the name at the cursor belongs to a `\begin{name}...\end{name}` pair
+ * with nothing in between: the `\begin{...}` snippet, whose `\end{...}` mirrors
+ * what is typed. The names must agree, or typing `\begin{` just above the
+ * `\end{theorem}` of an enclosing environment would count.
+ */
+function inEnvironmentSkeleton(
+  text: string,
+  offset: number,
+  name: string,
+): boolean {
+  const match = /^\}\s*\\end\{([a-zA-Z0-9*-]*)\}/.exec(text.slice(offset));
+  return match?.[1] === name;
+}
 
 /**
  * Replacement range for an environment name typed after `\begin{`/`\end{`.
@@ -325,7 +417,9 @@ function makeItem(args: {
   documentation?: string;
   insert: string;
   sortText?: string;
+  filterText?: string;
   plainText?: boolean;
+  command?: Command;
 }): CompletionItem {
   const item: CompletionItem = {
     label: args.label,
@@ -340,6 +434,8 @@ function makeItem(args: {
   };
   if (args.detail) item.detail = args.detail;
   if (args.sortText) item.sortText = args.sortText;
+  if (args.filterText) item.filterText = args.filterText;
+  if (args.command) item.command = args.command;
   if (args.documentation) {
     item.documentation = {
       kind: MarkupKind.Markdown,
