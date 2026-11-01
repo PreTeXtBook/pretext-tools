@@ -1,5 +1,27 @@
 # @pretextbook/remark-pretext
 
+## 0.3.0
+
+### Minor Changes
+
+- be5549b: Headings take attributes the way directives do: `## My Title {#sec-a label="x"}` sets the division's `xml:id` and `label`, instead of leaving the braces in the title. A link to an id is now a cross-reference, so `[](#sec-a)` becomes `<xref ref="sec-a"/>` and `[text](#sec-a)` becomes `<xref ref="sec-a">text</xref>`.
+
+  Converting PreTeXt back to Markdown writes both forms too. An `<xref>` that Markdown can't express (`text=`, `first`/`last`, a list of ids) is still dropped.
+
+  Inline directives (`:name[...]`) are no longer parsed, since nothing used them, so a colon in prose like `f:X` stays text rather than becoming a `<TODO>`.
+
+- 0426a2b: Raw PreTeXt in Markdown now converts to real elements instead of `<TODO>` placeholders. Tags in running text (`<xref ref="a"/>`, `<url href="...">text</url>`, `<fn>...</fn>`) keep Markdown working between them, while a block (`<figure>`, `<program>`) stays PreTeXt through to its closing tag, even past blank lines. Comments are dropped. Tags that don't balance, don't parse, or aren't PreTeXt (`<br>`, `<div>`) are still flagged with a `<TODO>`.
+
+  Math now works everywhere inline content does: headings, emphasis, and link text no longer leak a `PTX_MATH_TOKEN` placeholder, and neither does `$$x$$2`. Display math where it isn't allowed (titles, emphasis, link text) becomes `<m>`. A `$` in a directive attribute or a `~~~` block stays as written.
+
+  Frontmatter `title:` and the `topLevelTitle` option are now read as inline Markdown, so they support math, emphasis, code and raw tags like any other title. `1. Intro` stays a plain title.
+
+### Patch Changes
+
+- 4344fc4: Stop treating dollar amounts as math. `$...$` is now math only when it closes on the same line, has no space just inside its delimiters, and isn't attached to a letter or digit on the outside, so `$2 to $5`, `$5-$10` and a `$` in a URL stay text, and `\$` is always a literal dollar sign. Text between two dollar signs is no longer lost, even across paragraphs. `$$...$$`, `\(...\)` and `\[...\]` are unchanged.
+
+  Math written against a word (`the $n$th term`, `90$^\circ$`), padded with spaces (`$ x $`), or wrapped onto a second line now stays text.
+
 ## 0.2.0
 
 ### Minor Changes
