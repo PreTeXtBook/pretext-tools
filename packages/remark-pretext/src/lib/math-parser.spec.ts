@@ -40,6 +40,66 @@ describe("math-parser - splitTextWithMath", () => {
     expect(result[0].type).toBe("text");
     expect(result[0].value).toBe("just text");
   });
+
+  it("leaves dollar amounts as text", () => {
+    const result = splitTextWithMath("$2 to $5 dollars");
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("text");
+  });
+});
+
+describe("math-parser - which $ are delimiters", () => {
+  const math = (text: string) =>
+    [...tokenizeMathInMarkdown(text).tokens.values()].map((m) => m.value);
+
+  it.each([
+    ["Let $x$ be", ["x"]],
+    ["$x$", ["x"]],
+    ["punctuation after: $x$, $y$.", ["x", "y"]],
+    ["brackets ($x$) and [$y$]", ["x", "y"]],
+    ["a $k$-cycle", ["k"]],
+    ["it's $x$'s value", ["x"]],
+    ["$a$/$b$", ["a", "b"]],
+    ["inner spaces $x + y$ are fine", ["x + y"]],
+  ])("treats %s as math", (text, expected) => {
+    expect(math(text)).toEqual(expected);
+  });
+
+  it.each([
+    "$2 to $5 dollars",
+    "It costs $5 today.",
+    "Pay $5-$10 today",
+    "From $20,000 to $30,000 total",
+    "It costs $5 today.\n\nAnd also $6 tomorrow.",
+    "It costs $5 today,\nand also $6 tomorrow.",
+    "padded $ x $ math",
+    "padded $x $ on one side",
+    "padded $ x$ on the other",
+    "mid-word a$b$c",
+    "the $n$th term",
+    "90$^\\circ$ angle",
+    "see https://ex.com/a$b and https://ex.com/c$d",
+    "cost $5 and `$` is code",
+  ])("treats %s as text", (text) => {
+    expect(math(text)).toEqual([]);
+  });
+
+  it("does not let an unclosed $ take over the rest of the document", () => {
+    expect(math("It costs $5.\n\nThen $x^2$ is math.")).toEqual(["x^2"]);
+    expect(math("It costs $5 and $x$ is math.")).toEqual(["x"]);
+    expect(math("$$ unmatched and $x$ here")).toEqual(["x"]);
+  });
+
+  it("does not treat an escaped $ as a delimiter", () => {
+    expect(math("It costs \\$5 and \\$6 today.")).toEqual([]);
+    expect(math("Pay \\$5 for $x$.")).toEqual(["x"]);
+    expect(math("$a = \\$5$ ok")).toEqual(["a = \\$5"]);
+    expect(math("a line break \\\\$x$")).toEqual(["x"]);
+  });
+
+  it("still lets display math span lines", () => {
+    expect(math("$$\na\nb\n$$")).toEqual(["\na\nb\n"]);
+  });
 });
 
 describe("math-parser - tokenizeMathInMarkdown", () => {

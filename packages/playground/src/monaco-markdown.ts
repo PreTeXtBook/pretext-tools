@@ -94,7 +94,6 @@ export function registerPretextMarkdown(monaco: Monaco): MonacoNS.IDisposable {
       { open: "{", close: "}" },
       { open: "[", close: "]" },
       { open: "(", close: ")" },
-      { open: "$", close: "$" },
     ],
     surroundingPairs: [
       { open: "{", close: "}" },

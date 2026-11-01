@@ -74,7 +74,6 @@ export function registerPretextLatex(monaco: Monaco): MonacoNS.IDisposable {
     autoClosingPairs: [
       { open: "{", close: "}" },
       { open: "[", close: "]" },
-      { open: "$", close: "$" },
     ],
     surroundingPairs: [
       { open: "{", close: "}" },

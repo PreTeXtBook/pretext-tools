@@ -6,6 +6,9 @@
  * - Inline math: `$...$` and `\(...\)` (LaTeX)
  *
  * Creates 'math' nodes with optional 'meta' field to distinguish display from inline.
+ *
+ * A single `$` is also how authors write dollar amounts, so `$...$` only counts
+ * as math in the shape described on {@link closingDollar}; any other `$` is text.
  */
 
 import type { Plugin } from "unified";
@@ -45,9 +48,49 @@ const DELIMITERS: DelimiterPattern[] = [
 const TOKEN_PREFIX = "PTX_MATH_TOKEN_";
 const TOKEN_RE = new RegExp(`${TOKEN_PREFIX}(\\d+)`, "g");
 
+const WORD = /[\p{L}\p{N}]/u;
+
 export interface MathTokenizationResult {
   markdown: string;
   tokens: Map<string, Math>;
+}
+
+/** Whether the character at `index` is backslash-escaped. */
+function isEscaped(text: string, index: number): boolean {
+  let slashes = 0;
+  for (let i = index - 1; i >= 0 && text[i] === "\\"; i--) slashes++;
+  return slashes % 2 === 1;
+}
+
+/**
+ * The `$` closing an inline math span opened by the `$` at `index`, or -1 if
+ * that `$` is just a dollar sign. Math hugs its delimiters and stands apart
+ * from the words around it:
+ *
+ * - the opener doesn't follow a letter or digit, and the closer isn't followed
+ *   by one (`a$b`, `$5-$10`);
+ * - the content doesn't start or end with whitespace (`$2 to $5`);
+ * - it closes on the same line, so an unclosed `$` stops at the line's end.
+ *
+ * Only the next unescaped `$` can close: when it can't, nothing further along
+ * can either, so `$5 and $x$` leaves the first `$` as text and `$x$` as math.
+ */
+function closingDollar(text: string, index: number): number {
+  const before = text[index - 1] ?? "";
+  const after = text[index + 1] ?? "";
+  if (isEscaped(text, index) || before === "$" || after === "$") return -1;
+  if (WORD.test(before) || after === "" || /\s/.test(after)) return -1;
+
+  let close = text.indexOf("$", index + 1);
+  while (close !== -1 && isEscaped(text, close)) {
+    close = text.indexOf("$", close + 1);
+  }
+  if (close === -1) return -1;
+
+  const content = text.slice(index + 1, close);
+  if (content.includes("\n") || content.includes("`")) return -1;
+  if (/\s$/.test(content) || WORD.test(text[close + 1] ?? "")) return -1;
+  return close;
 }
 
 function findNextDelimiter(
@@ -65,20 +108,18 @@ function findNextDelimiter(
   } | null = null;
 
   for (const pattern of DELIMITERS) {
-    const index = text.indexOf(pattern.open, pos);
-    if (index === -1) continue;
-
-    const closeIndex = text.indexOf(pattern.close, index + pattern.open.length);
-    if (closeIndex === -1) continue;
-
-    if (pattern.open === "$") {
-      if (
-        (index > 0 && text[index - 1] === "$") ||
-        (index + 1 < text.length && text[index + 1] === "$")
-      ) {
-        continue;
-      }
+    let index = text.indexOf(pattern.open, pos);
+    let closeIndex = -1;
+    while (index !== -1) {
+      closeIndex =
+        pattern.open === "$"
+          ? closingDollar(text, index)
+          : text.indexOf(pattern.close, index + pattern.open.length);
+      // Only a `$` can be passed over: the next one may still open math.
+      if (closeIndex !== -1 || pattern.open !== "$") break;
+      index = text.indexOf(pattern.open, index + 1);
     }
+    if (index === -1 || closeIndex === -1) continue;
 
     if (!nextMatch || index < nextMatch.index) {
       const content = text.substring(index + pattern.open.length, closeIndex);

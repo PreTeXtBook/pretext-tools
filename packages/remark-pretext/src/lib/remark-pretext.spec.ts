@@ -2,7 +2,7 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkDirective from "remark-directive";
 import { describe, it, expect } from "vitest";
-import { remarkPretext, mdastToPtxast } from "../index.js";
+import { markdownToPretext, remarkPretext, mdastToPtxast } from "../index.js";
 import type { RemarkPretextOptions } from "./remark-pretext.js";
 import remarkMath from "./math-parser.js";
 import { mdastToPtxastWithDiagnostics } from "./mdast-to-ptxast.js";
@@ -168,6 +168,54 @@ describe("inline element conversion", () => {
     const alert = url.children[0] as Element;
     expect(elName(alert)).toBe("alert");
     expect(textValue(alert.children[0])).toBe("bold");
+  });
+});
+
+describe("dollar signs that aren't math", () => {
+  it.each([
+    ["$2 to $5 dollars", "<p>$2 to $5 dollars</p>"],
+    ["Pay $5-$10 today", "<p>Pay $5-$10 today</p>"],
+    [
+      "It costs $5 today.\n\nAnd also $6 tomorrow.",
+      "<p>It costs $5 today.</p><p>And also $6 tomorrow.</p>",
+    ],
+    [
+      "It costs $5.\n\nThen $x^2$ is math.",
+      "<p>It costs $5.</p><p>Then <m>x^2</m> is math.</p>",
+    ],
+    ["It costs \\$5 and \\$6 today.", "<p>It costs $5 and $6 today.</p>"],
+    ["$a = \\$5$ ok", "<p><m>a = \\$5</m> ok</p>"],
+  ])("converts %s", (markdown, xml) => {
+    expect(markdownToPretext(markdown)).toBe(xml);
+  });
+
+  it.each([
+    [
+      "[a](https://ex.com/a$b) then [c](https://ex.com/c$d)",
+      '<p><url href="https://ex.com/a$b">a</url> then <url href="https://ex.com/c$d">c</url></p>',
+    ],
+    [
+      "[a](https://ex.com/$b) and [c](https://ex.com/$d)",
+      '<p><url href="https://ex.com/$b">a</url> and <url href="https://ex.com/$d">c</url></p>',
+    ],
+    [
+      "<https://ex.com/a$b> and $x$",
+      '<p><url href="https://ex.com/a$b">https://ex.com/a$b</url> and <m>x</m></p>',
+    ],
+    [
+      "[a$b](https://ex.com) and [c$d](https://ex.org)",
+      '<p><url href="https://ex.com">a$b</url> and <url href="https://ex.org">c$d</url></p>',
+    ],
+  ])("keeps a $ in a link: %s", (markdown, xml) => {
+    expect(markdownToPretext(markdown)).toBe(xml);
+  });
+
+  it("keeps a $ in a raw <url> tag from pairing with later math", () => {
+    const xml = markdownToPretext(
+      '<url href="https://ex.com/a$b">text</url> and $x$',
+    );
+    expect(xml).toContain("https://ex.com/a$b");
+    expect(xml).toContain("<m>x</m>");
   });
 });
 
