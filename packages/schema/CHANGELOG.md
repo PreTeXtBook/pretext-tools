@@ -1,5 +1,11 @@
 # @pretextbook/schema
 
+## 0.7.3
+
+### Patch Changes
+
+- e9bdc49: Sync PreTeXt schemas and XSL to pretext-cli v2.56.2 (core commit d6a846c).
+
 ## 0.7.2
 
 ### Patch Changes
