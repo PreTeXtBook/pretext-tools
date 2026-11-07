@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Changed
+
+- Instant Preview and schemas now match pretext-cli v2.56.2 (PreTeXt core d6a846c).
+
 ## [1.5.1] - 2026-11-01
 
 ## [1.5.0] - 2026-10-29

@@ -339,9 +339,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>%% this is a necessity for isolating styling and behavior&#xa;</xsl:text>
     <xsl:text>%% The tcolorbox library of the same name loads the base library&#xa;</xsl:text>
     <xsl:text>\tcbuselibrary{xparse}&#xa;</xsl:text>
-    <xsl:text>%% The tcolorbox library loads TikZ, its calc package is generally useful,&#xa;</xsl:text>
-    <xsl:text>%% and is necessary for some smaller documents that use partial tcolor boxes&#xa;</xsl:text>
-    <xsl:text>%% See:  https://github.com/PreTeXtBook/pretext/issues/1624&#xa;</xsl:text>
+    <xsl:text>%% The tcolorbox package loads TikZ.  The TikZ calc library, for coordinate&#xa;</xsl:text>
+    <xsl:text>%% arithmetic, is not used by PreTeXt's own LaTeX; it is loaded because&#xa;</xsl:text>
+    <xsl:text>%% TikZ code provided by an author may rely on it&#xa;</xsl:text>
     <xsl:text>\usetikzlibrary{calc}&#xa;</xsl:text>
     <xsl:text>%% We use some more exotic tcolorbox keys to restore indentation to parboxes&#xa;</xsl:text>
     <xsl:text>\tcbuselibrary{hooks}&#xa;</xsl:text>
@@ -1021,26 +1021,25 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:text>\newcommand{\ptxhrulemedium}{\noalign{\hrule height 0.07em}}&#xa;</xsl:text>
         <xsl:text>\newcommand{\ptxhrulethick} {\noalign{\hrule height 0.11em}}&#xa;</xsl:text>
         <!-- http://tex.stackexchange.com/questions/24549/horizontal-rule-with-adjustable-height-behaving-like-clinen-m -->
-        <!-- Could preserve/restore \arrayrulewidth on entry/exit to tabular -->
-        <!-- But we'll get cleaner source with this built into macros        -->
-        <!-- Could condition \setlength debacle on the use of extpfeil       -->
-        <!-- arrows (see discussion below)                                   -->
-        <xsl:text>%% We preserve a copy of the \setlength package before other&#xa;</xsl:text>
-        <xsl:text>%% packages (extpfeil) get a chance to load packages that redefine it&#xa;</xsl:text>
-        <xsl:text>\let\ptxoldsetlength\setlength&#xa;</xsl:text>
+        <!-- Could preserve/restore \arrayrulewidth on entry/exit to tabular    -->
+        <!-- But we'll get cleaner source with this built into macros           -->
+        <!-- The widths are plain TeX assignments, not \setlength: a package    -->
+        <!-- such as "calc" (loaded by "pdfpages", "musicography", "mathtools") -->
+        <!-- redefines \setlength, and a \global in front of its version has    -->
+        <!-- no lasting effect, so a partial rule would keep the default width  -->
         <xsl:text>\newlength{\ptxOldarrayrulewidth}&#xa;</xsl:text>
         <xsl:text>\newcommand{\ptxcrulethin}[1]%&#xa;</xsl:text>
-        <xsl:text>{\noalign{\global\ptxoldsetlength{\ptxOldarrayrulewidth}{\arrayrulewidth}}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{0.04em}}\cline{#1}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{\ptxOldarrayrulewidth}}}%&#xa;</xsl:text>
+        <xsl:text>{\noalign{\global\ptxOldarrayrulewidth=\arrayrulewidth}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=0.04em}\cline{#1}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=\ptxOldarrayrulewidth}}%&#xa;</xsl:text>
         <xsl:text>\newcommand{\ptxcrulemedium}[1]%&#xa;</xsl:text>
-        <xsl:text>{\noalign{\global\ptxoldsetlength{\ptxOldarrayrulewidth}{\arrayrulewidth}}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{0.07em}}\cline{#1}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{\ptxOldarrayrulewidth}}}&#xa;</xsl:text>
+        <xsl:text>{\noalign{\global\ptxOldarrayrulewidth=\arrayrulewidth}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=0.07em}\cline{#1}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=\ptxOldarrayrulewidth}}&#xa;</xsl:text>
         <xsl:text>\newcommand{\ptxcrulethick}[1]%&#xa;</xsl:text>
-        <xsl:text>{\noalign{\global\ptxoldsetlength{\ptxOldarrayrulewidth}{\arrayrulewidth}}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{0.11em}}\cline{#1}%&#xa;</xsl:text>
-        <xsl:text>\noalign{\global\ptxoldsetlength{\arrayrulewidth}{\ptxOldarrayrulewidth}}}&#xa;</xsl:text>
+        <xsl:text>{\noalign{\global\ptxOldarrayrulewidth=\arrayrulewidth}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=0.11em}\cline{#1}%&#xa;</xsl:text>
+        <xsl:text>\noalign{\global\arrayrulewidth=\ptxOldarrayrulewidth}}&#xa;</xsl:text>
         <!-- http://tex.stackexchange.com/questions/119153/table-with-different-rule-widths -->
         <xsl:text>%% Single letter column specifiers defined via array package&#xa;</xsl:text>
         <xsl:text>\newcolumntype{A}{!{\vrule width 0.04em}}&#xa;</xsl:text>
@@ -2135,9 +2134,8 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
         <xsl:text>%% You have elected to load the LaTeX "extpfeil" package&#xa;</xsl:text>
         <xsl:text>%% for certain extensible arrows, and it should appear just below.&#xa;</xsl:text>
         <xsl:text>%% This package has numerous shortcomings leading to conflicts with&#xa;</xsl:text>
-        <xsl:text>%% packages like "stmaryrd" and our manipulations of lengths to support&#xa;</xsl:text>
-        <xsl:text>%% variable thickness of rules in tables.  It should appear late&#xa;</xsl:text>
-        <xsl:text>%% in the preamble in an effort to mitigate these shortcomings.&#xa;</xsl:text>
+        <xsl:text>%% packages like "stmaryrd".  It should appear late in the preamble&#xa;</xsl:text>
+        <xsl:text>%% in an effort to mitigate these shortcomings.&#xa;</xsl:text>
     </xsl:if>
     <xsl:if test="not($latex-packages = '')">
         <xsl:text>%% Begin: Author-provided TeX/LaTeX packages&#xa;</xsl:text>
@@ -2190,7 +2188,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- Fill-in-the-blank in text content -->
 <xsl:template name="fillin-text">
     <xsl:text>%% Used for fillin answer blank in text&#xa;</xsl:text>
-    <xsl:text>%% Relies on calc package, loaded via tcolorbox&#xa;</xsl:text>
+    <xsl:text>%% Box style sizes its sides with \dimexpr, no package needed&#xa;</xsl:text>
     <xsl:text>%% Argument is intended number of characters of blank&#xa;</xsl:text>
     <xsl:text>%% Length may compress for output to fit in one line&#xa;</xsl:text>
     <xsl:text>\newlength{\ptxfillinmaxwidth}&#xa;</xsl:text>
@@ -2204,13 +2202,16 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:text>\newcommand{\ptxfillintext}[1]{%&#xa;</xsl:text>
     <xsl:text>\setlength{\ptxfillinmaxwidth}{#1\ptxcharmaxwidth}%&#xa;</xsl:text>
     <xsl:text>\setlength{\ptxfillincontract}{#1\ptxcharminwidth}%&#xa;</xsl:text>
-    <xsl:text>\setlength{\ptxfillinheight}{\baselineskip}\addtolength{\ptxfillinheight}{1.2pt}%&#xa;</xsl:text>
+    <!-- The height of the box and shade styles comes from the strut box, -->
+    <!-- which is one line high everywhere, while a "tabular" sets        -->
+    <!-- \baselineskip to zero inside its cells                           -->
+    <xsl:text>\setlength{\ptxfillinheight}{\dimexpr\ht\strutbox+\dp\strutbox+1.2pt\relax}%&#xa;</xsl:text>
     <xsl:choose>
         <xsl:when test="$fillin-text-style = 'underline'">
             <xsl:text>\strut\nobreak\leaders\vbox{\hrule width 0.3pt height 0.3pt \vskip -1.2pt}\hskip 1\ptxfillinmaxwidth minus \ptxfillincontract\nobreak\strut%&#xa;</xsl:text>
         </xsl:when>
         <xsl:when test="$fillin-text-style = 'box'">
-            <xsl:text>\rule[-1.2pt]{0.3pt}{\heightof{\strut}+1.8pt}\nobreak\hspace{-0.3pt}\nobreak\leaders\vbox{\hrule width 0.3pt height 0.3pt \vskip \ptxfillinheight \hrule width 0.3pt height 0.3pt \vskip -1.2pt}\hskip 1\ptxfillinmaxwidth minus \ptxfillincontract\nobreak\hspace{-0.3pt}\rule[-1.2pt]{0.3pt}{\heightof{\strut}+1.8pt}%&#xa;</xsl:text>
+            <xsl:text>\rule[-1.2pt]{0.3pt}{\dimexpr\ptxfillinheight+0.6pt\relax}\nobreak\hspace{-0.3pt}\nobreak\leaders\vbox{\hrule width 0.3pt height 0.3pt \vskip \ptxfillinheight \hrule width 0.3pt height 0.3pt \vskip -1.2pt}\hskip 1\ptxfillinmaxwidth minus \ptxfillincontract\nobreak\hspace{-0.3pt}\rule[-1.2pt]{0.3pt}{\dimexpr\ptxfillinheight+0.6pt\relax}%&#xa;</xsl:text>
         </xsl:when>
         <xsl:when test="$fillin-text-style = 'shade'">
             <xsl:text>{\color{fillintextshade}\strut\nobreak\leaders\vbox{\hrule width 0.3pt height \ptxfillinheight \vskip -1.2pt}\hskip 1\ptxfillinmaxwidth minus \ptxfillincontract}%&#xa;</xsl:text>

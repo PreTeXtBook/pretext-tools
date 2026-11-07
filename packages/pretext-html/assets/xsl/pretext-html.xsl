@@ -6866,7 +6866,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             <xsl:when test="latex-image">
                 <xsl:apply-templates select="$image-svg-xml/svg:svg/*" mode="svg-unique-ids">
                     <xsl:with-param name="svg-unique-id">
-                        <xsl:value-of select="@pi:unique-id"/>
+                        <xsl:apply-templates select="." mode="unique-id"/>
                     </xsl:with-param>
                 </xsl:apply-templates>
             </xsl:when>
@@ -6936,7 +6936,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
 <!-- on the image, but kept within the available width, so an image  -->
 <!-- placed off-center by @margins does not push its description out -->
 <!-- of the text.                                                    -->
-<xsl:template match="image[not(&SBS-LAYOUT-FILTER;)]" mode="description-style">
+<xsl:template match="image[not(&SBS-LAYOUT-FILTER;) and not(parent::datafile)]" mode="description-style">
     <xsl:param name="layout" select="/.."/>
 
     <xsl:variable name="width" select="number($layout/width)"/>
@@ -6968,9 +6968,10 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:if>
 </xsl:template>
 
-<!-- An interactive is centered in a container that spans the -->
-<!-- available width, so its description is simply centered   -->
-<xsl:template match="interactive[not(&SBS-LAYOUT-FILTER;)]" mode="description-style">
+<!-- An interactive, or the image of a data file, is centered -->
+<!-- in a container that spans the available width, so its    -->
+<!-- description is simply centered                           -->
+<xsl:template match="interactive[not(&SBS-LAYOUT-FILTER;)]|datafile/image" mode="description-style">
     <xsl:attribute name="style">
         <xsl:text>width: 80%; margin-left: 10%;</xsl:text>
     </xsl:attribute>
@@ -10724,8 +10725,15 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
                 <!-- period below is Javascript syntax for methods -->
                 <xsl:with-param name="pad" select="concat($applet-onload-argument,'.')" />
             </xsl:call-template>
-            <!-- call a function named 'listeners()' in attached .js file to communicate with other divs -->
-            <xsl:text>listeners(</xsl:text><xsl:value-of select='$applet-onload-argument'/><xsl:text>)</xsl:text>
+            <!-- A script attached by the "source" attribute of the "interactive"    -->
+            <!-- may define a function named "listeners".  It receives the applet    -->
+            <!-- once the commands above have run, so that event listeners can tie   -->
+            <!-- the applet to the HTML of the interactive, which they cannot do     -->
+            <!-- before the applet exists.  Most interactives attach no such script, -->
+            <!-- so the call is made only when the function is defined.              -->
+            <xsl:text>if (typeof listeners === "function") { listeners(</xsl:text>
+            <xsl:value-of select="$applet-onload-argument"/>
+            <xsl:text>); }&#xa;</xsl:text>
             <xsl:text>};&#xa;</xsl:text>
         </xsl:if>
         <!-- Parameter reference:                                              -->
@@ -13565,7 +13573,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
             </xsl:attribute>
             <!-- copy id of this li for use in customization pass -->
             <xsl:attribute name="uid">
-                <xsl:value-of select="@pi:unique-id"/>
+                <xsl:apply-templates select="." mode="unique-id"/>
             </xsl:attribute>
             <div class="toc-title-box">
                 <a href="{$the-url}" class="internal">
@@ -13599,7 +13607,7 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     </xsl:attribute>
     <!-- copy id of this li for use in customization pass, will remove there -->
     <xsl:attribute name="uid">
-        <xsl:value-of select="@pi:unique-id"/>
+        <xsl:apply-templates select="." mode="unique-id"/>
     </xsl:attribute>
     <div class="toc-title-box">
         <a href="{$the-url}" class="internal">
@@ -13628,7 +13636,9 @@ along with PreTeXt.  If not, see <http://www.gnu.org/licenses/>.
     <xsl:variable name="toc-contents" select="exsl:node-set($toc-contents-rtf)"/>
 
     <!-- get the unique id of the current page -->
-    <xsl:variable name="uid" select="@pi:unique-id"/>
+    <xsl:variable name="uid">
+        <xsl:apply-templates select="." mode="unique-id"/>
+    </xsl:variable>
     <!-- use that to find the ToC node for that page -->
     <xsl:variable name="this-page-node" select="$toc-contents//*[@uid = $uid]"/>
     <!-- ancestor list will allow us to identify when we are in the path to the page -->

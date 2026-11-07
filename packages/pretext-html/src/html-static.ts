@@ -12,20 +12,19 @@
  */
 
 /** html-static release, passed to the stylesheets as `cli.version`. */
-export const HTML_STATIC_VERSION = "2.56.1";
+export const HTML_STATIC_VERSION = "2.56.2";
 
 /** Runestone Services release built into it, reported as `eBookConfig.runestone_version`. */
-export const RUNESTONE_VERSION = "8.3.6";
+export const RUNESTONE_VERSION = "8.4.0";
 
 /** Scripts that turn Runestone's inert exercise markup into working exercises. */
 export const RUNESTONE_JS: readonly string[] = [
-  "prefix-runtime.4beca1fdeed766a2.bundle.js",
-  "prefix-926.5c7038c8ef173faf.bundle.js",
-  "prefix-runestone.ebd33f6a21eed414.bundle.js",
+  "prefix-runtime.7e2ee203f2ecd6c8.bundle.js",
+  "prefix-23.7d27cb317c36911a.bundle.js",
+  "prefix-runestone.35a40fea06647cf2.bundle.js",
 ];
 
 /** Stylesheets those scripts expect. */
 export const RUNESTONE_CSS: readonly string[] = [
-  "prefix-926.229729d09512acc9.css",
-  "prefix-runestone.9963089870a016c8.css",
+  "prefix-runestone.7062ede5334282a6.css",
 ];
