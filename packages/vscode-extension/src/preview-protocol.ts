@@ -106,7 +106,84 @@ export type RenderResponse =
       /** The one division shown, when not the whole document. */
       subtree?: RenderedSubtree;
     }
-  | { id: number; ok: false; error: string };
+  | {
+      id: number;
+      ok: false;
+      error: string;
+      /**
+       * Where the source stopped being well-formed, when that is why the
+       * render failed (see {@link errorLocation}).
+       */
+      errorAt?: ErrorLocation;
+    };
+
+/** A place in a source file an error points at. */
+export interface ErrorLocation {
+  file: string;
+  /** 1-based. */
+  line: number;
+  /** 1-based. */
+  column?: number;
+}
+
+/**
+ * Where a failed render's error points, if anywhere.
+ *
+ * A source that is not well-formed fails in the XML parser, whose error
+ * carries the `line` and `column` it gave up at but not always the file: for
+ * the file being rendered there is none (`fallbackFile` then), while an
+ * `xi:include`d file's error is wrapped in one that names it (see
+ * expandInclude in @pretextbook/pretext-html). So the file is the outermost
+ * one named along the cause chain, and the position the first one found.
+ */
+export function errorLocation(
+  error: unknown,
+  fallbackFile: string,
+): ErrorLocation | undefined {
+  let file: string | undefined;
+  let current: unknown = error;
+  for (
+    let depth = 0;
+    typeof current === "object" && current !== null && depth < 5;
+    depth++
+  ) {
+    const at = current as { file?: unknown; line?: unknown; column?: unknown };
+    if (file === undefined && typeof at.file === "string" && at.file) {
+      file = at.file;
+    }
+    if (typeof at.line === "number" && at.line > 0) {
+      return {
+        file: file ?? fallbackFile,
+        line: at.line,
+        ...(typeof at.column === "number" && at.column > 0
+          ? { column: at.column }
+          : {}),
+      };
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return undefined;
+}
+
+/**
+ * How long to wait after a keystroke before rendering, given how long the
+ * last render took.
+ *
+ * A render that takes a tenth of a second can follow every pause in typing.
+ * One that takes two seconds — the whole project, on a large book — would
+ * otherwise run back to back for as long as the author keeps typing, each
+ * one stale before it lands. Waiting half again as long as a render takes
+ * leaves the machine idle a third of the time at worst, and the cap keeps a
+ * slow document from feeling abandoned.
+ */
+export function typingDebounceMs(lastRenderMs: number | undefined): number {
+  const floor = 300;
+  const cap = 3000;
+  if (lastRenderMs === undefined || !(lastRenderMs > 0)) {
+    return floor;
+  }
+  return Math.min(cap, Math.max(floor, Math.round(lastRenderMs * 1.5)));
+}
 
 export function isRenderRequest(value: unknown): value is RenderRequest {
   return (
@@ -228,10 +305,12 @@ export function createRenderServer(
           subtree,
         });
       } catch (error) {
+        const errorAt = errorLocation(error, request.sourcePath);
         deps.send({
           id: request.id,
           ok: false,
           error: error instanceof Error ? error.message : String(error),
+          ...(errorAt ? { errorAt } : {}),
         });
         if (isFatalWasmError(error)) {
           deps.log("fatal WebAssembly error; recycling the render worker.");

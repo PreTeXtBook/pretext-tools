@@ -94,10 +94,12 @@ import type {
   PreviewHost,
   PreviewWorker,
 } from "./preview-host";
-import type {
-  RenderRequest,
-  RenderResponse,
-  RenderedSubtree,
+import {
+  typingDebounceMs,
+  type ErrorLocation,
+  type RenderRequest,
+  type RenderResponse,
+  type RenderedSubtree,
 } from "./preview-protocol";
 import { findProjectRoot, parentFolder } from "./project";
 import { parseTargetsFromManifest } from "./project-manifest";
@@ -221,6 +223,11 @@ let nextRequestId = 1;
 // render is in flight at a time; the worker serializes internally too.
 let pendingRequestId: number | undefined;
 let pendingStarted = 0;
+/**
+ * How long the last successful render took, which sets how long a pause in
+ * typing has to be before the next one starts (see typingDebounceMs).
+ */
+let lastRenderMs: number | undefined;
 // The file the render in flight was asked for.
 let pendingRenderPath = "";
 // A newer render requested while one was in flight; collapses bursts of saves.
@@ -288,8 +295,6 @@ export const previewTestHooks = {
 };
 
 const DEBOUNCE_MS = 400;
-/** Pause in typing before the preview renders the unsaved document. */
-const TYPING_DEBOUNCE_MS = 300;
 const SYNC_DEBOUNCE_MS = 150;
 const MAX_CRASH_RETRIES = 2;
 /** Quiet period after a save before full-build mode runs `pretext build`. */
@@ -588,8 +593,9 @@ function lockPreviewGroupOnce(): void {
 
 /**
  * React to settings the open panel reflects: reconcile the toolbar's follow
- * checkbox when it is changed from somewhere other than the toolbar (the
- * Settings UI, another window, a workspace file edit), and re-render when the
+ * and as-you-type toggles when they are changed from somewhere other than the
+ * toolbar (the Settings UI, another window, a workspace file edit), and
+ * re-render when the
  * css theme changes, since that is baked into the publication file the
  * transform reads.
  */
@@ -605,6 +611,21 @@ function setupConfigWatcher(host: PreviewHost): void {
         command: "follow",
         on: followActiveEditor(),
       });
+    }
+    if (
+      event.affectsConfiguration(
+        "pretext-tools.instantPreview.updateWhileTyping",
+      )
+    ) {
+      void currentPanel?.webview.postMessage({
+        command: "typing",
+        on: updateWhileTyping(),
+      });
+      // Turned on with edits not yet saved: show them now rather than at the
+      // next keystroke.
+      if (updateWhileTyping()) {
+        renderToPanel(host, { fromTyping: true });
+      }
     }
     if (event.affectsConfiguration("pretext-tools.instantPreview.cssTheme")) {
       renderToPanel(host);
@@ -655,7 +676,7 @@ function updateWhileTyping(): boolean {
   return (
     workspace
       .getConfiguration("pretext-tools")
-      .get<boolean>("instantPreview.updateWhileTyping") ?? false
+      .get<boolean>("instantPreview.updateWhileTyping") ?? true
   );
 }
 
@@ -800,7 +821,7 @@ function setupTypingWatcher(host: PreviewHost): void {
     typingTimer = setTimeout(() => {
       typingTimer = undefined;
       renderToPanel(host, { fromTyping: true });
-    }, TYPING_DEBOUNCE_MS);
+    }, typingDebounceMs(lastRenderMs));
   });
 }
 
@@ -923,6 +944,7 @@ export async function cmdInstantPreview(host: PreviewHost): Promise<void> {
           mode?: unknown;
           path?: unknown;
           follow?: unknown;
+          typing?: unknown;
           id?: unknown;
           ok?: unknown;
           reason?: unknown;
@@ -970,6 +992,19 @@ export async function cmdInstantPreview(host: PreviewHost): Promise<void> {
                 .update(
                   "instantPreview.followActiveEditor",
                   msg.follow,
+                  workspace.workspaceFolders
+                    ? ConfigurationTarget.Workspace
+                    : ConfigurationTarget.Global,
+                );
+            }
+            return;
+          case "setTyping":
+            if (typeof msg.typing === "boolean") {
+              void workspace
+                .getConfiguration("pretext-tools")
+                .update(
+                  "instantPreview.updateWhileTyping",
+                  msg.typing,
                   workspace.workspaceFolders
                     ? ConfigurationTarget.Workspace
                     : ConfigurationTarget.Global,
@@ -1744,6 +1779,7 @@ async function applyRenderResponse(message: RenderResponse): Promise<void> {
       return;
     }
     crashRetries = 0;
+    lastRenderMs = message.elapsedMs ?? Date.now() - pendingStarted;
     applySourceMap(message.sourceMap);
     // Kept so the view controls can be applied without a re-render: both the
     // slideshow view and the print-preview layout are properties of this exact
@@ -1795,34 +1831,61 @@ async function applyRenderResponse(message: RenderResponse): Promise<void> {
     postStatus(liveStatusText());
     updateStatusBarItem(ptxSBItem, "success");
     pretextOutputChannel.appendLine(
-      `[Instant Preview] Rebuilt in ${message.elapsedMs ?? Date.now() - pendingStarted}ms`,
+      `[Instant Preview] Rebuilt in ${lastRenderMs}ms`,
     );
     return;
   }
 
   updateStatusBarItem(ptxSBItem, "ready");
+  const errorAt = message.ok ? undefined : message.errorAt;
   if (!message.ok) {
-    pretextOutputChannel.appendLine(`[Instant Preview] ${message.error}`);
+    pretextOutputChannel.appendLine(
+      `[Instant Preview] ${message.error}` +
+        (errorAt
+          ? ` (${errorAt.file}:${errorAt.line}` +
+            `${errorAt.column ? `:${errorAt.column}` : ""})`
+          : ""),
+    );
   }
+  const where = errorAt ? describeErrorLocation(errorAt) : undefined;
   if (pendingFromTyping) {
     // Mid-edit the document is often not well-formed yet; a popup for every
     // pause in typing would be unbearable. Keep the last good page up and say
-    // so where the reader is already looking.
+    // so — and where to look — where the reader is already looking.
     postStatus(
-      `${liveStatusText()} — source has errors; showing the last good preview`,
+      `${liveStatusText()} — ` +
+        (where ? `not well-formed at ${where}` : "source has errors") +
+        "; showing the last good preview",
     );
     return;
   }
+  const goTo = "Go to Error";
   window
     .showErrorMessage(
-      "Instant preview build failed. Check the PreTeXt output log.",
+      where
+        ? `Instant preview build failed: the source is not well-formed at ${where}.`
+        : "Instant preview build failed. Check the PreTeXt output log.",
+      ...(errorAt ? [goTo] : []),
       "Show Log",
     )
     .then((choice) => {
       if (choice === "Show Log") {
         pretextOutputChannel.show();
+      } else if (choice === goTo && errorAt) {
+        void openSourceAt(errorAt.file, errorAt.line, errorAt.column ?? 1);
       }
     });
+}
+
+/**
+ * An error's place as the author would say it: "line 12", or
+ * "sec-limits.ptx line 12" when it is not in the file the preview is showing
+ * (an included file, or the main file around a division).
+ */
+function describeErrorLocation(at: ErrorLocation): string {
+  const shown = currentRenderPath() ?? currentSource?.activePath;
+  const elsewhere = !shown || fileKey(at.file) !== fileKey(shown);
+  return `${elsewhere ? `${path.basename(at.file)} ` : ""}line ${at.line}`;
 }
 
 /**
@@ -1847,6 +1910,13 @@ function updatePanelContent(
     return;
   }
   const previous = deliveredHtml;
+  if (patch && panelHasContent && preparedHtml === previous) {
+    // The page on screen already is this render: an edit to a comment, to
+    // whitespace, or one undone before the pause. Posting it anyway would
+    // cost the webview a copy and two parses of the page to find nothing.
+    pretextOutputChannel.appendLine("[Instant Preview] No change to the page.");
+    return;
+  }
   deliveredHtml = preparedHtml;
   if (!panelHasContent) {
     panel.webview.html = preparedHtml;
@@ -2268,6 +2338,12 @@ function toolbarHtml(mode: PreviewMode, status: string): string {
     "      Present</button>",
     "  </div>",
     printoutMenuHtml(),
+    '  <button type="button" class="ptx-tools-live-only"',
+    '    data-ptx-action="toggleTyping"',
+    `    aria-pressed="${updateWhileTyping() ? "true" : "false"}"`,
+    '    title="Update the preview as you type, from the unsaved text. When off,' +
+      ' it updates when you save.">',
+    "    As you type</button>",
     '  <button type="button" class="ptx-tools-live-only ptx-tools-file-only"',
     '    data-ptx-action="toggleFollow"',
     `    aria-pressed="${followActiveEditor() ? "true" : "false"}"`,
@@ -2721,11 +2797,20 @@ async function revealSource(ids: string[]): Promise<void> {
   if (!entry) {
     return;
   }
+  await openSourceAt(entry.file, entry.line, entry.column);
+}
+
+/** Show a source file in the editor, cursor at a 1-based line and column. */
+async function openSourceAt(
+  file: string,
+  line: number,
+  column: number,
+): Promise<void> {
   try {
-    const document = await workspace.openTextDocument(toUri(entry.file));
+    const document = await workspace.openTextDocument(toUri(file));
     const position = new Position(
-      entry.line - 1,
-      Math.max(0, entry.column - 1),
+      Math.max(0, line - 1),
+      Math.max(0, column - 1),
     );
     await window.showTextDocument(document, {
       viewColumn: ViewColumn.One,
@@ -2733,7 +2818,7 @@ async function revealSource(ids: string[]): Promise<void> {
     });
   } catch (err) {
     pretextOutputChannel.appendLine(
-      `[Instant Preview] Could not open ${entry.file}: ${String(err)}`,
+      `[Instant Preview] Could not open ${file}: ${String(err)}`,
     );
   }
 }
@@ -2749,6 +2834,7 @@ export function disposeInstantPreview(): void {
     typingTimer = undefined;
   }
   lastRenderedVersion = undefined;
+  lastRenderMs = undefined;
   selectionWatcher?.dispose();
   selectionWatcher = undefined;
   panelMessageWatcher?.dispose();

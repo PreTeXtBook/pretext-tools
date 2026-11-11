@@ -79,12 +79,16 @@ Each shortcut can be turned off in the settings under "PreTeXt › Typing Shortc
 
 ### Live Preview
 
-Run `PreTeXt: View Live Preview` (or click the preview icon) to open a side-by-side preview of your document. It renders the official PreTeXt stylesheets directly in the extension — no PreTeXt or Python installation needed — and refreshes automatically as you edit. It stays in sync with your source in both directions:
+Run `PreTeXt: View Live Preview` (or click the preview icon) to open a side-by-side preview of your document. It renders the official PreTeXt stylesheets directly in the extension — no PreTeXt or Python installation needed — and updates as you type, in place: only what changed is redrawn, so the page keeps its scroll position. It stays in sync with your source in both directions:
 
 - **Forward search**: `PreTeXt: Forward Search` (or just move your cursor) scrolls the preview to match where you are in the source.
 - **Inverse search**: clicking a paragraph in the preview jumps your cursor to the matching line in the source.
 
 By default the preview shows the division around your cursor, numbered and cross-referenced as in the whole project. A division that contains divisions — a chapter, or the whole book when the cursor is at the top of the main file — appears as a summary page: its own content followed by a table of the divisions inside it, each a link that shows that division. Only leaf divisions render in full, which keeps the preview fast however large the book. Documents of at most `pretext-tools.instantPreview.wholeDocumentUpTo` elements (1000 by default) are shown whole. Use the `PreTeXt: Live Preview: Choose Scope` command, or the `pretext-tools.instantPreview.scope` setting, to show the current file in full or the whole project in full instead.
+
+The preview updates from the unsaved text a moment after you stop typing; the pause grows with how long the document takes to render, so a large one is not rendered continuously. While the source is not well-formed (a tag you have not closed yet), the preview keeps showing the last good version and its toolbar names the line to look at. To update only when you save instead, turn off "As you type" in the preview's toolbar, or the `pretext-tools.instantPreview.updateWhileTyping` setting.
+
+The preview has no search box: it shows one page of the document, and a search index would have to be rebuilt on every update.
 
 **Runtime requirements.** The preview renders the PreTeXt stylesheets through WebAssembly, which needs a JavaScript engine supporting WebAssembly JSPI. VS Code normally provides this itself, so there is nothing to install. If you see an error saying no such runtime was found — most likely on an older VS Code release, or in a remote/Codespaces window whose server runtime predates JSPI — then:
 

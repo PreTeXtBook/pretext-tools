@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import type { RenderOptions, RenderResult } from "@pretextbook/pretext-html";
 import {
   createRenderServer,
+  errorLocation,
   isFatalWasmError,
   isRenderRequest,
   isRenderResponse,
   isWorkerReadRequest,
   renderOptionsFrom,
+  typingDebounceMs,
   type RenderRequest,
   type RenderResponse,
 } from "./preview-protocol";
@@ -45,6 +47,53 @@ describe("message guards", () => {
     expect(
       isWorkerReadRequest({ type: "read", id: 1, kind: "disk", path: "a" }),
     ).toBe(false);
+  });
+});
+
+describe("errorLocation", () => {
+  /** What the XML parser throws: a position, and no file to speak of. */
+  const parseError = (line: number, column: number) =>
+    Object.assign(new Error("Unexpected closing tag"), {
+      file: "",
+      line,
+      column,
+    });
+
+  it("places a parse error in the file being rendered", () => {
+    expect(
+      errorLocation(parseError(12, 5), "/project/source/main.ptx"),
+    ).toEqual({ file: "/project/source/main.ptx", line: 12, column: 5 });
+  });
+
+  it("places an included file's parse error in that file", () => {
+    const wrapped = Object.assign(
+      new Error("Could not parse xi:include target"),
+      { file: "/project/source/sec-limits.ptx", cause: parseError(3, 1) },
+    );
+    expect(errorLocation(wrapped, "/project/source/main.ptx")).toEqual({
+      file: "/project/source/sec-limits.ptx",
+      line: 3,
+      column: 1,
+    });
+  });
+
+  it("has nothing to say about an error with no position", () => {
+    expect(errorLocation(new Error("transform failed"), "/a.ptx")).toBe(
+      undefined,
+    );
+    expect(errorLocation("nope", "/a.ptx")).toBe(undefined);
+  });
+});
+
+describe("typingDebounceMs", () => {
+  it("is short for a fast render, and before any render", () => {
+    expect(typingDebounceMs(undefined)).toBe(300);
+    expect(typingDebounceMs(90)).toBe(300);
+  });
+
+  it("grows with a slow render, up to a cap", () => {
+    expect(typingDebounceMs(800)).toBe(1200);
+    expect(typingDebounceMs(30_000)).toBe(3000);
   });
 });
 
@@ -171,5 +220,28 @@ describe("createRenderServer", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(sent[1]).toMatchObject({ id: 2, ok: false });
     expect(fatal).toBe(1);
+  });
+
+  it("says where a source that is not well-formed went wrong", async () => {
+    const sent: RenderResponse[] = [];
+    const handle = createRenderServer({
+      render: async () => {
+        throw Object.assign(new Error("Unexpected closing tag"), {
+          line: 7,
+          column: 3,
+        });
+      },
+      send: (response) => sent.push(response),
+      onFatal: () => undefined,
+      log: () => undefined,
+    });
+    handle(request(1));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sent[0]).toEqual({
+      id: 1,
+      ok: false,
+      error: "Unexpected closing tag",
+      errorAt: { file: "/project/source/main.ptx", line: 7, column: 3 },
+    });
   });
 });

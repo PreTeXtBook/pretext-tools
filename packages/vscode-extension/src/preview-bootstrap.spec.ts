@@ -10,10 +10,15 @@ import { livePatchScript } from "@pretextbook/pretext-html/live-patch";
 // @ts-expect-error -- untyped module
 import { JSDOM, VirtualConsole } from "jsdom";
 import { describe, expect, it, vi } from "vitest";
-import { liveBootstrapScript, previewCsp } from "./preview-bootstrap";
+import {
+  MAX_TYPESET_STALLS,
+  liveBootstrapScript,
+  previewCsp,
+} from "./preview-bootstrap";
 
 interface PageElement {
   textContent: string | null;
+  getAttribute(name: string): string | null;
   querySelector(selector: string): PageElement | null;
   click(): void;
 }
@@ -203,6 +208,105 @@ describe("the live page's update handler", () => {
     expect(bar).not.toBe(oldBar);
     bar?.querySelector("button")?.click();
     expect(webview.posted).toContainEqual({ command: "setMode", mode: "full" });
+  });
+});
+
+describe("when MathJax does not finish typesetting a patch", () => {
+  const math = (tex: string) =>
+    `<span class="process-math">\\(${tex}\\)</span>`;
+  const update = (webview: ReturnType<typeof openWebview>, html: string) =>
+    webview.send({ command: "update", html, patch: true });
+  /** Long enough for the page's patch promise chain to run. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A page whose MathJax answers each patch's typeset as the test says. */
+  function openWithMathJax(html: string, finished: boolean) {
+    const webview = openWebview(html);
+    // Stands in for the patcher's typeset step, whose own waiting is covered
+    // in @pretextbook/pretext-html: what matters here is what the page does
+    // with the answer.
+    (webview.window.__ptxLivePatch as { typeset: unknown }).typeset = () =>
+      Promise.resolve(finished);
+    return webview;
+  }
+
+  it("rewrites the page, so the math is typeset from scratch", async () => {
+    const before = page(math("a"));
+    const after = page(math("b"));
+    const webview = openWithMathJax(before, false);
+    update(webview, before);
+    webview.written.length = 0;
+
+    update(webview, after);
+    expect(webview.written).toEqual([]); // patched
+    await settle();
+
+    expect(webview.written).toEqual([after]);
+    expect(webview.posted).toContainEqual(
+      expect.objectContaining({
+        command: "patchResult",
+        ok: false,
+        reason: expect.stringContaining("MathJax did not finish"),
+      }),
+    );
+  });
+
+  it("stops patching once it keeps happening", async () => {
+    const pages = ["a", "b", "c", "d"].map((tex) => page(math(tex)));
+    const webview = openWithMathJax(pages[0], false);
+    update(webview, pages[0]);
+    for (let stall = 1; stall <= MAX_TYPESET_STALLS; stall++) {
+      update(webview, pages[stall]);
+      await settle();
+    }
+    webview.written.length = 0;
+    webview.posted.length = 0;
+
+    update(webview, pages[MAX_TYPESET_STALLS + 1]);
+
+    // Written straight away, with no patch attempted first.
+    expect(webview.written).toEqual([pages[MAX_TYPESET_STALLS + 1]]);
+    expect(webview.posted).toEqual([]);
+  });
+
+  it("leaves a page alone whose math was typeset", async () => {
+    const before = page(math("a"));
+    const webview = openWithMathJax(before, true);
+    update(webview, before);
+    webview.written.length = 0;
+
+    update(webview, page(math("b")));
+    await settle();
+
+    expect(webview.written).toEqual([]);
+  });
+});
+
+describe("the as-you-type toggle", () => {
+  const withToggle = (pressed: boolean) =>
+    page("Text.").replace(
+      "</div>",
+      `<button type="button" id="typing" data-ptx-action="toggleTyping"` +
+        ` aria-pressed="${pressed}">As you type</button></div>`,
+    );
+
+  it("flips at once and tells the extension", () => {
+    const webview = openWebview(withToggle(true));
+    const toggle = webview.document.getElementById("typing");
+    toggle?.click();
+    expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+    expect(webview.posted).toContainEqual({
+      command: "setTyping",
+      typing: false,
+    });
+  });
+
+  it("follows the setting when it is changed elsewhere", () => {
+    const webview = openWebview(withToggle(false));
+    webview.send({ command: "typing", on: true });
+    expect(
+      webview.document.getElementById("typing")?.getAttribute("aria-pressed"),
+    ).toBe("true");
   });
 });
 

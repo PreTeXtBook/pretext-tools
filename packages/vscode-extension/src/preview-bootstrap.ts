@@ -49,6 +49,15 @@ export function previewCsp(cspSource: string): string {
   ].join("; ");
 }
 
+/**
+ * How many times MathJax may fail to finish typesetting a patch before the
+ * page stops patching and rewrites itself on every update instead — always
+ * correct, since a rewritten page typesets from scratch, just not smooth.
+ * More than one, because a single slow typeset (an edit landing while a long
+ * page is still being typeset for the first time) is not a broken MathJax.
+ */
+export const MAX_TYPESET_STALLS = 2;
+
 /** Height of the injected mode toolbar; the theme offsets below match it. */
 export const TOOLBAR_HEIGHT_PX = 32;
 
@@ -82,6 +91,12 @@ export const TOOLBAR_SCRIPT_LINES: string[] = [
   "        var on = btn.getAttribute('aria-pressed') !== 'true';",
   "        btn.setAttribute('aria-pressed', on ? 'true' : 'false');",
   "        api.postMessage({ command: 'setFollow', follow: on });",
+  "        return;",
+  "      }",
+  "      if (action === 'toggleTyping') {",
+  "        var typing = btn.getAttribute('aria-pressed') !== 'true';",
+  "        btn.setAttribute('aria-pressed', typing ? 'true' : 'false');",
+  "        api.postMessage({ command: 'setTyping', typing: typing });",
   "        return;",
   "      }",
   // Same reasoning as the follow toggle: the deck is about to be replaced
@@ -124,6 +139,14 @@ export const TOOLBAR_STATUS_BRANCH: string[] = [
   "      }",
   "      return;",
   "    }",
+  "    if (msg.command === 'typing') {",
+  "      var typingEl = document.querySelector(",
+  "        '[data-ptx-action=\"toggleTyping\"]');",
+  "      if (typingEl) {",
+  "        typingEl.setAttribute('aria-pressed', msg.on ? 'true' : 'false');",
+  "      }",
+  "      return;",
+  "    }",
 ];
 
 /**
@@ -154,6 +177,11 @@ export function liveBootstrapScript(): string {
     "(function () {",
     "  var api = window.__ptxPreviewApi ||",
     "    (window.__ptxPreviewApi = acquireVsCodeApi());",
+    // Which document this script belongs to: a rewrite keeps the Window but
+    // not the page, and work the old page left pending must not act on the
+    // new one (see ptxTypesetStalled).
+    "  var generation = window.__ptxPageGeneration =",
+    "    (window.__ptxPageGeneration || 0) + 1;",
     "  var prior = api.getState();",
     "  function restoreScroll() {",
     "    if (prior && typeof prior.scrollY === 'number') {",
@@ -212,19 +240,41 @@ export function liveBootstrapScript(): string {
     "      window.__ptxRawHtml = msg.previous;",
     "      window.__ptxRawDoc = null;",
     "    }",
-    "    if (msg.patch && ptxTryPatch(msg.html)) {",
+    "    if (msg.patch && !ptxPatchingGivenUp() && ptxTryPatch(msg.html)) {",
     "      return;",
     "    }",
+    "    ptxRewrite(msg.html);",
+    "  };",
+    "  window.addEventListener('message', window.__ptxUpdateHandler);",
+    "  function ptxRewrite(html) {",
     // The rewritten page is the one the next patch diffs against. Kept on
     // window because document.write keeps the Window (see above).
-    "    window.__ptxRawHtml = msg.html;",
+    "    window.__ptxRawHtml = html;",
     "    window.__ptxRawDoc = null;",
     "    api.setState({ scrollY: window.scrollY });",
     "    document.open();",
-    "    document.write(msg.html);",
+    "    document.write(html);",
     "    document.close();",
-    "  };",
-    "  window.addEventListener('message', window.__ptxUpdateHandler);",
+    "  }",
+    // MathJax can stop typesetting without anything failing (see typesetPatch
+    // in @pretextbook/pretext-html), which would leave every patched block
+    // showing raw LaTeX. A rewritten page typesets from scratch, so fall back
+    // to that — for this update, and for good once it keeps happening.
+    "  function ptxPatchingGivenUp() {",
+    `    return (window.__ptxTypesetStalls || 0) >= ${MAX_TYPESET_STALLS};`,
+    "  }",
+    "  function ptxTypesetStalled() {",
+    "    if (window.__ptxPageGeneration !== generation ||",
+    "        typeof window.__ptxRawHtml !== 'string') {",
+    "      return;",
+    "    }",
+    "    window.__ptxTypesetStalls = (window.__ptxTypesetStalls || 0) + 1;",
+    "    api.postMessage({ command: 'patchResult', ok: false,",
+    "      reason: 'MathJax did not finish typesetting the update' +",
+    "        (ptxPatchingGivenUp()",
+    "          ? '; updates will reload the page from now on' : '') });",
+    "    ptxRewrite(window.__ptxRawHtml);",
+    "  }",
     // Patch the new page into this one (see @pretextbook/pretext-html's
     // live-patch): only changed blocks are replaced, so the scroll position,
     // typeset math and opened proofs all stay. Diffs the previous page's HTML
@@ -246,7 +296,12 @@ export function liveBootstrapScript(): string {
     "      if (!result.ok) { return false; }",
     "      window.__ptxRawHtml = html;",
     "      window.__ptxRawDoc = newDoc;",
-    "      patcher.typeset(window, result);",
+    "      var typeset = patcher.typeset(window, result);",
+    "      if (typeset && typeof typeset.then === 'function') {",
+    "        typeset.then(function (finished) {",
+    "          if (finished === false) { ptxTypesetStalled(); }",
+    "        });",
+    "      }",
     "      ptxWireToolbar();",
     "      ptxOffsetPinned();",
     "      return true;",
