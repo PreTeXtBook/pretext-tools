@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/ptxast-util-to-mdast",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Convert ptxast to mdast (markdown AST) and markdown strings",
   "author": "Oscar Levin",
   "license": "GPL-3.0-or-later",

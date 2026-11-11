@@ -1,5 +1,12 @@
 # @pretextbook/import
 
+## 0.17.4
+
+### Patch Changes
+
+- Updated dependencies [ee6b86d]
+  - @pretextbook/remark-pretext@0.4.0
+
 ## 0.17.3
 
 ### Patch Changes
