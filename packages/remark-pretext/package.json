@@ -1,6 +1,6 @@
 {
   "name": "@pretextbook/remark-pretext",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "remark plugin to transform markdown-style PreTeXt directives into ptxast",
   "author": "Oscar Levin",
   "license": "MIT",
