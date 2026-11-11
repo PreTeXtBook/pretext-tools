@@ -296,10 +296,17 @@ async function expandInclude(
   try {
     subtree = parseWith(context, target, content);
   } catch (error) {
-    throw new Error(
-      `Could not parse xi:include target ${target} as XML: ` +
-        `${error instanceof Error ? error.message : error}. ` +
-        `(Included files must be well-formed, with a single root element.)`,
+    // `cause` keeps the parser's own error, whose line and column say where
+    // in `target` the problem is; `file` says which file those refer to, for
+    // a host that wants to point the author at it.
+    throw Object.assign(
+      new Error(
+        `Could not parse xi:include target ${target} as XML: ` +
+          `${error instanceof Error ? error.message : error}. ` +
+          `(Included files must be well-formed, with a single root element.)`,
+        { cause: error },
+      ),
+      { file: target },
     );
   }
   context.stack.push(target);

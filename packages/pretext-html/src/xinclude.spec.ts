@@ -119,6 +119,29 @@ describe("resolveXIncludes", () => {
     ).rejects.toThrow(/escapes the project directory/);
   });
 
+  it("says which included file is not well-formed, and where", async () => {
+    const broken = write("broken.ptx", `<section>\n  <p>Unclosed.\n</section>`);
+    const main = write(
+      "broken-main.ptx",
+      `<pretext xmlns:xi="http://www.w3.org/2001/XInclude">
+        <xi:include href="broken.ptx"/>
+      </pretext>`,
+    );
+    const error = await resolveXIncludes(
+      fs.readFileSync(main, "utf8"),
+      main,
+      dir,
+    ).then(
+      () => undefined,
+      (thrown: unknown) => thrown as Error & { file?: string; cause?: unknown },
+    );
+    expect(error?.message).toMatch(/Could not parse xi:include target/);
+    // For a host to point the author at: the file the parser's position (on
+    // the cause) refers to.
+    expect(error?.file).toBe(broken);
+    expect(error?.cause).toMatchObject({ line: 3 });
+  });
+
   it("rejects xpointer includes with a clear error", async () => {
     write("frag.ptx", `<x><y xml:id="part"/></x>`);
     const main = write(

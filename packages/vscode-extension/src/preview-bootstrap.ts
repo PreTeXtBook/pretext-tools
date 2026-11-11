@@ -7,6 +7,48 @@
 
 import { LIVE_PATCH_GLOBAL } from "@pretextbook/pretext-html/live-patch";
 
+/**
+ * The Content-Security-Policy for every page the preview panel shows, in
+ * either mode — deliberately one policy, not one per page.
+ *
+ * `document.open()` does not clear a document's CSP list (that would be a
+ * trivial bypass), so a page written in place *adds* its meta policy to the
+ * list already there, and the browser enforces the intersection of all of
+ * them. Two different policies therefore ratchet each other down
+ * permanently: a wrapper that omitted `https:` from `style-src` would
+ * silently strip the CDN stylesheets from every live render afterwards, for
+ * the life of the webview. Keeping one policy for every document we write
+ * makes that composition a no-op.
+ *
+ * `frame-src` accordingly has to cover both the asymptote 3d output embedded
+ * by rendered pages and the `pretext view` server behind full-build mode,
+ * whose port is not known when the first live page is built.
+ *
+ * `cspSource` is the webview's own (`Webview.cspSource`), which covers the
+ * rewritten project assets.
+ */
+export function previewCsp(cspSource: string): string {
+  return [
+    "default-src 'none'",
+    // cspSource covers the rewritten project assets; https:/data: the CDN.
+    `img-src ${cspSource} https: data:`,
+    `media-src ${cspSource} https:`,
+    "script-src https: 'unsafe-inline' 'unsafe-eval'",
+    // Not optional, and not covered by script-src: without a worker-src,
+    // workers fall back to script-src, which has no `blob:`. MathJax 4
+    // generates speech in a worker it starts from a blob: URL, and when that
+    // is blocked nothing fails — its startup promise just never settles, and
+    // math patched into the page afterwards is never typeset.
+    "worker-src blob: https:",
+    "style-src https: 'unsafe-inline'",
+    "font-src https: data:",
+    "connect-src https:",
+    // asymptote emits 3d output as an <iframe> into the generated directory;
+    // the localhost sources are full-build mode's CLI server.
+    `frame-src ${cspSource} https: http://localhost:* http://127.0.0.1:*`,
+  ].join("; ");
+}
+
 /** Height of the injected mode toolbar; the theme offsets below match it. */
 export const TOOLBAR_HEIGHT_PX = 32;
 

@@ -10,7 +10,7 @@ import { livePatchScript } from "@pretextbook/pretext-html/live-patch";
 // @ts-expect-error -- untyped module
 import { JSDOM, VirtualConsole } from "jsdom";
 import { describe, expect, it, vi } from "vitest";
-import { liveBootstrapScript } from "./preview-bootstrap";
+import { liveBootstrapScript, previewCsp } from "./preview-bootstrap";
 
 interface PageElement {
   textContent: string | null;
@@ -203,5 +203,29 @@ describe("the live page's update handler", () => {
     expect(bar).not.toBe(oldBar);
     bar?.querySelector("button")?.click();
     expect(webview.posted).toContainEqual({ command: "setMode", mode: "full" });
+  });
+});
+
+describe("previewCsp", () => {
+  const directives = new Map(
+    previewCsp("vscode-webview://abc")
+      .split("; ")
+      .map((directive) => {
+        const [name, ...sources] = directive.split(" ");
+        return [name, sources] as const;
+      }),
+  );
+
+  it("lets MathJax start its speech worker from a blob: URL", () => {
+    // Without this the worker falls back to script-src, is blocked, and
+    // MathJax's startup never settles: math patched into the page stays raw.
+    expect(directives.get("worker-src")).toContain("blob:");
+    expect(directives.get("script-src")).not.toContain("blob:");
+  });
+
+  it("covers the webview's own resources and the CDN", () => {
+    expect(directives.get("default-src")).toEqual(["'none'"]);
+    expect(directives.get("img-src")).toContain("vscode-webview://abc");
+    expect(directives.get("script-src")).toContain("https:");
   });
 });

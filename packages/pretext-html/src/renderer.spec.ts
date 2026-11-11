@@ -146,6 +146,7 @@ describe("forcePreviewPublication", () => {
     expect(setting(xml, ["html", "resources"], "host")).toBe("cdn");
     expect(setting(xml, ["html", "platform"], "portable")).toBe("no");
     expect(setting(xml, ["html", "cross-references"], "knowled")).toBe("never");
+    expect(setting(xml, ["html", "search"], "variant")).toBe("none");
     expect(setting(xml, ["common", "chunking"], "level")).toBe("0");
   }
 
@@ -161,6 +162,7 @@ describe("forcePreviewPublication", () => {
         `<common><chunking level="2"/></common>` +
         `<html><platform portable="yes" host="web"/>` +
         `<resources host="local"/>` +
+        `<search variant="reference"/>` +
         `<cross-references knowled="maximum"/></html>` +
         `</publication>`,
     );
@@ -1031,14 +1033,18 @@ describe("renderHtml", () => {
       }
     });
 
-    it("embeds the search index in the page", async () => {
+    it("builds no search index, and offers no search box", async () => {
       const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pretext-html-lunr-"));
       try {
         const sourcePath = path.join(dir, "main.ptx");
         fs.writeFileSync(sourcePath, SIMPLE_ARTICLE);
         const { html } = await renderHtml({ sourcePath });
-        // The index a real build writes to its own file, in a <script> here.
-        expect(html).toContain("ptx_lunr_docs");
+        // A real build writes the index to its own file; a preview has no
+        // such file, and a page that asked for one would only get an error.
+        expect(html).not.toContain("ptx_lunr_docs");
+        expect(html).not.toContain("lunr-pretext-search-index.js");
+        expect(html).not.toContain("lunr.min.js");
+        expect(html).not.toContain("ptx-search-button");
       } finally {
         fs.rmSync(dir, { recursive: true, force: true });
       }

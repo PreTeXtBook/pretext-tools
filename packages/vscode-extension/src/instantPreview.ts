@@ -87,6 +87,7 @@ import {
   TOOLBAR_SCRIPT_LINES,
   TOOLBAR_STATUS_BRANCH,
   liveBootstrapScript,
+  previewCsp,
 } from "./preview-bootstrap";
 import type {
   FullBuildTarget,
@@ -2037,41 +2038,8 @@ function onSourceSavedWhileFullBuild(): void {
   scheduleFullBuild();
 }
 
-/**
- * The Content-Security-Policy meta tag for *both* modes' pages — deliberately
- * one policy, not one per page.
- *
- * `document.open()` does not clear a document's CSP list (that would be a
- * trivial bypass), so a page written in place by updatePanelContent *adds* its
- * meta policy to the list already there, and the browser enforces the
- * intersection of all of them. Two different policies therefore ratchet each
- * other down permanently: a wrapper that omitted `https:` from `style-src`
- * would silently strip the CDN stylesheets from every live render afterwards,
- * for the life of the webview. Keeping one policy for every document we write
- * makes that composition a no-op.
- *
- * `frame-src` accordingly has to cover both the asymptote 3d output embedded
- * by rendered pages and the `pretext view` server behind full-build mode,
- * whose port is not known when the first live page is built.
- */
-function previewCsp(webview: Webview): string {
-  return [
-    "default-src 'none'",
-    // cspSource covers the rewritten project assets; https:/data: the CDN.
-    `img-src ${webview.cspSource} https: data:`,
-    `media-src ${webview.cspSource} https:`,
-    "script-src https: 'unsafe-inline' 'unsafe-eval'",
-    "style-src https: 'unsafe-inline'",
-    "font-src https: data:",
-    "connect-src https:",
-    // asymptote emits 3d output as an <iframe> into the generated directory;
-    // the localhost sources are full-build mode's CLI server.
-    `frame-src ${webview.cspSource} https: http://localhost:* http://127.0.0.1:*`,
-  ].join("; ");
-}
-
 function cspMetaTag(webview: Webview): string {
-  return `<meta http-equiv="Content-Security-Policy" content="${previewCsp(webview)}">`;
+  return `<meta http-equiv="Content-Security-Policy" content="${previewCsp(webview.cspSource)}">`;
 }
 
 /**
