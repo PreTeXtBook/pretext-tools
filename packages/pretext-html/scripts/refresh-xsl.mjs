@@ -21,6 +21,9 @@
 //     conversion overrides the entry template and emits one monolithic page
 //     already. It only stubs the file writers and stamps ids onto slides.
 //
+// Both also keep the iframe page of each <interactive platform="...">, which
+// upstream writes to a file of its own: see iframePageOverride.
+//
 // Regenerating them here keeps them in lockstep with the vendored stylesheets.
 
 import fs from "node:fs";
@@ -56,7 +59,8 @@ const generateOnly = process.argv.includes("--generate-only");
  * The preview's publication settings keep some of these from being reached,
  * but not all: an ordinary build writes a search index, a redirect page and a
  * standalone page per video and interactive, and an <interactive> on a slide
- * reaches "create-iframe-page" whatever the settings. Kept as one shared
+ * reaches "create-iframe-page" whatever the settings (and gets its page
+ * another way: see iframePageOverride). Kept as one shared
  * constant so the two wrappers cannot drift apart, and so this list stays next
  * to the KNOWN_WRITER_TEMPLATES audit that guards it.
  *
@@ -70,8 +74,10 @@ const FILE_WRITER_STUBS = `<xsl:template name="index-redirect-page"/>
 <xsl:template name="doc-manifest"/>
 <xsl:template name="search-page-construction"/>
 <xsl:template name="scorm-manifest"/>
-<!-- standalone pages for videos and iframe pages for interactives -->
+<!-- standalone pages for videos and interactives -->
 <xsl:template match="*" mode="standalone-page"/>
+<!-- iframe pages: none by default; IFRAME_PAGE_OVERRIDE, which follows   -->
+<!-- these stubs in both wrappers, emits the ones that hold an interactive -->
 <xsl:template match="*" mode="create-iframe-page"/>
 <!-- runestone-manifest lives in pretext-runestone.xsl -->
 <xsl:template match="*" mode="runestone-manifest"/>
@@ -397,6 +403,79 @@ function copyXslTree(sourceRoot) {
 }
 
 /**
+ * The element an interactive's iframe page is carried in, and the comment that
+ * closes it. Kept in step with src/iframe-pages.ts, which lifts the pages back
+ * out of the rendered HTML; src/iframe-pages.spec.ts renders a real
+ * interactive, so the two cannot drift apart unnoticed.
+ */
+const IFRAME_PAGE_ATTRIBUTE = "data-ptx-iframe-page";
+const IFRAME_PAGE_END = "/ptx-iframe-page";
+
+/**
+ * Build the override that keeps an interactive's iframe page.
+ *
+ * An <interactive platform="…"> (GeoGebra, JSXGraph, D3, Sage, DoenetML,
+ * plain JavaScript, and <interactive geogebra="…">, which assembly rewrites
+ * into the platform form) is not drawn on the page itself. The page holds an
+ * <iframe src="<id>-if.html">, and "create-iframe-page" writes that file with
+ * the slates, the platform's libraries and the author's scripts. With no
+ * filesystem to write to, the template used to be stubbed, which left every
+ * such interactive an empty frame.
+ *
+ * This is the upstream template with one change, the same one "file-wrap"
+ * gets: the <exsl:document> element becomes an inert HTML <template> naming
+ * the file, so the page lands on the main result tree, next to the iframe
+ * that wants it. The renderer then lifts every such carrier out of the HTML
+ * and returns the pages by filename (src/iframe-pages.ts). A <template> is
+ * used so the page is inert even in HTML that skipped that step, and the
+ * closing comment so a page that itself contains a <template> still ends
+ * where it should.
+ *
+ * Copied rather than wrapped with <xsl:apply-imports/> because the only thing
+ * to change is the instruction that aborts the WASM build, and it encloses
+ * everything else in the template.
+ */
+function iframePageOverride() {
+  const htmlXsl = fs.readFileSync(
+    path.join(xslDir, "pretext-html.xsl"),
+    "utf8",
+  );
+  const startMarker =
+    '<xsl:template match="interactive[@platform]" mode="create-iframe-page">';
+  const start = htmlXsl.indexOf(startMarker);
+  if (start === -1) {
+    throw new Error(
+      `Could not find \`${startMarker}\` in pretext-html.xsl. ` +
+        "Upstream has changed; the iframe page override needs updating.",
+    );
+  }
+  const end = htmlXsl.indexOf("</xsl:template>", start);
+  const template = htmlXsl.slice(start, end + "</xsl:template>".length);
+
+  const opens = template.match(/<exsl:document\b[^>]*>/g) ?? [];
+  const closes = template.match(/<\/exsl:document>/g) ?? [];
+  if (opens.length !== 1 || closes.length !== 1) {
+    throw new Error(
+      `Expected exactly one exsl:document element in create-iframe-page (found ${opens.length} open / ${closes.length} close). ` +
+        "Upstream has changed; the iframe page override needs updating.",
+    );
+  }
+  const href = /\bhref="([^"]*)"/.exec(opens[0])?.[1];
+  if (href === undefined) {
+    throw new Error(
+      "The exsl:document in create-iframe-page has no @href to name the page by. " +
+        "Upstream has changed; the iframe page override needs updating.",
+    );
+  }
+  return template
+    .replace(opens[0], `<template ${IFRAME_PAGE_ATTRIBUTE}="${href}">`)
+    .replace(
+      "</exsl:document>",
+      `<xsl:comment>${IFRAME_PAGE_END}</xsl:comment></template>`,
+    );
+}
+
+/**
  * Generate assets/preview-html.xsl.
  *
  * Extracts the body of the `file-wrap` template from the vendored
@@ -518,6 +597,12 @@ ${SKIPPED_WORK_STUBS}
 <!-- Any exsl:document that does fire aborts the FILESYSTEM=0 WASM build.   -->
 ${FILE_WRITER_STUBS}
 
+<!-- An interactive's iframe page, kept: the upstream template with its     -->
+<!-- exsl:document swapped for an inert carrier, which the renderer lifts   -->
+<!-- out of the page and returns by filename (src/iframe-pages.ts).         -->
+<!-- See iframePageOverride in refresh-xsl.mjs.                             -->
+${iframePageOverride()}
+
 </xsl:stylesheet>
 `;
 
@@ -618,6 +703,10 @@ function generatePreviewRevealXsl() {
 <!-- and FILE_WRITER_STUBS.                                                 -->
 ${SKIPPED_WORK_STUBS}
 ${FILE_WRITER_STUBS}
+
+<!-- An interactive's iframe page, kept as in preview-html.xsl. -->
+<!-- See iframePageOverride in refresh-xsl.mjs.                 -->
+${iframePageOverride()}
 
 </xsl:stylesheet>
 `;

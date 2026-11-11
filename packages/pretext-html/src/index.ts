@@ -46,6 +46,12 @@ export type { RevealView, RevealViewOptions } from "./reveal.js";
 // unless RenderOptions.openKnowls is false; exported so an embedder can apply
 // it to HTML it already has, without re-rendering.
 export { openBornHiddenKnowls } from "./knowls.js";
+// The iframe pages of interactives (GeoGebra, JSXGraph, …), which a PreTeXt
+// build writes to files of their own (see iframe-pages.ts). The renderer
+// returns them as RenderResult.iframePages; embedIframePages inlines them
+// into the page for a host with nowhere to serve them from.
+export { embedIframePages, extractIframePages } from "./iframe-pages.js";
+export type { EmbedIframePagesOptions, IframePages } from "./iframe-pages.js";
 // Placing a fragment in its document, so it is numbered and cross-referenced
 // as the built book will be (see skeleton.ts). The renderer does this itself
 // when RenderOptions.contextSourcePath or .contextSourceContent is set;

@@ -162,6 +162,52 @@ const page = rewriteAssetUrls(html, (kind, relPath) => {
   asset relative to the output file. HTML written to stdout keeps PreTeXt's
   own URLs.
 
+### Interactives
+
+An `<interactive>` that PreTeXt points straight at a service — `@desmos`,
+`@calcplot3d`, `@circuitjs`, `@iframe` — is an ordinary `<iframe>` on the page
+and needs nothing from the host.
+
+One authored with `@platform` (GeoGebra, JSXGraph, D3, Sage, DoenetML, plain
+JavaScript), and `<interactive geogebra="…">`, which PreTeXt rewrites into that
+form, is different: the page holds `<iframe src="<id>-if.html">`, and a real
+build writes that second, minimal page — the slates, the platform's libraries,
+the author's scripts — to a file beside it. This renderer writes no files, so
+it returns those pages instead:
+
+```js
+const { html, iframePages } = await renderHtml({ sourcePath });
+// iframePages: { "graph-if.html": "<!DOCTYPE html>\n<html>…", … }
+```
+
+`html` is left with the iframes exactly as PreTeXt emits them, pointing at
+files that do not exist until the host does one of two things:
+
+- **Serve them** at those names, relative to wherever the page is loaded from.
+- **Inline them** with `embedIframePages`, which gives every iframe that names
+  a page that page as its `srcdoc` (moving the filename to
+  `data-ptx-iframe-page`). This is what the CLI does.
+
+```js
+import { embedIframePages } from "@pretextbook/pretext-html/iframe-pages";
+
+const page = embedIframePages(html, iframePages, { sandbox: "allow-scripts" });
+```
+
+- An iframe page **runs JavaScript the author wrote**, and a `srcdoc` frame
+  shares its embedder's origin. A host that shows documents its user did not
+  write, on an origin that matters (a web app with a session), should pass
+  `sandbox` without `allow-same-origin`. Omitted, the frame is unsandboxed,
+  as in a PreTeXt build.
+- A page links its own assets (`<interactive source="board.js">` becomes
+  `<script src="external/board.js">`), and a `srcdoc` frame resolves those
+  against the embedding page's URL. To send them elsewhere, run each page
+  through `rewriteAssetUrls` before embedding it.
+- The helper is also on the `./iframe-pages` subpath, free of the WASM
+  renderer, for a host that inlines pages a worker rendered.
+- The reader-facing standalone page ("open in new tab") is still not built;
+  its link is inert like every other off-page link.
+
 ### Previewing one division of a large document
 
 A render costs what PreTeXt's assembly costs, and that tracks the number of
@@ -499,7 +545,8 @@ here.
    don't cover. `assets/preview-revealjs.xsl` is the slideshow counterpart and
    is far thinner: `pretext-revealjs.xsl` already emits one monolithic page, so
    there is no template to copy — it only stubs the same file writers (a slide
-   holding an `<interactive>` really does reach one) and stamps `@id` onto
+   holding an `<interactive>` really does reach one; its iframe page is kept,
+   see [Interactives](#interactives)) and stamps `@id` onto
    slides, via `apply-imports` so no upstream markup is duplicated.
 3. **Virtual-host fetch shim** — the WASM build has no filesystem
    (`FILESYSTEM=0`); every resource load (stylesheet imports, `document()`

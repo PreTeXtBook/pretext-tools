@@ -32,6 +32,9 @@
       ],
       "live-patch": [
         "./dist/live-patch.d.ts"
+      ],
+      "iframe-pages": [
+        "./dist/iframe-pages.d.ts"
       ]
     }
   },
@@ -72,6 +75,11 @@
       "types": "./dist/live-patch.d.ts",
       "import": "./dist/live-patch.js",
       "default": "./dist/live-patch.js"
+    },
+    "./iframe-pages": {
+      "types": "./dist/iframe-pages.d.ts",
+      "import": "./dist/iframe-pages.js",
+      "default": "./dist/iframe-pages.js"
     },
     "./cli": "./dist/cli.js"
   },

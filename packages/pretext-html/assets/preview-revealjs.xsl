@@ -77,14 +77,68 @@
 <xsl:template name="doc-manifest"/>
 <xsl:template name="search-page-construction"/>
 <xsl:template name="scorm-manifest"/>
-<!-- standalone pages for videos and iframe pages for interactives -->
+<!-- standalone pages for videos and interactives -->
 <xsl:template match="*" mode="standalone-page"/>
+<!-- iframe pages: none by default; IFRAME_PAGE_OVERRIDE, which follows   -->
+<!-- these stubs in both wrappers, emits the ones that hold an interactive -->
 <xsl:template match="*" mode="create-iframe-page"/>
 <!-- runestone-manifest lives in pretext-runestone.xsl -->
 <xsl:template match="*" mode="runestone-manifest"/>
 <xsl:template match="*" mode="simple-file-wrap">
     <xsl:param name="content"/>
     <xsl:copy-of select="$content"/>
+</xsl:template>
+
+<!-- An interactive's iframe page, kept as in preview-html.xsl. -->
+<!-- See iframePageOverride in refresh-xsl.mjs.                 -->
+<xsl:template match="interactive[@platform]" mode="create-iframe-page">
+    <xsl:variable name="if-filename">
+        <xsl:apply-templates select="." mode="iframe-filename" />
+    </xsl:variable>
+    <template data-ptx-iframe-page="{$if-filename}">
+        <xsl:call-template name="converter-blurb-html-no-date"/>
+        <html>
+            <xsl:call-template name="language-attributes"/>
+            <head>
+                <!-- grab the contents every iframe gets -->
+                <xsl:copy-of select="$file-wrap-iframe-head-cache"/>
+                <!-- now do anything that is or could be page-specific and comes after cache -->
+                <!-- and CSS for the entire interactive, into the head -->
+                <xsl:apply-templates select="@css" />
+                <!-- load header libraries (for all "slate") -->
+                <xsl:apply-templates select="." mode="header-libraries" />
+            </head>
+                <!-- ignore MathJax signals everywhere, then enable selectively -->
+                <body class="ptx-content ignore-math">
+                <!-- potential document-id per-page -->
+                <xsl:call-template name="document-id"/>
+                <!-- React flag -->
+                <xsl:call-template name="react-in-use-flag"/>
+                <!-- Some interactives use slates that are PreTeXt  -->
+                <!-- elements, hence could have math, hence need to -->
+                <!-- know globally available macros from the author -->
+                <xsl:apply-templates select="." mode="latex-macros"/>
+                <xsl:if test="slate|sidebyside|sbsgroup">
+                    <div>
+                        <!-- aspect ratio will force the proper height for wrapper div                           -->
+                        <!-- don't want to mess with width as iframe has applied any % width and px is redundant -->
+                        <xsl:attribute name="style">
+                            <xsl:text>aspect-ratio: </xsl:text>
+                            <xsl:apply-templates select="." mode="get-aspect-ratio"/>
+                            <xsl:text>;</xsl:text>
+                        </xsl:attribute>
+
+                        <!-- stack, else use a layout -->
+                        <xsl:apply-templates select="slate|sidebyside|sbsgroup" />
+                    </div>
+                </xsl:if>
+                <!-- accumulate script tags *after* HTML elements -->
+                <xsl:apply-templates select="@source" />
+                <!-- accumulate script elements *after* @source scripts -->
+                <xsl:apply-templates select="script"/>
+            </body>
+        </html>
+    <xsl:comment>/ptx-iframe-page</xsl:comment></template>
 </xsl:template>
 
 </xsl:stylesheet>
