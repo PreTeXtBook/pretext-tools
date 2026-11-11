@@ -21,6 +21,7 @@ import {
   RUNESTONE_JS,
   RUNESTONE_VERSION,
 } from "./html-static.js";
+import { extractIframePages, type IframePages } from "./iframe-pages.js";
 import { openBornHiddenKnowls } from "./knowls.js";
 import { mountDirectory, setVirtualFile, unmountDirectory } from "./mounts.js";
 import {
@@ -420,6 +421,16 @@ export interface RenderResult {
   target: RenderTarget;
   /** Present when RenderOptions.sourceMap was set. */
   sourceMap?: PtxSourceMap;
+  /**
+   * The iframe pages of the document's interactives, by the filename an
+   * `<iframe src>` in {@link html} names — `<id>-if.html` for each
+   * `<interactive platform="…">` (and `<interactive geogebra="…">`). A
+   * PreTeXt build writes these to files beside the page; here they are
+   * returned, and the iframes in `html` point at files that do not exist
+   * until the embedder serves the pages or inlines them (`embedIframePages`).
+   * Empty when the document has no such interactive.
+   */
+  iframePages: IframePages;
   /**
    * The page's printouts — worksheets, handouts, and projects with a workspace
    * — in document order, each of which can be shown in the print-preview
@@ -1255,7 +1266,15 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
       doc.delete();
     }
     try {
-      let html = fixMathJaxImport(result.toHtmlString());
+      // Before anything else reads the page: the iframe pages of the
+      // document's interactives arrive inside it (see iframe-pages.ts), and
+      // each is a document of its own that no later pass should rewrite.
+      const extracted = extractIframePages(result.toHtmlString());
+      const iframePages: IframePages = {};
+      for (const [name, page] of Object.entries(extracted.pages)) {
+        iframePages[name] = fixMathJaxImport(page);
+      }
+      let html = fixMathJaxImport(extracted.html);
       // Point links at what this one page can actually reach, and make the
       // ones reaching past it inert rather than silently dead. A no-op for a
       // whole-document preview, which links only within the page.
@@ -1299,6 +1318,7 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
         html,
         target,
         printouts,
+        iframePages,
         size,
         assetDirs,
         ...(subtree ? { subtree } : {}),

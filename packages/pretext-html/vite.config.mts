@@ -93,6 +93,10 @@ export default defineConfig(({ mode }) => {
               // And for live patching, whose script the extension host injects
               // into every page it delivers to the preview.
               "live-patch": "src/live-patch.ts",
+              // And for inlining interactives' iframe pages, which a host
+              // does to a page a worker rendered, after deciding how far to
+              // trust the scripts in them.
+              "iframe-pages": "src/iframe-pages.ts",
             },
         // ESM only: @pretextbook/libxslt-wasm is ESM-only and needs JSPI
         // anyway, so there is no CommonJS audience for this package.

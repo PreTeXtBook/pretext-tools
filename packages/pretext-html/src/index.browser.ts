@@ -52,6 +52,10 @@ export type { PublicationOverrides } from "./publication.js";
 export { detectRenderTarget } from "./target.js";
 export type { RenderTarget } from "./target.js";
 export { openBornHiddenKnowls } from "./knowls.js";
+// The iframe pages of interactives (see iframe-pages.ts), returned as
+// RenderResult.iframePages; embedIframePages inlines them into the page.
+export { embedIframePages, extractIframePages } from "./iframe-pages.js";
+export type { EmbedIframePagesOptions, IframePages } from "./iframe-pages.js";
 export {
   injectRevealBridge,
   isRevealView,

@@ -11,6 +11,7 @@ import * as path from "node:path";
 import * as process from "node:process";
 import { pathToFileURL } from "node:url";
 import { rewriteAssetUrls } from "./assets.js";
+import { embedIframePages, type IframePages } from "./iframe-pages.js";
 import { missingAssetPlaceholder } from "./missing-asset.js";
 import { injectPrintPreview } from "./printout.js";
 import {
@@ -258,14 +259,19 @@ export async function main(argv: string[]): Promise<void> {
     process.stderr.write(`pretext-html: wrote ${sourceMapPath}\n`);
   }
   if (output) {
-    html = linkAssetsFrom(
-      html,
-      result.assetDirs,
-      path.dirname(path.resolve(output)),
-    );
+    const pageDir = path.dirname(path.resolve(output));
+    html = linkAssetsFrom(html, result.assetDirs, pageDir);
+    // One file out: an interactive's iframe page goes into its iframe, with
+    // its own asset links (an @source script, say) pointed the same way as
+    // the page's. A srcdoc frame resolves them against the output file.
+    const pages: IframePages = {};
+    for (const [name, page] of Object.entries(result.iframePages)) {
+      pages[name] = linkAssetsFrom(page, result.assetDirs, pageDir);
+    }
+    html = embedIframePages(html, pages);
     await writeFile(output, html);
     process.stderr.write(`pretext-html: wrote ${output}\n`);
   } else {
-    process.stdout.write(html);
+    process.stdout.write(embedIframePages(html, result.iframePages));
   }
 }
