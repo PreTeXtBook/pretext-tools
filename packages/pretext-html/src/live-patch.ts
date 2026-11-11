@@ -232,20 +232,6 @@ export function patchDocument(
     return el.matches(UNPATCHABLE) || el.querySelector(UNPATCHABLE) !== null;
   }
 
-  /**
-   * The inline lunr search index, which holds the document's text and so
-   * changes with every edit. It is only read once, on load, so there is
-   * nothing to gain from patching it: the search box keeps searching the text
-   * of the last full load, which is fine for a preview.
-   */
-  function isSearchIndex(el: Element): boolean {
-    return (
-      el.tagName === "SCRIPT" &&
-      !el.hasAttribute("src") &&
-      (el.textContent ?? "").indexOf("ptx_lunr_docs") !== -1
-    );
-  }
-
   function isContainer(el: Element): boolean {
     if (
       !CONTAINER_TAGS.has(el.tagName) ||
@@ -527,7 +513,7 @@ export function patchDocument(
 
   /** Plan the update of one matched pair, whose live node is `at`. */
   function planPair(at: Located, old: Element, next: Element): Item {
-    if (old.isEqualNode(next) || (isSearchIndex(old) && isSearchIndex(next))) {
+    if (old.isEqualNode(next)) {
       return { next, outer: at.outer };
     }
     if (old.tagName === next.tagName && isContainer(old) && isContainer(next)) {
@@ -740,20 +726,38 @@ export function patchDocument(
 
 /**
  * Have the page's MathJax typeset what {@link patchDocument} inserted, and
- * forget what it removed. Resolves once typesetting is done; a no-op when the
- * page has no MathJax (yet — one still starting up typesets the whole page,
- * inserted blocks included, when it gets there).
+ * forget what it removed. A no-op when the page has no MathJax (yet — one
+ * still starting up typesets the whole page, inserted blocks included, when
+ * it gets there).
  *
  * Only `.process-math` elements are typeset, exactly as the page's own
  * startup does: PreTeXt pages are `body.ignore-math`, and typesetting a whole
  * block would also pick up text outside the math spans.
+ *
+ * ## When MathJax never becomes ready
+ *
+ * The work is queued behind `MathJax.startup.promise`, and that promise can
+ * stay pending forever without anything failing: MathJax 4 generates speech
+ * in a `blob:` worker, and a page whose Content-Security-Policy blocks the
+ * worker draws its first typeset and then just waits. Queued behind that,
+ * every patched block would show raw LaTeX indefinitely. So the wait is
+ * bounded by `timeoutMs`: once it runs out the blocks are typeset anyway
+ * (MathJax serializes typesetting itself), and the stuck promise is dropped
+ * from the queue so later patches do not wait on it again.
+ *
+ * Resolves `true` once typesetting has finished — or failed with an error,
+ * which is logged — and `false` if it still has not after twice `timeoutMs`
+ * (once to become ready, once to typeset), in which case the page is showing
+ * untypeset math and the caller should replace it. Pass `0` to wait without
+ * limit.
  *
  * Self-contained for the same reason as patchDocument; see the module docs.
  */
 export function typesetPatch(
   win: Window,
   result: Pick<LivePatchResult, "added" | "removed">,
-): Promise<void> {
+  timeoutMs = 5000,
+): Promise<boolean> {
   interface MathJaxLike {
     startup?: { promise?: Promise<unknown> };
     typesetPromise?: (elements: Element[]) => Promise<unknown>;
@@ -767,7 +771,7 @@ export function typesetPatch(
     !startup.promise ||
     typeof mathJax.typesetPromise !== "function"
   ) {
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
   const targets: Element[] = [];
   for (const el of result.added) {
@@ -779,11 +783,39 @@ export function typesetPatch(
   }
   const removed = result.removed;
   if (targets.length === 0 && removed.length === 0) {
-    return Promise.resolve();
+    return Promise.resolve(true);
   }
-  // Chained on startup.promise, MathJax's documented way to serialize dynamic
+  const limited = timeoutMs > 0;
+  /** `promise`, or `late` if it has not settled within `ms`. */
+  function within<T>(promise: Promise<T>, late: T, ms: number): Promise<T> {
+    if (!limited) {
+      return promise;
+    }
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => resolve(late), ms);
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error: unknown) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
+  }
+  // Queued on startup.promise, MathJax's documented way to serialize dynamic
   // typesetting, so two quick patches never typeset concurrently.
-  const done = startup.promise
+  const ready = within(
+    startup.promise.then(
+      () => undefined,
+      () => undefined,
+    ),
+    undefined,
+    timeoutMs,
+  );
+  const done: Promise<boolean> = ready
     .then(() => {
       if (removed.length && typeof mathJax.typesetClear === "function") {
         mathJax.typesetClear(removed);
@@ -793,13 +825,14 @@ export function typesetPatch(
         : undefined;
     })
     .then(
-      () => undefined,
+      () => true,
       (error: unknown) => {
         console.error("pretext-html: typesetting a live patch failed", error);
+        return true;
       },
     );
   startup.promise = done;
-  return done;
+  return within(done, false, 2 * timeoutMs);
 }
 
 /**

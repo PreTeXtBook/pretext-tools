@@ -108,21 +108,6 @@ const SKIPPED_WORK_STUBS = `<xsl:template match="*" mode="make-xref-knowls"/>
 <xsl:template match="audio|video" mode="media-standalone-page"/>`;
 
 /**
- * The test in upstream's "file-wrap" that decides whether the search index is
- * written into the page, and what the preview replaces it with.
- *
- * Upstream embeds the index (a <script> at the end of <body>) only in a
- * portable build, and otherwise writes it to a separate file. A preview has no
- * separate file, so it embeds the index whether or not the build is portable,
- * keeping the page's search box working as it did when previews were
- * portable. Patched into the copied template rather than overridden, because
- * the test sits in the middle of the one template that is already copied
- * verbatim.
- */
-const EMBEDDED_SEARCH_TEST = "$b-portable-html and $has-native-search";
-const EMBEDDED_SEARCH_REPLACEMENT = "$has-native-search";
-
-/**
  * Neutralize the print-preview buttons upstream puts on printout headings
  * (worksheet, handout, and whatever &PRINTOUT; grows to include later), and
  * label them so a host can find the printouts on the page.
@@ -481,8 +466,7 @@ function iframePageOverride() {
  * Extracts the body of the `file-wrap` template from the vendored
  * pretext-html.xsl and strips the <exsl:document> element (keeping its
  * children) so the page lands on the main result tree instead of aborting in
- * the FILESYSTEM=0 WASM build. The copy also embeds the search index in the
- * page (see EMBEDDED_SEARCH_TEST). All other file-writing templates are
+ * the FILESYSTEM=0 WASM build. All other file-writing templates are
  * stubbed, and the passes that only feed them skipped (SKIPPED_WORK_STUBS).
  * Printout headings additionally get their print-preview buttons disabled
  * (see PRINTOUT_LINK_OVERRIDE).
@@ -512,18 +496,9 @@ function generatePreviewXsl() {
         "Upstream has changed; preview-html.xsl generation needs updating.",
     );
   }
-  const searchTests = template.split(EMBEDDED_SEARCH_TEST).length - 1;
-  if (searchTests !== 1) {
-    throw new Error(
-      `Expected the test "${EMBEDDED_SEARCH_TEST}" exactly once in file-wrap ` +
-        `(found ${searchTests}). Upstream has changed how the search index is ` +
-        "embedded; preview-html.xsl generation needs updating.",
-    );
-  }
   const inlineTemplate = template
     .replace(opens[0], "")
-    .replace("</exsl:document>", "")
-    .replace(EMBEDDED_SEARCH_TEST, EMBEDDED_SEARCH_REPLACEMENT);
+    .replace("</exsl:document>", "");
 
   const wrapper = `<?xml version="1.0" encoding="UTF-8"?>
 <!--
@@ -532,14 +507,13 @@ function generatePreviewXsl() {
 
   Wrapper around pretext-html.xsl for single-page in-memory HTML builds
   (previews). The "file-wrap" template below is a copy of the upstream
-  template with two changes: the <exsl:document> element is removed, so the
-  complete page is emitted on the main result tree, and the search index is
-  embedded in the page whether or not the build is portable. Intended to be
-  applied together with a publication file that forces CDN-hosted css/js
+  template with one change: the <exsl:document> element is removed, so the
+  complete page is emitted on the main result tree. Intended to be applied
+  together with a publication file that forces CDN-hosted css/js
   (<html><resources host="cdn"/>), chunk level 0 (one page), cross-references
-  as links rather than knowls, and portable mode off, so that latex-image and
-  PreFigure SVGs are linked rather than inlined. Remaining file writers are
-  stubbed at the end.
+  as links rather than knowls, no search, and portable mode off, so that
+  latex-image and PreFigure SVGs are linked rather than inlined. Remaining
+  file writers are stubbed at the end.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -559,9 +533,7 @@ function generatePreviewXsl() {
 <xsl:import href="pretext-html.xsl"/>
 <xsl:output method="html" encoding="UTF-8" doctype-system="about:legacy-compat"/>
 
-<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed, -->
-<!-- and the search index embedded in every build, not only portable ones.   -->
-<!-- See EMBEDDED_SEARCH_TEST in refresh-xsl.mjs.                            -->
+<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed. -->
 ${inlineTemplate}
 
 <!-- Chunk at the subtree root's own level, so a fragment preview can name a  -->

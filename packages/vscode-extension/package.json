@@ -612,13 +612,13 @@
             "order": 4,
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Automatically rebuild the live preview when a `.ptx` file is saved."
+            "markdownDescription": "Automatically rebuild the live preview when a `.ptx` file is saved. See `#pretext-tools.instantPreview.updateWhileTyping#` for updating without saving."
           },
           "pretext-tools.instantPreview.updateWhileTyping": {
             "order": 4,
             "type": "boolean",
-            "default": false,
-            "markdownDescription": "Update the live preview as you type, from the unsaved contents of the open files, instead of waiting for a save. While the document is not well-formed the preview keeps showing the last good version."
+            "default": true,
+            "markdownDescription": "Update the live preview as you type, from the unsaved contents of the open files, instead of waiting for a save. While the document is not well-formed the preview keeps showing the last good version, and its toolbar says which line to look at. The pause before an update grows with how long the document takes to render. Also toggleable from the preview panel's toolbar (\"As you type\")."
           },
           "pretext-tools.instantPreview.followActiveEditor": {
             "order": 4,

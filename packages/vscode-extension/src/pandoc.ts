@@ -79,7 +79,12 @@ export async function ensurePretextLua(): Promise<string> {
   await fs.promises.mkdir(pandocPretextDir, { recursive: true });
   // All or nothing: a half-updated directory can mix a new writer with an old
   // companion, which fails in ways far harder to read than a missing file.
-  await Promise.all(
+  //
+  // Wait for every download to finish before reporting a failure, rather than
+  // rejecting on the first one as `Promise.all` would: the others are still
+  // writing their staging files at that point, and a caller that looked at
+  // the directory (or retried) would find them half-written.
+  const downloads = await Promise.allSettled(
     PRETEXT_WRITER_FILES.map((name) =>
       downloadFile(
         `${PRETEXT_LUA_BASE_URL}${name}`,
@@ -87,6 +92,10 @@ export async function ensurePretextLua(): Promise<string> {
       ),
     ),
   );
+  const failed = downloads.find((download) => download.status === "rejected");
+  if (failed) {
+    throw (failed as PromiseRejectedResult).reason;
+  }
   return pretextLuaPath;
 }
 

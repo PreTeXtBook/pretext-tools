@@ -5,14 +5,13 @@
 
   Wrapper around pretext-html.xsl for single-page in-memory HTML builds
   (previews). The "file-wrap" template below is a copy of the upstream
-  template with two changes: the <exsl:document> element is removed, so the
-  complete page is emitted on the main result tree, and the search index is
-  embedded in the page whether or not the build is portable. Intended to be
-  applied together with a publication file that forces CDN-hosted css/js
+  template with one change: the <exsl:document> element is removed, so the
+  complete page is emitted on the main result tree. Intended to be applied
+  together with a publication file that forces CDN-hosted css/js
   (<html><resources host="cdn"/>), chunk level 0 (one page), cross-references
-  as links rather than knowls, and portable mode off, so that latex-image and
-  PreFigure SVGs are linked rather than inlined. Remaining file writers are
-  stubbed at the end.
+  as links rather than knowls, no search, and portable mode off, so that
+  latex-image and PreFigure SVGs are linked rather than inlined. Remaining
+  file writers are stubbed at the end.
 -->
 <xsl:stylesheet
     xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="1.0"
@@ -32,9 +31,7 @@
 <xsl:import href="pretext-html.xsl"/>
 <xsl:output method="html" encoding="UTF-8" doctype-system="about:legacy-compat"/>
 
-<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed, -->
-<!-- and the search index embedded in every build, not only portable ones.   -->
-<!-- See EMBEDDED_SEARCH_TEST in refresh-xsl.mjs.                            -->
+<!-- Copied from pretext-html.xsl (mode="file-wrap"), exsl:document removed. -->
 <xsl:template match="*" mode="file-wrap">
     <xsl:param name="content" />
     <xsl:param name="title" select="''"/>
@@ -204,7 +201,7 @@
             </div>
             <xsl:copy-of select="$file-wrap-full-endbody-cache"/>
             <!-- For portable builds we stash the lunr search here -->
-            <xsl:if test="$has-native-search">
+            <xsl:if test="$b-portable-html and $has-native-search">
                 <xsl:call-template name="embedded-search-construction"/>
             </xsl:if>
             <!-- optional body content that needs to be inserted after all content -->

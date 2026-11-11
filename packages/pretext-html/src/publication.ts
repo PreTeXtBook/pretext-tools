@@ -2,8 +2,8 @@
  * Publication-file handling for single-page preview builds.
  *
  * A preview is one page, rendered in memory, with no output directory beside
- * it. Four publisher settings make an ordinary HTML build fit that, and the
- * preview forces all four (see {@link PREVIEW_SETTINGS}):
+ * it. Five publisher settings make an ordinary HTML build fit that, and the
+ * preview forces all five (see {@link PREVIEW_SETTINGS}):
  *
  * - `<html><resources host="cdn"/>` serves PreTeXt's css/js, the theme and
  *   the icon font from the jsDelivr CDN, since there is no `_static/` to copy
@@ -14,6 +14,10 @@
  *   files that an in-memory build never writes.
  * - `<html><platform portable="no"/>` keeps PreTeXt's "portable HTML" mode off,
  *   even for a project that builds portable.
+ * - `<html><search variant="none"/>` leaves out the search box and its index.
+ *   The index is a separate file, which an in-memory build never writes, and
+ *   building it means walking the whole document's text on every render — for
+ *   a search over a page the reader is looking at one division of.
  *
  * Portable mode would do the first three in one switch, and the preview used
  * to rely on it. It also inlines every latex-image and PreFigure SVG into the
@@ -67,6 +71,7 @@ const PREVIEW_SETTINGS: ReadonlyArray<
   [["html", "resources"], "host", "cdn"],
   [["html", "platform"], "portable", "no"],
   [["html", "cross-references"], "knowled", "never"],
+  [["html", "search"], "variant", "none"],
   [["common", "chunking"], "level", "0"],
 ];
 

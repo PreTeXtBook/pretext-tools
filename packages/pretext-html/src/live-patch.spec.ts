@@ -6,7 +6,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { JSDOM } from "jsdom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   LIVE_PATCH_GLOBAL,
   livePatchScript,
@@ -74,17 +74,9 @@ function open(html: string) {
   };
 }
 
-/**
- * Markup with whitespace-only text dropped (a patch does not copy it), and
- * without the search index, which a patch deliberately leaves stale.
- */
+/** Markup with whitespace-only text dropped (a patch does not copy it). */
 function normalized(root: Element): string {
   const clone = root.cloneNode(true) as Element;
-  for (const script of Array.from(clone.querySelectorAll("script"))) {
-    if (script.textContent?.includes("ptx_lunr_docs")) {
-      script.remove();
-    }
-  }
   const doc = clone.ownerDocument;
   const walker = doc.createTreeWalker(clone, 4 /* NodeFilter.SHOW_TEXT */);
   const blank: Node[] = [];
@@ -528,7 +520,70 @@ describe("typesetPatch", () => {
     const win = live.defaultView as Window;
     await expect(
       typesetPatch(win, { added: [live.createElement("div")], removed: [] }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe(true);
+  });
+
+  /** A page whose MathJax records what it is asked to typeset. */
+  function mathPage(
+    startupPromise: Promise<unknown>,
+    typesetPromise: (elements: Element[]) => Promise<unknown>,
+  ) {
+    const { live } = open(page(""));
+    const math = live.createElement("span");
+    math.className = "process-math";
+    const startup = { promise: startupPromise };
+    const win = { MathJax: { startup, typesetPromise } } as unknown as Window;
+    return { win, math, startup };
+  }
+
+  it("typesets anyway when MathJax's startup never settles", async () => {
+    // What a blocked speech worker does to MathJax 4: nothing fails, the
+    // startup promise just stays pending.
+    const typeset: Element[][] = [];
+    const { win, math, startup } = mathPage(
+      new Promise(() => {}),
+      async (elements) => {
+        typeset.push(elements);
+      },
+    );
+
+    await expect(
+      typesetPatch(win, { added: [math], removed: [] }, 20),
+    ).resolves.toBe(true);
+    expect(typeset).toEqual([[math]]);
+
+    // The stuck promise is out of the queue: the next patch does not wait.
+    await expect(
+      Promise.race([
+        startup.promise,
+        new Promise((resolve) => setTimeout(() => resolve("pending"), 20)),
+      ]),
+    ).resolves.toBe(true);
+  });
+
+  it("reports math that is still untypeset when the time runs out", async () => {
+    const { win, math } = mathPage(
+      Promise.resolve(),
+      () => new Promise(() => {}),
+    );
+    await expect(
+      typesetPatch(win, { added: [math], removed: [] }, 20),
+    ).resolves.toBe(false);
+  });
+
+  it("counts a typesetting error as finished", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const { win, math } = mathPage(Promise.resolve(), async () => {
+        throw new Error("bad macro");
+      });
+      await expect(
+        typesetPatch(win, { added: [math], removed: [] }, 20),
+      ).resolves.toBe(true);
+      expect(error).toHaveBeenCalled();
+    } finally {
+      error.mockRestore();
+    }
   });
 });
 

@@ -79,8 +79,10 @@ const { html } = await renderHtml({
     even for a project that builds portable. Portable mode would do the first
     three as well, and earlier releases relied on it, but it also inlines
     every latex-image and PreFigure SVG into the page. Without it those are
-    linked like every other image. The search index stays embedded in the
-    page, as portable mode had it.
+    linked like every other image.
+  - `<html><search variant="none"/>`: no search box and no search index. The
+    index is a separate file a preview never writes, and building it costs a
+    walk over the whole document on every render.
 - `cssTheme: "denver"` supplies the PreTeXt HTML theme for projects that do not
   choose one, by adding `<html><css theme="…"/></html>` to the publication file
   used for the build (including the minimal one synthesized when you pass no
