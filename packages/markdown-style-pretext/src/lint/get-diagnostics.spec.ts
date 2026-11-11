@@ -23,6 +23,15 @@ describe("directive fence matching", () => {
     expect(diags[0].message).toContain("no matching open");
   });
 
+  it("accepts pipe tables, bare and in a :::table", () => {
+    expect(
+      getMarkdownDiagnostics(
+        "| A | $|x|$ |\n| - | - |\n| 1 | 2 |\n\n" +
+          ":::table[Results]{#tbl-res}\n| A |\n| - |\n| 1 |\n:::\n",
+      ),
+    ).toEqual([]);
+  });
+
   it("accepts nested containers written with flexible equal colons", () => {
     expect(
       getMarkdownDiagnostics(":::exercise\n:::task\nx\n:::\n:::\n"),

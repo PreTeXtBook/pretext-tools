@@ -1,6 +1,6 @@
 # @pretextbook/markdown-style-pretext
 
-Editor intelligence for **Markdown-style PreTeXt** — CommonMark + GFM plus
+Editor intelligence for **Markdown-style PreTeXt** — CommonMark + GFM tables plus
 [remark-directive](https://github.com/remarkjs/remark-directive) extensions that convert to
 PreTeXt via [`@pretextbook/remark-pretext`](../remark-pretext).
 

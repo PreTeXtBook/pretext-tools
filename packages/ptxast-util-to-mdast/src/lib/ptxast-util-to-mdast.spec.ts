@@ -745,3 +745,100 @@ describe("semantic round-trip (xml -> xast -> markdown -> xast)", () => {
     }
   });
 });
+
+describe("tables", () => {
+  const fromPtx = (xml: string) => md(fromXml(xml) as Root);
+
+  it("writes a tabular as a pipe table", () => {
+    expect(
+      fromPtx(
+        '<tabular><row header="yes"><cell>A</cell><cell>B</cell></row>' +
+          "<row><cell><em>1</em></cell><cell><m>|x|</m></cell></row></tabular>",
+      ),
+    ).toBe("| A   | B     |\n| --- | ----- |\n| *1* | $|x|$ |");
+  });
+
+  it("gives a header-less tabular an empty header row", () => {
+    expect(
+      fromPtx("<tabular><row><cell>1</cell><cell>2</cell></row></tabular>"),
+    ).toBe("|   |   |\n| - | - |\n| 1 | 2 |");
+  });
+
+  it("takes alignment from the tabular and its cols", () => {
+    expect(
+      fromPtx(
+        '<tabular halign="right"><col halign="left"/><col/><col halign="center"/>' +
+          "<row><cell>a</cell><cell>b</cell><cell>c</cell></row></tabular>",
+      ),
+    ).toBe("|    |    |     |\n| :- | -: | :-: |\n| a  |  b |  c  |");
+  });
+
+  it("puts cell content on one line and escapes pipes", () => {
+    expect(
+      fromPtx(
+        '<tabular>\n  <row header="yes">\n    <cell>\n      long\n      text\n    </cell>\n  </row>\n' +
+          "  <row><cell>a | b</cell></row>\n</tabular>",
+      ),
+    ).toBe("| long text |\n| --------- |\n| a \\| b    |");
+  });
+
+  it("writes a table as a :::table directive", () => {
+    expect(
+      fromPtx(
+        '<table xml:id="tbl-res"><title>Results</title><tabular>' +
+          '<row header="yes"><cell>A</cell></row><row><cell>1</cell></row>' +
+          "</tabular></table>",
+      ),
+    ).toBe(":::table[Results]{#tbl-res}\n| A |\n| - |\n| 1 |\n:::");
+  });
+
+  it.each([
+    ["a border", '<tabular top="major"><row><cell>a</cell></row></tabular>'],
+    [
+      "a column width",
+      '<tabular><col width="30%"/><row><cell>a</cell></row></tabular>',
+    ],
+    ["a colspan", '<tabular><row><cell colspan="2">a</cell></row></tabular>'],
+    [
+      "a later header row",
+      '<tabular><row><cell>a</cell></row><row header="yes"><cell>b</cell></row></tabular>',
+    ],
+    [
+      "a vertical header",
+      '<tabular><row header="vertical"><cell>a</cell></row></tabular>',
+    ],
+    [
+      "block content in a cell",
+      "<tabular><row><cell><p>a</p></cell></row></tabular>",
+    ],
+    [
+      "inline markup with no Markdown form",
+      "<tabular><row><cell><q>a</q></cell></row></tabular>",
+    ],
+  ])("keeps a tabular with %s as raw PreTeXt", (_, xml) => {
+    const markdown = fromPtx(xml);
+    expect(markdown).toMatch(/^<tabular[^>]*>\n/);
+    expect(markdown).toMatch(/\n<\/tabular>$/);
+    // ...and reading it back gives the same tabular, not a paragraph.
+    const back = parseMarkdownToXast(markdown).children[0] as Element;
+    expect(back.name).toBe("tabular");
+  });
+});
+
+describe("table round-trip (markdown -> xast -> markdown)", () => {
+  it.each([
+    ["a plain table", "| A | B |\n| - | - |\n| 1 | 2 |"],
+    ["a header-less table", "|   |   |\n| - | - |\n| 1 | 2 |"],
+    [
+      "mixed alignment",
+      "| A  |  B  |  C |\n| :- | :-: | -: |\n| 1  |  2  |  3 |",
+    ],
+    [
+      "inline markup",
+      "| *a* | **b** | `c` | $|x|$ | [t](#id) |\n| --- | ----- | --- | ----- | -------- |\n| 1   | 2     | 3   | 4     | 5        |",
+    ],
+    ["a titled table", ":::table[Results]{#tbl-res}\n| A |\n| - |\n| 1 |\n:::"],
+  ])("%s", (_, markdown) => {
+    expect(md(parseMarkdownToXast(markdown))).toBe(markdown);
+  });
+});

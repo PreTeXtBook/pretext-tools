@@ -26,7 +26,13 @@ import type {
   ListItem,
   Code,
   Blockquote as MdastBlockquote,
+  Html,
+  Table,
+  TableRow,
+  TableCell,
+  AlignType,
 } from "mdast";
+import { toXml } from "xast-util-to-xml";
 import type { ContainerDirective } from "mdast-util-directive";
 import type { Math as MdastMath, InlineMath } from "mdast-util-math";
 import type { Root, Element, ElementContent } from "@pretextbook/ptxast";
@@ -82,7 +88,8 @@ type DirectiveCategory =
   | "remark-like" // no statement wrapper, direct block children
   | "example-like" // no statement wrapper
   | "proof-like" // no statement wrapper
-  | "solution-like"; // no statement wrapper
+  | "solution-like" // no statement wrapper
+  | "figure-like"; // no statement wrapper
 
 interface DirectiveMeta {
   name: string;
@@ -128,6 +135,8 @@ const TYPE_TO_DIRECTIVE = new Map<string, DirectiveMeta>([
   ["solution", { name: "solution", category: "solution-like" }],
   ["hint", { name: "hint", category: "solution-like" }],
   ["answer", { name: "answer", category: "solution-like" }],
+  // figure-like: a titled wrapper; `:::table[Title]` around a pipe table
+  ["table", { name: "table", category: "figure-like" }],
 ]);
 
 // theorem-like and definition-like wrap body in <statement>
@@ -280,6 +289,8 @@ function convertBlock(el: Element): BlockContent | DefinitionContent | null {
       return convertList(el, false);
     case "program":
       return convertProgram(el);
+    case "tabular":
+      return convertTabular(el);
     case "me":
     case "men":
     case "md":
@@ -347,6 +358,151 @@ function convertProgram(el: Element): Code {
     lang: attrs["language"] ?? null,
     value: getPtxTextContent(el),
   };
+}
+
+// ── Tables ───────────────────────────────────────────────────────────────────
+
+const PIPE_TABLE_ALIGN = new Set(["left", "center", "right"]);
+
+/**
+ * A `<tabular>` becomes a GFM pipe table when a pipe table can say everything
+ * it says: alignment (`halign` on the tabular or its `<col>`s), a header on the
+ * first row only, and cells of inline content. Anything else — borders,
+ * widths, `colspan`, `<p>`/`<line>` in cells, vertical headers — is kept
+ * whole as raw PreTeXt, which `remark-pretext` passes straight through.
+ *
+ * A pipe table must have a header row, so a `<tabular>` without one gets an
+ * empty header, which `remark-pretext` reads back as no header at all.
+ */
+function convertTabular(el: Element): Table | Html {
+  return tabularToTable(el) ?? { type: "html", value: rawBlockXml(el) };
+}
+
+const XML_OPTIONS = { closeEmptyElements: true, tightClose: true } as const;
+
+/**
+ * Serialize an element as a raw PreTeXt block: its opening tag alone on the
+ * first line (CommonMark only starts an HTML block at a line holding nothing
+ * but a tag), then each child on its own line.
+ */
+function rawBlockXml(el: Element): string {
+  const children = el.children.filter(
+    (c) => !(c.type === "text" && /^\s*$/.test(c.value)),
+  );
+  if (children.length === 0 || children.some((c) => c.type === "text")) {
+    return toXml(el as never, XML_OPTIONS);
+  }
+  const shell = toXml({ ...el, children: [] } as never, XML_OPTIONS);
+  const open = shell.replace(/\/>$/, ">");
+  const body = children.map((c) => `  ${toXml(c as never, XML_OPTIONS)}`);
+  return [open, ...body, `</${el.name}>`].join("\n");
+}
+
+function tabularToTable(el: Element): Table | null {
+  const { halign, ...rest } = el.attributes ?? {};
+  if (!onlyKnownAttributes(rest)) return null;
+  if (halign != null && !PIPE_TABLE_ALIGN.has(halign)) return null;
+
+  const children = elementChildren(el);
+  const cols = children.filter((c) => c.name === "col");
+  const rows = children.filter((c) => c.name === "row");
+  if (rows.length === 0 || cols.length + rows.length !== children.length) {
+    return null;
+  }
+  // `<col>`s come first in the schema; anything else is out of our depth.
+  if (children.findIndex((c) => c.name === "row") !== cols.length) return null;
+
+  const colAlign: AlignType[] = [];
+  for (const col of cols) {
+    const { halign: colHalign, ...colRest } = col.attributes ?? {};
+    if (!onlyKnownAttributes(colRest)) return null;
+    if (colHalign != null && !PIPE_TABLE_ALIGN.has(colHalign)) return null;
+    colAlign.push((colHalign ?? halign ?? null) as AlignType);
+  }
+
+  const tableRows: TableRow[] = [];
+  let hasHeader = false;
+  for (const [index, row] of rows.entries()) {
+    const { header, ...rowRest } = row.attributes ?? {};
+    if (!onlyKnownAttributes(rowRest)) return null;
+    if (header === "yes") {
+      if (index !== 0) return null;
+      hasHeader = true;
+    } else if (header != null && header !== "no") {
+      return null;
+    }
+    const tableRow = rowToTableRow(row);
+    if (!tableRow) return null;
+    tableRows.push(tableRow);
+  }
+
+  const width = Math.max(
+    cols.length,
+    ...tableRows.map((row) => row.children.length),
+  );
+  if (width === 0) return null;
+  if (!hasHeader) tableRows.unshift({ type: "tableRow", children: [] });
+  for (const row of tableRows) {
+    while (row.children.length < width) {
+      row.children.push({ type: "tableCell", children: [] });
+    }
+  }
+
+  const align = Array.from(
+    { length: width },
+    (_, i): AlignType => colAlign[i] ?? ((halign ?? null) as AlignType),
+  );
+  return { type: "table", align, children: tableRows };
+}
+
+function rowToTableRow(row: Element): TableRow | null {
+  const children = row.children.filter(
+    (c) => !(c.type === "text" && /^\s*$/.test(c.value)),
+  );
+  const cells: TableCell[] = [];
+  for (const cell of children) {
+    if (cell.type !== "element" || cell.name !== "cell") return null;
+    if (!onlyKnownAttributes(cell.attributes ?? {})) return null;
+    const content = cellContent(cell);
+    if (!content) return null;
+    cells.push({ type: "tableCell", children: content });
+  }
+  return { type: "tableRow", children: cells };
+}
+
+/**
+ * The inline content of a `<cell>`, on one line, or null if any of it has no
+ * Markdown form (so the table must stay raw rather than lose it).
+ */
+function cellContent(cell: Element): PhrasingContent[] | null {
+  const result: PhrasingContent[] = [];
+  for (const child of cell.children) {
+    if (child.type === "comment") continue;
+    const converted = convertInlineNode(child);
+    if (!converted) return null;
+    if (converted.type === "text") {
+      converted.value = converted.value.replace(/\s+/g, " ");
+    }
+    result.push(converted);
+  }
+  const first = result[0];
+  if (first?.type === "text") first.value = first.value.trimStart();
+  const last = result[result.length - 1];
+  if (last?.type === "text") last.value = last.value.trimEnd();
+  return result.filter((node) => node.type !== "text" || node.value !== "");
+}
+
+function onlyKnownAttributes(rest: Record<string, unknown>): boolean {
+  return Object.values(rest).every((value) => value == null);
+}
+
+function elementChildren(el: Element): Element[] {
+  const result: Element[] = [];
+  for (const child of el.children) {
+    if (child.type === "element") result.push(child as Element);
+    else if (child.type === "text" && !/^\s*$/.test(child.value)) return [];
+  }
+  return result;
 }
 
 // ── Display math ─────────────────────────────────────────────────────────────

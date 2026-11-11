@@ -30,6 +30,7 @@ export default defineConfig(() => ({
       external: [
         "@pretextbook/ptxast",
         "mdast-util-directive",
+        "mdast-util-gfm-table",
         "mdast-util-math",
         "mdast-util-to-markdown",
       ],

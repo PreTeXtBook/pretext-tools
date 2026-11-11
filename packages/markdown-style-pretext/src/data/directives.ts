@@ -23,6 +23,8 @@ type ContainerSeed = {
   requiresStatement: boolean;
   hasNestedTasks?: boolean;
   documentation?: string;
+  snippet?: string;
+  titled?: boolean;
 };
 
 const CONTAINER_SEEDS: Record<string, ContainerSeed> = {
@@ -82,6 +84,17 @@ const CONTAINER_SEEDS: Record<string, ContainerSeed> = {
   solution: { category: "solution-like", requiresStatement: false },
   hint: { category: "solution-like", requiresStatement: false },
   answer: { category: "solution-like", requiresStatement: false },
+
+  // figure-like (a titled wrapper around one piece of content)
+  table: {
+    category: "figure-like",
+    requiresStatement: false,
+    titled: true,
+    snippet: "| ${2:Header} | ${3:Header} |\n| --- | --- |\n| $4 | $0 |",
+    documentation:
+      "A numbered, titled `<table>` around a pipe table (`<tabular>`). " +
+      "A pipe table on its own, outside `:::table`, is a bare `<tabular>`.",
+  },
 };
 
 /**
@@ -125,6 +138,8 @@ function seedToSpec(name: string, seed: ContainerSeed): DirectiveSpec {
     hasNestedTasks: seed.hasNestedTasks,
     childDirectives: children.length > 0 ? children : undefined,
     documentation: seed.documentation,
+    snippet: seed.snippet,
+    titled: seed.titled,
   };
 }
 

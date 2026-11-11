@@ -220,6 +220,34 @@ A link to an id is a cross-reference:
 Inline directives (`:name[...]`) aren't read, so a colon in prose like `f:X`
 stays text.
 
+### Tables
+
+A GFM pipe table becomes a `<tabular>`. Wrap it in a `table` directive to get
+a numbered, titled `<table>`:
+
+```markdown
+:::table[Values of $f$]{#tbl-values}
+| $x$ | $f(x)$ |
+| :-: | -----: |
+| 0 | 1 |
+| -1 | $|e|$ |
+:::
+```
+
+- The header row becomes `<row header="yes">`. A header row whose cells are
+  all empty means the table has no header.
+- Column alignment (`:--`, `:-:`, `--:`) becomes `halign` on the `<tabular>`
+  when every column agrees, and a `<col halign>` per column otherwise.
+- Cells take the same inline elements as a paragraph. Math is read before the
+  table, so `$|x|$` stays in one cell; a literal `|` elsewhere is `\|`.
+- For anything a pipe table can't say (borders, widths, `colspan`, paragraphs
+  in cells), write a raw `<tabular>` (see below). Converting back to Markdown
+  (`@pretextbook/ptxast-util-to-mdast`) does the same: a `<tabular>` becomes a
+  pipe table only when nothing would be lost, and stays raw PreTeXt otherwise.
+
+Of GFM's other extensions, none are on: `~~text~~`, bare-URL autolinks and
+footnotes stay plain text.
+
 ### Raw PreTeXt
 
 PreTeXt can be written directly in the Markdown, for anything without Markdown
@@ -247,3 +275,4 @@ aren't PreTeXt (`<br>`, `<div>`) come out as a `<TODO>` holding the source.
 | example-like    | `example`, `question`, `problem`, `exercise`, `activity`, `exploration`, `investigation`, `project`                            |
 | proof-like      | `proof`, `case`                                                                                                                |
 | solution-like   | `solution`, `hint`, `answer`                                                                                                   |
+| figure-like     | `table` (around a pipe table; see [Tables](#tables))                                                                           |

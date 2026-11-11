@@ -17,7 +17,8 @@ export type DirectiveCategory =
   | "example-like"
   | "project-like"
   | "exercise-like"
-  | "solution-like";
+  | "solution-like"
+  | "figure-like";
 
 /**
  * Semantic specification for how a directive type should be converted.
@@ -211,6 +212,10 @@ export const DIRECTIVE_SPEC_TABLE: Readonly<Record<string, DirectiveSpec>> = {
     category: "solution-like",
     requiresStatement: false,
   },
+
+  // figure-like (a titled wrapper around one piece of content, which for
+  // `table` is a pipe table → <tabular>: `:::table[Caption]{#id}`)
+  table: { type: "table", category: "figure-like", requiresStatement: false },
 };
 
 /**

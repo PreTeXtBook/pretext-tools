@@ -10,6 +10,8 @@ import type { Processor } from "unified";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkDirective from "remark-directive";
+import { gfmTable } from "micromark-extension-gfm-table";
+import { gfmTableFromMarkdown } from "mdast-util-gfm-table";
 import {
   applyMathTokens,
   restoreMathTokens,
@@ -56,8 +58,14 @@ export function parseMarkdown(markdown: string): ParsedMarkdown<Root> {
   // for Python-style directives, not for code blocks (use fenced ``` instead).
   // Must use processor.data('micromarkExtensions') — remark-parse v11 ignores
   // 'extensions' passed directly as plugin options and only reads from data().
+  // Of GFM, only tables are on: strikethrough, autolinks, and footnotes would
+  // change how existing documents read.
   const parser = unified()
-    .data("micromarkExtensions", [{ disable: { null: ["codeIndented"] } }])
+    .data("micromarkExtensions", [
+      { disable: { null: ["codeIndented"] } },
+      gfmTable(),
+    ])
+    .data("fromMarkdownExtensions", [gfmTableFromMarkdown()])
     .use(remarkParse)
     .use(remarkDirective)
     .use(noInlineDirectives);

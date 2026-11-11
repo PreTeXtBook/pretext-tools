@@ -1871,3 +1871,73 @@ Plain text after.`;
     expect(allNames["pre"]).toBeUndefined();
   });
 });
+
+describe("pipe tables", () => {
+  const xml = (md: string) => markdownToPretext(md).trim();
+
+  it("converts a table to a tabular with a header row", () => {
+    expect(xml("| A | B |\n| - | - |\n| *1* | `2` |\n")).toBe(
+      '<tabular><row header="yes"><cell>A</cell><cell>B</cell></row>' +
+        "<row><cell><em>1</em></cell><cell><c>2</c></cell></row></tabular>",
+    );
+  });
+
+  it("reads an empty header row as no header", () => {
+    expect(xml("|   |   |\n| - | - |\n| 1 | 2 |\n")).toBe(
+      "<tabular><row><cell>1</cell><cell>2</cell></row></tabular>",
+    );
+  });
+
+  it("puts a shared alignment on the tabular, mixed ones on cols", () => {
+    expect(xml("| A | B |\n| :-: | :-: |\n| 1 | 2 |\n")).toMatch(
+      /^<tabular halign="center"><row/,
+    );
+    expect(xml("| A | B | C |\n| :- | - | -: |\n| 1 | 2 | 3 |\n")).toMatch(
+      /^<tabular><col halign="left"\/><col\/><col halign="right"\/><row/,
+    );
+  });
+
+  it("pads short rows with empty cells", () => {
+    expect(xml("| A | B |\n| - | - |\n| 1 |\n")).toContain(
+      "<row><cell>1</cell><cell/></row>",
+    );
+  });
+
+  it("keeps math with pipes inside one cell", () => {
+    expect(xml("| A | B |\n| - | - |\n| $|x|$ | 2 |\n")).toContain(
+      "<row><cell><m>|x|</m></cell><cell>2</cell></row>",
+    );
+  });
+
+  it("unescapes a literal pipe in a cell", () => {
+    expect(xml("| A |\n| - |\n| a \\| b |\n")).toContain("<cell>a | b</cell>");
+  });
+
+  it("wraps a titled table directive in <table>", () => {
+    expect(xml(":::table[Results]{#tbl-res}\n| A |\n| - |\n| 1 |\n:::\n")).toBe(
+      '<table xml:id="tbl-res"><title>Results</title><tabular>' +
+        '<row header="yes"><cell>A</cell></row><row><cell>1</cell></row>' +
+        "</tabular></table>",
+    );
+  });
+
+  it("supports the indented Table: form", () => {
+    expect(xml("Table[Results]:\n    | A |\n    | - |\n    | 1 |\n")).toBe(
+      "<table><title>Results</title><tabular>" +
+        '<row header="yes"><cell>A</cell></row><row><cell>1</cell></row>' +
+        "</tabular></table>",
+    );
+  });
+
+  it("leaves a 'Table:' line with text after it as prose", () => {
+    expect(xml("Table: see below.\n")).toBe("<p>Table: see below.</p>");
+  });
+
+  it("puts a table in a division body as a block", () => {
+    expect(xml("# Data\n\nIntro.\n\n| A |\n| - |\n| 1 |\n")).toBe(
+      "<chapter><title>Data</title><p>Intro.</p><tabular>" +
+        '<row header="yes"><cell>A</cell></row><row><cell>1</cell></row>' +
+        "</tabular></chapter>",
+    );
+  });
+});

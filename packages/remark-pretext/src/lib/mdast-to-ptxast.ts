@@ -14,6 +14,7 @@
  *   - Blockquotes  blockquote elements
  *   - Lists  ol/ul elements with li children
  *   - Fenced code  program elements
+ *   - GFM pipe tables  tabular elements
  *   - Display math (custom parser or mdast `math` nodes)  md elements
  *   - Container directives (remark-directive)  theorem/proof/example/... elements
  *   - Inline: text, emphasis, strong, inlineCode, custom `math` nodes
@@ -38,6 +39,9 @@ import type {
   ListItem,
   Blockquote as MdastBlockquote,
   Code,
+  Table,
+  TableRow,
+  AlignType,
 } from "mdast";
 import type { ContainerDirective, LeafDirective } from "mdast-util-directive";
 import { applyHeadingAttributes } from "./heading-attributes.js";
@@ -641,6 +645,7 @@ const blockHandlers: Record<
   blockquote: (node, ctx) => convertBlockquote(node as MdastBlockquote, ctx),
   list: (node, ctx) => convertList(node as List, ctx),
   code: (node, ctx) => convertCode(node as Code, ctx),
+  table: (node, ctx) => convertTable(node as Table, ctx),
   containerDirective: (node, ctx) =>
     convertContainerDirective(node as ContainerDirective, ctx),
   leafDirective: (node, ctx) =>
@@ -717,6 +722,67 @@ function convertCode(node: Code, ctx: VisitContext): Element {
     node.value,
     node.lang ? { language: node.lang } : undefined,
   );
+}
+
+/**
+ * Convert a GFM pipe table to a PreTeXt `<tabular>`.
+ *
+ * - The header row becomes `<row header="yes">`, unless every cell in it is
+ *   empty: Markdown can't write a table without a header row, so an empty one
+ *   is how a header-less `<tabular>` is written (and how `ptxast-util-to-mdast`
+ *   writes one).
+ * - Column alignment (`:--`, `:-:`, `--:`) becomes `halign` on the `<tabular>`
+ *   when every column agrees, and a `<col halign>` per column otherwise.
+ * - Short rows are padded with empty cells to the header's width, as GFM
+ *   renders them.
+ *
+ * Wrapping it in `:::table[Title]{#id}` gives the `<table>` around it.
+ */
+function convertTable(node: Table, ctx: VisitContext): Element {
+  const [head, ...body] = node.children;
+  const width = head?.children.length ?? 0;
+  const align = Array.from(
+    { length: width },
+    (_, i): AlignType => node.align?.[i] ?? null,
+  );
+  const childCtx = {
+    ...ctx,
+    ancestors: [...ctx.ancestors, node],
+    depth: ctx.depth + 1,
+  };
+
+  const rows: Element[] = [];
+  if (head && !isEmptyTableRow(head)) {
+    rows.push(convertTableRow(head, width, childCtx, { header: "yes" }));
+  }
+  for (const row of body) rows.push(convertTableRow(row, width, childCtx));
+
+  const shared = align.every((a) => a === align[0]) ? align[0] : undefined;
+  if (shared) return el("tabular", rows, { halign: shared });
+  if (shared === null) return el("tabular", rows);
+  const cols = align.map((a) => el("col", [], a ? { halign: a } : undefined));
+  return el("tabular", [...cols, ...rows]);
+}
+
+function isEmptyTableRow(row: TableRow): boolean {
+  return row.children.every((cell) =>
+    cell.children.every(
+      (child) => child.type === "text" && child.value.trim() === "",
+    ),
+  );
+}
+
+function convertTableRow(
+  row: TableRow,
+  width: number,
+  ctx: VisitContext,
+  attributes?: Record<string, string>,
+): Element {
+  const cells = row.children.map((cell) =>
+    el("cell", convertInlineNodes(cell.children, ctx)),
+  );
+  while (cells.length < width) cells.push(el("cell", []));
+  return el("row", cells, attributes);
 }
 
 function convertDisplayMath(node: CustomMath, ctx: VisitContext): Element {

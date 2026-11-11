@@ -34,7 +34,8 @@ export type DirectiveCategory =
   | "example-like"
   | "project-like"
   | "exercise-like"
-  | "solution-like";
+  | "solution-like"
+  | "figure-like";
 
 /**
  * Curated specification for a container directive. The direct analogue of the
@@ -68,8 +69,14 @@ export interface DirectiveSpec {
   /**
    * Override the auto-generated snippet body (LSP snippet syntax). The
    * generator always supplies the `name` line and the closing `:::` fence, so
-   * this is the inner body only.
+   * this is the inner body only. Number its tab stops from `$2` when the
+   * spec is `titled`, since the title placeholder takes `$1`.
    */
   snippet?: string;
+  /**
+   * The PreTeXt element needs a `<title>` (e.g. `table`), so the generated
+   * name line carries a `[Title]` placeholder.
+   */
+  titled?: boolean;
   documentation?: string;
 }

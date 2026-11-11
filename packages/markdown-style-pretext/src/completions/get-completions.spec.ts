@@ -23,6 +23,13 @@ describe("container directive completions", () => {
     expect(item?.textEdit?.newText).toBe("theorem\n\t$0\n:::");
   });
 
+  it("gives :::table a title placeholder and a pipe-table body", () => {
+    const item = byLabel(complete(":::tab|"), "table");
+    expect(item?.textEdit?.newText).toBe(
+      "table[${1:Title}]\n| ${2:Header} | ${3:Header} |\n| --- | --- |\n| $4 | $0 |\n:::",
+    );
+  });
+
   it("seeds a nested :::task for task-bearing directives", () => {
     const item = byLabel(complete(":::exerc|"), "exercise");
     expect(item?.textEdit?.newText).toContain(":::task");

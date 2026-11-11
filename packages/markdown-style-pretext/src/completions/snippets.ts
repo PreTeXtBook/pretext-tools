@@ -11,11 +11,17 @@ import type { DirectiveSpec } from "../types";
  * nested tasks seed a first `:::task` child so the structure is discoverable.
  */
 export function containerInsertText(spec: DirectiveSpec): string {
-  if (spec.snippet) return `${spec.name}\n${spec.snippet}\n:::`;
+  const head = nameLine(spec);
+  if (spec.snippet) return `${head}\n${spec.snippet}\n:::`;
   if (spec.hasNestedTasks) {
-    return `${spec.name}\n:::task\n\t$0\n:::\n:::`;
+    return `${head}\n:::task\n\t$0\n:::\n:::`;
   }
-  return `${spec.name}\n\t$0\n:::`;
+  return `${head}\n\t$0\n:::`;
+}
+
+/** The directive name, plus a title placeholder when it needs one. */
+function nameLine(spec: DirectiveSpec): string {
+  return spec.titled ? `${spec.name}[\${1:Title}]` : spec.name;
 }
 
 /** The bare closing fence, offered when a container directive is open. */
@@ -31,10 +37,15 @@ export function closeInsertText(): string {
  * Task-bearing directives seed a nested `task:` child.
  */
 export function pythonInsertText(spec: DirectiveSpec): string {
-  if (spec.hasNestedTasks) {
-    return `${spec.name}:\n\ttask:\n\t\t$0`;
+  const head = `${nameLine(spec)}:`;
+  if (spec.snippet) {
+    const body = spec.snippet.split("\n").map((line) => `\t${line}`);
+    return [head, ...body].join("\n");
   }
-  return `${spec.name}:\n\t$0`;
+  if (spec.hasNestedTasks) {
+    return `${head}\n\ttask:\n\t\t$0`;
+  }
+  return `${head}\n\t$0`;
 }
 
 /**

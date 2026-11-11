@@ -7,6 +7,7 @@
 import { defaultHandlers, toMarkdown } from "mdast-util-to-markdown";
 import type { Handle } from "mdast-util-to-markdown";
 import { directiveToMarkdown } from "mdast-util-directive";
+import { gfmTableToMarkdown } from "mdast-util-gfm-table";
 import { mathToMarkdown } from "mdast-util-math";
 import type { Heading, Root as MdastRoot } from "mdast";
 import type { ElementContent, Root } from "@pretextbook/ptxast";
@@ -50,7 +51,7 @@ export function ptxastToMarkdown(root: Root): string {
   const mdast: MdastRoot = ptxastToMdast(root);
   const outermost = mdast.children.find((node) => node.type === "heading");
   const body = toMarkdown(mdast, {
-    extensions: [directiveToMarkdown(), mathToMarkdown()],
+    extensions: [directiveToMarkdown(), mathToMarkdown(), gfmTableToMarkdown()],
     handlers: { heading: headingWithAttributes(outermost as Heading) },
   });
 

@@ -34,6 +34,8 @@ export default defineConfig(() => ({
         "unified",
         "unist-util-visit",
         "mdast-util-directive",
+        "mdast-util-gfm-table",
+        "micromark-extension-gfm-table",
         "@types/mdast",
       ],
     },
