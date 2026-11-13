@@ -19,6 +19,8 @@
  *    fragment in its document for correct numbering and resolved `<xref>`s
  *    (see `RenderOptions.contextSourceContent`) — `contextSourcePath` alone
  *    is unreadable for the same reason `sourcePath` alone is.
+ *  - **`renderSnippet` needs only `content`**: a snippet is rendered from
+ *    memory, with no source file behind it.
  *  - **Assets come from jsDelivr by default**, version-pinned to this package.
  *    Call `setAssetsBase()` before the first render to self-host.
  */
@@ -38,6 +40,10 @@ export type {
   SourceOptions,
 } from "./renderer.js";
 export type { SubtreeOptions } from "./subtree.js";
+// Rendering a snippet of PreTeXt (a paragraph, a theorem, …) to just its
+// HTML, without the page around it (see snippet.ts).
+export { extractSnippet, renderSnippet } from "./snippet.js";
+export type { SnippetOptions, SnippetResult } from "./snippet.js";
 export { SourceCache } from "./source-cache.js";
 export type { SourceCacheOptions } from "./source-cache.js";
 export type { SourceReader } from "./xinclude.js";

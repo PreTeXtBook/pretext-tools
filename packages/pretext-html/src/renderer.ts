@@ -601,7 +601,7 @@ export function defaultSourceCache(): SourceCache {
  * resolver takes. The map is consulted first, then the reader, then (inside
  * `readWith`) the platform.
  */
-function resolveOptionsFor(options: SourceOptions): ResolveOptions {
+export function resolveOptionsFor(options: SourceOptions): ResolveOptions {
   const files = options.files
     ? new Map(
         Object.entries(options.files).map(([file, content]) => [
@@ -646,7 +646,7 @@ async function readSourceOrThrow(
  * Read and extract the `<docinfo>` from a project main file (resolving
  * xi:includes). Best-effort: returns undefined if the file cannot be read.
  */
-async function docinfoFromSource(
+export async function docinfoFromSource(
   docinfoSourcePath: string,
   projectDir: string,
   resolve: ResolveOptions,
