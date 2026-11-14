@@ -165,8 +165,18 @@ function divisionAtLine(
 export function selectDivision(
   tree: Root,
   options: SubtreeOptions,
-  /** The file the tree's root was parsed from; what `file` defaults to. */
+  /** What `file` defaults to: the file being rendered. */
   defaultFile: string,
+  /**
+   * The file the tree's root element was parsed from, when that is not
+   * `defaultFile`: a fragment placed in its context document sits inside a
+   * tree parsed from the *main* file. Taking the fragment's path for the root
+   * would credit the main file's elements — `<book>` and its chapters, with
+   * the main file's line numbers — to the fragment, and a cursor in the
+   * fragment's prolog (line 1, where a freshly opened file puts it) would
+   * select the whole book.
+   */
+  rootFile: string = defaultFile,
 ): SelectedDivision | undefined {
   let element: Element | undefined;
   if (options.id !== undefined) {
@@ -174,9 +184,8 @@ export function selectDivision(
     const chain = named && pathTo(tree, named);
     element = chain && innermostDivision(chain);
   } else if (options.line !== undefined) {
-    const rootFile = path.resolve(defaultFile);
     const file = path.resolve(options.file ?? defaultFile);
-    element = divisionAtLine(tree, rootFile, file, options.line);
+    element = divisionAtLine(tree, path.resolve(rootFile), file, options.line);
   }
   if (!element) return undefined;
 

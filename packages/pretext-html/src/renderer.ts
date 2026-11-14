@@ -1078,7 +1078,7 @@ async function renderHtmlSerial(options: RenderOptions): Promise<RenderResult> {
     const pruneToSubtree = (tree: Root, fallbackId?: string): boolean => {
       size = { bytes, elements: countElements(tree), files };
       const selection = options.subtree
-        ? selectDivision(tree, options.subtree, sourcePath)
+        ? selectDivision(tree, options.subtree, sourcePath, mapRootFile)
         : undefined;
       const divisionId = selection?.id ?? fallbackId;
       if (!divisionId) return false;
