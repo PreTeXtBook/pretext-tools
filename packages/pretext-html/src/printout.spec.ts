@@ -1,11 +1,14 @@
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import {
+  PRINT_FIT_PROPERTY,
   PRINT_PREVIEW_GLOBAL,
   injectPrintPreview,
   listPrintouts,
+  printFitZoom,
   printPreviewBridgeScript,
   rootPrintoutId,
+  unzoomRect,
 } from "./printout.js";
 
 /**
@@ -173,6 +176,54 @@ describe("rootPrintoutId", () => {
   });
 });
 
+describe("printFitZoom", () => {
+  it("never enlarges the sheet in a panel wider than it needs", () => {
+    expect(printFitZoom(1600, 816)).toBe(1);
+    // Exactly the sheet plus its gutters: true size, no more.
+    expect(printFitZoom(816 + 72, 816)).toBe(1);
+  });
+
+  it("shrinks the sheet to leave a gutter for its shadow on each side", () => {
+    const scale = printFitZoom(500, 816);
+    expect(scale).toBeCloseTo((500 - 72) / 816);
+    expect(500 - 816 * scale).toBeCloseTo(72);
+  });
+
+  it("stays positive in a panel narrower than its gutters", () => {
+    expect(printFitZoom(40, 816)).toBeGreaterThan(0);
+  });
+});
+
+describe("unzoomRect", () => {
+  const host = { left: 40, top: 100, width: 408, height: 2000 };
+
+  it("maps a rect inside the scaled host back to layout space", () => {
+    // A row 50px below the host's top and 20px in, 30px tall, at scale 0.5:
+    // in layout space it is 100px down, 40px in, 60px tall.
+    const rect = { left: 60, top: 150, width: 100, height: 30 };
+    expect(unzoomRect(rect, host, 0.5)).toEqual({
+      left: 80,
+      top: 200,
+      width: 200,
+      height: 60,
+    });
+  });
+
+  it("keeps the host where it is and unzooms only its size", () => {
+    expect(unzoomRect(host, host, 0.5)).toEqual({
+      left: 40,
+      top: 100,
+      width: 816,
+      height: 4000,
+    });
+  });
+
+  it("is the identity at scale 1", () => {
+    const rect = { left: 60, top: 150, width: 100, height: 30 };
+    expect(unzoomRect(rect, host, 1)).toEqual(rect);
+  });
+});
+
 describe("printPreviewBridgeScript", () => {
   it("names the wanted printout, and null when there is none", () => {
     expect(printPreviewBridgeScript("ws-one")).toContain('"ws-one"');
@@ -272,6 +323,24 @@ describe("injectPrintPreview", () => {
     expect(on).toContain("color-scheme: light");
     expect(on).toContain("background: var(--page-color, #fff) !important");
     expect(injectPrintPreview(PAGE)).not.toContain("color-scheme");
+  });
+
+  it("fits the paper to the panel only in the print layout", () => {
+    const on = injectPrintPreview(PAGE, "ws-one");
+    expect(on).toContain(`transform: scale(var(${PRINT_FIT_PROPERTY}, 1))`);
+    expect(on).toContain("installPrintFit");
+    // The ordinary page still carries the fit code, in the branch its script
+    // never takes; what must be absent is the rule that would scale the paper.
+    const off = injectPrintPreview(PAGE);
+    expect(off).not.toContain(`scale(var(${PRINT_FIT_PROPERTY}`);
+  });
+
+  it("delivers a working bridge to a window without layout APIs", () => {
+    // The fake window has no Element, DOMRect or ResizeObserver: the fit must
+    // bow out rather than throw and take the URLSearchParams patch with it.
+    const window = fakeWindow("?id=1");
+    deliver(injectPrintPreview(PAGE, "ws-one"), window);
+    expect(printPreviewParam(window)).toBe("ws-one");
   });
 
   it("keeps the state on a well-known global, for embedders to read", () => {
