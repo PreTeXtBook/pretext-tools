@@ -38,7 +38,9 @@ export function previewCsp(cspSource: string): string {
     // workers fall back to script-src, which has no `blob:`. MathJax 4
     // generates speech in a worker it starts from a blob: URL, and when that
     // is blocked nothing fails — its startup promise just never settles, and
-    // math patched into the page afterwards is never typeset.
+    // math patched into the page afterwards is never typeset. pretext-core.js's
+    // print preview awaits that promise too, and stops partway: no workspace
+    // sizing, the title left off the first page, print options never wired.
     "worker-src blob: https:",
     "style-src https: 'unsafe-inline'",
     "font-src https: data:",
@@ -216,9 +218,14 @@ export function liveBootstrapScript(): string {
     "          // subsection, a p with a long list) centering would push its",
     "          // top — the part that was clicked — above the viewport, so",
     "          // pin the top just below the window top instead.",
+    // Positioned natively rather than from rect.top: in print preview the
+    // paper is scaled to fit the panel, and pretext-html makes rects inside
+    // it answer in unzoomed layout space (see installPrintFit) — fine for a
+    // height comparison, but a scroll offset computed from one overshoots.
     "          var rect = target.getBoundingClientRect();",
     "          if (rect.height > window.innerHeight - 140) {",
-    "            window.scrollTo(0, rect.top + window.pageYOffset - 70);",
+    "            target.scrollIntoView({ block: 'start' });",
+    "            window.scrollBy(0, -70);",
     "          } else {",
     "            target.scrollIntoView({ block: 'center' });",
     "          }",
