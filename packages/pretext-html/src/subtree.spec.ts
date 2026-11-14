@@ -112,6 +112,34 @@ describe("selectDivision", () => {
     );
     expect(selectDivision(main, { line: 2 }, FILE)?.element.name).toBe("book");
   });
+
+  it("finds a fragment placed in its context document from its own prolog", () => {
+    // The context render: the tree is the main file, the fragment spliced in
+    // (and tagged) where main includes it, and the fragment is what is being
+    // rendered. A freshly opened file has its cursor on line 1 — the XML
+    // declaration, before the fragment's root element.
+    const main = fromXml(
+      `<pretext>\n<book>\n<chapter xml:id="c1"><p>x</p></chapter>\n</book>\n</pretext>`,
+    );
+    const fragment = fromXml(
+      `\n\n<worksheet xml:id="ws">\n<exercise><p>y</p></exercise>\n</worksheet>`,
+    );
+    const wsRoot = fragment.children.find(
+      (node): node is Element => node.type === "element",
+    )!;
+    const fragmentFile = path.resolve("/project/ws.ptx");
+    tagIncludedFile(wsRoot, fragmentFile);
+    const book = (main.children[0] as Element).children.find(
+      (node): node is Element => node.type === "element",
+    )!;
+    book.children.push(wsRoot);
+    // Not the book: main's <pretext>/<book> sit on main's lines 1–2, which
+    // say nothing about the fragment's line 1.
+    expect(
+      selectDivision(main, { line: 1, file: fragmentFile }, fragmentFile, FILE)
+        ?.id,
+    ).toBe("ws");
+  });
 });
 
 describe("ensureXmlId", () => {

@@ -129,6 +129,12 @@ let deliveredHtml: string | undefined;
 /** Whether the webview holds a copy of the page it is showing. */
 let webviewHasPage = false;
 /**
+ * Whether the page on screen is in the print-preview layout. Such a page, and
+ * the one that replaces it, always load into a fresh Window — see
+ * updatePanelContent.
+ */
+let deliveredPrintLayout = false;
+/**
  * What the page on screen shows, when the next live render may be patched
  * into it rather than written over it (see patchableKey); undefined when it
  * may not be.
@@ -1162,9 +1168,8 @@ function cmdStepPreviewSlidesZoom(delta: number): void {
  *
  * `fresh` forces a new document via webview.html rather than the usual in-place
  * rewrite. Slideshows need it — reveal reads its view and slide size once, at
- * initialize — but the print-preview layout does not: pretext-core.js applies
- * that from a DOMContentLoaded handler, which a `document.write` fires just as a
- * reload does, and the in-place path keeps the CDN assets already loaded.
+ * initialize. The print-preview layout gets a fresh document regardless, from
+ * updatePanelContent itself, since edits re-deliver it too.
  */
 async function redeliverPreview({ fresh = false } = {}): Promise<void> {
   if (!currentPanel || !lastRender) {
@@ -1900,6 +1905,18 @@ function describeErrorLocation(at: ErrorLocation): string {
  * A patch is computed against the previous page's HTML, which the webview
  * keeps from each update message. A page loaded through webview.html has no
  * such copy, so the first update after one sends the previous page along.
+ *
+ * The print-preview layout is the exception: entering it, rebuilding it, and
+ * leaving it all go through webview.html. An in-place rewrite keeps the
+ * Window, and with it everything the previous page's scripts left there — so
+ * the new page's scripts run a second time over it. Some cannot: classic
+ * scripts with top-level `const`s (STACK's `stack_api_url`, `QUESTION_IFRAMES`)
+ * throw on redeclaration, and Prism's language packs fail to re-extend. On an
+ * ordinary page that costs an interactive; pretext-core.js's print layout is a
+ * long async chain over the whole printout (pagination, MathJax, fonts,
+ * the print-options dialog), and on a real worksheet it was left half done —
+ * rows stranded outside the pages, print options with no effect. A fresh
+ * Window runs it exactly as a full build's page load does.
  */
 function updatePanelContent(
   preparedHtml: string,
@@ -1909,6 +1926,12 @@ function updatePanelContent(
   if (!panel) {
     return;
   }
+  // prepareWebviewHtml reads the same state, so this is what preparedHtml is.
+  const printLayout = previewMode === "live" && currentPrintout() !== undefined;
+  if (printLayout || deliveredPrintLayout) {
+    panelHasContent = false;
+  }
+  deliveredPrintLayout = printLayout;
   const previous = deliveredHtml;
   if (patch && panelHasContent && preparedHtml === previous) {
     // The page on screen already is this render: an edit to a comment, to
