@@ -1,5 +1,12 @@
 # @pretextbook/pretext-html
 
+## 0.21.1
+
+### Patch Changes
+
+- fdd43eb: Print preview now lays the page out at full paper size in any viewport and scales it to fit, instead of letting a narrow panel squeeze the pages. Page breaks and workspace heights come out the same at every panel width, matching what prints. The sheet keeps a gutter for its shadow and never grows past 100%.
+- fdd43eb: Fix `subtree` selection for a fragment rendered in its context document: a line before the fragment's root element (its XML declaration, where a freshly opened file puts the cursor) selected the whole book instead of the fragment's own division.
+
 ## 0.21.0
 
 ### Minor Changes
