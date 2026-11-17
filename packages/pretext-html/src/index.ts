@@ -15,6 +15,10 @@ export type {
 // Previewing one division of a complete document (see subtree.ts): the
 // renderer does this when RenderOptions.subtree is set.
 export type { SubtreeOptions } from "./subtree.js";
+// Rendering a snippet of PreTeXt (a paragraph, a theorem, …) to just its
+// HTML, without the page around it (see snippet.ts).
+export { extractSnippet, renderSnippet } from "./snippet.js";
+export type { SnippetOptions, SnippetResult } from "./snippet.js";
 // Supplying files from memory, and reusing their parses across renders (see
 // source-cache.ts). The renderer uses a shared cache unless told otherwise.
 export { SourceCache } from "./source-cache.js";

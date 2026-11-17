@@ -281,6 +281,51 @@ section or subsection preview takes well under a second warm (0.3–0.8s
 measured, most of it the division itself), and a chapter's summary page about
 the same, against 20–40 seconds for the whole book.
 
+### Rendering a snippet
+
+`renderSnippet` renders a bit of PreTeXt, such as a paragraph followed by a
+theorem, to just its HTML. The output has no masthead, table of contents,
+navigation footer or `<head>`. The content can have any number of top-level
+elements, and nothing needs to be read from disk:
+
+```ts
+import { renderSnippet } from "@pretextbook/pretext-html";
+
+const { html, latexMacros } = await renderSnippet({
+  content: `<p>Let <m>x \in \R</m>.</p>
+<theorem><statement><p>All is well.</p></statement></theorem>`,
+  // Optional: the project's macros, as a <docinfo> string or lifted from main.ptx.
+  docinfo: `<docinfo><macros>\newcommand{\R}{\mathbb R}</macros></docinfo>`,
+  // Optional: the prefix of every generated id (default "snippet"). Give each
+  // snippet on a page its own prefix.
+  idPrefix: "ex1",
+});
+```
+
+Internally the snippet is rendered as an untitled `<article>`, so it is numbered
+as one (its first theorem is "Theorem 1"), and its content is then cut out of
+the page. A parse error in the snippet is reported against that wrapper
+document.
+
+The result is a fragment, so your page has to load what PreTeXt's own page would
+have loaded:
+
+- **CSS.** PreTeXt's theme stylesheet scopes its rules under `.ptx-content`, so
+  place the fragment inside such an element.
+- **MathJax.** Math arrives as `\(…\)` inside `.process-math` spans. Include
+  `latexMacros` (a hidden `<div id="latex-macros">`) once per page, before
+  typesetting, so the macros are defined.
+
+`renderSnippet` also takes `publicationPath`, `cssTheme`, `stringParams`,
+`docinfoSourcePath`, `files`/`readSource` (for `xi:include`s, resolved against
+`sourcePath`) and `openKnowls`, with the same meaning as for `renderHtml`. It
+works the same way in the browser build. On the command line, `--snippet`
+writes the fragment, with the macros div first:
+
+```sh
+pretext-html --snippet snippet.ptx --docinfo-source source/main.ptx -o snippet.html
+```
+
 ### API (browser)
 
 The same renderer runs in a browser — no server, no Python. Bundlers pick it up

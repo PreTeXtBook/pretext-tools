@@ -19,6 +19,7 @@ import {
   type RenderOptions,
   type RenderResult,
 } from "./renderer.js";
+import { renderSnippet } from "./snippet.js";
 
 const USAGE = `Usage: pretext-html <source.ptx> [options]
 
@@ -55,6 +56,14 @@ Options:
                             belongs to. Renders it in place, so it is numbered
                             and its cross-references resolve as in the built
                             book. Supersedes --docinfo-source
+  --snippet                 The source file is a snippet of PreTeXt (a <p>
+                            and a <theorem>, say; several top-level elements
+                            are fine), not a document. Writes only its HTML
+                            fragment (after PreTeXt's hidden LaTeX-macros
+                            div): no masthead, contents, footer or <head>.
+                            Takes --docinfo and --docinfo-source for macros
+  --snippet-id <id>         Prefix of the ids generated in --snippet mode
+                            (default: snippet)
   --off-page-message <text> Tooltip on links whose target is not on the
                             previewed page, which cannot navigate in a
                             single-page preview
@@ -85,6 +94,10 @@ interface CliArgs {
    * (see main).
    */
   printPreview?: string | true;
+  /** `--snippet`: render the source as a snippet (see snippet.ts). */
+  snippet?: boolean;
+  /** `--snippet-id`: the snippet's id prefix. */
+  snippetId?: string;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
@@ -93,6 +106,8 @@ export function parseArgs(argv: string[]): CliArgs {
   let docinfoPath: string | undefined;
   let sourceMapPath: string | undefined;
   let printPreview: string | true | undefined;
+  let snippet = false;
+  let snippetId: string | undefined;
   const options: Partial<RenderOptions> = {};
   const stringParams: Record<string, string> = {};
 
@@ -129,6 +144,12 @@ export function parseArgs(argv: string[]): CliArgs {
         break;
       case "--fragment":
         options.fragment = true;
+        break;
+      case "--snippet":
+        snippet = true;
+        break;
+      case "--snippet-id":
+        snippetId = next();
         break;
       case "--no-open-knowls":
         options.openKnowls = false;
@@ -184,12 +205,29 @@ export function parseArgs(argv: string[]): CliArgs {
   if (Object.keys(stringParams).length > 0) {
     options.stringParams = stringParams;
   }
+  if (snippetId !== undefined && !snippet) {
+    throw new Error("--snippet-id needs --snippet");
+  }
+  if (snippet) {
+    const conflicting = [
+      options.fragment && "--fragment",
+      options.contextSourcePath && "--context",
+      sourceMapPath && "--source-map",
+      printPreview !== undefined && "--print-preview",
+    ].filter(Boolean);
+    if (conflicting.length > 0) {
+      throw new Error(
+        `--snippet cannot be combined with ${conflicting.join(", ")}`,
+      );
+    }
+  }
   return {
     options: { ...options, sourcePath },
     output,
     docinfoPath,
     sourceMapPath,
     printPreview,
+    ...(snippet ? { snippet, snippetId } : {}),
   };
 }
 
@@ -223,10 +261,14 @@ export function linkAssetsFrom(
 }
 
 export async function main(argv: string[]): Promise<void> {
-  const { options, output, docinfoPath, sourceMapPath, printPreview } =
-    parseArgs(argv);
+  const args = parseArgs(argv);
+  const { options, output, docinfoPath, sourceMapPath, printPreview } = args;
   if (docinfoPath) {
     options.docinfo = await readFile(docinfoPath, "utf8");
+  }
+  if (args.snippet) {
+    await snippetMain(options, args.snippetId, output);
+    return;
   }
   const started = Date.now();
   const result = await renderHtml(options);
@@ -270,6 +312,36 @@ export async function main(argv: string[]): Promise<void> {
     }
     html = embedIframePages(html, pages);
     await writeFile(output, html);
+    process.stderr.write(`pretext-html: wrote ${output}\n`);
+  } else {
+    process.stdout.write(embedIframePages(html, result.iframePages));
+  }
+}
+
+/** `--snippet`: write the source's HTML fragment, not a page. */
+async function snippetMain(
+  options: RenderOptions,
+  idPrefix: string | undefined,
+  output: string | undefined,
+): Promise<void> {
+  const started = Date.now();
+  const result = await renderSnippet({
+    ...options,
+    content: await readFile(options.sourcePath, "utf8"),
+    idPrefix,
+  });
+  process.stderr.write(`pretext-html: rendered in ${Date.now() - started}ms\n`);
+  // Macros first, so the fragment typesets with them wherever it is put.
+  let html =
+    [result.latexMacros, result.html].filter(Boolean).join("\n") + "\n";
+  if (output) {
+    const pageDir = path.dirname(path.resolve(output));
+    html = linkAssetsFrom(html, result.assetDirs, pageDir);
+    const pages: IframePages = {};
+    for (const [name, page] of Object.entries(result.iframePages)) {
+      pages[name] = linkAssetsFrom(page, result.assetDirs, pageDir);
+    }
+    await writeFile(output, embedIframePages(html, pages));
     process.stderr.write(`pretext-html: wrote ${output}\n`);
   } else {
     process.stdout.write(embedIframePages(html, result.iframePages));
