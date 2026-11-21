@@ -55,6 +55,14 @@ describe("latexToPretext", () => {
     expect(out).toContain("x^{2}+1");
   });
 
+  it("treats Windows (CRLF) line endings like LF", () => {
+    const convert = (latex: string) =>
+      String((latexToPretext(latex) as { value: string }).value);
+    const out = convert("Line one\r\nline two.\r\n\r\nNew paragraph.");
+    expect(out).toBe(convert("Line one\nline two.\n\nNew paragraph."));
+    expect(out.match(/<p>/g)).toHaveLength(2);
+  });
+
   it("converts theorem environments to theorem/statement structure", () => {
     const out = String(
       (

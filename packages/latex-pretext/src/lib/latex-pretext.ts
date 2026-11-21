@@ -64,5 +64,8 @@ export function latexToPretext(
       .use(xmlCompilePlugin)
       .processSync({ value });
 
-  return convert(latex);
+  // Normalize Windows (\r\n) and classic Mac (\r) line endings. The
+  // unified-latex parser (through v1.8.4) reads a single \r\n as two
+  // newlines, i.e. a paragraph break, so every line became its own <p>.
+  return convert(latex.replace(/\r\n?/g, "\n"));
 }
