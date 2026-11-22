@@ -1,5 +1,11 @@
 # @pretextbook/latex-pretext
 
+## 0.4.1
+
+### Patch Changes
+
+- d9589f1: Fix LaTeX files with Windows (CRLF) line endings: each single line break was read as a paragraph break, so every line of a paragraph became its own `<p>`.
+
 ## 0.4.0
 
 ### Minor Changes
