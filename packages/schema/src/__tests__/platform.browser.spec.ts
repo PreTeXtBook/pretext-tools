@@ -37,9 +37,13 @@ describe("platform.browser", () => {
 
   it("fileURLToPath/pathToFileURL round-trip and match node:url", () => {
     const p = "/a/b c.ptx";
-    expect(pathToFileURL(p)).toBe(nodePathToFileURL(p).toString());
+    // The browser build only knows posix paths, so compare against node:url's
+    // posix behavior; on Windows the default would prefix the current drive.
+    const posix = { windows: false };
+    const nodeUrl = nodePathToFileURL(p, posix).toString();
+    expect(pathToFileURL(p)).toBe(nodeUrl);
     expect(fileURLToPath(pathToFileURL(p))).toBe(
-      nodeFileURLToPath(nodePathToFileURL(p).toString()),
+      nodeFileURLToPath(nodeUrl, posix),
     );
   });
 
