@@ -3,6 +3,16 @@ import { convertLatexToPretext, convertSourceToPretext } from "./convert";
 import { detectDocumentKind } from "./layout/document-kind";
 
 describe("convertLatexToPretext", () => {
+  it("converts inline math followed by punctuation in a pasted sentence", () => {
+    const { pretext } = convertLatexToPretext(
+      "Let $P=(1,-1,2)$, $Q=(2,0,-1)$, and $R=(0,2,1)$",
+    );
+    expect(pretext).toContain("<m>P=(1,-1,2)</m>,");
+    expect(pretext).toContain("<m>Q=(2,0,-1)</m>,");
+    expect(pretext).toContain("<m>R=(0,2,1)</m>");
+    expect(pretext).not.toContain("$");
+  });
+
   it("escapes XML-special characters in preamble macros", () => {
     const latex = String.raw`
 \documentclass{article}
