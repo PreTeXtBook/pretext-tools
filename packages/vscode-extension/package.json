@@ -400,7 +400,7 @@
         "command": "pretext-tools.newParagraph",
         "title": "New Paragraph",
         "category": "PreTeXt",
-        "description": "Inside a <p>, end it at the cursor and start the next one; elsewhere, start a new <p>. Bound to Shift+Enter."
+        "description": "Inside a <p>, end it at the cursor and start the next one; in an empty <p>, start the next list item or step out of the list or block; elsewhere, start a new <p>. Bound to Shift+Enter."
       },
       {
         "command": "pretext-tools.wrapSelection",
@@ -952,7 +952,7 @@
           "pretext-tools.typingShortcuts.paragraphs": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "Inside a `<p>`, pressing Enter twice (or Shift+Enter) ends the paragraph and starts a new one; in a list item, it turns the item's text into paragraphs. Elsewhere, Shift+Enter starts a new `<p>`."
+            "markdownDescription": "Inside a `<p>`, pressing Enter twice (or Shift+Enter) ends the paragraph and starts a new one; in a list item, it turns the item's text into paragraphs. One more Enter (or Shift+Enter) in the new, empty `<p>` moves on: in a list item it starts the next item, in an empty last item it leaves the list, and at the end of a `<statement>`, `<proof>`, or other block it steps outside the block. Elsewhere, Shift+Enter starts a new `<p>`."
           },
           "pretext-tools.typingShortcuts.environments": {
             "type": "boolean",

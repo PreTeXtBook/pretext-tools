@@ -22,6 +22,7 @@ import {
 } from "./inline-markup";
 import { mathDelimiterEdit } from "./math-delimiters";
 import { listMarkerEdit } from "./lists";
+import { nextBlockEdit } from "./next-block";
 import {
   insertParagraphEdit,
   splitListItemEdit,
@@ -168,6 +169,16 @@ export class TypingShortcuts {
   private options: Required<TypingShortcutsOptions>;
   /** The text the most recent change inserted, if that change was an Enter. */
   private lastEnter: { start: number; end: number } | null = null;
+  /**
+   * The most recent paragraph edit, while nothing has been typed since: an
+   * Enter where it left the caret moves on (see {@link nextBlockEdit}).
+   * `echoed` once the change event of the edit itself has gone by.
+   */
+  private lastParagraph: {
+    edit: ShortcutEdit;
+    caret: number;
+    echoed: boolean;
+  } | null = null;
 
   constructor(options: TypingShortcutsOptions = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
@@ -185,6 +196,31 @@ export class TypingShortcuts {
    */
   reset(): void {
     this.lastEnter = null;
+    this.lastParagraph = null;
+  }
+
+  /**
+   * Call once an edit this session returned has been applied, when its change
+   * event doesn't reach {@link afterChange} (the Monaco adapter suppresses
+   * it). Unlike {@link reset}, it keeps what the edit itself started — the
+   * Enter after a paragraph shortcut still moves on.
+   */
+  editApplied(edit: ShortcutEdit): void {
+    this.lastEnter = null;
+    if (this.lastParagraph?.edit === edit) {
+      this.lastParagraph.echoed = true;
+    } else {
+      this.lastParagraph = null;
+    }
+  }
+
+  /** Remember a paragraph edit about to be returned, for the Enter after it. */
+  private returning(edit: ShortcutEdit | null): ShortcutEdit | null {
+    this.lastParagraph =
+      edit?.kind === "paragraph" && edit.caret !== undefined
+        ? { edit, caret: edit.caret, echoed: false }
+        : null;
+    return edit;
   }
 
   /**
@@ -199,6 +235,8 @@ export class TypingShortcuts {
   ): ShortcutEdit | null {
     const previousEnter = this.lastEnter;
     this.lastEnter = null;
+    const previousParagraph = this.lastParagraph;
+    this.lastParagraph = null;
     const surround = surroundInput(changes);
     if (surround) {
       if (
@@ -214,7 +252,14 @@ export class TypingShortcuts {
       return surroundEdit(text, open, close, start, end, state);
     }
     const input = typedInput(changes);
-    if (!input) return null;
+    if (!input) {
+      // The first change after a paragraph edit that isn't typing is that
+      // edit arriving (as it does in VS Code), which keeps it remembered.
+      if (previousParagraph && !previousParagraph.echoed) {
+        this.lastParagraph = { ...previousParagraph, echoed: true };
+      }
+      return null;
+    }
     if (
       state.caret !== undefined &&
       (state.caret < input.start || state.caret > input.end)
@@ -225,17 +270,19 @@ export class TypingShortcuts {
 
     const text = typeof source === "string" ? source : source();
     const edit = input.enter
-      ? this.afterEnter(text, input, previousEnter, state)
+      ? this.afterEnter(text, input, previousEnter, previousParagraph, state)
       : this.afterCharacter(text, input, state);
     if (edit) this.lastEnter = null;
-    return edit;
+    return this.returning(edit);
   }
 
   /**
    * Shift+Enter: inside a `<p>`, end it at the caret and start the next one;
-   * in a list item's text, split that into two paragraphs; elsewhere, start a
-   * new `<p>`. Returns `null` when none applies (or there is a selection), in
-   * which case the host should insert an ordinary line break.
+   * in a list item's text, split that into two paragraphs; in an empty `<p>`,
+   * move on to the next item or out of the block (see {@link nextBlockEdit});
+   * elsewhere, start a new `<p>`. Returns `null` when none applies (or there
+   * is a selection), in which case the host should insert an ordinary line
+   * break.
    */
   newParagraph(
     source: string,
@@ -244,14 +291,16 @@ export class TypingShortcuts {
     state: EditorState = {},
   ): ShortcutEdit | null {
     this.lastEnter = null;
+    this.lastParagraph = null;
     if (!this.options.paragraphs || selectionStart !== selectionEnd) {
       return null;
     }
     const indentUnit = state.indentUnit ?? DEFAULT_INDENT;
-    return (
+    return this.returning(
       splitParagraphEdit(source, selectionStart, state.eol) ??
-      splitListItemEdit(source, selectionStart, indentUnit, state.eol) ??
-      insertParagraphEdit(source, selectionStart, indentUnit, state.eol)
+        splitListItemEdit(source, selectionStart, indentUnit, state.eol) ??
+        insertParagraphEdit(source, selectionStart, indentUnit, state.eol) ??
+        nextBlockEdit(source, selectionStart, state.eol),
     );
   }
 
@@ -306,9 +355,17 @@ export class TypingShortcuts {
     source: string,
     input: TypedInput,
     previousEnter: { start: number; end: number } | null,
+    previousParagraph: { caret: number } | null,
     state: EditorState,
   ): ShortcutEdit | null {
     const { codeBlocks, environments, escapes, paragraphs } = this.options;
+    // The Enter right after a paragraph edit, where it left the caret: move
+    // on from the empty paragraph it made (the third Enter of Enter, Enter,
+    // Enter).
+    if (paragraphs && previousParagraph?.caret === input.before) {
+      const edit = nextBlockEdit(source, input.end, state.eol);
+      if (edit) return edit;
+    }
     if (codeBlocks) {
       const edit = codeBlockEdit(source, input.start, input.end);
       if (edit) return edit;
@@ -336,7 +393,8 @@ export class TypingShortcuts {
           input.end,
           state.indentUnit ?? DEFAULT_INDENT,
           state.eol,
-        )
+        ) ??
+        nextBlockEdit(source, input.end, state.eol)
       );
     }
     return null;
