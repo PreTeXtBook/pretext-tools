@@ -7125,7 +7125,9 @@ export const defaultDevSchema: CompletionSchema = {
       "video",
       "warning"
     ],
-    "attributes": []
+    "attributes": [
+      "pages"
+    ]
   },
   "page-first": {
     "elements": [],

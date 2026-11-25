@@ -7122,7 +7122,9 @@ export const ptxSchemaElementChildren = {
       "video",
       "warning"
     ],
-    "attributes": []
+    "attributes": [
+      "pages"
+    ]
   },
   "page-first": {
     "elements": [],
