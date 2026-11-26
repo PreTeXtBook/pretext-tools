@@ -1,5 +1,12 @@
 # @pretextbook/pretext-html
 
+## 0.21.3
+
+### Patch Changes
+
+- 629f595: Rebuild schema etc
+- 629f595: dep updates
+
 ## 0.21.2
 
 ### Patch Changes

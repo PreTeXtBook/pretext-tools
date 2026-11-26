@@ -1,5 +1,12 @@
 # @pretextbook/visual-editor
 
+## 0.1.6
+
+### Patch Changes
+
+- 629f595: Update TipTap to 3.35 and declare the `@tiptap/core`, `@tiptap/extension-hard-break`, and `@tiptap/extension-text` dependencies the editor imports directly (previously they only resolved through hoisting).
+- 629f595: dep updates
+
 ## 0.1.5
 
 ### Patch Changes
