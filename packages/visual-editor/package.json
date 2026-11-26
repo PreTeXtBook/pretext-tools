@@ -52,11 +52,14 @@
   "dependencies": {
     "@floating-ui/dom": "^1.7.6",
     "@pretextbook/format": "0.6.2",
-    "@tiptap/extension-code-block": "^3.28.0",
-    "@tiptap/extension-list": "^3.28.0",
-    "@tiptap/extensions": "^3.28.0",
-    "@tiptap/pm": "^3.28.0",
-    "@tiptap/react": "^3.28.0",
+    "@tiptap/core": "^3.35.0",
+    "@tiptap/extension-code-block": "^3.35.0",
+    "@tiptap/extension-hard-break": "^3.35.0",
+    "@tiptap/extension-list": "^3.35.0",
+    "@tiptap/extension-text": "^3.35.0",
+    "@tiptap/extensions": "^3.35.0",
+    "@tiptap/pm": "^3.35.0",
+    "@tiptap/react": "^3.35.0",
     "katex": "^0.18.10"
   },
   "peerDependencies": {
