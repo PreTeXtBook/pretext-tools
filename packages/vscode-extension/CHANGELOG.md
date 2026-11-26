@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+## [1.6.0] - 2026-11-26
+
 ### Changed
 
 - Instant Preview and schemas now match pretext-cli v2.57.0 (PreTeXt core 34afc80).
