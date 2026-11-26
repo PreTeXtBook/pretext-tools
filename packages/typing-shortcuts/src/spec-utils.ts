@@ -64,9 +64,10 @@ export const type = (
 };
 
 /**
- * Drives a {@link TypingShortcuts} like an editor adapter does: each keystroke
- * produces a change event, and any shortcut edit is applied (after resetting
- * the session, as the adapters do for their own edits).
+ * Drives a {@link TypingShortcuts} like the Monaco adapter does: each
+ * keystroke produces a change event, and any shortcut edit is applied without
+ * its own change event reaching the session, which is told through
+ * `editApplied` instead.
  */
 export const editor = (marked: string, options?: TypingShortcutsOptions) => {
   const shortcuts = new TypingShortcuts(options);
@@ -76,7 +77,7 @@ export const editor = (marked: string, options?: TypingShortcutsOptions) => {
     const edit = shortcuts.afterChange(next.source, changes);
     current = edit ? applyEdit(next.source, edit) : next;
     lastEdit = edit;
-    if (edit) shortcuts.reset();
+    if (edit) shortcuts.editApplied(edit);
   };
   return {
     type(...keys: string[]) {
@@ -119,7 +120,10 @@ export const editor = (marked: string, options?: TypingShortcutsOptions) => {
         current.caret,
         current.caret,
       );
-      if (edit) current = applyEdit(current.source, edit);
+      if (edit) {
+        current = applyEdit(current.source, edit);
+        shortcuts.editApplied(edit);
+      }
       return edit;
     },
     get text() {

@@ -71,7 +71,9 @@ export interface TypingShortcutsOptions {
    * Inside a `<p>`, a double Enter (or Shift+Enter, via
    * {@link TypingShortcuts.newParagraph}) splits the paragraph, and in the
    * text of an `<li>` splits it into two `<p>`s; elsewhere `newParagraph`
-   * starts a new one. Default `true`.
+   * starts a new one. One more Enter (or Shift+Enter) in the new, empty `<p>`
+   * moves on: to the next list item, out of an empty last item's list, or
+   * out of the block it ends. Default `true`.
    */
   paragraphs?: boolean;
   /** `theorem:` + Enter on a line of its own expands the theorem snippet. Default `true`. */

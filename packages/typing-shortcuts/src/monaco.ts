@@ -110,7 +110,9 @@ export const registerMonacoTypingShortcuts = (
     } finally {
       applying = false;
     }
-    shortcuts.reset();
+    // The edit's own change event was skipped above; tell the session it
+    // landed, so an Enter right after a paragraph edit still moves on.
+    shortcuts.editApplied(edit);
     if (edit.suggest) {
       editor.trigger(EDIT_SOURCE, "editor.action.triggerSuggest", {});
     }

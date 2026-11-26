@@ -22,6 +22,7 @@ export {
   splitParagraphEdit,
 } from "./paragraphs";
 export { listMarkerEdit } from "./lists";
+export { nextBlockEdit } from "./next-block";
 export {
   ENVIRONMENT_NAMES,
   environmentEdit,

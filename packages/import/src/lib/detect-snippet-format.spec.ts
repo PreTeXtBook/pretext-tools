@@ -16,6 +16,12 @@ describe("detectSnippetFormat: LaTeX", () => {
     ["label and ref", "See \\ref{thm-main} for details."],
     ["itemize", "\\begin{itemize}\n\\item One\n\\end{itemize}"],
     ["lone variable math", "Let $n$ be even."],
+    // No TeX characters inside the math, and punctuation right after it.
+    [
+      "points followed by commas",
+      "Let $P=(1,-1,2)$, $Q=(2,0,-1)$, and $R=(0,2,1)$",
+    ],
+    ["math that is not the first $ pair", "It costs $5, or $f(x)$ in general."],
   ])("detects %s", (_label, text) => {
     expect(detectSnippetFormat(text)).toBe("latex");
   });
@@ -41,6 +47,8 @@ describe("detectSnippetFormat: declines", () => {
     ["empty", "   \n  "],
     ["PreTeXt markup", "<p>Already <em>PreTeXt</em>.</p>"],
     ["currency", "The book costs $5 and the workbook costs $7."],
+    ["a price range", "Expect to pay $5-$10 (or $20+ new)."],
+    ["a list of prices", "Tickets are $5, $10, and $20."],
     ["snake_case identifier", "Call the compute_total_value function twice."],
     ["a bare asterisk", "The answer is 5 * 3 = 15."],
     ["prose with a hyphen", "Well - that was unexpected."],

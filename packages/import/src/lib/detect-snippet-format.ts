@@ -27,20 +27,28 @@ interface Signal {
 /**
  * Inline math, guarded against currency.
  *
- * `costs $5 and $7` would otherwise read as math delimiters wrapping " and ".
- * Requiring a TeX-ish character inside — a backslash, sub/superscript, or
- * braces — or else a lone variable like `$n$`, keeps prices out while still
- * catching the math people actually paste.
+ * `costs $5 and $7` would otherwise read as math delimiters wrapping "5 and ".
+ * The delimiters follow Pandoc's rules: the opening `$` is not followed by
+ * whitespace, and the closing `$` is not preceded by whitespace (or a
+ * backslash) nor followed by a digit. Prices fail those rules — `$5 and $`
+ * closes after a space, `$5-$10` closes before a digit — while real math
+ * passes them, whatever punctuation follows it (`$P=(1,-1,2)$, and`).
  */
-const INLINE_MATH = /\$(?![\s$])([^$\n]{1,200})\$/;
+const INLINE_MATH = /\$(?![\s$])([^$\n]{1,200}?)(?<![\s\\])\$(?!\d)/g;
+
+/**
+ * Something inside the delimiters that reads as math: a TeX-ish character (a
+ * backslash, sub/superscript, braces), a relation or operator, or parentheses.
+ */
+const MATH_BODY = /[\\^_{}=<>+\-*/|()]/;
 
 function hasInlineMath(text: string): boolean {
-  const match = INLINE_MATH.exec(text);
-  if (!match) {
-    return false;
+  for (const [, body] of text.matchAll(INLINE_MATH)) {
+    if (MATH_BODY.test(body) || /^[A-Za-z]'?$/.test(body.trim())) {
+      return true;
+    }
   }
-  const body = match[1];
-  return /[\\^_{}]/.test(body) || /^[A-Za-z]'?$/.test(body.trim());
+  return false;
 }
 
 const LATEX_SIGNALS: Signal[] = [

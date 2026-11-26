@@ -29,6 +29,46 @@ export const VERBATIM_ELEMENTS: ReadonlySet<string> = new Set([
   "latex-image",
 ]);
 
+/** List elements, whose children are `<li>`s. */
+export const LIST_ELEMENTS: ReadonlySet<string> = new Set(["ul", "ol", "dl"]);
+
+/**
+ * Divisions and other structural containers. An empty paragraph at the end of
+ * one is just an empty paragraph: stepping out of a section to "the next
+ * thing" is never what an Enter means.
+ */
+export const DIVISION_ELEMENTS: ReadonlySet<string> = new Set([
+  "pretext",
+  "book",
+  "article",
+  "slideshow",
+  "frontmatter",
+  "backmatter",
+  "part",
+  "chapter",
+  "section",
+  "subsection",
+  "subsubsection",
+  "paragraphs",
+  "appendix",
+  "preface",
+  "acknowledgement",
+  "foreword",
+  "dedication",
+  "colophon",
+  "biography",
+  "exercises",
+  "subexercises",
+  "worksheet",
+  "handout",
+  "page",
+  "reading-questions",
+  "glossary",
+  "references",
+  "solutions",
+  "slide",
+]);
+
 /**
  * Elements inside which neither a new `<p>` nor a block environment can
  * start: math, verbatim code, one-line text containers, and lists (whose
