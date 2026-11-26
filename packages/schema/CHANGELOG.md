@@ -1,5 +1,12 @@
 # @pretextbook/schema
 
+## 0.7.5
+
+### Patch Changes
+
+- 629f595: Rebuild schema etc
+- 629f595: dep updates
+
 ## 0.7.4
 
 ### Patch Changes
